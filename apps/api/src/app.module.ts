@@ -1,0 +1,85 @@
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { LoggerModule } from 'nestjs-pino';
+import { validateEnv } from './config/env.validation';
+import { HealthModule } from './health/health.module';
+import { AuditModule } from './modules/audit/audit.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { AuthorizationModule } from './modules/authorization/authorization.module';
+import { CategoriesModule } from './modules/categories/categories.module';
+import { CustomersModule } from './modules/customers/customers.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
+import { MembershipModule } from './modules/membership/membership.module';
+import { OnboardingModule } from './modules/onboarding/onboarding.module';
+import { OrdersModule } from './modules/orders/orders.module';
+import { ProductsModule } from './modules/products/products.module';
+import { PublicStorefrontModule } from './modules/public-storefront/public-storefront.module';
+import { StoresModule } from './modules/stores/stores.module';
+import { TenantsModule } from './modules/tenants/tenants.module';
+import { PrismaModule } from './prisma/prisma.module';
+import { RedisModule } from './redis/redis.module';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      cache: true,
+      envFilePath: ['.env', '../../.env'],
+      validate: validateEnv,
+    }),
+    LoggerModule.forRoot({
+      pinoHttp: {
+        level: process.env.LOG_LEVEL ?? 'info',
+        transport:
+          process.env.NODE_ENV !== 'production'
+            ? {
+                target: 'pino-pretty',
+                options: {
+                  singleLine: true,
+                  colorize: true,
+                },
+              }
+            : undefined,
+        autoLogging: true,
+        redact: [
+          'req.headers.authorization',
+          'req.headers.cookie',
+          'req.body.password',
+          'req.body.refreshToken',
+          'res.headers["set-cookie"]',
+        ],
+      },
+    }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60_000,
+        limit: 120,
+      },
+    ]),
+    PrismaModule,
+    RedisModule,
+    AuditModule,
+    AuthorizationModule,
+    HealthModule,
+    AuthModule,
+    TenantsModule,
+    StoresModule,
+    MembershipModule,
+    OnboardingModule,
+    CategoriesModule,
+    ProductsModule,
+    InventoryModule,
+    CustomersModule,
+    OrdersModule,
+    PublicStorefrontModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
+})
+export class AppModule {}

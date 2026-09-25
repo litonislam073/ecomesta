@@ -1,0 +1,115 @@
+'use client';
+
+import { useEffect, useState, type ReactNode } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { Button } from '@ecomesta/ui';
+import { SidebarNav } from '@/components/dashboard/sidebar-nav';
+import { StoreSelector } from '@/components/dashboard/store-selector';
+import { LoadingState } from '@/components/ui/loading-state';
+import { useAuth } from '@/lib/auth-context';
+
+export function DashboardShell({ children }: { children: ReactNode }) {
+  const { user, loading, logout } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+    }
+  }, [loading, user, router, pathname]);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-5xl p-8">
+        <LoadingState label="Checking session" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  const displayName =
+    [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
+
+  return (
+    <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-ink)]">
+      <div className="mx-auto flex min-h-screen max-w-[1400px]">
+        <aside className="hidden w-64 shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)] lg:block">
+          <div className="sticky top-0 flex h-screen flex-col px-3 py-5">
+            <Link
+              href="/dashboard"
+              className="px-3 font-[family-name:var(--font-display)] text-xl tracking-tight"
+            >
+              Ecomesta
+            </Link>
+            <p className="mt-1 px-3 text-xs text-[var(--color-muted)]">Merchant</p>
+            <div className="mt-8 flex-1 overflow-y-auto pb-6">
+              <SidebarNav />
+            </div>
+          </div>
+        </aside>
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="sticky top-0 z-20 border-b border-[var(--color-border)] bg-[var(--color-surface)]/95 backdrop-blur">
+            <div className="flex items-center justify-between gap-3 px-4 py-3 md:px-6">
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="secondary"
+                  className="lg:hidden"
+                  aria-expanded={mobileOpen}
+                  aria-controls="mobile-sidebar"
+                  onClick={() => setMobileOpen((open) => !open)}
+                >
+                  Menu
+                </Button>
+                <StoreSelector />
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  className="hidden rounded-md border border-[var(--color-border)] px-3 py-2 text-sm text-[var(--color-muted)] sm:inline-flex"
+                  aria-label="Notifications (coming soon)"
+                  title="Notifications coming soon"
+                >
+                  Alerts
+                </button>
+                <div className="text-right">
+                  <p className="text-sm font-medium">{displayName}</p>
+                  <p className="text-xs text-[var(--color-muted)]">{user.email}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    void logout().then(() => router.replace('/login'));
+                  }}
+                >
+                  Log out
+                </Button>
+              </div>
+            </div>
+          </header>
+
+          {mobileOpen ? (
+            <div
+              id="mobile-sidebar"
+              className="border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-4 lg:hidden"
+            >
+              <SidebarNav onNavigate={() => setMobileOpen(false)} />
+            </div>
+          ) : null}
+
+          <main className="flex-1 px-4 py-6 md:px-6">{children}</main>
+        </div>
+      </div>
+    </div>
+  );
+}

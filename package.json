@@ -1,0 +1,37 @@
+{
+  "name": "ecomesta",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Multi-tenant SaaS eCommerce platform",
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter @ecomesta/api --filter @ecomesta/web --filter @ecomesta/merchant --filter @ecomesta/admin run dev",
+    "dev:api": "pnpm --filter @ecomesta/api dev",
+    "dev:web": "pnpm --filter @ecomesta/web dev",
+    "dev:merchant": "pnpm --filter @ecomesta/merchant dev",
+    "dev:admin": "pnpm --filter @ecomesta/admin dev",
+    "build": "pnpm -r --filter \"@ecomesta/types\" --filter \"@ecomesta/utils\" --filter \"@ecomesta/ui\" run build && pnpm -r --filter \"@ecomesta/api\" --filter \"@ecomesta/web\" --filter \"@ecomesta/merchant\" --filter \"@ecomesta/admin\" run build",
+    "build:packages": "pnpm -r --filter \"@ecomesta/types\" --filter \"@ecomesta/utils\" --filter \"@ecomesta/ui\" run build",
+    "lint": "pnpm -r run lint",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm --filter @ecomesta/api test",
+    "test:auth": "pnpm --filter @ecomesta/api test:auth",
+    "db:generate": "pnpm --filter @ecomesta/api prisma:generate",
+    "db:migrate": "pnpm --filter @ecomesta/api prisma:migrate",
+    "db:migrate:dev": "pnpm --filter @ecomesta/api prisma:migrate:dev",
+    "db:format": "pnpm --filter @ecomesta/api prisma:format",
+    "db:seed": "pnpm --filter @ecomesta/api prisma:seed",
+    "db:studio": "pnpm --filter @ecomesta/api prisma:studio",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "clean": "pnpm -r exec rimraf dist .next node_modules"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.1",
+    "typescript": "^5.7.2"
+  }
+}

@@ -1,0 +1,19 @@
+@import '@ecomesta/ui/styles.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: 'Source Sans 3', 'Segoe UI', sans-serif;
+  --font-display: 'Fraunces', Georgia, serif;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background:
+    radial-gradient(circle at bottom left, rgba(15, 107, 92, 0.06), transparent 40%),
+    linear-gradient(180deg, #f4f1ec 0%, #e8e1d4 100%);
+  min-height: 100vh;
+}
