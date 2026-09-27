@@ -97,6 +97,13 @@ describe('marketing SEO', () => {
     }
   });
 
+  it('keeps every indexable page indexable and free of development URLs', () => {
+    for (const { path, metadata } of pages) {
+      expect(metadata.robots, path).toEqual({ index: true, follow: true });
+      expect(JSON.stringify(metadata), path).not.toMatch(/localhost|127\.0\.0\.1/);
+    }
+  });
+
   it('marks the login and register redirects as noindex', async () => {
     const login = await import('@/app/(marketing)/login/page');
     const register = await import('@/app/(marketing)/register/page');
@@ -145,10 +152,92 @@ describe('robots.txt and sitemap.xml', () => {
     }
   });
 
+  it('produces a well-formed sitemap of every indexable page and nothing else', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', SITE);
+    const { marketingSitemapXml } = await import('@/lib/marketing/seo-files');
+    const { indexableMarketingPaths } = await import('@/lib/marketing/content');
+    const xml = marketingSitemapXml();
+
+    expect(xml.startsWith('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')).toBe(true);
+    expect(xml.trimEnd().endsWith('</urlset>')).toBe(true);
+    const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1] ?? '');
+    expect(locs).toEqual(indexableMarketingPaths().map((path) => `${SITE}${path}`));
+    expect(new Set(locs).size).toBe(locs.length);
+    expect(xml.match(/<url>/g)).toHaveLength(locs.length);
+    expect(xml.match(/<changefreq>(weekly|monthly|yearly)<\/changefreq>/g)).toHaveLength(locs.length);
+    expect(xml.match(/<lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/g)).toHaveLength(locs.length);
+    expect(xml).not.toMatch(/localhost|127\.0\.0\.1|store-(unavailable|not-found)/);
+    expect(locs.filter((loc) => loc.includes('?') || (loc.endsWith('/') && loc !== `${SITE}/`))).toEqual([]);
+    expect(xml).toContain(`<loc>${SITE}/</loc>\n    <lastmod>`);
+    expect(xml).toMatch(new RegExp(`<loc>${SITE}/</loc>[\\s\\S]*?<priority>1.0</priority>`));
+  });
+
+  it('never blocks the whole marketing site in robots.txt', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', SITE);
+    const { marketingRobotsTxt } = await import('@/lib/marketing/seo-files');
+    const body = marketingRobotsTxt();
+    expect(body).toMatch(/^User-agent: \*\nAllow: \/\n/);
+    expect(body).not.toMatch(/^Disallow: \/$/m);
+    expect(body).toContain('Disallow: /merchant\n');
+    for (const path of ['/features', '/pricing', '/blog', '/faq']) {
+      expect(body).not.toMatch(new RegExp(`^Disallow: ${path}`, 'm'));
+    }
+    expect(body.match(/^Sitemap: /gm)).toHaveLength(1);
+  });
+
   it('returns 404 for the sitemap on store hosts', async () => {
     const { GET } = await import('@/app/sitemap.xml/route');
     expect(GET(get('alpha.ecomesta.local')).status).toBe(404);
     expect(GET(get('shop.example.com')).status).toBe(404);
+  });
+});
+
+describe('structured data', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('links Organization, WebSite and SoftwareApplication with a real logo', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', SITE);
+    const seo = await import('@/lib/marketing/seo');
+    const organization = seo.organizationJsonLd();
+    const website = seo.websiteJsonLd();
+    const app = seo.softwareApplicationJsonLd();
+
+    expect(organization).toMatchObject({
+      '@type': 'Organization',
+      '@id': `${SITE}/#organization`,
+      name: 'Ecomesta',
+      url: `${SITE}/`,
+      logo: { url: `${SITE}/apple-icon.png`, width: 180, height: 180 },
+    });
+    expect(website).toMatchObject({ '@id': `${SITE}/#website`, publisher: { '@id': `${SITE}/#organization` } });
+    expect(app).toMatchObject({ publisher: { '@id': `${SITE}/#organization` } });
+
+    const text = JSON.stringify([organization, website, app]);
+    expect(text).not.toMatch(/aggregateRating|review|ratingValue|localhost/i);
+  });
+
+  it('builds breadcrumbs and FAQ markup from the visible content', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', SITE);
+    const { breadcrumbJsonLd, faqJsonLd } = await import('@/lib/marketing/seo');
+    expect(
+      breadcrumbJsonLd([
+        { name: 'Home', path: '/' },
+        { name: 'Pricing', path: '/pricing' },
+      ]),
+    ).toEqual({
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE}/` },
+        { '@type': 'ListItem', position: 2, name: 'Pricing', item: `${SITE}/pricing` },
+      ],
+    });
+    const faq = faqJsonLd([{ question: 'Q?', answer: 'A.' }]);
+    expect(faq.mainEntity).toEqual([
+      { '@type': 'Question', name: 'Q?', acceptedAnswer: { '@type': 'Answer', text: 'A.' } },
+    ]);
   });
 });
 

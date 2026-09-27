@@ -13,13 +13,14 @@ import {
   StoreUnavailable,
   isStoreUnavailableError,
 } from '@/components/storefront/store-unavailable';
-import { publicGet } from '@/lib/public-api';
+import { notFound } from 'next/navigation';
+import { PublicApiError, publicGet } from '@/lib/public-api';
 import {
   requirePublicStore,
   storeCanonicalUrl,
   storeMetadataBase,
 } from '@/lib/store-resolver';
-import { resolveStoreSeo, storeOgLocale, storeRobots } from '@/lib/store-seo';
+import { NOINDEX, resolveStoreSeo, storeOgLocale, storePageRobots } from '@/lib/store-seo';
 import { fetchPublicTheme } from '@/lib/theme';
 import type { Metadata } from 'next';
 
@@ -96,7 +97,7 @@ export async function storefrontHomeMetadata(
       keywords: seo.keywords,
       metadataBase: storeMetadataBase(storeSlug),
       alternates: url ? { canonical: url } : undefined,
-      robots: storeRobots(store),
+      robots: storePageRobots(store, url),
       icons: branding.faviconUrl
         ? { icon: branding.faviconUrl }
         : store.faviconUrl
@@ -112,7 +113,9 @@ export async function storefrontHomeMetadata(
       },
     };
   } catch (err) {
-    return isStoreUnavailableError(err) ? STORE_UNAVAILABLE_METADATA : { title: 'Storefront' };
+    return isStoreUnavailableError(err)
+      ? STORE_UNAVAILABLE_METADATA
+      : { title: 'Storefront', robots: NOINDEX };
   }
 }
 
@@ -126,6 +129,7 @@ export async function StorefrontHome({
     resolved = await requirePublicStore(searchParams);
   } catch (err) {
     if (isStoreUnavailableError(err)) return <StoreUnavailable />;
+    if (err instanceof PublicApiError && err.status === 404) notFound();
     throw err;
   }
   const { store, storeSlug } = resolved;

@@ -74,6 +74,21 @@ export function isPlatformMarketingHost(hostname: string | null): boolean {
   return false;
 }
 
+/**
+ * The marketing site has a single public host: `www.{root}` answers with a
+ * redirect to the apex so search engines never see two copies of each page.
+ */
+export function marketingApexRedirect(
+  hostname: string | null,
+  pathname: string,
+  search: string,
+): string | null {
+  if (!hostname?.startsWith('www.') || !isPlatformMarketingHost(hostname)) {
+    return null;
+  }
+  return `${canonicalOrigin(hostname.slice(4))}${pathname}${search}`;
+}
+
 /** Lowercases and strips the port / IPv6 brackets from a Host header. */
 export function normalizeHost(header: string | null | undefined): string | null {
   if (!header) {

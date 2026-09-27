@@ -75,10 +75,11 @@ describe('homepage / listing product card', () => {
 });
 
 describe('not-found state', () => {
-  it('renders a clean not-found message', () => {
+  it('renders a clean not-found message with a way back home', () => {
     render(<NotFound />);
-    expect(screen.getByRole('heading', { name: /not found/i })).toBeInTheDocument();
-    expect(screen.getByText(/not available in this store/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Page not found' })).toBeInTheDocument();
+    expect(screen.getByText(/does not exist or is no longer available/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Go to the homepage' })).toHaveAttribute('href', '/');
   });
 });
 

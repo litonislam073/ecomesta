@@ -12,7 +12,7 @@ import {
   storeCanonicalUrl,
   storeMetadataBase,
 } from '@/lib/store-resolver';
-import { resolvePageSeo, storeOgLocale, storeRobots } from '@/lib/store-seo';
+import { resolvePageSeo, storeOgLocale, storePageRobots } from '@/lib/store-seo';
 import { fetchPublicTheme } from '@/lib/theme';
 
 export async function generateMetadata({
@@ -46,7 +46,7 @@ export async function generateMetadata({
       description: seo.description,
       metadataBase: storeMetadataBase(store.slug),
       alternates: url ? { canonical: url } : undefined,
-      robots: storeRobots(store),
+      robots: storePageRobots(store, url),
       openGraph: {
         title: seo.title,
         description: seo.description,

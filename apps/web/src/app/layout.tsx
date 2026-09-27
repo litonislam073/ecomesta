@@ -18,7 +18,7 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   title: {
     default: 'Ecomesta',
-    template: '%s · Ecomesta',
+    template: '%s | Ecomesta',
   },
   description:
     'Bangladesh-first ecommerce SaaS — merchant stores, payments, and shipping.',

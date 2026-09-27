@@ -8,6 +8,7 @@ import {
   isLoopbackHost,
   isMarketingPath,
   isPlatformMarketingHost,
+  marketingApexRedirect,
   MARKETING_UNAVAILABLE_PATH,
   allowsStoreQueryOverride,
   normalizeHost,
@@ -562,5 +563,25 @@ describe('middleware marketing guard', () => {
     );
     expect(rewrittenPath(response)).toBeNull();
     expect(response.cookies.get('ecomesta.storeSlug')?.value).toBe('alpha');
+  });
+});
+
+describe('marketing apex redirect', () => {
+  it('sends www.ecomesta.com to the apex with path and query intact', async () => {
+    const response = await middleware(
+      request('https://www.ecomesta.com/pricing?utm_source=x', 'www.ecomesta.com'),
+    );
+    expect(response.status).toBe(308);
+    expect(response.headers.get('location')).toBe('https://ecomesta.com/pricing?utm_source=x');
+
+    const robots = await middleware(request('https://www.ecomesta.com/robots.txt', 'www.ecomesta.com'));
+    expect(robots.headers.get('location')).toBe('https://ecomesta.com/robots.txt');
+  });
+
+  it('leaves the apex, store hosts and custom www domains alone', () => {
+    expect(marketingApexRedirect('ecomesta.com', '/', '')).toBeNull();
+    expect(marketingApexRedirect('alpha.ecomesta.com', '/', '')).toBeNull();
+    expect(marketingApexRedirect('www.shop.example.com', '/products', '')).toBeNull();
+    expect(marketingApexRedirect('localhost', '/', '')).toBeNull();
   });
 });

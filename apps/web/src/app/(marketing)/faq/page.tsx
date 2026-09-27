@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { CtaSection, FaqList, JsonLd, PageHero } from '@/components/marketing/blocks';
 import { FadeUp } from '@/components/animations/fade';
 import { Container } from '@/components/marketing/ui';
@@ -37,6 +38,17 @@ export default function FaqPage() {
             </div>
           </FadeUp>
         ))}
+        <p className="text-[var(--color-muted)]">
+          Didn’t find your answer?{' '}
+          <Link href="/contact" className="font-semibold text-[var(--color-accent)] underline-offset-4 hover:underline">
+            Contact the Ecomesta team
+          </Link>{' '}
+          or browse the{' '}
+          <Link href="/resources" className="font-semibold text-[var(--color-accent)] underline-offset-4 hover:underline">
+            store setup guides
+          </Link>
+          .
+        </p>
       </Container>
       <CtaSection />
     </>

@@ -19,6 +19,7 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   title: 'Ecomesta Admin',
   description: 'Super Admin console for the Ecomesta platform',
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

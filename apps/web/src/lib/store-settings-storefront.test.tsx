@@ -3,7 +3,13 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { PublicOrderConfirmationDetail, PublicStore } from '@ecomesta/types';
 import { CartProvider } from '@/lib/cart';
-import { resolveStoreSeo, storeLang, storeOgLocale, storeRobots } from '@/lib/store-seo';
+import {
+  resolveStoreSeo,
+  storeLang,
+  storeOgLocale,
+  storePageRobots,
+  storeRobots,
+} from '@/lib/store-seo';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -94,6 +100,13 @@ describe('store SEO helpers', () => {
     expect(storeRobots(store)).toEqual({ index: false, follow: false });
     expect(storeRobots({ seo: { ...store.seo!, indexingEnabled: true } })).toBeUndefined();
     expect(storeRobots({})).toBeUndefined();
+  });
+
+  it('never indexes a ?store= preview that has no canonical host', () => {
+    const indexable = { seo: { ...store.seo!, indexingEnabled: true } };
+    expect(storePageRobots(indexable, 'https://shop.alpha.com/')).toBeUndefined();
+    expect(storePageRobots(indexable, undefined)).toEqual({ index: false, follow: false });
+    expect(storePageRobots(store, 'https://shop.alpha.com/')).toEqual({ index: false, follow: false });
   });
 
   it('derives language from settings or locale', () => {
@@ -229,6 +242,41 @@ describe('product and category metadata', () => {
       storeSlug: 'alpha',
     });
     expect((await productMetadata()).robots).toBeUndefined();
+  });
+});
+
+describe('private and listing storefront metadata', () => {
+  const indexable = { ...store, seo: { ...store.seo!, indexingEnabled: true } };
+
+  beforeEach(() => {
+    requirePublicStore.mockResolvedValue({ store: indexable, storeSlug: 'alpha' });
+  });
+
+  it('noindexes checkout, cart and payment return pages', async () => {
+    const checkout = await import('@/app/(store)/checkout/page');
+    expect((await checkout.generateMetadata({ searchParams: {} })).robots).toEqual({
+      index: false,
+      follow: false,
+    });
+    expect((await import('@/app/(store)/cart/layout')).metadata.robots).toEqual({
+      index: false,
+      follow: false,
+    });
+    expect((await import('@/app/(store)/payment/layout')).metadata.robots).toEqual({
+      index: false,
+      follow: false,
+    });
+  });
+
+  it('indexes only the unfiltered product listing, with a canonical URL', async () => {
+    const { generateMetadata } = await import('@/app/(store)/products/page');
+    const base = await generateMetadata({ searchParams: { store: 'alpha' } });
+    expect(base.alternates).toEqual({ canonical: 'https://shop.alpha.com/products' });
+    expect(base.robots).toBeUndefined();
+
+    const filtered = await generateMetadata({ searchParams: { store: 'alpha', q: 'mug', page: '2' } });
+    expect(filtered.alternates).toBeUndefined();
+    expect(filtered.robots).toEqual({ index: false, follow: true });
   });
 });
 

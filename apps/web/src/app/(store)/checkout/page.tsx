@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { CheckoutForm } from '@/components/checkout-form';
 import { requirePublicStore } from '@/lib/store-resolver';
+import { NOINDEX } from '@/lib/store-seo';
 
 export async function generateMetadata({
   searchParams,
@@ -12,9 +13,10 @@ export async function generateMetadata({
     return {
       title: `Checkout · ${store.name}`,
       description: `Complete your order at ${store.name}`,
+      robots: NOINDEX,
     };
   } catch {
-    return { title: 'Checkout' };
+    return { title: 'Checkout', robots: NOINDEX };
   }
 }
 

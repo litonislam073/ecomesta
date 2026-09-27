@@ -6,10 +6,24 @@ export function storeIndexingDisabled(store: Pick<PublicStore, 'seo'>): boolean 
   return store.seo?.indexingEnabled === false;
 }
 
+export const NOINDEX: Metadata['robots'] = { index: false, follow: false };
+
 export function storeRobots(
   store: Pick<PublicStore, 'seo'>,
 ): Metadata['robots'] | undefined {
-  return storeIndexingDisabled(store) ? { index: false, follow: false } : undefined;
+  return storeIndexingDisabled(store) ? NOINDEX : undefined;
+}
+
+/**
+ * Robots for an indexable storefront page. Without a canonical URL the page is
+ * being served through a `?store=` preview (e.g. on the platform domain), which
+ * must never compete with the store's own hostname in search results.
+ */
+export function storePageRobots(
+  store: Pick<PublicStore, 'seo'>,
+  canonical: string | undefined,
+): Metadata['robots'] | undefined {
+  return canonical ? storeRobots(store) : NOINDEX;
 }
 
 export function storeLang(store: Pick<PublicStore, 'language' | 'locale'>): 'en' | 'bn' {

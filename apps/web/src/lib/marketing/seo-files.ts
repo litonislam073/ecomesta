@@ -31,6 +31,7 @@ export function marketingRobotsTxt(): string {
   const disallow = [
     '/dashboard',
     '/admin',
+    '/merchant',
     '/login',
     '/register',
     '/onboard',
@@ -65,16 +66,31 @@ function escapeXml(value: string): string {
     .replace(/"/g, '&quot;');
 }
 
+type ChangeFrequency = 'weekly' | 'monthly' | 'yearly';
+
+/** Relative weight and expected update cadence for each kind of marketing page. */
+export function sitemapHints(path: string): { priority: string; changeFrequency: ChangeFrequency } {
+  if (path === '/') return { priority: '1.0', changeFrequency: 'weekly' };
+  if (path === '/blog') return { priority: '0.6', changeFrequency: 'weekly' };
+  if (path.startsWith('/blog/')) return { priority: '0.5', changeFrequency: 'yearly' };
+  if (path === '/about' || path === '/contact') {
+    return { priority: '0.5', changeFrequency: 'yearly' };
+  }
+  if (path.split('/').length > 2) return { priority: '0.7', changeFrequency: 'monthly' };
+  return { priority: '0.8', changeFrequency: 'monthly' };
+}
+
 export function marketingSitemapXml(): string {
   const blogDates = new Map(
     BLOG_POSTS.map((post) => [`/blog/${post.slug}`, post.modifiedTime]),
   );
   const urls = indexableMarketingPaths().map((path) => {
-    const priority = path === '/' ? '1.0' : path.split('/').length > 2 ? '0.7' : '0.8';
+    const { priority, changeFrequency } = sitemapHints(path);
     return [
       '  <url>',
       `    <loc>${escapeXml(absoluteUrl(path))}</loc>`,
       `    <lastmod>${blogDates.get(path) ?? CONTENT_UPDATED}</lastmod>`,
+      `    <changefreq>${changeFrequency}</changefreq>`,
       `    <priority>${priority}</priority>`,
       '  </url>',
     ].join('\n');

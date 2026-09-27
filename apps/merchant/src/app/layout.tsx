@@ -19,6 +19,7 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   title: 'Ecomesta Merchant',
   description: 'Merchant dashboard for managing Ecomesta stores',
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

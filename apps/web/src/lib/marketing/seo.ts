@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import {
   DEFAULT_OG_IMAGE_PATH,
+  ORGANIZATION_LOGO,
   SITE_DESCRIPTION,
   SITE_NAME,
   absoluteUrl,
@@ -58,12 +59,22 @@ export function buildMetadata({
 
 type JsonLd = Record<string, unknown>;
 
+const ORGANIZATION_ID = () => `${absoluteUrl('/')}#organization`;
+const WEBSITE_ID = () => `${absoluteUrl('/')}#website`;
+
 export function organizationJsonLd(): JsonLd {
   return {
     '@context': 'https://schema.org',
     '@type': 'Organization',
+    '@id': ORGANIZATION_ID(),
     name: SITE_NAME,
     url: absoluteUrl('/'),
+    logo: {
+      '@type': 'ImageObject',
+      url: absoluteUrl(ORGANIZATION_LOGO.path),
+      width: ORGANIZATION_LOGO.width,
+      height: ORGANIZATION_LOGO.height,
+    },
     description: SITE_DESCRIPTION,
     areaServed: 'BD',
   };
@@ -73,9 +84,11 @@ export function websiteJsonLd(): JsonLd {
   return {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
+    '@id': WEBSITE_ID(),
     name: SITE_NAME,
     url: absoluteUrl('/'),
     inLanguage: 'en',
+    publisher: { '@id': ORGANIZATION_ID() },
   };
 }
 
@@ -89,6 +102,7 @@ export function softwareApplicationJsonLd(): JsonLd {
     operatingSystem: 'Web',
     url: absoluteUrl('/'),
     description: SITE_DESCRIPTION,
+    publisher: { '@id': ORGANIZATION_ID() },
   };
 }
 
@@ -144,6 +158,11 @@ export function articleJsonLd(input: {
     mainEntityOfPage: absoluteUrl(input.path),
     image: absoluteUrl(DEFAULT_OG_IMAGE_PATH),
     author: { '@type': 'Organization', name: SITE_NAME },
-    publisher: { '@type': 'Organization', name: SITE_NAME },
+    publisher: {
+      '@type': 'Organization',
+      '@id': ORGANIZATION_ID(),
+      name: SITE_NAME,
+      logo: { '@type': 'ImageObject', url: absoluteUrl(ORGANIZATION_LOGO.path) },
+    },
   };
 }

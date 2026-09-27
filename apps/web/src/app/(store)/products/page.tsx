@@ -3,7 +3,8 @@ import Link from 'next/link';
 import type { OffsetPageMeta, PublicCategory, PublicProductCard } from '@ecomesta/types';
 import { ProductCard } from '@/components/product-card';
 import { publicGet } from '@/lib/public-api';
-import { requirePublicStore } from '@/lib/store-resolver';
+import { requirePublicStore, storeCanonicalUrl } from '@/lib/store-resolver';
+import { NOINDEX, storePageRobots } from '@/lib/store-seo';
 
 export async function generateMetadata({
   searchParams,
@@ -11,13 +12,18 @@ export async function generateMetadata({
   searchParams: Record<string, string | string[] | undefined>;
 }): Promise<Metadata> {
   try {
-    const { store } = await requirePublicStore(searchParams);
+    const { store, storeSlug } = await requirePublicStore(searchParams);
+    // Search, filter, sort and page variants are the same listing; only the base is indexable.
+    const filtered = Object.keys(searchParams).some((key) => key !== 'store');
+    const url = filtered ? undefined : storeCanonicalUrl('/products', storeSlug);
     return {
       title: `Products · ${store.name}`,
       description: `Browse products from ${store.name}`,
+      alternates: url ? { canonical: url } : undefined,
+      robots: filtered ? { index: false, follow: true } : storePageRobots(store, url),
     };
   } catch {
-    return { title: 'Products' };
+    return { title: 'Products', robots: NOINDEX };
   }
 }
 

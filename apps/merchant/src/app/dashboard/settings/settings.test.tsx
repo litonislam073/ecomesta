@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { StoreSettings, StoreSettingsSummary } from '@ecomesta/types';
 import SettingsOverviewPage from '@/app/dashboard/settings/page';
@@ -128,6 +128,16 @@ function mockLoad(settings: StoreSettings = baseSettings) {
 
 const readOnly: StoreSettings = { ...baseSettings, permissions: { canEdit: false } };
 
+/**
+ * The form first renders with an empty draft and fills it from the loaded
+ * settings in an effect; flush that effect so typing is never overwritten.
+ */
+async function findLoaded(label: string): Promise<HTMLElement> {
+  const field = await screen.findByLabelText(label);
+  await act(async () => {});
+  return field;
+}
+
 describe('Merchant settings', () => {
   beforeEach(() => {
     pathname = '/dashboard/settings';
@@ -226,7 +236,7 @@ describe('Merchant settings', () => {
       const user = userEvent.setup();
       render(<GeneralSettingsPage />);
 
-      const name = await screen.findByLabelText('Store name');
+      const name = await findLoaded('Store name');
       await user.clear(name);
       await user.type(name, 'Alpha BD');
       await user.selectOptions(screen.getByLabelText('Storefront language'), 'bn');
@@ -247,7 +257,7 @@ describe('Merchant settings', () => {
     it('blocks an empty store name client-side', async () => {
       const user = userEvent.setup();
       render(<GeneralSettingsPage />);
-      await user.clear(await screen.findByLabelText('Store name'));
+      await user.clear(await findLoaded('Store name'));
       await user.click(screen.getByRole('button', { name: 'Save changes' }));
       expect(await screen.findByText(/at least 2 characters/i)).toBeInTheDocument();
       expect(api.patch).not.toHaveBeenCalled();
@@ -259,7 +269,7 @@ describe('Merchant settings', () => {
       );
       const user = userEvent.setup();
       render(<GeneralSettingsPage />);
-      await user.type(await screen.findByLabelText('Description'), ' and more');
+      await user.type(await findLoaded('Description'), ' and more');
       await user.click(screen.getByRole('button', { name: 'Save changes' }));
       await waitFor(() =>
         expect(pushToast).toHaveBeenCalledWith(
@@ -272,7 +282,7 @@ describe('Merchant settings', () => {
     it('is read-only for staff', async () => {
       mockLoad(readOnly);
       render(<GeneralSettingsPage />);
-      expect(await screen.findByLabelText('Store name')).toBeDisabled();
+      expect(await findLoaded('Store name')).toBeDisabled();
       expect(screen.getByRole('note')).toHaveTextContent(/read-only access/i);
       expect(screen.queryByRole('button', { name: 'Save changes' })).toBeNull();
     });
@@ -282,7 +292,7 @@ describe('Merchant settings', () => {
     it('validates email and phone before saving', async () => {
       const user = userEvent.setup();
       render(<StoreDetailsSettingsPage />);
-      const email = await screen.findByLabelText('Support email');
+      const email = await findLoaded('Support email');
       await user.clear(email);
       await user.type(email, 'not-an-email');
       expect(screen.getByText('Enter a valid email address.')).toBeInTheDocument();
@@ -294,7 +304,7 @@ describe('Merchant settings', () => {
       api.patch.mockResolvedValue({ success: true, data: { ...baseSettings, phone: '+8801811000000' } });
       const user = userEvent.setup();
       render(<StoreDetailsSettingsPage />);
-      const phone = await screen.findByLabelText('Support phone');
+      const phone = await findLoaded('Support phone');
       await user.clear(phone);
       await user.type(phone, '+8801811000000');
       await user.click(screen.getByRole('button', { name: 'Save changes' }));
@@ -315,7 +325,7 @@ describe('Merchant settings', () => {
       });
       const user = userEvent.setup();
       render(<CheckoutSettingsPage />);
-      await user.click(await screen.findByLabelText('Require a phone number'));
+      await user.click(await findLoaded('Require a phone number'));
       await user.click(screen.getByRole('button', { name: 'Save changes' }));
       await waitFor(() =>
         expect(api.patch).toHaveBeenCalledWith('/stores/store-1/settings', {
@@ -338,7 +348,7 @@ describe('Merchant settings', () => {
       const user = userEvent.setup();
       render(<OrderSettingsPage />);
       expect(await screen.findByText(/PENDING or CONFIRMED/)).toBeInTheDocument();
-      await user.click(screen.getByLabelText('Let customers cancel their own orders'));
+      await user.click(await findLoaded('Let customers cancel their own orders'));
       await user.click(screen.getByRole('button', { name: 'Save changes' }));
       await waitFor(() =>
         expect(api.patch).toHaveBeenCalledWith(
@@ -351,7 +361,7 @@ describe('Merchant settings', () => {
     it('disables toggles for read-only users', async () => {
       mockLoad(readOnly);
       render(<CheckoutSettingsPage />);
-      expect(await screen.findByLabelText('Require a phone number')).toBeDisabled();
+      expect(await findLoaded('Require a phone number')).toBeDisabled();
     });
   });
 
@@ -408,7 +418,7 @@ describe('Merchant settings', () => {
       api.patch.mockResolvedValue({ success: true, data: { ...baseSettings, seoTitle: 'Short' } });
       const user = userEvent.setup();
       render(<SeoSettingsPage />);
-      const title = await screen.findByLabelText('Page title');
+      const title = await findLoaded('Page title');
       await user.clear(title);
       await user.type(title, 'Short');
       expect(screen.getByTestId('seo-title-warning')).toHaveTextContent(/Short title/);
@@ -424,7 +434,7 @@ describe('Merchant settings', () => {
     it('rejects javascript image URLs and markup client-side', async () => {
       const user = userEvent.setup();
       render(<SeoSettingsPage />);
-      await user.type(await screen.findByLabelText('Share image URL'), 'javascript:alert(1)');
+      await user.type(await findLoaded('Share image URL'), 'javascript:alert(1)');
       expect(screen.getByText(/starting with https:\/\//)).toBeInTheDocument();
       await user.type(screen.getByLabelText('Meta description'), '<b>');
       expect(screen.getAllByText('Use plain text only (no < or >).').length).toBeGreaterThan(0);
@@ -436,7 +446,7 @@ describe('Merchant settings', () => {
       api.patch.mockResolvedValue({ success: true, data: baseSettings });
       const user = userEvent.setup();
       render(<SeoSettingsPage />);
-      const keywords = await screen.findByLabelText('Keywords');
+      const keywords = await findLoaded('Keywords');
       await user.clear(keywords);
       await user.type(keywords, 'handmade, dhaka, Handmade');
       expect(await screen.findAllByText('https://shop.alpha.com/')).not.toHaveLength(0);
@@ -455,7 +465,7 @@ describe('Merchant settings', () => {
       );
       const user = userEvent.setup();
       render(<SeoSettingsPage />);
-      await user.click(await screen.findByLabelText('Allow search engines to index this store'));
+      await user.click(await findLoaded('Allow search engines to index this store'));
       await user.click(screen.getByRole('button', { name: 'Save changes' }));
       await waitFor(() =>
         expect(pushToast).toHaveBeenCalledWith('ogImageUrl must be an http(s) URL', 'error'),

@@ -7,19 +7,28 @@ import {
   isStoreUnavailableError,
 } from '@/components/storefront/store-unavailable';
 import { PublicApiError } from '@/lib/public-api';
-import { resolveStoreSlug, fetchPublicStore } from '@/lib/store-resolver';
-import { storeRobots } from '@/lib/store-seo';
+import { fetchPublicStore, resolveStoreSlug, storeCanonicalUrl } from '@/lib/store-resolver';
+import { NOINDEX, metaDescription, resolveStoreSeo, storePageRobots } from '@/lib/store-seo';
 import { fetchPublicTheme } from '@/lib/theme';
 
+/**
+ * Defaults for every storefront page: the merchant's brand (never the platform's)
+ * in titles and descriptions, and noindex for `?store=` previews. Pages that set
+ * their own `robots` replace this value.
+ */
 export async function generateMetadata(): Promise<Metadata> {
   try {
     const storeSlug = await resolveStoreSlug();
-    if (!storeSlug) return {};
+    if (!storeSlug) return { robots: NOINDEX };
     const store = await fetchPublicStore(storeSlug);
-    const robots = storeRobots(store);
-    return robots ? { robots } : {};
+    const robots = storePageRobots(store, storeCanonicalUrl('/', storeSlug));
+    return {
+      title: { template: '%s', default: store.name },
+      description: metaDescription(resolveStoreSeo(store, null).description),
+      ...(robots ? { robots } : {}),
+    };
   } catch (err) {
-    return isStoreUnavailableError(err) ? STORE_UNAVAILABLE_METADATA : {};
+    return isStoreUnavailableError(err) ? STORE_UNAVAILABLE_METADATA : { robots: NOINDEX };
   }
 }
 

@@ -12,6 +12,7 @@ import {
   isLoopbackHost,
   isMarketingPath,
   isPlatformMarketingHost,
+  marketingApexRedirect,
   readStoreQuery,
   resolveHostname,
   selectRequestHost,
@@ -112,10 +113,6 @@ function rewriteToPage(request: NextRequest, pathname: string) {
 
 export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
-  if (shouldSkipPath(pathname)) {
-    return NextResponse.next();
-  }
-
   const trustProxy = trustProxyEnabled({
     TRUST_PROXY: process.env.TRUST_PROXY,
     TRUSTED_PROXY_HOPS: process.env.TRUSTED_PROXY_HOPS,
@@ -125,6 +122,15 @@ export async function middleware(request: NextRequest) {
     forwardedHostHeader: request.headers.get('x-forwarded-host'),
     trustProxy,
   });
+
+  const apexRedirect = marketingApexRedirect(hostname, pathname, request.nextUrl.search);
+  if (apexRedirect) {
+    return NextResponse.redirect(apexRedirect, 308);
+  }
+
+  if (shouldSkipPath(pathname)) {
+    return NextResponse.next();
+  }
 
   if (isMarketingPath(pathname) && !isPlatformMarketingHost(hostname)) {
     return rewriteToPage(request, MARKETING_UNAVAILABLE_PATH);

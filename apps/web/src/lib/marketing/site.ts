@@ -65,3 +65,6 @@ export function googleSiteVerification(): string | undefined {
 }
 
 export const DEFAULT_OG_IMAGE_PATH = '/og/default';
+
+/** Square brand mark (`app/apple-icon.png`); Google requires logos of at least 112×112. */
+export const ORGANIZATION_LOGO = { path: '/apple-icon.png', width: 180, height: 180 };
