@@ -44,7 +44,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      const result = await api.get<{ success: true; data: StoreSummary[] }>('/stores');
+      const result = await api.get<{ success: true; data: StoreSummary[] }>(
+        '/stores',
+        { token: accessToken },
+      );
       const nextStores = result.data;
       setStores(nextStores);
 
@@ -66,9 +69,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [accessToken]);
 
+  // Re-fetch when memberships change (e.g. after first-store onboarding).
+  // accessToken/user.id alone stay the same across that flow.
+  const storeMembershipKey =
+    user?.memberships.stores
+      .map((membership) => membership.storeId)
+      .sort()
+      .join(',') ?? '';
+
   useEffect(() => {
     void refreshStores();
-  }, [refreshStores, user?.id]);
+  }, [refreshStores, user?.id, storeMembershipKey]);
 
   const setSelectedStoreId = useCallback(
     (storeId: string) => {

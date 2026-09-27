@@ -395,3 +395,100 @@ describe('Variants UI', () => {
     });
   });
 });
+
+describe('Products page demo catalog', () => {
+  beforeEach(() => {
+    selectedStoreId = 'store-1';
+    canManage = true;
+    pushToast.mockReset();
+    api.get.mockReset();
+    api.post.mockReset();
+  });
+
+  it('imports sample products from an empty store, then lists them with Sample badges', async () => {
+    const user = userEvent.setup();
+    let imported = false;
+    const demoProduct = {
+      ...sampleProduct,
+      id: 'demo-1',
+      name: 'Wireless Headphones',
+      slug: 'wireless-headphones',
+      sku: 'SAMPLE-HEADPHONES',
+      isDemo: true,
+    };
+    api.get.mockImplementation(async (path: string) => {
+      if (path.endsWith('/demo-catalog/status')) {
+        return {
+          success: true,
+          data: { available: !imported, imported, hasRealProducts: false },
+        };
+      }
+      if (path.includes('/products?')) {
+        const items = imported ? [demoProduct] : [];
+        return {
+          success: true,
+          data: {
+            items,
+            meta: { total: items.length, page: 1, limit: 20, totalPages: items.length ? 1 : 0 },
+          },
+        };
+      }
+      return {
+        success: true,
+        data: { items: [], meta: { total: 0, page: 1, limit: 100, totalPages: 0 } },
+      };
+    });
+    api.post.mockImplementation(async () => {
+      imported = true;
+      return {
+        success: true,
+        data: { categories: 5, products: 9, variants: 6, inventoryItems: 13 },
+      };
+    });
+
+    render(<ProductsPage />);
+    expect(await screen.findByText('No products yet')).toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: 'Import Demo Products' }));
+    const dialog = screen.getByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'Import Demo Products' }));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith('/stores/store-1/demo-catalog/import');
+    });
+    expect(
+      (await screen.findAllByRole('link', { name: 'Wireless Headphones' })).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByText('Sample')).toBeInTheDocument();
+    expect(screen.queryByText('Sample Store Products')).not.toBeInTheDocument();
+    expect(pushToast).toHaveBeenCalledWith('Sample products added successfully.', 'success');
+  });
+
+  it('does not show a Sample badge on merchant-created products', async () => {
+    api.get.mockImplementation(async (path: string) => {
+      if (path.endsWith('/demo-catalog/status')) {
+        return {
+          success: true,
+          data: { available: false, imported: false, hasRealProducts: true },
+        };
+      }
+      if (path.includes('/products?')) {
+        return {
+          success: true,
+          data: {
+            items: [{ ...sampleProduct, isDemo: false }],
+            meta: { total: 1, page: 1, limit: 20, totalPages: 1 },
+          },
+        };
+      }
+      return {
+        success: true,
+        data: { items: [], meta: { total: 0, page: 1, limit: 100, totalPages: 0 } },
+      };
+    });
+
+    render(<ProductsPage />);
+    expect((await screen.findAllByRole('link', { name: 'Tee' })).length).toBeGreaterThan(0);
+    expect(screen.queryByText('Sample')).not.toBeInTheDocument();
+    expect(screen.queryByText('Sample Store Products')).not.toBeInTheDocument();
+  });
+});

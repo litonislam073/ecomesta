@@ -1,0 +1,35 @@
+export type NavItem = {
+  href: string;
+  label: string;
+};
+
+export type NavSection = {
+  title: string;
+  items: NavItem[];
+};
+
+export const ADMIN_NAV: NavSection[] = [
+  {
+    title: 'Overview',
+    items: [{ href: '/dashboard', label: 'Dashboard' }],
+  },
+  {
+    title: 'Accounts',
+    items: [
+      { href: '/dashboard/users', label: 'Users' },
+      { href: '/dashboard/tenants', label: 'Tenants' },
+      { href: '/dashboard/stores', label: 'Stores' },
+    ],
+  },
+  {
+    title: 'Billing',
+    items: [
+      { href: '/dashboard/plans', label: 'Plans' },
+      { href: '/dashboard/subscriptions', label: 'Subscriptions' },
+    ],
+  },
+  {
+    title: 'Compliance',
+    items: [{ href: '/dashboard/audit-logs', label: 'Audit Logs' }],
+  },
+];

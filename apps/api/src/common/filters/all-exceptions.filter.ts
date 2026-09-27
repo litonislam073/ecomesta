@@ -38,27 +38,28 @@ export class AllExceptionsFilter implements ExceptionFilter {
     let code = 'INTERNAL_SERVER_ERROR';
     let details: unknown;
 
-    if (typeof exceptionResponse === 'string') {
-      message = exceptionResponse;
-      code = HttpStatus[status] ?? code;
-    } else if (exceptionResponse && typeof exceptionResponse === 'object') {
-      const payload = exceptionResponse as Record<string, unknown>;
-      if (typeof payload.message === 'string') {
-        message = payload.message;
-      } else if (Array.isArray(payload.message)) {
-        message = 'Validation failed';
-        details = payload.message;
-      }
-      if (typeof payload.error === 'string') {
-        code = payload.error.toUpperCase().replace(/\s+/g, '_');
-      } else {
+    if (status < 500) {
+      if (typeof exceptionResponse === 'string') {
+        message = exceptionResponse;
         code = HttpStatus[status] ?? code;
+      } else if (exceptionResponse && typeof exceptionResponse === 'object') {
+        const payload = exceptionResponse as Record<string, unknown>;
+        if (typeof payload.message === 'string') {
+          message = payload.message;
+        } else if (Array.isArray(payload.message)) {
+          message = 'Validation failed';
+          details = payload.message;
+        }
+        if (typeof payload.error === 'string') {
+          code = payload.error.toUpperCase().replace(/\s+/g, '_');
+        } else {
+          code = HttpStatus[status] ?? code;
+        }
       }
-    } else if (exception instanceof Error) {
-      message = exception.message;
-    }
-
-    if (status >= 500) {
+    } else {
+      // Never leak exception.message (or HttpException 500 payloads) to clients.
+      message = 'Internal server error';
+      code = 'INTERNAL_SERVER_ERROR';
       this.logger.error(
         {
           path: request.url,

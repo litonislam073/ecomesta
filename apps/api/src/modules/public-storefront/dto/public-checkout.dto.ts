@@ -23,12 +23,16 @@ import { PaymentMethod, PaymentProvider } from '@prisma/client';
 export const PUBLIC_CHECKOUT_PROVIDERS = [
   PaymentProvider.COD,
   PaymentProvider.OTHER,
+  PaymentProvider.TEST,
+  PaymentProvider.STRIPE,
+  PaymentProvider.SSL_COMMERZ,
 ] as const;
 
 export const PUBLIC_CHECKOUT_METHODS = [
   PaymentMethod.CASH,
   PaymentMethod.BANK_TRANSFER,
   PaymentMethod.OTHER,
+  PaymentMethod.CARD,
 ] as const;
 
 export class PublicCheckoutItemDto {
@@ -102,6 +106,27 @@ export class PublicCheckoutAddressDto {
   @IsString()
   @Matches(/^[A-Za-z]{2}$/)
   country!: string;
+
+  @ApiPropertyOptional({ description: 'Bangladesh division UUID' })
+  @IsOptional()
+  @IsUUID()
+  divisionId?: string;
+
+  @ApiPropertyOptional({ description: 'Bangladesh district UUID' })
+  @IsOptional()
+  @IsUUID()
+  districtId?: string;
+
+  @ApiPropertyOptional({ description: 'Bangladesh upazila UUID' })
+  @IsOptional()
+  @IsUUID()
+  upazilaId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  landmark?: string;
 }
 
 export class PublicCheckoutCustomerDto {
@@ -155,8 +180,14 @@ export class PublicCheckoutDto {
   billingSameAsShipping?: boolean;
 
   @ApiProperty({
+    description: 'Active store shipping method selected at checkout',
+  })
+  @IsUUID()
+  shippingMethodId!: string;
+
+  @ApiProperty({
     enum: PUBLIC_CHECKOUT_PROVIDERS,
-    description: 'COD or OTHER (manual/offline). Gateways not supported in Phase 10.',
+    description: 'COD or OTHER (manual/offline). Gateways not supported.',
   })
   @IsIn(PUBLIC_CHECKOUT_PROVIDERS)
   paymentProvider!: (typeof PUBLIC_CHECKOUT_PROVIDERS)[number];
@@ -173,13 +204,50 @@ export class PublicCheckoutDto {
   @IsString()
   @MaxLength(2000)
   customerNote?: string;
+
+  @ApiPropertyOptional({
+    description: 'Optional store coupon code; server validates and computes discount',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  couponCode?: string;
+}
+
+export class CancelPublicOrderDto {
+  @ApiPropertyOptional({ description: 'Checkout email (email and/or phone required)' })
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @ApiPropertyOptional({ description: 'Checkout phone (email and/or phone required)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  phone?: string;
+
+  @ApiPropertyOptional({ description: 'Optional reason shown to the store', maxLength: 500 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
 }
 
 export class PublicOrderLookupQueryDto {
   @ApiPropertyOptional({
-    description: 'Optional email check against order shipping/billing contact',
+    description:
+      'Email check against order shipping/billing contact. Provide email and/or phone (required). Wrong → 404 (no enumeration).',
   })
   @IsOptional()
   @IsEmail()
   email?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Phone check against order shipping/billing contact. Provide email and/or phone (required). Wrong → 404.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  phone?: string;
 }

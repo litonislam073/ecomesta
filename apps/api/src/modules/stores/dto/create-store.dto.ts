@@ -26,7 +26,8 @@ export class CreateStoreDto {
   @ApiProperty({ example: 'my-online-store' })
   @IsString()
   @MinLength(2)
-  @MaxLength(64)
+  // Single DNS label: `{slug}.{PLATFORM_ROOT_DOMAIN}`.
+  @MaxLength(63)
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? normalizeSlug(value) : value,
   )

@@ -133,6 +133,9 @@ export interface Product {
   costPrice: string | null;
   trackInventory: boolean;
   allowBackorder: boolean;
+  imageUrl?: string | null;
+  /** Sample content from the optional demo catalog import. */
+  isDemo?: boolean;
   onHandQuantity?: number;
   categoryIds: string[];
   categories: ProductCategoryRef[];
@@ -169,9 +172,24 @@ export interface Category {
   description: string | null;
   imageUrl: string | null;
   status: ProductStatus;
+  /** Sample content from the optional demo catalog import. */
+  isDemo?: boolean;
   createdAt: string;
   updatedAt: string;
   children?: Category[];
+}
+
+export interface DemoCatalogStatus {
+  available: boolean;
+  imported: boolean;
+  hasRealProducts: boolean;
+}
+
+export interface DemoCatalogImportResult {
+  categories: number;
+  products: number;
+  variants: number;
+  inventoryItems: number;
 }
 
 export interface InventoryItem {
@@ -227,6 +245,18 @@ export type FulfillmentStatus =
   | 'RETURNED'
   | 'CANCELLED';
 
+export type ShippingMethodType = 'FLAT' | 'WEIGHT_BASED' | 'FREE' | 'EXTERNAL';
+export type ShippingProvider = 'MANUAL' | 'PATHAO' | 'STEADFAST' | 'REDX' | 'OTHER';
+export type ShipmentStatus =
+  | 'PENDING'
+  | 'LABEL_CREATED'
+  | 'SHIPPED'
+  | 'IN_TRANSIT'
+  | 'DELIVERED'
+  | 'FAILED'
+  | 'RETURNED'
+  | 'CANCELLED';
+
 export interface OrderCustomerRef {
   id: string;
   email: string | null;
@@ -249,8 +279,187 @@ export interface OrderListItem {
   shippingTotal: string;
   taxTotal: string;
   grandTotal: string;
+  shippingMethodName?: string | null;
+  shippingMethodType?: ShippingMethodType | null;
+  shippingZoneName?: string | null;
+  couponCode?: string | null;
   itemCount: number;
   customer: OrderCustomerRef | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ShippingMethod {
+  id: string;
+  storeId: string;
+  name: string;
+  type: ShippingMethodType;
+  provider: ShippingProvider;
+  price: string;
+  active: boolean;
+  configuration: Record<string, unknown> | null;
+  zoneId: string | null;
+  freeShippingThreshold: string | null;
+  codAllowed: boolean;
+  estimatedDelivery: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ShippingZoneLocationRef {
+  id: string;
+  name: string;
+  code: string;
+}
+
+export interface ShippingZoneLocation {
+  id: string;
+  divisionId: string | null;
+  districtId: string | null;
+  upazilaId: string | null;
+  division: ShippingZoneLocationRef | null;
+  district: ShippingZoneLocationRef | null;
+  upazila: ShippingZoneLocationRef | null;
+}
+
+export interface ShippingZone {
+  id: string;
+  storeId: string;
+  name: string;
+  active: boolean;
+  priority: number;
+  methodCount?: number;
+  locations: ShippingZoneLocation[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BdLocationItem {
+  id: string;
+  code: string;
+  name: string;
+  divisionId?: string;
+  districtId?: string;
+}
+
+export interface PublicShippingMethod {
+  id: string;
+  name: string;
+  type: ShippingMethodType;
+  price: string;
+  description: string | null;
+  zoneId?: string | null;
+  freeShippingThreshold?: string | null;
+  codAllowed?: boolean;
+  estimatedDelivery?: string | null;
+  sortOrder?: number;
+  /** Quote-computed amount (may be 0 when free threshold met). */
+  amount?: string;
+  freeShippingApplied?: boolean;
+}
+
+export interface ShippingQuoteResponse {
+  zone: { id: string; name: string; priority: number } | null;
+  subtotal: string;
+  discountTotal: string;
+  subtotalAfterDiscount: string;
+  couponCode: string | null;
+  methods: PublicShippingMethod[];
+}
+
+export interface PaymentListItem {
+  id: string;
+  storeId: string;
+  orderId: string;
+  orderNumber: string;
+  publicReference: string | null;
+  internalReference: string;
+  attemptNumber: number;
+  provider: string;
+  providerPaymentId: string | null;
+  method: string;
+  status: PaymentStatus;
+  amount: string;
+  currency: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaymentDetail extends PaymentListItem {
+  metadata: unknown;
+  order: {
+    id: string;
+    orderNumber: string;
+    publicReference: string | null;
+    status: OrderStatus;
+    paymentStatus: PaymentStatus;
+  };
+}
+
+export interface PaymentProviderConfigSafe {
+  id?: string;
+  provider: string;
+  enabled: boolean;
+  mode: string;
+  configured: boolean;
+  hasSecrets: boolean;
+  publicConfig: Record<string, unknown> | null;
+  implemented: boolean;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface PublicOnlinePaymentProvider {
+  provider: string;
+  mode: string;
+  publicConfig: Record<string, unknown>;
+}
+
+export interface PublicPaymentProvidersResponse {
+  offline: { provider: string; method: string }[];
+  online: PublicOnlinePaymentProvider[];
+}
+
+export interface PublicPaymentInitiation {
+  paymentId: string;
+  internalReference: string;
+  status: PaymentStatus;
+  provider: string;
+  amount: string;
+  currency: string;
+  attemptNumber: number;
+  providerPaymentId: string | null;
+  redirectUrl: string | null;
+  clientPayload: Record<string, unknown> | null;
+  storeSlug: string;
+}
+
+export interface PublicPaymentStatus {
+  internalReference: string;
+  status: PaymentStatus;
+  provider: string;
+  amount: string;
+  currency: string;
+  attemptNumber: number;
+  orderNumber: string;
+  publicReference: string | null;
+  orderPaymentStatus: PaymentStatus;
+  orderStatus: OrderStatus;
+  providerPaymentId: string | null;
+  updatedAt: string;
+}
+
+export interface ShipmentDetail {
+  id: string;
+  storeId: string;
+  orderId: string;
+  provider: ShippingProvider | string;
+  trackingNumber: string | null;
+  status: ShipmentStatus | string;
+  shippedAt: string | null;
+  deliveredAt: string | null;
+  metadata?: unknown;
   createdAt: string;
   updatedAt: string;
 }
@@ -287,6 +496,9 @@ export interface OrderAddressSnapshot {
 export interface OrderPaymentRef {
   id: string;
   provider: string;
+  providerPaymentId?: string | null;
+  internalReference?: string;
+  attemptNumber?: number;
   amount: string;
   currency: string;
   status: PaymentStatus;
@@ -306,16 +518,56 @@ export interface OrderShipmentRef {
   updatedAt: string;
 }
 
+export interface OrderTimelineEvent {
+  type:
+    | 'ORDER_CREATED'
+    | 'ORDER_CONFIRMED'
+    | 'PAYMENT_PENDING'
+    | 'PAYMENT_PAID'
+    | 'PAYMENT_FAILED'
+    | 'PROCESSING'
+    | 'SHIPMENT_CREATED'
+    | 'SHIPPED'
+    | 'DELIVERED'
+    | 'CANCELLED';
+  label: string;
+  description: string;
+  occurredAt: string;
+}
+
+export interface PublicShipmentTracking {
+  status: string;
+  trackingNumber: string | null;
+  provider: string;
+  shippedAt: string | null;
+  deliveredAt: string | null;
+}
+
 export interface OrderDetail extends OrderListItem {
+  publicReference?: string | null;
+  cancelReason?: string | null;
   customerNote: string | null;
   internalNote: string | null;
   items: OrderItemSnapshot[];
   addresses: OrderAddressSnapshot[];
   payments: OrderPaymentRef[];
   shipments: OrderShipmentRef[];
+  timeline?: OrderTimelineEvent[];
 }
 
 /** Public storefront (Phase 9) — customer-safe shapes only. */
+
+export type StoreLanguage = 'en' | 'bn';
+
+export interface PublicStoreSeo {
+  title: string | null;
+  description: string | null;
+  keywords: string[];
+  ogTitle: string | null;
+  ogDescription: string | null;
+  ogImageUrl: string | null;
+  indexingEnabled: boolean;
+}
 
 export interface PublicStore {
   id: string;
@@ -327,6 +579,109 @@ export interface PublicStore {
   currency: string;
   timezone: string;
   locale: string;
+  language?: StoreLanguage;
+  contact?: {
+    email: string | null;
+    phone: string | null;
+    address: string | null;
+  };
+  checkout?: {
+    requireEmail: boolean;
+    requirePhone: boolean;
+    allowOrderNotes: boolean;
+  };
+  allowCustomerCancellation?: boolean;
+  seo?: PublicStoreSeo;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Merchant Settings                                                            */
+/* -------------------------------------------------------------------------- */
+
+export interface StoreSettings {
+  storeId: string;
+  name: string;
+  slug: string;
+  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'DRAFT';
+  businessName: string;
+  description: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  currency: string;
+  timezone: string;
+  defaultLanguage: StoreLanguage;
+  locale: string;
+  checkoutRequirePhone: boolean;
+  checkoutAllowOrderNotes: boolean;
+  allowCustomerCancellation: boolean;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  seoKeywords: string[];
+  ogTitle: string | null;
+  ogDescription: string | null;
+  ogImageUrl: string | null;
+  seoIndexingEnabled: boolean;
+  fixed: {
+    guestCheckout: boolean;
+    requireEmail: boolean;
+    requireShippingAddress: boolean;
+    currencyEditable: boolean;
+    timezoneEditable: boolean;
+    slugEditable: boolean;
+    customerCancellableStatuses: string[];
+  };
+  permissions: { canEdit: boolean };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type UpdateStoreSettingsInput = Partial<
+  Pick<
+    StoreSettings,
+    | 'name'
+    | 'description'
+    | 'email'
+    | 'phone'
+    | 'address'
+    | 'defaultLanguage'
+    | 'checkoutRequirePhone'
+    | 'checkoutAllowOrderNotes'
+    | 'allowCustomerCancellation'
+    | 'seoTitle'
+    | 'seoDescription'
+    | 'seoKeywords'
+    | 'ogTitle'
+    | 'ogDescription'
+    | 'ogImageUrl'
+    | 'seoIndexingEnabled'
+  >
+> & { expectedUpdatedAt?: string };
+
+export interface StoreSettingsSummary {
+  payments: {
+    offlineMethods: string[];
+    onlineProviders: { provider: string; mode: 'test' | 'live' }[];
+  };
+  shipping: {
+    methodCount: number;
+    activeMethodCount: number;
+    codMethodCount: number;
+    zoneCount: number;
+  };
+  domains: {
+    platformHostname: string | null;
+    primaryHostname: string | null;
+    customDomainCount: number;
+    activeCustomDomainCount: number;
+    pendingCustomDomainCount: number;
+  };
+  theme: {
+    name: string | null;
+    publishedAt: string | null;
+    logoUrl: string | null;
+    faviconUrl: string | null;
+  };
 }
 
 export interface PublicCategory {
@@ -376,8 +731,17 @@ export interface PublicProductDetail extends PublicProductCard {
 
 /** Public checkout (Phase 10) — guest order placement. */
 
-export type PublicCheckoutPaymentProvider = 'COD' | 'OTHER';
-export type PublicCheckoutPaymentMethod = 'CASH' | 'BANK_TRANSFER' | 'OTHER';
+export type PublicCheckoutPaymentProvider =
+  | 'COD'
+  | 'OTHER'
+  | 'TEST'
+  | 'STRIPE'
+  | 'SSL_COMMERZ';
+export type PublicCheckoutPaymentMethod =
+  | 'CASH'
+  | 'BANK_TRANSFER'
+  | 'OTHER'
+  | 'CARD';
 
 export interface PublicCheckoutItemInput {
   productId: string;
@@ -407,9 +771,40 @@ export interface PublicCheckoutRequest {
   shippingAddress: PublicCheckoutAddressInput;
   billingAddress?: PublicCheckoutAddressInput;
   billingSameAsShipping?: boolean;
+  shippingMethodId: string;
   paymentProvider: PublicCheckoutPaymentProvider;
   paymentMethod: PublicCheckoutPaymentMethod;
   customerNote?: string;
+  couponCode?: string;
+}
+
+export type CouponType = 'PERCENTAGE' | 'FIXED_AMOUNT' | 'FREE_SHIPPING';
+
+export interface Coupon {
+  id: string;
+  storeId: string;
+  code: string;
+  type: CouponType;
+  value: string;
+  minimumOrderAmount: string | null;
+  maximumDiscountAmount: string | null;
+  usageLimit: number | null;
+  usageCount: number;
+  perCustomerLimit: number | null;
+  startsAt: string | null;
+  expiresAt: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PublicCouponValidationResult {
+  valid: true;
+  code: string;
+  discount: string;
+  subtotal: string;
+  finalSubtotal: string;
+  currency: string;
 }
 
 export interface PublicCheckoutConfirmation {
@@ -417,14 +812,19 @@ export interface PublicCheckoutConfirmation {
   publicReference: string;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
+  fulfillmentStatus?: FulfillmentStatus;
   paymentProvider: string | null;
   paymentMethod: string | null;
   currency: string;
   subtotal: string;
   shippingTotal: string;
+  shippingMethodName: string | null;
+  shippingMethodType: ShippingMethodType | null;
   discountTotal: string;
   taxTotal: string;
   total: string;
+  couponCode?: string | null;
+  cancelReason?: string | null;
 }
 
 export interface PublicOrderItemSummary {
@@ -449,9 +849,532 @@ export interface PublicOrderAddressSummary {
 }
 
 export interface PublicOrderConfirmationDetail extends PublicCheckoutConfirmation {
+  fulfillmentStatus: FulfillmentStatus;
   customerNote: string | null;
+  cancelReason: string | null;
+  /** True when the store allows guest cancellation and this order is still eligible. */
+  canCancel?: boolean;
   createdAt: string;
   items: PublicOrderItemSummary[];
   shippingAddress: PublicOrderAddressSummary | null;
   billingAddress: PublicOrderAddressSummary | null;
+  shipments: PublicShipmentTracking[];
+  timeline: OrderTimelineEvent[];
+}
+
+/* -------------------------------------------------------------------------- */
+/* Phase 15 — Super Admin platform console                                     */
+/* -------------------------------------------------------------------------- */
+
+export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'PENDING';
+export type TenantStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'PENDING';
+export type StoreStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'DRAFT';
+export type MembershipStatus = 'ACTIVE' | 'INACTIVE' | 'INVITED' | 'SUSPENDED';
+export type SubscriptionStatus =
+  | 'TRIALING'
+  | 'ACTIVE'
+  | 'PAST_DUE'
+  | 'CANCELLED'
+  | 'EXPIRED';
+export type BillingCycle = 'MONTHLY' | 'SEMI_ANNUAL' | 'YEARLY';
+
+/** Derived lifecycle position; see `subscriptionPhase` in @ecomesta/utils. */
+export type SubscriptionPhase =
+  | 'TRIAL'
+  | 'GRACE'
+  | 'LAPSED'
+  | 'ACTIVE'
+  | 'SUSPENDED'
+  | 'CANCELLED';
+
+export interface PublicPlanPrice {
+  billingCycle: BillingCycle;
+  /** Whole-taka price for the full period, derived from the monthly price. */
+  amount: number;
+  months: number;
+  discountPercent: number;
+  effectiveMonthly: number;
+}
+
+/** Active plan as shown on the pricing page and plan pickers. */
+export interface PublicPlan {
+  name: string;
+  slug: string;
+  description: string | null;
+  tagline: string | null;
+  features: string[];
+  highlighted: boolean;
+  currency: 'BDT';
+  monthlyPrice: number;
+  trialMonths: number;
+  prices: PublicPlanPrice[];
+}
+
+/** The signed-in merchant's platform subscription (no internal IDs). */
+export interface MerchantSubscription {
+  tenantName: string;
+  canManage: boolean;
+  /** False until paid subscription billing is switched on. */
+  onlinePaymentAvailable: boolean;
+  subscription: {
+    status: SubscriptionStatus;
+    phase: SubscriptionPhase;
+    billingCycle: BillingCycle;
+    startsAt: string;
+    trialEndsAt: string | null;
+    endsAt: string | null;
+    /** Payment deadline (end of the 7-day grace period), when payment is or will be due. */
+    paymentDueBy: string | null;
+    currency: 'BDT';
+    /** Amount for one billing period of the selected cycle after the trial. */
+    amountDue: number;
+    plan: { name: string; slug: string; monthlyPrice: number; trialMonths: number };
+  } | null;
+}
+
+/** Statuses a Super Admin may assign directly; other states stay system-owned. */
+export type AdminAssignableUserStatus = 'ACTIVE' | 'SUSPENDED';
+export type AdminAssignableTenantStatus = 'ACTIVE' | 'SUSPENDED';
+export type AdminAssignableStoreStatus = 'ACTIVE' | 'SUSPENDED';
+
+export interface AdminStats {
+  users: { total: number; active: number };
+  tenants: { total: number; active: number };
+  stores: { total: number; active: number };
+  subscriptions: { total: number; active: number };
+  orders: { total: number };
+  orderRevenueSum: string;
+  recentAuditCount: number;
+  generatedAt: string;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  phone: string | null;
+  platformRole: PlatformRole;
+  status: UserStatus;
+  emailVerifiedAt: string | null;
+  lastLoginAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminUserTenantMembership {
+  id: string;
+  role: TenantRole;
+  status: MembershipStatus;
+  createdAt: string;
+  tenant: { id: string; name: string; slug: string; status: TenantStatus };
+}
+
+export interface AdminUserStoreMembership {
+  id: string;
+  role: StoreRole;
+  status: MembershipStatus;
+  createdAt: string;
+  store: {
+    id: string;
+    name: string;
+    slug: string;
+    status: StoreStatus;
+    tenantId: string;
+  };
+}
+
+export interface AdminUserDetail extends AdminUser {
+  tenantMemberships: AdminUserTenantMembership[];
+  storeMemberships: AdminUserStoreMembership[];
+}
+
+export interface AdminTenantSummary {
+  id: string;
+  name: string;
+  slug: string;
+  status: TenantStatus;
+}
+
+export interface AdminTenantListItem {
+  id: string;
+  name: string;
+  slug: string;
+  status: TenantStatus;
+  createdAt: string;
+  updatedAt: string;
+  counts: { stores: number; users: number };
+}
+
+export interface AdminMemberRef {
+  id: string;
+  role: string;
+  status: MembershipStatus;
+  createdAt: string;
+  user: {
+    id: string;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+    status: UserStatus;
+  };
+}
+
+export interface AdminTenantDetail {
+  id: string;
+  name: string;
+  slug: string;
+  status: TenantStatus;
+  createdAt: string;
+  updatedAt: string;
+  memberships: AdminMemberRef[];
+  stores: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    status: StoreStatus;
+  }>;
+  counts: { stores: number; users: number; orders: number };
+  latestSubscription: {
+    id: string;
+    status: SubscriptionStatus;
+    billingCycle: BillingCycle;
+    startsAt: string;
+    endsAt: string | null;
+    trialEndsAt: string | null;
+    createdAt: string;
+    plan: {
+      id: string;
+      name: string;
+      slug: string;
+      monthlyPrice: string | null;
+      yearlyPrice: string | null;
+    };
+  } | null;
+  recentAuditLogs: AdminTenantAuditEntry[];
+}
+
+export interface AdminTenantAuditEntry {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  storeId: string | null;
+  createdAt: string;
+  user: { id: string; email: string } | null;
+}
+
+export interface AdminStoreListItem {
+  id: string;
+  name: string;
+  slug: string;
+  status: StoreStatus;
+  currency: string;
+  createdAt: string;
+  updatedAt: string;
+  tenant: AdminTenantSummary;
+}
+
+export interface AdminStoreDetail {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  status: StoreStatus;
+  currency: string;
+  timezone: string;
+  locale: string;
+  createdAt: string;
+  updatedAt: string;
+  tenant: AdminTenantSummary;
+  memberships: AdminMemberRef[];
+  domains: Array<{
+    id: string;
+    hostname: string;
+    type: string;
+    status: string;
+    isPrimary: boolean;
+    verifiedAt: string | null;
+  }>;
+  /** Active storefront theme, read-only for the platform admin. */
+  theme: {
+    name: string;
+    slug: string;
+    publishedAt: string | null;
+  } | null;
+  counts: {
+    products: number;
+    customers: number;
+    orders: number;
+    inventoryItems: number;
+  };
+}
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  monthlyPrice: string;
+  yearlyPrice: string;
+  currency: 'BDT';
+  trialMonths: number;
+  /** Price for each billing cycle, derived from the monthly price. */
+  prices: PublicPlanPrice[];
+  active: boolean;
+  configuration: unknown;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminSubscription {
+  id: string;
+  tenantId: string;
+  planId: string;
+  status: SubscriptionStatus;
+  phase: SubscriptionPhase;
+  billingCycle: BillingCycle;
+  startsAt: string;
+  endsAt: string | null;
+  trialEndsAt: string | null;
+  /** End of the payment grace period; null once paid or cancelled. */
+  paymentDueBy: string | null;
+  amountDue: number;
+  createdAt: string;
+  updatedAt: string;
+  tenant: AdminTenantSummary;
+  plan: {
+    id: string;
+    name: string;
+    slug: string;
+    active: boolean;
+    monthlyPrice: string;
+    yearlyPrice: string;
+    trialMonths: number;
+  };
+}
+
+export interface AdminAuditLog {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  tenantId: string | null;
+  storeId: string | null;
+  userId: string | null;
+  metadata: unknown;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+  user: { id: string; email: string } | null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Phase 16 — Storefront theming                                              */
+/* -------------------------------------------------------------------------- */
+
+export type ThemeBorderRadius = 'none' | 'sm' | 'md' | 'lg' | 'full';
+export type ThemeHeaderLayout = 'classic' | 'centered' | 'minimal';
+export type ThemeHeroAlignment = 'left' | 'center' | 'right';
+export type ThemeSectionType =
+  | 'featured_categories'
+  | 'featured_products'
+  | 'rich_text'
+  | 'custom';
+export type ThemeSocialNetwork =
+  | 'facebook'
+  | 'instagram'
+  | 'twitter'
+  | 'x'
+  | 'youtube'
+  | 'tiktok'
+  | 'linkedin'
+  | 'other';
+
+export interface ThemeMenuItem {
+  label: string;
+  href: string;
+}
+
+export interface ThemeSocialLink {
+  network: ThemeSocialNetwork;
+  url: string;
+}
+
+export interface ThemeHomepageSection {
+  type: ThemeSectionType;
+  title?: string;
+  enabled?: boolean;
+}
+
+/** Closed config schema — unknown keys are stripped by the API on write. */
+export interface StoreThemeConfig {
+  branding?: {
+    brandName?: string;
+    tagline?: string;
+    logoUrl?: string;
+    faviconUrl?: string;
+    primaryColor?: string;
+    secondaryColor?: string;
+    accentColor?: string;
+    backgroundColor?: string;
+    surfaceColor?: string;
+    textColor?: string;
+    mutedTextColor?: string;
+    borderRadius?: ThemeBorderRadius;
+  };
+  typography?: {
+    headingFont?: string;
+    bodyFont?: string;
+    baseFontSize?: number;
+    headingLetterSpacing?: number;
+  };
+  announcement?: {
+    enabled?: boolean;
+    text?: string;
+    href?: string;
+    backgroundColor?: string;
+    textColor?: string;
+  };
+  header?: {
+    layout?: ThemeHeaderLayout;
+    sticky?: boolean;
+    showSearch?: boolean;
+    showCart?: boolean;
+    menuItems?: ThemeMenuItem[];
+  };
+  hero?: {
+    enabled?: boolean;
+    headline?: string;
+    subheadline?: string;
+    ctaLabel?: string;
+    ctaHref?: string;
+    imageUrl?: string;
+    alignment?: ThemeHeroAlignment;
+    overlayOpacity?: number;
+  };
+  homepage?: {
+    featuredCategories?: string[];
+    featuredProducts?: string[];
+    sections?: ThemeHomepageSection[];
+  };
+  footer?: {
+    tagline?: string;
+    copyright?: string;
+    showPaymentIcons?: boolean;
+    menuItems?: ThemeMenuItem[];
+    socialLinks?: ThemeSocialLink[];
+  };
+  seo?: {
+    title?: string;
+    description?: string;
+    keywords?: string[];
+    ogImageUrl?: string;
+  };
+}
+
+export interface ThemeSummary {
+  id: string;
+  name: string;
+  slug: string;
+  version: string;
+  previewImageUrl: string | null;
+}
+
+export interface ThemeListItem extends ThemeSummary {
+  description: string | null;
+  selected: boolean;
+}
+
+/** Merchant-facing store theme: draft plus last published snapshot. */
+export interface StoreTheme {
+  id: string;
+  theme: ThemeSummary;
+  isActive: boolean;
+  configuration: StoreThemeConfig;
+  publishedConfiguration: StoreThemeConfig | null;
+  publishedAt: string | null;
+  hasUnpublishedChanges: boolean;
+  updatedAt: string;
+}
+
+export interface UpdateStoreThemeRequest {
+  themeId?: string;
+  configuration?: StoreThemeConfig;
+}
+
+/** Public storefront theming — published snapshot only, never the draft. */
+export interface PublicStoreTheme {
+  theme: { slug: string; name: string } | null;
+  publishedAt: string | null;
+  configuration: StoreThemeConfig;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 17 — custom domains
+// ---------------------------------------------------------------------------
+
+export type DomainType = 'SUBDOMAIN' | 'CUSTOM_DOMAIN';
+
+export type DomainStatus =
+  | 'PENDING'
+  | 'VERIFIED'
+  | 'ACTIVE'
+  | 'FAILED'
+  | 'DISABLED';
+
+/** DNS challenge shown while a custom domain is not yet active. */
+export interface DomainVerificationRecord {
+  recordType: 'TXT';
+  recordName: string;
+  /**
+   * Raw TXT value — only present on create / regenerate responses.
+   * List/get return null; merchants must regenerate if the value was lost.
+   */
+  recordValue: string | null;
+  /** True when a challenge hash is stored server-side. */
+  verificationConfigured: boolean;
+}
+
+export interface StoreDomain {
+  id: string;
+  storeId: string;
+  hostname: string;
+  type: DomainType;
+  status: DomainStatus;
+  isPrimary: boolean;
+  verifiedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** True when a pending challenge hash exists (secret never returned on GET). */
+  verificationConfigured: boolean;
+  /** Null once the domain is active or for platform subdomains. */
+  verification: DomainVerificationRecord | null;
+}
+
+export interface StoreDomainList {
+  items: StoreDomain[];
+  meta: {
+    total: number;
+    platformRootDomain: string;
+    canonicalHostname: string;
+  };
+}
+
+export interface CreateStoreDomainRequest {
+  hostname: string;
+}
+
+export interface DeletedStoreDomain {
+  id: string;
+  hostname: string;
+}
+
+/** Public host -> storefront mapping used by edge routing. */
+export interface ResolvedStorefrontDomain {
+  hostname: string;
+  domainType: DomainType;
+  isPrimary: boolean;
+  store: PublicStore;
+  canonicalHostname: string;
 }

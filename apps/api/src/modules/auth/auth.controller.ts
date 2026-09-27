@@ -61,14 +61,22 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(AccessTokenGuard)
+  @ApiCookieAuth(REFRESH_COOKIE_NAME)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Revoke the current auth session' })
+  @ApiOperation({
+    summary:
+      'Revoke the current auth session (Bearer and/or refresh cookie) and clear the refresh cookie',
+  })
   async logout(
-    @CurrentUser() user: AuthenticatedUser,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    return this.authService.logout(user, res);
+    const authorization = req.headers.authorization;
+    return this.authService.logoutFlexible(
+      req,
+      res,
+      typeof authorization === 'string' ? authorization : undefined,
+    );
   }
 
   @Get('me')

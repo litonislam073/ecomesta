@@ -1,8 +1,32 @@
+import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { StorefrontProviders } from '@/components/storefront-providers';
+import {
+  STORE_UNAVAILABLE_METADATA,
+  StoreUnavailable,
+  isStoreUnavailableError,
+} from '@/components/storefront/store-unavailable';
 import { PublicApiError } from '@/lib/public-api';
 import { resolveStoreSlug, fetchPublicStore } from '@/lib/store-resolver';
+import { storeRobots } from '@/lib/store-seo';
+import { fetchPublicTheme } from '@/lib/theme';
 
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    const storeSlug = await resolveStoreSlug();
+    if (!storeSlug) return {};
+    const store = await fetchPublicStore(storeSlug);
+    const robots = storeRobots(store);
+    return robots ? { robots } : {};
+  } catch (err) {
+    return isStoreUnavailableError(err) ? STORE_UNAVAILABLE_METADATA : {};
+  }
+}
+
+/**
+ * Storefront chrome for catalog/checkout routes. The SaaS marketing homepage
+ * lives at `app/page.tsx` and does not use this layout.
+ */
 export default async function StoreLayout({ children }: { children: ReactNode }) {
   try {
     const storeSlug = await resolveStoreSlug();
@@ -10,12 +34,22 @@ export default async function StoreLayout({ children }: { children: ReactNode })
       throw new PublicApiError(
         404,
         'STORE_REQUIRED',
-        'Add ?store=your-store-slug to the URL (local multi-tenant resolution).',
+        'This storefront URL needs a store. On a custom domain or platform subdomain the store is selected automatically.',
       );
     }
-    const store = await fetchPublicStore(storeSlug);
-    return <StorefrontProviders store={store}>{children}</StorefrontProviders>;
+    const [store, theme] = await Promise.all([
+      fetchPublicStore(storeSlug),
+      fetchPublicTheme(storeSlug),
+    ]);
+    return (
+      <StorefrontProviders store={store} theme={theme}>
+        {children}
+      </StorefrontProviders>
+    );
   } catch (err) {
+    if (isStoreUnavailableError(err)) {
+      return <StoreUnavailable />;
+    }
     const message =
       err instanceof PublicApiError
         ? err.message
@@ -23,13 +57,15 @@ export default async function StoreLayout({ children }: { children: ReactNode })
     return (
       <div className="mx-auto flex min-h-screen max-w-xl flex-col justify-center px-4 py-16 text-center">
         <h1 className="font-[family-name:var(--font-display)] text-3xl tracking-tight">
-          Store unavailable
+          Store not found
         </h1>
         <p className="mt-3 text-[var(--color-muted)]">{message}</p>
         <p className="mt-6 text-sm text-[var(--color-muted)]">
-          For local development, open the site with{' '}
-          <code className="rounded bg-white px-1">?store=your-store-slug</code>. Only ACTIVE
-          stores are public.
+          Check the link, or open the{' '}
+          <a href="/" className="underline">
+            Ecomesta homepage
+          </a>
+          .
         </p>
       </div>
     );

@@ -194,6 +194,18 @@ describe('Tenancy (e2e)', () => {
       .expect(403);
   });
 
+  it('rejects unauthenticated onboarding', async () => {
+    await request(app.getHttpServer())
+      .post('/api/v1/onboarding/store')
+      .send({
+        businessName: 'No Auth Co',
+        storeName: 'No Auth Store',
+        tenantSlug: `no-auth-${suffix}`,
+        storeSlug: `no-auth-store-${suffix}`,
+      })
+      .expect(401);
+  });
+
   it('onboards tenant+store atomically for user B', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
@@ -203,14 +215,15 @@ describe('Tenancy (e2e)', () => {
         storeName: 'Store B',
         tenantSlug: `tenant-b-${suffix}`,
         storeSlug: `store-b-${suffix}`,
-        currency: 'USD',
-        timezone: 'UTC',
-        locale: 'en-US',
       })
       .expect(201);
 
     tenantBId = res.body.data.tenant.id;
     storeBId = res.body.data.store.id;
+    expect(res.body.data.store.status).toBe('ACTIVE');
+    expect(res.body.data.store.currency).toBe('BDT');
+    expect(res.body.data.store.timezone).toBe('Asia/Dhaka');
+    expect(res.body.data.store.locale).toBe('en-BD');
 
     const owner = await prisma.tenantUser.findUnique({
       where: {
@@ -224,6 +237,13 @@ describe('Tenancy (e2e)', () => {
     });
     expect(owner?.role).toBe(TenantRole.OWNER);
     expect(manager?.role).toBe(StoreRole.STORE_MANAGER);
+
+    const listed = await request(app.getHttpServer())
+      .get('/api/v1/stores')
+      .set('Authorization', `Bearer ${userB.token}`)
+      .expect(200);
+    const ids = listed.body.data.map((item: { id: string }) => item.id);
+    expect(ids).toContain(storeBId);
   });
 
   it('rolls back onboarding when tenant slug conflicts', async () => {

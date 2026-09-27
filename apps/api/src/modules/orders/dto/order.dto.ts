@@ -114,6 +114,46 @@ export class OrderAddressInputDto {
   @IsEmail()
   @MaxLength(255)
   email?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  divisionId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  districtId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  upazilaId?: string;
+
+  /** Snapshot names (preferred on order addresses for history). */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  divisionName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  districtName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  upazilaName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  landmark?: string;
 }
 
 export class CreateOrderDto {
@@ -196,6 +236,14 @@ export class UpdateOrderStatusDto {
   @ApiProperty({ enum: OrderStatus })
   @IsIn(Object.values(OrderStatus))
   status!: OrderStatus;
+
+  @ApiPropertyOptional({
+    description: 'Optional customer-safe cancellation reason (used when status=CANCELLED)',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
 }
 
 export class UpdatePaymentStatusDto {
@@ -246,6 +294,14 @@ export class ListOrdersQueryDto {
   @IsOptional()
   @IsIn(Object.values(FulfillmentStatus))
   fulfillmentStatus?: FulfillmentStatus;
+
+  @ApiPropertyOptional({
+    description: 'Filter by shipping method snapshot name (case-insensitive contains)',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  shippingMethod?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

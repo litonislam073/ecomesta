@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import type { Category } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
+import { SampleBadge } from '@/components/catalog/sample-badge';
 import { StatusBadge } from '@/components/catalog/status-badge';
 
 type TreeNode = Omit<Category, 'children'> & { children: TreeNode[] };
@@ -65,6 +66,7 @@ function TreeBranch({
             <p className="truncate text-xs text-[var(--color-muted)]">{node.slug}</p>
           </div>
           <StatusBadge status={node.status} />
+          {node.isDemo ? <SampleBadge /> : null}
         </div>
         {canWrite ? (
           <div className="flex gap-2">

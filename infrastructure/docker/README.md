@@ -1,11 +1,10 @@
-# Development Docker notes
-#
-# Primary local dependencies (Postgres + Redis) are defined in the
-# repository-root docker-compose.yml for convenience.
-#
-# Application containers can be added here later when a fully
-# containerized workflow is required.
+# Docker
 
-version: "3.9"
+| File | Purpose |
+| --- | --- |
+| `docker-compose.yml` (repo root) | Local development: Postgres + Redis only, published on localhost for `pnpm dev`. |
+| `docker-compose.prod.yml` (repo root) | VPS staging/production: postgres, redis, api, web, merchant, admin, nginx. |
+| `apps/*/Dockerfile` | Multi-stage production images (build context = repo root). |
+| `.dockerignore` (repo root) | Keeps `.env*`, `node_modules`, build output and keys out of the build context. |
 
-# Intentionally minimal — prefer root docker-compose.yml for day-to-day use.
+Deployment procedure: [`docs/deployment.md`](../../docs/deployment.md).

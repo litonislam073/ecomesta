@@ -1,0 +1,269 @@
+# Ecomesta VPS staging / production stack.
+#
+#   docker compose --env-file .env.production -f docker-compose.prod.yml config   # validate
+#   ./scripts/deploy-staging.sh                                                   # build + migrate + start
+#
+# Network layout:
+#   Internet ──80/443──▶ nginx ──(edge)──▶ api / web / merchant / admin
+#                                  api ──(backend, internal)──▶ postgres / redis
+# Only nginx publishes ports. Postgres (5432) and Redis (6379) are never
+# published and sit on an `internal` network with no route to the internet.
+#
+# Every secret comes from the --env-file at deploy time; nothing is baked into
+# images or committed here. `${VAR:?}` makes compose refuse to start when a
+# required value is missing.
+
+name: ecomesta
+
+x-app: &app
+  restart: unless-stopped
+  init: true
+  security_opt:
+    - no-new-privileges:true
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "5"
+
+x-api-env: &api-env
+  NODE_ENV: production
+  DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
+  REDIS_URL: ${REDIS_URL:?Set REDIS_URL}
+  JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Set JWT_ACCESS_SECRET}
+  JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET}
+  JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
+  JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+  PAYMENT_SECRETS_ENCRYPTION_KEY: ${PAYMENT_SECRETS_ENCRYPTION_KEY:?Set PAYMENT_SECRETS_ENCRYPTION_KEY}
+  API_PORT: "3001"
+  API_URL: ${API_URL:?Set API_URL}
+  WEB_URL: ${WEB_URL:?Set WEB_URL}
+  MERCHANT_URL: ${MERCHANT_URL:?Set MERCHANT_URL}
+  ADMIN_URL: ${ADMIN_URL:?Set ADMIN_URL}
+  CORS_ORIGINS: ${CORS_ORIGINS:-}
+  PLATFORM_ROOT_DOMAIN: ${PLATFORM_ROOT_DOMAIN:?Set PLATFORM_ROOT_DOMAIN}
+  TRUST_PROXY: "true"
+  TRUSTED_PROXY_HOPS: "1"
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+      TZ: UTC
+      PGTZ: UTC
+    command: ["postgres", "-c", "max_connections=100", "-c", "timezone=UTC"]
+    shm_size: 256mb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
+    command: ["sh", "-c", "exec redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\""]
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  api:
+    <<: *app
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: runtime
+    image: ecomesta-api:${IMAGE_TAG:-latest}
+    environment: *api-env
+    read_only: true
+    tmpfs:
+      - /tmp
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+      - edge
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3001/api/v1/health').then(r=>r.json()).then(j=>process.exit(j.data&&j.data.status==='ok'?0:1)).catch(()=>process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  # One-off: `docker compose ... run --rm migrate` (never `migrate dev` / `migrate reset`).
+  migrate:
+    image: ecomesta-api:${IMAGE_TAG:-latest}
+    profiles: ["tools"]
+    restart: "no"
+    command: ["./node_modules/.bin/prisma", "migrate", "deploy"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+
+  # One-off, first deploy only: Bangladesh locations + first Super Admin.
+  # `SEED_SUPER_ADMIN_PASSWORD=... docker compose ... run --rm seed`
+  seed:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: tools
+    image: ecomesta-api-tools:${IMAGE_TAG:-latest}
+    profiles: ["tools"]
+    restart: "no"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
+      SEED_SUPER_ADMIN_EMAIL: ${SEED_SUPER_ADMIN_EMAIL:-}
+      SEED_SUPER_ADMIN_PASSWORD: ${SEED_SUPER_ADMIN_PASSWORD:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+
+  web:
+    <<: *app
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?Set NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_WEB_URL: ${NEXT_PUBLIC_WEB_URL:?Set NEXT_PUBLIC_WEB_URL}
+        NEXT_PUBLIC_MERCHANT_URL: ${NEXT_PUBLIC_MERCHANT_URL:?Set NEXT_PUBLIC_MERCHANT_URL}
+        NEXT_PUBLIC_PLATFORM_ROOT_DOMAIN: ${NEXT_PUBLIC_PLATFORM_ROOT_DOMAIN:?Set NEXT_PUBLIC_PLATFORM_ROOT_DOMAIN}
+        NEXT_PUBLIC_DEFAULT_STORE_SLUG: ${NEXT_PUBLIC_DEFAULT_STORE_SLUG:-}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?Set NEXT_PUBLIC_SITE_URL}
+        NEXT_PUBLIC_CONTACT_EMAIL: ${NEXT_PUBLIC_CONTACT_EMAIL:-}
+        NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION:-}
+    image: ecomesta-web:${IMAGE_TAG:-latest}
+    environment:
+      NODE_ENV: production
+      API_INTERNAL_URL: http://api:3001/api/v1
+      PLATFORM_ROOT_DOMAIN: ${PLATFORM_ROOT_DOMAIN:?Set PLATFORM_ROOT_DOMAIN}
+      TRUST_PROXY: "true"
+      TRUSTED_PROXY_HOPS: "1"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - edge
+    healthcheck: &next-health
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:'+process.env.PORT+'/').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
+
+  merchant:
+    <<: *app
+    build:
+      context: .
+      dockerfile: apps/merchant/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?Set NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_WEB_URL: ${NEXT_PUBLIC_WEB_URL:?Set NEXT_PUBLIC_WEB_URL}
+        NEXT_PUBLIC_PLATFORM_ROOT_DOMAIN: ${NEXT_PUBLIC_PLATFORM_ROOT_DOMAIN:?Set NEXT_PUBLIC_PLATFORM_ROOT_DOMAIN}
+    image: ecomesta-merchant:${IMAGE_TAG:-latest}
+    environment:
+      NODE_ENV: production
+    networks:
+      - edge
+    healthcheck: *next-health
+
+  admin:
+    <<: *app
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?Set NEXT_PUBLIC_API_URL}
+    image: ecomesta-admin:${IMAGE_TAG:-latest}
+    environment:
+      NODE_ENV: production
+    networks:
+      - edge
+    healthcheck: *next-health
+
+  nginx:
+    <<: *app
+    image: nginx:1.27-alpine
+    environment:
+      PLATFORM_ROOT_DOMAIN: ${PLATFORM_ROOT_DOMAIN:?Set PLATFORM_ROOT_DOMAIN}
+      NGINX_ENVSUBST_FILTER: "^PLATFORM_ROOT_DOMAIN$$"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infrastructure/nginx/templates:/etc/nginx/templates:ro
+      - ./infrastructure/nginx/snippets:/etc/nginx/snippets:ro
+      - ./infrastructure/nginx/custom-domains:/etc/nginx/custom-domains:ro
+      # Host paths managed by certbot on the VPS (docs/deployment.md §10).
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+      merchant:
+        condition: service_healthy
+      admin:
+        condition: service_healthy
+    networks:
+      - edge
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/nginx-health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+networks:
+  backend:
+    internal: true
+  edge: {}
+
+volumes:
+  postgres_data:
+  redis_data:

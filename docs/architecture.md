@@ -43,7 +43,7 @@ Customer-facing storefront. Resolves store context from domain/subdomain and ren
 Authenticated merchant workspace for products, inventory, orders, customers, themes, domains, and billing.
 
 ### `apps/admin`
-Platform Super Admin console for tenants, subscriptions, abuse, and system health.
+Platform Super Admin console (port **3003**) for users, tenants, stores, subscription plans, subscriptions, and audit history. Gated on `platformRole === 'SUPER_ADMIN'`: a merchant who signs in here sees an access-denied screen and is offered sign-out, never the dashboard. Mirrors the merchant app's API client and UI primitives by copy rather than cross-import, and carries no store selector because every view is platform-wide. See [admin-platform.md](./admin-platform.md).
 
 ### `apps/api`
 Single NestJS backend exposing versioned REST under `/api/v1`. Controllers stay thin; services own business rules; Prisma owns persistence.
@@ -62,16 +62,20 @@ Planned modules (foundation only in this phase):
 | Categories / Products / Inventory | Store-scoped catalog APIs (Phase 5) + merchant UI (Phase 7) |
 | Customers | Store-scoped customer + address APIs (Phase 6) |
 | Merchant dashboard | Login, shell, store selector, catalog + customer UI (Phases 6–7) |
-| Orders | Store-scoped order APIs + merchant order UI (Phase 8); shared placement core |
+| Orders | Store-scoped order APIs + merchant ops + public tracking timeline (Phase 8–13) |
 | Public storefront | Store resolution, public catalog, browsing + cart (Phase 9) |
-| Public checkout | Guest checkout + confirmation (Phase 10) |
-| Payments / Shipping / Coupons | Gateways & promotions (deferred) |
-| Themes / Domains / Media | Branding & assets |
-| Analytics / Subscriptions / Notifications | Insights, billing, messaging |
+| Public checkout | Guest checkout + confirmation (Phase 10) + BD zones/quote (Phase 20) |
+| Shipping | Store shipping methods, zones, calculation, shipments (Phase 11 + 20) |
+| Payments | Offline records + TEST + Stripe Checkout + SSLCommerz adapters (Phases 11–12, 18–19); other gateways deferred |
+| Coupons | Store-scoped coupon CRUD, validation, checkout apply (Phase 14) |
+| Admin platform | Super Admin APIs for stats, users, tenants, stores, plans, subscriptions, audit + console UI (Phase 15) |
+| Themes | Theme selection + validated store theme config, draft/publish, public storefront rendering (Phase 16) |
+| Domains / Media | Branding & assets |
+| Analytics / Notifications | Insights, messaging |
 
-**Current phase:** Phase 10 **public checkout** (guest order placement, server pricing, inventory locks). Payment gateways remain deferred.
+**Current phase:** Phase 19 **SSLCommerz** — merchants configure encrypted SSLCommerz store credentials at `/dashboard/settings/payments`, storefront checkout can redirect to hosted SSLCommerz when `SSL_COMMERZ` is enabled, and payments become `PAID` only after IPN plus the Order Validation API (browser success URLs remain informational). Phase 18 Stripe Checkout, Phase 17 custom domains, Phase 16 theming, Phase 15 admin, Phase 14 coupons, and the Phase 12 payment-provider architecture remain in place. Offline `COD`/`OTHER` and the deterministic `TEST` provider continue to work alongside Stripe and SSLCommerz.
 
-See [customers.md](./customers.md), [merchant-dashboard.md](./merchant-dashboard.md), [catalog-dashboard.md](./catalog-dashboard.md), [orders.md](./orders.md), [storefront.md](./storefront.md), and [checkout.md](./checkout.md).
+See [storefront-theming.md](./storefront-theming.md), [custom-domains.md](./custom-domains.md), [customers.md](./customers.md), [merchant-dashboard.md](./merchant-dashboard.md), [admin-platform.md](./admin-platform.md), [catalog-dashboard.md](./catalog-dashboard.md), [orders.md](./orders.md), [storefront.md](./storefront.md), [checkout.md](./checkout.md), [shipping.md](./shipping.md), [payments.md](./payments.md), [payment-providers.md](./payment-providers.md), [sslcommerz.md](./sslcommerz.md), and [coupons.md](./coupons.md).
 
 ## 4. Database strategy
 
@@ -99,7 +103,7 @@ Store ──< InventoryItem / InventoryMovement
 Store ──< Customer ──< CustomerAddress
 Store ──< Order ──< OrderItem / OrderAddress
 Order ──< Payment / Shipment / CouponUsage
-Store ──< Coupon / Media / Domain / ShippingMethod / StoreTheme
+Store ──< Coupon / Media / Domain / ShippingMethod / ShippingZone / StoreTheme
 Theme ──< StoreTheme
 ```
 
@@ -175,9 +179,9 @@ S3-compatible object storage (MinIO locally, AWS S3 or equivalent in production)
 ## 9. Domain strategy
 
 - Platform apps: `WEB_URL`, `MERCHANT_URL`, `ADMIN_URL`.
-- Merchant stores: custom domains and/or `{store}.platform-domain` subdomains.
-- Domain module will verify DNS (CNAME/A) ownership and map host → `storeId`.
-- Storefront (`apps/web`) resolves tenant/store from `Host` header via the API.
+- Merchant stores: custom domains and/or `{slug}.{PLATFORM_ROOT_DOMAIN}` subdomains (Phase 17).
+- `DomainsService` proves ownership with a DNS TXT challenge (`_ecomesta-verification.<host>`), then activates the host for the storefront. See [custom-domains.md](./custom-domains.md).
+- Storefront (`apps/web`) middleware calls `GET /api/v1/public/domain/resolve?host=` and sets `ecomesta.storeSlug` / canonical-host cookies; `?store=` remains an override for local multi-tenant work.
 - Nginx terminates TLS in production and routes by host/path.
 
 ## 10. Deployment architecture

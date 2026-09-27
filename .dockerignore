@@ -1,0 +1,35 @@
+# Build context is the repo root; only sources + manifests are needed.
+.git
+.gitignore
+**/node_modules
+**/.next
+**/dist
+**/coverage
+**/*.tsbuildinfo
+**/.turbo
+**/*.log
+
+# Secrets and local state must never enter an image layer
+.env
+.env.*
+**/.env
+**/.env.*
+*.pem
+*.key
+*.crt
+backups
+letsencrypt
+.pg-dev-password.tmp
+
+# Not needed to build or run the apps
+docs
+infrastructure
+scripts
+docker-compose*.yml
+**/Dockerfile
+.dockerignore
+README.md
+.idea
+.vscode
+.cursor
+**/.DS_Store

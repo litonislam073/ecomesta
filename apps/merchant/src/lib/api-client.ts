@@ -16,21 +16,45 @@ export type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
 
 type TokenGetter = () => string | null;
 type UnauthorizedHandler = () => void;
+type RefreshHandler = () => Promise<string | null>;
 
 let accessTokenGetter: TokenGetter = () => null;
 let onUnauthorized: UnauthorizedHandler | null = null;
+let refreshAccessToken: RefreshHandler | null = null;
+let refreshInFlight: Promise<string | null> | null = null;
 
 export function configureApiClient(options: {
   getAccessToken: TokenGetter;
   onUnauthorized?: UnauthorizedHandler;
+  refreshAccessToken?: RefreshHandler;
 }) {
   accessTokenGetter = options.getAccessToken;
   onUnauthorized = options.onUnauthorized ?? null;
+  refreshAccessToken = options.refreshAccessToken ?? null;
 }
 
 function apiBaseUrl(): string {
   const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
   return base.replace(/\/$/, '');
+}
+
+const NO_REFRESH_PATHS = new Set([
+  '/auth/login',
+  '/auth/register',
+  '/auth/refresh',
+  '/auth/logout',
+]);
+
+async function tryRefreshAccessToken(): Promise<string | null> {
+  if (!refreshAccessToken) {
+    return null;
+  }
+  if (!refreshInFlight) {
+    refreshInFlight = refreshAccessToken().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
 }
 
 export async function apiRequest<T>(
@@ -40,6 +64,8 @@ export async function apiRequest<T>(
     body?: unknown;
     token?: string | null;
     signal?: AbortSignal;
+    /** Internal: already attempted one refresh retry. */
+    _retried?: boolean;
   } = {},
 ): Promise<T> {
   const method = options.method ?? 'GET';
@@ -86,6 +112,22 @@ export async function apiRequest<T>(
       (response.status === 401
         ? 'Your session has expired. Please sign in again.'
         : 'Request failed');
+
+    if (
+      response.status === 401 &&
+      !options._retried &&
+      !NO_REFRESH_PATHS.has(path) &&
+      refreshAccessToken
+    ) {
+      const nextToken = await tryRefreshAccessToken();
+      if (nextToken) {
+        return apiRequest<T>(path, {
+          ...options,
+          token: nextToken,
+          _retried: true,
+        });
+      }
+    }
 
     if (response.status === 401 && onUnauthorized) {
       onUnauthorized();

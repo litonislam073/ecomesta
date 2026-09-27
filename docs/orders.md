@@ -1,8 +1,8 @@
-# Orders (Phase 8 + Phase 10 public placement)
+# Orders (Phase 8–14)
 
-Store-scoped order management. Merchant create remains authenticated. **Public guest checkout** (Phase 10) places orders through the same `OrderPlacementService` core — see [checkout.md](./checkout.md).
+Store-scoped order management. Merchant create remains authenticated. **Public guest checkout** places orders through `OrderPlacementService` — see [checkout.md](./checkout.md). Coupons snapshot onto the order — see [coupons.md](./coupons.md). Customer tracking and merchant operations are documented in [order-tracking.md](./order-tracking.md).
 
-Payment **gateways** are still out of scope.
+Payment **gateways** and courier APIs remain out of scope. See [shipping.md](./shipping.md) and [payments.md](./payments.md).
 
 ## Architecture
 
@@ -13,7 +13,7 @@ Merchant UI / API client
   → Order + OrderItem snapshots + OrderAddress
   → InventoryItem FOR UPDATE + InventoryMovement (SALE / RETURN)
   → Payment + optional Shipment foundation
-  → AuditLog
+  → AuditLog → customer-safe OrderTimeline
 ```
 
 ## Endpoints
@@ -21,9 +21,9 @@ Merchant UI / API client
 | Method | Path | Access |
 | --- | --- | --- |
 | `POST` | `/stores/:storeId/orders` | STORE_MANAGER (+ tenant elevate) |
-| `GET` | `/stores/:storeId/orders` | store access |
-| `GET` | `/stores/:storeId/orders/:orderId` | store access |
-| `PATCH` | `/stores/:storeId/orders/:orderId/status` | STORE_MANAGER |
+| `GET` | `/stores/:storeId/orders` | store access (filters: status, payment, fulfillment, shippingMethod, dates, search, sort) |
+| `GET` | `/stores/:storeId/orders/:orderId` | store access (includes timeline, publicReference, cancelReason) |
+| `PATCH` | `/stores/:storeId/orders/:orderId/status` | STORE_MANAGER (`reason` optional on CANCELLED) |
 | `PATCH` | `/stores/:storeId/orders/:orderId/payment-status` | STORE_MANAGER |
 | `PATCH` | `/stores/:storeId/orders/:orderId/fulfillment-status` | STORE_MANAGER |
 
@@ -74,6 +74,7 @@ Format: `EM-{sequence}` (unique on `(storeId, orderNumber)`).
 - `OrderItem`: productName, variantName, sku, unitPrice, totalPrice, quantity
 - `OrderAddress`: shipping + billing copies (optional `email` for guests)
 - Totals: Prisma `Decimal(12,2)` — subtotal − discount + shipping + tax
+- Discount: `discountTotal` + optional `couponCode` (historical; independent of live Coupon row)
 
 ## Payment / fulfillment foundation
 
@@ -90,6 +91,6 @@ Manual `/dashboard/orders/new` is deferred (API supports create; next merchant i
 
 - Public checkout / cart
 - Gateway payments & refunds
-- Coupons against orders
+- Loyalty / referral / automatic promotion engines (Phase 14 covers store coupons only)
 - Courier tracking
 - Manual merchant order composer UI

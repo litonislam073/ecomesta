@@ -7,7 +7,10 @@ import {
   MembershipStatus,
   PlatformRole,
   StoreRole,
+  StoreStatus,
   TenantRole,
+  TenantStatus,
+  UserStatus,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -18,9 +21,19 @@ export class AuthorizationService {
   async isSuperAdmin(userId: string): Promise<boolean> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { platformRole: true },
+      select: { platformRole: true, status: true },
     });
-    return user?.platformRole === PlatformRole.SUPER_ADMIN;
+    return (
+      user?.platformRole === PlatformRole.SUPER_ADMIN &&
+      user.status === UserStatus.ACTIVE
+    );
+  }
+
+  /** Platform control-plane gate — DB-backed, not JWT-only. */
+  async assertSuperAdmin(userId: string): Promise<void> {
+    if (!(await this.isSuperAdmin(userId))) {
+      throw new ForbiddenException('Super Admin access required');
+    }
   }
 
   async getTenantMembership(userId: string, tenantId: string) {
@@ -44,6 +57,14 @@ export class AuthorizationService {
       return true;
     }
 
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { status: true },
+    });
+    if (!tenant || tenant.status === TenantStatus.SUSPENDED) {
+      return false;
+    }
+
     const membership = await this.getTenantMembership(userId, tenantId);
     return membership?.status === MembershipStatus.ACTIVE;
   }
@@ -55,6 +76,10 @@ export class AuthorizationService {
   ): Promise<boolean> {
     if (await this.isSuperAdmin(userId)) {
       return true;
+    }
+
+    if (!(await this.hasTenantAccess(userId, tenantId))) {
+      return false;
     }
 
     const membership = await this.getTenantMembership(userId, tenantId);
@@ -72,9 +97,20 @@ export class AuthorizationService {
 
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
-      select: { id: true, tenantId: true },
+      select: {
+        id: true,
+        tenantId: true,
+        status: true,
+        tenant: { select: { status: true } },
+      },
     });
     if (!store) {
+      return false;
+    }
+    if (store.status === StoreStatus.SUSPENDED) {
+      return false;
+    }
+    if (store.tenant.status === TenantStatus.SUSPENDED) {
       return false;
     }
 
@@ -97,6 +133,10 @@ export class AuthorizationService {
   ): Promise<boolean> {
     if (await this.isSuperAdmin(userId)) {
       return true;
+    }
+
+    if (!(await this.hasStoreAccess(userId, storeId))) {
+      return false;
     }
 
     const store = await this.prisma.store.findUnique({
@@ -128,13 +168,19 @@ export class AuthorizationService {
   async assertTenantAccess(userId: string, tenantId: string): Promise<void> {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { id: true },
+      select: { id: true, status: true },
     });
     if (!tenant) {
       throw new NotFoundException('Tenant not found');
     }
 
     if (!(await this.hasTenantAccess(userId, tenantId))) {
+      if (
+        tenant.status === TenantStatus.SUSPENDED &&
+        !(await this.isSuperAdmin(userId))
+      ) {
+        throw new ForbiddenException('This tenant is suspended');
+      }
       throw new ForbiddenException('You do not have access to this tenant');
     }
   }
@@ -154,13 +200,25 @@ export class AuthorizationService {
   async assertStoreAccess(userId: string, storeId: string): Promise<void> {
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
-      select: { id: true },
+      select: {
+        id: true,
+        status: true,
+        tenant: { select: { status: true } },
+      },
     });
     if (!store) {
       throw new NotFoundException('Store not found');
     }
 
     if (!(await this.hasStoreAccess(userId, storeId))) {
+      if (!(await this.isSuperAdmin(userId))) {
+        if (store.tenant.status === TenantStatus.SUSPENDED) {
+          throw new ForbiddenException('This tenant is suspended');
+        }
+        if (store.status === StoreStatus.SUSPENDED) {
+          throw new ForbiddenException('This store is suspended');
+        }
+      }
       throw new ForbiddenException('You do not have access to this store');
     }
   }
@@ -179,7 +237,7 @@ export class AuthorizationService {
 
   async listAccessibleStoreIds(userId: string): Promise<string[]> {
     if (await this.isSuperAdmin(userId)) {
-      // Merchant APIs stay scoped — Super Admin uses explicit tenant/store routes.
+      // Merchant APIs stay scoped — Super Admin uses explicit admin routes.
       return [];
     }
 
@@ -204,13 +262,28 @@ export class AuthorizationService {
         : await this.prisma.store.findMany({
             where: {
               tenantId: { in: elevatedTenants.map((item) => item.tenantId) },
+              status: { not: StoreStatus.SUSPENDED },
+              tenant: { status: { not: TenantStatus.SUSPENDED } },
+            },
+            select: { id: true },
+          });
+
+    const membershipStoreIds = storeMemberships.map((item) => item.storeId);
+    const membershipStores =
+      membershipStoreIds.length === 0
+        ? []
+        : await this.prisma.store.findMany({
+            where: {
+              id: { in: membershipStoreIds },
+              status: { not: StoreStatus.SUSPENDED },
+              tenant: { status: { not: TenantStatus.SUSPENDED } },
             },
             select: { id: true },
           });
 
     return Array.from(
       new Set([
-        ...storeMemberships.map((item) => item.storeId),
+        ...membershipStores.map((item) => item.id),
         ...elevatedStores.map((item) => item.id),
       ]),
     );

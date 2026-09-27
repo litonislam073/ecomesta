@@ -29,8 +29,16 @@ interface AuthContextValue {
   accessToken: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  register: (input: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+  }) => Promise<void>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<boolean>;
+  reloadProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -49,6 +57,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     configureApiClient({
       getAccessToken: () => accessToken,
       onUnauthorized: clearSession,
+      refreshAccessToken: async () => {
+        try {
+          const refreshed = await api.post<{
+            success: true;
+            data: { accessToken: string };
+          }>('/auth/refresh', {}, { token: null });
+          setAccessToken(refreshed.data.accessToken);
+          return refreshed.data.accessToken;
+        } catch {
+          clearSession();
+          return null;
+        }
+      },
     });
   }, [accessToken, clearSession]);
 
@@ -93,13 +114,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [loadProfile],
   );
 
+  const register = useCallback(
+    async (input: {
+      email: string;
+      password: string;
+      firstName: string;
+      lastName: string;
+      phone?: string;
+    }) => {
+      const result = await api.post<{
+        success: true;
+        data: { accessToken: string; user: AuthUser };
+      }>(
+        '/auth/register',
+        {
+          email: input.email,
+          password: input.password,
+          firstName: input.firstName,
+          lastName: input.lastName,
+          phone: input.phone,
+        },
+        { token: null },
+      );
+      setAccessToken(result.data.accessToken);
+      await loadProfile(result.data.accessToken);
+    },
+    [loadProfile],
+  );
+
+  const reloadProfile = useCallback(async () => {
+    if (!accessToken) return;
+    await loadProfile(accessToken);
+  }, [accessToken, loadProfile]);
+
   const logout = useCallback(async () => {
     try {
-      if (accessToken) {
-        await api.post('/auth/logout', undefined, { token: accessToken });
-      }
+      // Always hit the API so the HttpOnly refresh cookie is cleared even when
+      // the in-memory access token is already gone.
+      await api.post('/auth/logout', undefined, {
+        token: accessToken,
+      });
     } catch (error) {
-      if (!(error instanceof ApiError && error.status === 401)) {
+      if (!(error instanceof ApiError && (error.status === 401 || error.status === 403))) {
         // Ignore logout failures after session expiry.
       }
     } finally {
@@ -113,10 +169,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       accessToken,
       loading,
       login,
+      register,
       logout,
       refreshSession,
+      reloadProfile,
     }),
-    [user, accessToken, loading, login, logout, refreshSession],
+    [
+      user,
+      accessToken,
+      loading,
+      login,
+      register,
+      logout,
+      refreshSession,
+      reloadProfile,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

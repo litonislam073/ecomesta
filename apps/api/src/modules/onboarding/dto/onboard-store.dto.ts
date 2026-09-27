@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { BillingCycle } from '@prisma/client';
 import { Transform } from 'class-transformer';
 import {
+  IsIn,
   IsOptional,
   IsString,
   Matches,
@@ -45,7 +47,8 @@ export class OnboardStoreDto {
   @ApiProperty({ example: 'example-store' })
   @IsString()
   @MinLength(2)
-  @MaxLength(64)
+  // Single DNS label: `{storeSlug}.{PLATFORM_ROOT_DOMAIN}`.
+  @MaxLength(63)
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? normalizeSlug(value) : value,
   )
@@ -74,4 +77,19 @@ export class OnboardStoreDto {
   @MaxLength(16)
   @Matches(LOCALE_REGEX)
   locale?: string;
+
+  @ApiPropertyOptional({ example: 'growth', description: 'Starts the free trial on this plan' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? normalizeSlug(value) : value,
+  )
+  @Matches(SLUG_REGEX)
+  planSlug?: string;
+
+  @ApiPropertyOptional({ enum: BillingCycle, description: 'Defaults to MONTHLY when a plan is given' })
+  @IsOptional()
+  @IsIn(Object.values(BillingCycle))
+  billingCycle?: BillingCycle;
 }

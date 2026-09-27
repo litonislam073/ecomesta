@@ -17,10 +17,11 @@ const fraunces = Fraunces({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Ecomesta Storefront',
+    default: 'Ecomesta',
     template: '%s · Ecomesta',
   },
-  description: 'Public storefront for Ecomesta stores',
+  description:
+    'Bangladesh-first ecommerce SaaS — merchant stores, payments, and shipping.',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

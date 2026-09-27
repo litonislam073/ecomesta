@@ -8,6 +8,7 @@ import {
   type CategoryFormValues,
 } from '@/components/catalog/category-form';
 import { CategoryTree } from '@/components/catalog/category-tree';
+import { SampleBadge } from '@/components/catalog/sample-badge';
 import { StoreScoped } from '@/components/catalog/store-scoped';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -337,7 +338,12 @@ function CategoriesContent() {
                   key={cat.id}
                   className="border-b border-[var(--color-border)] last:border-b-0"
                 >
-                  <td className="px-4 py-3 font-medium">{cat.name}</td>
+                  <td className="px-4 py-3 font-medium">
+                    <span className="inline-flex items-center gap-2">
+                      {cat.name}
+                      {cat.isDemo ? <SampleBadge /> : null}
+                    </span>
+                  </td>
                   <td className="px-4 py-3">{cat.slug}</td>
                   <td className="px-4 py-3">
                     {cat.parentId

@@ -32,6 +32,22 @@ function customerLabel(order: OrderListItem): string {
   return 'Guest';
 }
 
+type SortPreset = 'newest' | 'oldest' | 'highest' | 'lowest';
+
+function sortParams(preset: SortPreset): { sortBy: string; sortOrder: string } {
+  switch (preset) {
+    case 'oldest':
+      return { sortBy: 'createdAt', sortOrder: 'asc' };
+    case 'highest':
+      return { sortBy: 'grandTotal', sortOrder: 'desc' };
+    case 'lowest':
+      return { sortBy: 'grandTotal', sortOrder: 'asc' };
+    case 'newest':
+    default:
+      return { sortBy: 'createdAt', sortOrder: 'desc' };
+  }
+}
+
 function OrdersContent() {
   const { selectedStoreId } = useStoreContext();
   const [items, setItems] = useState<OrderListItem[]>([]);
@@ -42,6 +58,11 @@ function OrdersContent() {
   const [status, setStatus] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('');
   const [fulfillmentStatus, setFulfillmentStatus] = useState('');
+  const [shippingMethod, setShippingMethod] = useState('');
+  const [shippingQuery, setShippingQuery] = useState('');
+  const [createdFrom, setCreatedFrom] = useState('');
+  const [createdTo, setCreatedTo] = useState('');
+  const [sortPreset, setSortPreset] = useState<SortPreset>('newest');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,16 +76,20 @@ function OrdersContent() {
     setLoading(true);
     setError(null);
     try {
+      const { sortBy, sortOrder } = sortParams(sortPreset);
       const params = new URLSearchParams({
         page: String(page),
         limit: '20',
-        sortBy: 'createdAt',
-        sortOrder: 'desc',
+        sortBy,
+        sortOrder,
       });
       if (query) params.set('search', query);
       if (status) params.set('status', status);
       if (paymentStatus) params.set('paymentStatus', paymentStatus);
       if (fulfillmentStatus) params.set('fulfillmentStatus', fulfillmentStatus);
+      if (shippingQuery) params.set('shippingMethod', shippingQuery);
+      if (createdFrom) params.set('createdFrom', createdFrom);
+      if (createdTo) params.set('createdTo', `${createdTo}T23:59:59.999Z`);
 
       const result = await api.get<{
         success: true;
@@ -77,7 +102,18 @@ function OrdersContent() {
     } finally {
       setLoading(false);
     }
-  }, [selectedStoreId, page, query, status, paymentStatus, fulfillmentStatus]);
+  }, [
+    selectedStoreId,
+    page,
+    query,
+    status,
+    paymentStatus,
+    fulfillmentStatus,
+    shippingQuery,
+    createdFrom,
+    createdTo,
+    sortPreset,
+  ]);
 
   useEffect(() => {
     void load();
@@ -99,7 +135,7 @@ function OrdersContent() {
           Orders
         </h1>
         <p className="mt-2 text-[var(--color-muted)]">
-          Store-scoped order list from the orders API.
+          Filter, search, and open orders for operational work.
         </p>
       </div>
 
@@ -109,6 +145,7 @@ function OrdersContent() {
           event.preventDefault();
           setPage(1);
           setQuery(search.trim());
+          setShippingQuery(shippingMethod.trim());
         }}
       >
         <Input
@@ -183,6 +220,47 @@ function OrdersContent() {
             </option>
           ))}
         </Select>
+        <Input
+          className="max-w-[10rem]"
+          placeholder="Shipping method"
+          value={shippingMethod}
+          onChange={(e) => setShippingMethod(e.target.value)}
+          aria-label="Shipping method filter"
+        />
+        <Input
+          type="date"
+          className="w-auto"
+          value={createdFrom}
+          onChange={(e) => {
+            setPage(1);
+            setCreatedFrom(e.target.value);
+          }}
+          aria-label="Created from"
+        />
+        <Input
+          type="date"
+          className="w-auto"
+          value={createdTo}
+          onChange={(e) => {
+            setPage(1);
+            setCreatedTo(e.target.value);
+          }}
+          aria-label="Created to"
+        />
+        <Select
+          className="w-auto"
+          value={sortPreset}
+          onChange={(e) => {
+            setPage(1);
+            setSortPreset(e.target.value as SortPreset);
+          }}
+          aria-label="Sort orders"
+        >
+          <option value="newest">Newest</option>
+          <option value="oldest">Oldest</option>
+          <option value="highest">Highest total</option>
+          <option value="lowest">Lowest total</option>
+        </Select>
         <Button type="submit" variant="secondary">
           Search
         </Button>
@@ -225,6 +303,11 @@ function OrdersContent() {
                     >
                       {order.orderNumber}
                     </Link>
+                    {order.shippingMethodName ? (
+                      <p className="text-xs text-[var(--color-muted)]">
+                        {order.shippingMethodName}
+                      </p>
+                    ) : null}
                   </td>
                   <td className="px-4 py-3">{customerLabel(order)}</td>
                   <td className="px-4 py-3">

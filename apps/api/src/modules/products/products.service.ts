@@ -109,6 +109,11 @@ export class ProductsService {
           });
         }
 
+        await tx.store.updateMany({
+          where: { id: storeId, firstRealProductCreatedAt: null },
+          data: { firstRealProductCreatedAt: new Date() },
+        });
+
         return created;
       });
 
@@ -755,6 +760,8 @@ export class ProductsService {
       costPrice: moneyToString(product.costPrice),
       trackInventory: product.trackInventory,
       allowBackorder: product.allowBackorder,
+      imageUrl: product.imageUrl,
+      isDemo: product.isDemo,
       ...(inventoryItems
         ? {
             onHandQuantity: inventoryItems.reduce(

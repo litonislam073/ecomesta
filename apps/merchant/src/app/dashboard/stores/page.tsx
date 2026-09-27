@@ -21,8 +21,12 @@ export default function StoresPage() {
   if (stores.length === 0) {
     return (
       <EmptyState
-        title="No accessible stores"
-        description="Onboard a store from the API or ask an owner to invite you."
+        title="No stores yet"
+        description="Create your first store to start selling."
+        actionLabel="Create a store"
+        onAction={() => {
+          window.location.href = '/onboard';
+        }}
       />
     );
   }

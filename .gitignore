@@ -13,7 +13,20 @@ out/
 .env
 .env.local
 .env.*.local
+.env.production
+.env.staging
 !.env.example
+!.env.production.example
+
+# Database dumps / backups / TLS material
+backups/
+*.sql.gz
+*.dump
+*.key
+*.crt
+letsencrypt/
+infrastructure/nginx/custom-domains/*.conf
+.deploy/
 
 # IDE / OS
 .idea/

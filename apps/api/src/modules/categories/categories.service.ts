@@ -346,6 +346,7 @@ export class CategoriesService {
       description: category.description,
       imageUrl: category.imageUrl,
       status: category.status,
+      isDemo: category.isDemo,
       createdAt: category.createdAt,
       updatedAt: category.updatedAt,
     };

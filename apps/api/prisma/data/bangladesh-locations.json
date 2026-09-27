@@ -1,0 +1,3755 @@
+{
+  "meta": {
+    "source": "Compiled from Bangladesh Bureau of Statistics (BBS) administrative units and Wikipedia “Districts of Bangladesh” / “List of upazilas of Bangladesh” (cross-checked names). Official English spellings follow common BBS/LGED usage (e.g. Chattogram, Cumilla, Jashore).",
+    "version": "2026.09.phase20",
+    "date": "2026-09-26",
+    "notes": [
+      "All 8 divisions and all 64 districts are included.",
+      "Dhaka district includes city corporation thanas commonly used for e-commerce delivery plus rural upazilas.",
+      "Other districts include official upazilas (and city thanas where commonly used for delivery).",
+      "Codes are stable ASCII identifiers for idempotent upsert; IDs are UUIDs assigned at seed time."
+    ]
+  },
+  "divisions": [
+    {
+      "code": "BARISHAL",
+      "name": "Barishal",
+      "nameNormalized": "barishal"
+    },
+    {
+      "code": "CHATTOGRAM",
+      "name": "Chattogram",
+      "nameNormalized": "chattogram"
+    },
+    {
+      "code": "DHAKA",
+      "name": "Dhaka",
+      "nameNormalized": "dhaka"
+    },
+    {
+      "code": "KHULNA",
+      "name": "Khulna",
+      "nameNormalized": "khulna"
+    },
+    {
+      "code": "MYMENSINGH",
+      "name": "Mymensingh",
+      "nameNormalized": "mymensingh"
+    },
+    {
+      "code": "RAJSHAHI",
+      "name": "Rajshahi",
+      "nameNormalized": "rajshahi"
+    },
+    {
+      "code": "RANGPUR",
+      "name": "Rangpur",
+      "nameNormalized": "rangpur"
+    },
+    {
+      "code": "SYLHET",
+      "name": "Sylhet",
+      "nameNormalized": "sylhet"
+    }
+  ],
+  "districts": [
+    {
+      "code": "BARISHAL_BARGUNA",
+      "name": "Barguna",
+      "nameNormalized": "barguna",
+      "divisionCode": "BARISHAL"
+    },
+    {
+      "code": "BARISHAL_BARISHAL",
+      "name": "Barishal",
+      "nameNormalized": "barishal",
+      "divisionCode": "BARISHAL"
+    },
+    {
+      "code": "BARISHAL_BHOLA",
+      "name": "Bhola",
+      "nameNormalized": "bhola",
+      "divisionCode": "BARISHAL"
+    },
+    {
+      "code": "BARISHAL_JHALOKATHI",
+      "name": "Jhalokathi",
+      "nameNormalized": "jhalokathi",
+      "divisionCode": "BARISHAL"
+    },
+    {
+      "code": "BARISHAL_PATUAKHALI",
+      "name": "Patuakhali",
+      "nameNormalized": "patuakhali",
+      "divisionCode": "BARISHAL"
+    },
+    {
+      "code": "BARISHAL_PIROJPUR",
+      "name": "Pirojpur",
+      "nameNormalized": "pirojpur",
+      "divisionCode": "BARISHAL"
+    },
+    {
+      "code": "CHATTOGRAM_BANDARBAN",
+      "name": "Bandarban",
+      "nameNormalized": "bandarban",
+      "divisionCode": "CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_BRAHMANBARIA",
+      "name": "Brahmanbaria",
+      "nameNormalized": "brahmanbaria",
+      "divisionCode": "CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CHANDPUR",
+      "name": "Chandpur",
+      "nameNormalized": "chandpur",
+      "divisionCode": "CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CHATTOGRAM",
+      "name": "Chattogram",
+      "nameNormalized": "chattogram",
+      "divisionCode": "CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CUMILLA",
+      "name": "Cumilla",
+      "nameNormalized": "cumilla",
+      "divisionCode": "CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_COX_S_BAZAR",
+      "name": "Cox's Bazar",
+      "nameNormalized": "cox-s-bazar",
+      "divisionCode": "CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_FENI",
+      "name": "Feni",
+      "nameNormalized": "feni",
+      "divisionCode": "CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_KHAGRACHHARI",
+      "name": "Khagrachhari",
+      "nameNormalized": "khagrachhari",
+      "divisionCode": "CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_LAKSHMIPUR",
+      "name": "Lakshmipur",
+      "nameNormalized": "lakshmipur",
+      "divisionCode": "CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_NOAKHALI",
+      "name": "Noakhali",
+      "nameNormalized": "noakhali",
+      "divisionCode": "CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_RANGAMATI",
+      "name": "Rangamati",
+      "nameNormalized": "rangamati",
+      "divisionCode": "CHATTOGRAM"
+    },
+    {
+      "code": "DHAKA_DHAKA",
+      "name": "Dhaka",
+      "nameNormalized": "dhaka",
+      "divisionCode": "DHAKA"
+    },
+    {
+      "code": "DHAKA_FARIDPUR",
+      "name": "Faridpur",
+      "nameNormalized": "faridpur",
+      "divisionCode": "DHAKA"
+    },
+    {
+      "code": "DHAKA_GAZIPUR",
+      "name": "Gazipur",
+      "nameNormalized": "gazipur",
+      "divisionCode": "DHAKA"
+    },
+    {
+      "code": "DHAKA_GOPALGANJ",
+      "name": "Gopalganj",
+      "nameNormalized": "gopalganj",
+      "divisionCode": "DHAKA"
+    },
+    {
+      "code": "DHAKA_KISHOREGANJ",
+      "name": "Kishoreganj",
+      "nameNormalized": "kishoreganj",
+      "divisionCode": "DHAKA"
+    },
+    {
+      "code": "DHAKA_MADARIPUR",
+      "name": "Madaripur",
+      "nameNormalized": "madaripur",
+      "divisionCode": "DHAKA"
+    },
+    {
+      "code": "DHAKA_MANIKGANJ",
+      "name": "Manikganj",
+      "nameNormalized": "manikganj",
+      "divisionCode": "DHAKA"
+    },
+    {
+      "code": "DHAKA_MUNSHIGANJ",
+      "name": "Munshiganj",
+      "nameNormalized": "munshiganj",
+      "divisionCode": "DHAKA"
+    },
+    {
+      "code": "DHAKA_NARAYANGANJ",
+      "name": "Narayanganj",
+      "nameNormalized": "narayanganj",
+      "divisionCode": "DHAKA"
+    },
+    {
+      "code": "DHAKA_NARSINGDI",
+      "name": "Narsingdi",
+      "nameNormalized": "narsingdi",
+      "divisionCode": "DHAKA"
+    },
+    {
+      "code": "DHAKA_RAJBARI",
+      "name": "Rajbari",
+      "nameNormalized": "rajbari",
+      "divisionCode": "DHAKA"
+    },
+    {
+      "code": "DHAKA_SHARIATPUR",
+      "name": "Shariatpur",
+      "nameNormalized": "shariatpur",
+      "divisionCode": "DHAKA"
+    },
+    {
+      "code": "DHAKA_TANGAIL",
+      "name": "Tangail",
+      "nameNormalized": "tangail",
+      "divisionCode": "DHAKA"
+    },
+    {
+      "code": "KHULNA_BAGERHAT",
+      "name": "Bagerhat",
+      "nameNormalized": "bagerhat",
+      "divisionCode": "KHULNA"
+    },
+    {
+      "code": "KHULNA_CHUADANGA",
+      "name": "Chuadanga",
+      "nameNormalized": "chuadanga",
+      "divisionCode": "KHULNA"
+    },
+    {
+      "code": "KHULNA_JASHORE",
+      "name": "Jashore",
+      "nameNormalized": "jashore",
+      "divisionCode": "KHULNA"
+    },
+    {
+      "code": "KHULNA_JHENAIDAH",
+      "name": "Jhenaidah",
+      "nameNormalized": "jhenaidah",
+      "divisionCode": "KHULNA"
+    },
+    {
+      "code": "KHULNA_KHULNA",
+      "name": "Khulna",
+      "nameNormalized": "khulna",
+      "divisionCode": "KHULNA"
+    },
+    {
+      "code": "KHULNA_KUSHTIA",
+      "name": "Kushtia",
+      "nameNormalized": "kushtia",
+      "divisionCode": "KHULNA"
+    },
+    {
+      "code": "KHULNA_MAGURA",
+      "name": "Magura",
+      "nameNormalized": "magura",
+      "divisionCode": "KHULNA"
+    },
+    {
+      "code": "KHULNA_MEHERPUR",
+      "name": "Meherpur",
+      "nameNormalized": "meherpur",
+      "divisionCode": "KHULNA"
+    },
+    {
+      "code": "KHULNA_NARAIL",
+      "name": "Narail",
+      "nameNormalized": "narail",
+      "divisionCode": "KHULNA"
+    },
+    {
+      "code": "KHULNA_SATKHIRA",
+      "name": "Satkhira",
+      "nameNormalized": "satkhira",
+      "divisionCode": "KHULNA"
+    },
+    {
+      "code": "MYMENSINGH_JAMALPUR",
+      "name": "Jamalpur",
+      "nameNormalized": "jamalpur",
+      "divisionCode": "MYMENSINGH"
+    },
+    {
+      "code": "MYMENSINGH_MYMENSINGH",
+      "name": "Mymensingh",
+      "nameNormalized": "mymensingh",
+      "divisionCode": "MYMENSINGH"
+    },
+    {
+      "code": "MYMENSINGH_NETROKONA",
+      "name": "Netrokona",
+      "nameNormalized": "netrokona",
+      "divisionCode": "MYMENSINGH"
+    },
+    {
+      "code": "MYMENSINGH_SHERPUR",
+      "name": "Sherpur",
+      "nameNormalized": "sherpur",
+      "divisionCode": "MYMENSINGH"
+    },
+    {
+      "code": "RAJSHAHI_BOGURA",
+      "name": "Bogura",
+      "nameNormalized": "bogura",
+      "divisionCode": "RAJSHAHI"
+    },
+    {
+      "code": "RAJSHAHI_JOYPURHAT",
+      "name": "Joypurhat",
+      "nameNormalized": "joypurhat",
+      "divisionCode": "RAJSHAHI"
+    },
+    {
+      "code": "RAJSHAHI_NAOGAON",
+      "name": "Naogaon",
+      "nameNormalized": "naogaon",
+      "divisionCode": "RAJSHAHI"
+    },
+    {
+      "code": "RAJSHAHI_NATORE",
+      "name": "Natore",
+      "nameNormalized": "natore",
+      "divisionCode": "RAJSHAHI"
+    },
+    {
+      "code": "RAJSHAHI_CHAPAI_NAWABGANJ",
+      "name": "Chapai Nawabganj",
+      "nameNormalized": "chapai-nawabganj",
+      "divisionCode": "RAJSHAHI"
+    },
+    {
+      "code": "RAJSHAHI_PABNA",
+      "name": "Pabna",
+      "nameNormalized": "pabna",
+      "divisionCode": "RAJSHAHI"
+    },
+    {
+      "code": "RAJSHAHI_RAJSHAHI",
+      "name": "Rajshahi",
+      "nameNormalized": "rajshahi",
+      "divisionCode": "RAJSHAHI"
+    },
+    {
+      "code": "RAJSHAHI_SIRAJGANJ",
+      "name": "Sirajganj",
+      "nameNormalized": "sirajganj",
+      "divisionCode": "RAJSHAHI"
+    },
+    {
+      "code": "RANGPUR_DINAJPUR",
+      "name": "Dinajpur",
+      "nameNormalized": "dinajpur",
+      "divisionCode": "RANGPUR"
+    },
+    {
+      "code": "RANGPUR_GAIBANDHA",
+      "name": "Gaibandha",
+      "nameNormalized": "gaibandha",
+      "divisionCode": "RANGPUR"
+    },
+    {
+      "code": "RANGPUR_KURIGRAM",
+      "name": "Kurigram",
+      "nameNormalized": "kurigram",
+      "divisionCode": "RANGPUR"
+    },
+    {
+      "code": "RANGPUR_LALMONIRHAT",
+      "name": "Lalmonirhat",
+      "nameNormalized": "lalmonirhat",
+      "divisionCode": "RANGPUR"
+    },
+    {
+      "code": "RANGPUR_NILPHAMARI",
+      "name": "Nilphamari",
+      "nameNormalized": "nilphamari",
+      "divisionCode": "RANGPUR"
+    },
+    {
+      "code": "RANGPUR_PANCHAGARH",
+      "name": "Panchagarh",
+      "nameNormalized": "panchagarh",
+      "divisionCode": "RANGPUR"
+    },
+    {
+      "code": "RANGPUR_RANGPUR",
+      "name": "Rangpur",
+      "nameNormalized": "rangpur",
+      "divisionCode": "RANGPUR"
+    },
+    {
+      "code": "RANGPUR_THAKURGAON",
+      "name": "Thakurgaon",
+      "nameNormalized": "thakurgaon",
+      "divisionCode": "RANGPUR"
+    },
+    {
+      "code": "SYLHET_HABIGANJ",
+      "name": "Habiganj",
+      "nameNormalized": "habiganj",
+      "divisionCode": "SYLHET"
+    },
+    {
+      "code": "SYLHET_MOULVIBAZAR",
+      "name": "Moulvibazar",
+      "nameNormalized": "moulvibazar",
+      "divisionCode": "SYLHET"
+    },
+    {
+      "code": "SYLHET_SUNAMGANJ",
+      "name": "Sunamganj",
+      "nameNormalized": "sunamganj",
+      "divisionCode": "SYLHET"
+    },
+    {
+      "code": "SYLHET_SYLHET",
+      "name": "Sylhet",
+      "nameNormalized": "sylhet",
+      "divisionCode": "SYLHET"
+    }
+  ],
+  "upazilas": [
+    {
+      "code": "BARISHAL_BARGUNA_BARGUNA_SADAR",
+      "name": "Barguna Sadar",
+      "nameNormalized": "barguna-sadar",
+      "districtCode": "BARISHAL_BARGUNA"
+    },
+    {
+      "code": "BARISHAL_BARGUNA_AMTALI",
+      "name": "Amtali",
+      "nameNormalized": "amtali",
+      "districtCode": "BARISHAL_BARGUNA"
+    },
+    {
+      "code": "BARISHAL_BARGUNA_BAMNA",
+      "name": "Bamna",
+      "nameNormalized": "bamna",
+      "districtCode": "BARISHAL_BARGUNA"
+    },
+    {
+      "code": "BARISHAL_BARGUNA_BETAGI",
+      "name": "Betagi",
+      "nameNormalized": "betagi",
+      "districtCode": "BARISHAL_BARGUNA"
+    },
+    {
+      "code": "BARISHAL_BARGUNA_PATHARGHATA",
+      "name": "Patharghata",
+      "nameNormalized": "patharghata",
+      "districtCode": "BARISHAL_BARGUNA"
+    },
+    {
+      "code": "BARISHAL_BARGUNA_TALTALI",
+      "name": "Taltali",
+      "nameNormalized": "taltali",
+      "districtCode": "BARISHAL_BARGUNA"
+    },
+    {
+      "code": "BARISHAL_BARISHAL_BARISHAL_SADAR",
+      "name": "Barishal Sadar",
+      "nameNormalized": "barishal-sadar",
+      "districtCode": "BARISHAL_BARISHAL"
+    },
+    {
+      "code": "BARISHAL_BARISHAL_AGAILJHARA",
+      "name": "Agailjhara",
+      "nameNormalized": "agailjhara",
+      "districtCode": "BARISHAL_BARISHAL"
+    },
+    {
+      "code": "BARISHAL_BARISHAL_BABUGANJ",
+      "name": "Babuganj",
+      "nameNormalized": "babuganj",
+      "districtCode": "BARISHAL_BARISHAL"
+    },
+    {
+      "code": "BARISHAL_BARISHAL_BAKERGANJ",
+      "name": "Bakerganj",
+      "nameNormalized": "bakerganj",
+      "districtCode": "BARISHAL_BARISHAL"
+    },
+    {
+      "code": "BARISHAL_BARISHAL_BANARIPARA",
+      "name": "Banaripara",
+      "nameNormalized": "banaripara",
+      "districtCode": "BARISHAL_BARISHAL"
+    },
+    {
+      "code": "BARISHAL_BARISHAL_GOURNADI",
+      "name": "Gournadi",
+      "nameNormalized": "gournadi",
+      "districtCode": "BARISHAL_BARISHAL"
+    },
+    {
+      "code": "BARISHAL_BARISHAL_HIZLA",
+      "name": "Hizla",
+      "nameNormalized": "hizla",
+      "districtCode": "BARISHAL_BARISHAL"
+    },
+    {
+      "code": "BARISHAL_BARISHAL_MEHENDIGANJ",
+      "name": "Mehendiganj",
+      "nameNormalized": "mehendiganj",
+      "districtCode": "BARISHAL_BARISHAL"
+    },
+    {
+      "code": "BARISHAL_BARISHAL_MULADI",
+      "name": "Muladi",
+      "nameNormalized": "muladi",
+      "districtCode": "BARISHAL_BARISHAL"
+    },
+    {
+      "code": "BARISHAL_BARISHAL_WAZIRPUR",
+      "name": "Wazirpur",
+      "nameNormalized": "wazirpur",
+      "districtCode": "BARISHAL_BARISHAL"
+    },
+    {
+      "code": "BARISHAL_BHOLA_BHOLA_SADAR",
+      "name": "Bhola Sadar",
+      "nameNormalized": "bhola-sadar",
+      "districtCode": "BARISHAL_BHOLA"
+    },
+    {
+      "code": "BARISHAL_BHOLA_BURHANUDDIN",
+      "name": "Burhanuddin",
+      "nameNormalized": "burhanuddin",
+      "districtCode": "BARISHAL_BHOLA"
+    },
+    {
+      "code": "BARISHAL_BHOLA_CHAR_FASSON",
+      "name": "Char Fasson",
+      "nameNormalized": "char-fasson",
+      "districtCode": "BARISHAL_BHOLA"
+    },
+    {
+      "code": "BARISHAL_BHOLA_DAULATKHAN",
+      "name": "Daulatkhan",
+      "nameNormalized": "daulatkhan",
+      "districtCode": "BARISHAL_BHOLA"
+    },
+    {
+      "code": "BARISHAL_BHOLA_LALMOHAN",
+      "name": "Lalmohan",
+      "nameNormalized": "lalmohan",
+      "districtCode": "BARISHAL_BHOLA"
+    },
+    {
+      "code": "BARISHAL_BHOLA_MANPURA",
+      "name": "Manpura",
+      "nameNormalized": "manpura",
+      "districtCode": "BARISHAL_BHOLA"
+    },
+    {
+      "code": "BARISHAL_BHOLA_TAZUMUDDIN",
+      "name": "Tazumuddin",
+      "nameNormalized": "tazumuddin",
+      "districtCode": "BARISHAL_BHOLA"
+    },
+    {
+      "code": "BARISHAL_JHALOKATHI_JHALOKATHI_SADAR",
+      "name": "Jhalokathi Sadar",
+      "nameNormalized": "jhalokathi-sadar",
+      "districtCode": "BARISHAL_JHALOKATHI"
+    },
+    {
+      "code": "BARISHAL_JHALOKATHI_KATHALIA",
+      "name": "Kathalia",
+      "nameNormalized": "kathalia",
+      "districtCode": "BARISHAL_JHALOKATHI"
+    },
+    {
+      "code": "BARISHAL_JHALOKATHI_NALCHITY",
+      "name": "Nalchity",
+      "nameNormalized": "nalchity",
+      "districtCode": "BARISHAL_JHALOKATHI"
+    },
+    {
+      "code": "BARISHAL_JHALOKATHI_RAJAPUR",
+      "name": "Rajapur",
+      "nameNormalized": "rajapur",
+      "districtCode": "BARISHAL_JHALOKATHI"
+    },
+    {
+      "code": "BARISHAL_PATUAKHALI_PATUAKHALI_SADAR",
+      "name": "Patuakhali Sadar",
+      "nameNormalized": "patuakhali-sadar",
+      "districtCode": "BARISHAL_PATUAKHALI"
+    },
+    {
+      "code": "BARISHAL_PATUAKHALI_BAUPHAL",
+      "name": "Bauphal",
+      "nameNormalized": "bauphal",
+      "districtCode": "BARISHAL_PATUAKHALI"
+    },
+    {
+      "code": "BARISHAL_PATUAKHALI_DASHMINA",
+      "name": "Dashmina",
+      "nameNormalized": "dashmina",
+      "districtCode": "BARISHAL_PATUAKHALI"
+    },
+    {
+      "code": "BARISHAL_PATUAKHALI_DUMKI",
+      "name": "Dumki",
+      "nameNormalized": "dumki",
+      "districtCode": "BARISHAL_PATUAKHALI"
+    },
+    {
+      "code": "BARISHAL_PATUAKHALI_GALACHIPA",
+      "name": "Galachipa",
+      "nameNormalized": "galachipa",
+      "districtCode": "BARISHAL_PATUAKHALI"
+    },
+    {
+      "code": "BARISHAL_PATUAKHALI_KALAPARA",
+      "name": "Kalapara",
+      "nameNormalized": "kalapara",
+      "districtCode": "BARISHAL_PATUAKHALI"
+    },
+    {
+      "code": "BARISHAL_PATUAKHALI_MIRZAGANJ",
+      "name": "Mirzaganj",
+      "nameNormalized": "mirzaganj",
+      "districtCode": "BARISHAL_PATUAKHALI"
+    },
+    {
+      "code": "BARISHAL_PATUAKHALI_RANGABALI",
+      "name": "Rangabali",
+      "nameNormalized": "rangabali",
+      "districtCode": "BARISHAL_PATUAKHALI"
+    },
+    {
+      "code": "BARISHAL_PIROJPUR_PIROJPUR_SADAR",
+      "name": "Pirojpur Sadar",
+      "nameNormalized": "pirojpur-sadar",
+      "districtCode": "BARISHAL_PIROJPUR"
+    },
+    {
+      "code": "BARISHAL_PIROJPUR_BHANDARIA",
+      "name": "Bhandaria",
+      "nameNormalized": "bhandaria",
+      "districtCode": "BARISHAL_PIROJPUR"
+    },
+    {
+      "code": "BARISHAL_PIROJPUR_KAWKHALI",
+      "name": "Kawkhali",
+      "nameNormalized": "kawkhali",
+      "districtCode": "BARISHAL_PIROJPUR"
+    },
+    {
+      "code": "BARISHAL_PIROJPUR_MATHBARIA",
+      "name": "Mathbaria",
+      "nameNormalized": "mathbaria",
+      "districtCode": "BARISHAL_PIROJPUR"
+    },
+    {
+      "code": "BARISHAL_PIROJPUR_NAZIRPUR",
+      "name": "Nazirpur",
+      "nameNormalized": "nazirpur",
+      "districtCode": "BARISHAL_PIROJPUR"
+    },
+    {
+      "code": "BARISHAL_PIROJPUR_NESARABAD",
+      "name": "Nesarabad",
+      "nameNormalized": "nesarabad",
+      "districtCode": "BARISHAL_PIROJPUR"
+    },
+    {
+      "code": "BARISHAL_PIROJPUR_INDURKANI",
+      "name": "Indurkani",
+      "nameNormalized": "indurkani",
+      "districtCode": "BARISHAL_PIROJPUR"
+    },
+    {
+      "code": "CHATTOGRAM_BANDARBAN_BANDARBAN_SADAR",
+      "name": "Bandarban Sadar",
+      "nameNormalized": "bandarban-sadar",
+      "districtCode": "CHATTOGRAM_BANDARBAN"
+    },
+    {
+      "code": "CHATTOGRAM_BANDARBAN_ALIKADAM",
+      "name": "Alikadam",
+      "nameNormalized": "alikadam",
+      "districtCode": "CHATTOGRAM_BANDARBAN"
+    },
+    {
+      "code": "CHATTOGRAM_BANDARBAN_LAMA",
+      "name": "Lama",
+      "nameNormalized": "lama",
+      "districtCode": "CHATTOGRAM_BANDARBAN"
+    },
+    {
+      "code": "CHATTOGRAM_BANDARBAN_NAIKHONGCHHARI",
+      "name": "Naikhongchhari",
+      "nameNormalized": "naikhongchhari",
+      "districtCode": "CHATTOGRAM_BANDARBAN"
+    },
+    {
+      "code": "CHATTOGRAM_BANDARBAN_ROWA",
+      "name": "Rowa",
+      "nameNormalized": "rowa",
+      "districtCode": "CHATTOGRAM_BANDARBAN"
+    },
+    {
+      "code": "CHATTOGRAM_BANDARBAN_RUMA",
+      "name": "Ruma",
+      "nameNormalized": "ruma",
+      "districtCode": "CHATTOGRAM_BANDARBAN"
+    },
+    {
+      "code": "CHATTOGRAM_BANDARBAN_THANCHI",
+      "name": "Thanchi",
+      "nameNormalized": "thanchi",
+      "districtCode": "CHATTOGRAM_BANDARBAN"
+    },
+    {
+      "code": "CHATTOGRAM_BRAHMANBARIA_BRAHMANBARIA_SADAR",
+      "name": "Brahmanbaria Sadar",
+      "nameNormalized": "brahmanbaria-sadar",
+      "districtCode": "CHATTOGRAM_BRAHMANBARIA"
+    },
+    {
+      "code": "CHATTOGRAM_BRAHMANBARIA_AKHAURA",
+      "name": "Akhaura",
+      "nameNormalized": "akhaura",
+      "districtCode": "CHATTOGRAM_BRAHMANBARIA"
+    },
+    {
+      "code": "CHATTOGRAM_BRAHMANBARIA_ASHUGANJ",
+      "name": "Ashuganj",
+      "nameNormalized": "ashuganj",
+      "districtCode": "CHATTOGRAM_BRAHMANBARIA"
+    },
+    {
+      "code": "CHATTOGRAM_BRAHMANBARIA_BANCHARAMPUR",
+      "name": "Bancharampur",
+      "nameNormalized": "bancharampur",
+      "districtCode": "CHATTOGRAM_BRAHMANBARIA"
+    },
+    {
+      "code": "CHATTOGRAM_BRAHMANBARIA_BIJOYNAGAR",
+      "name": "Bijoynagar",
+      "nameNormalized": "bijoynagar",
+      "districtCode": "CHATTOGRAM_BRAHMANBARIA"
+    },
+    {
+      "code": "CHATTOGRAM_BRAHMANBARIA_KASBA",
+      "name": "Kasba",
+      "nameNormalized": "kasba",
+      "districtCode": "CHATTOGRAM_BRAHMANBARIA"
+    },
+    {
+      "code": "CHATTOGRAM_BRAHMANBARIA_NABINAGAR",
+      "name": "Nabinagar",
+      "nameNormalized": "nabinagar",
+      "districtCode": "CHATTOGRAM_BRAHMANBARIA"
+    },
+    {
+      "code": "CHATTOGRAM_BRAHMANBARIA_NASIRNAGAR",
+      "name": "Nasirnagar",
+      "nameNormalized": "nasirnagar",
+      "districtCode": "CHATTOGRAM_BRAHMANBARIA"
+    },
+    {
+      "code": "CHATTOGRAM_BRAHMANBARIA_SARAIL",
+      "name": "Sarail",
+      "nameNormalized": "sarail",
+      "districtCode": "CHATTOGRAM_BRAHMANBARIA"
+    },
+    {
+      "code": "CHATTOGRAM_CHANDPUR_CHANDPUR_SADAR",
+      "name": "Chandpur Sadar",
+      "nameNormalized": "chandpur-sadar",
+      "districtCode": "CHATTOGRAM_CHANDPUR"
+    },
+    {
+      "code": "CHATTOGRAM_CHANDPUR_FARIDGANJ",
+      "name": "Faridganj",
+      "nameNormalized": "faridganj",
+      "districtCode": "CHATTOGRAM_CHANDPUR"
+    },
+    {
+      "code": "CHATTOGRAM_CHANDPUR_HAIMCHAR",
+      "name": "Haimchar",
+      "nameNormalized": "haimchar",
+      "districtCode": "CHATTOGRAM_CHANDPUR"
+    },
+    {
+      "code": "CHATTOGRAM_CHANDPUR_HAJIGANJ",
+      "name": "Hajiganj",
+      "nameNormalized": "hajiganj",
+      "districtCode": "CHATTOGRAM_CHANDPUR"
+    },
+    {
+      "code": "CHATTOGRAM_CHANDPUR_KACHUA",
+      "name": "Kachua",
+      "nameNormalized": "kachua",
+      "districtCode": "CHATTOGRAM_CHANDPUR"
+    },
+    {
+      "code": "CHATTOGRAM_CHANDPUR_MATLAB_DAKSHIN",
+      "name": "Matlab Dakshin",
+      "nameNormalized": "matlab-dakshin",
+      "districtCode": "CHATTOGRAM_CHANDPUR"
+    },
+    {
+      "code": "CHATTOGRAM_CHANDPUR_MATLAB_UTTAR",
+      "name": "Matlab Uttar",
+      "nameNormalized": "matlab-uttar",
+      "districtCode": "CHATTOGRAM_CHANDPUR"
+    },
+    {
+      "code": "CHATTOGRAM_CHANDPUR_SHAHRASTI",
+      "name": "Shahrasti",
+      "nameNormalized": "shahrasti",
+      "districtCode": "CHATTOGRAM_CHANDPUR"
+    },
+    {
+      "code": "CHATTOGRAM_CHATTOGRAM_ANWARA",
+      "name": "Anwara",
+      "nameNormalized": "anwara",
+      "districtCode": "CHATTOGRAM_CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CHATTOGRAM_BANSHKHALI",
+      "name": "Banshkhali",
+      "nameNormalized": "banshkhali",
+      "districtCode": "CHATTOGRAM_CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CHATTOGRAM_BOALKHALI",
+      "name": "Boalkhali",
+      "nameNormalized": "boalkhali",
+      "districtCode": "CHATTOGRAM_CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CHATTOGRAM_CHANDANAISH",
+      "name": "Chandanaish",
+      "nameNormalized": "chandanaish",
+      "districtCode": "CHATTOGRAM_CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CHATTOGRAM_FATIKCHHARI",
+      "name": "Fatikchhari",
+      "nameNormalized": "fatikchhari",
+      "districtCode": "CHATTOGRAM_CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CHATTOGRAM_HATHAZARI",
+      "name": "Hathazari",
+      "nameNormalized": "hathazari",
+      "districtCode": "CHATTOGRAM_CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CHATTOGRAM_LOHAGARA",
+      "name": "Lohagara",
+      "nameNormalized": "lohagara",
+      "districtCode": "CHATTOGRAM_CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CHATTOGRAM_MIRSHARAI",
+      "name": "Mirsharai",
+      "nameNormalized": "mirsharai",
+      "districtCode": "CHATTOGRAM_CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CHATTOGRAM_PATIYA",
+      "name": "Patiya",
+      "nameNormalized": "patiya",
+      "districtCode": "CHATTOGRAM_CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CHATTOGRAM_RANGUNIA",
+      "name": "Rangunia",
+      "nameNormalized": "rangunia",
+      "districtCode": "CHATTOGRAM_CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CHATTOGRAM_RAOZAN",
+      "name": "Raozan",
+      "nameNormalized": "raozan",
+      "districtCode": "CHATTOGRAM_CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CHATTOGRAM_SANDWIP",
+      "name": "Sandwip",
+      "nameNormalized": "sandwip",
+      "districtCode": "CHATTOGRAM_CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CHATTOGRAM_SATKANIA",
+      "name": "Satkania",
+      "nameNormalized": "satkania",
+      "districtCode": "CHATTOGRAM_CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CHATTOGRAM_SITAKUNDA",
+      "name": "Sitakunda",
+      "nameNormalized": "sitakunda",
+      "districtCode": "CHATTOGRAM_CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CHATTOGRAM_KOTWALI",
+      "name": "Kotwali",
+      "nameNormalized": "kotwali",
+      "districtCode": "CHATTOGRAM_CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CHATTOGRAM_PAHARTALI",
+      "name": "Pahartali",
+      "nameNormalized": "pahartali",
+      "districtCode": "CHATTOGRAM_CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CHATTOGRAM_PANCHLAISH",
+      "name": "Panchlaish",
+      "nameNormalized": "panchlaish",
+      "districtCode": "CHATTOGRAM_CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CHATTOGRAM_HALISHAHAR",
+      "name": "Halishahar",
+      "nameNormalized": "halishahar",
+      "districtCode": "CHATTOGRAM_CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CHATTOGRAM_DOUBLE_MOORING",
+      "name": "Double Mooring",
+      "nameNormalized": "double-mooring",
+      "districtCode": "CHATTOGRAM_CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CHATTOGRAM_CHANDGAON",
+      "name": "Chandgaon",
+      "nameNormalized": "chandgaon",
+      "districtCode": "CHATTOGRAM_CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CHATTOGRAM_BAKALIA",
+      "name": "Bakalia",
+      "nameNormalized": "bakalia",
+      "districtCode": "CHATTOGRAM_CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CHATTOGRAM_BAYEZID",
+      "name": "Bayezid",
+      "nameNormalized": "bayezid",
+      "districtCode": "CHATTOGRAM_CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CHATTOGRAM_KHULSHI",
+      "name": "Khulshi",
+      "nameNormalized": "khulshi",
+      "districtCode": "CHATTOGRAM_CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CHATTOGRAM_PATENGA",
+      "name": "Patenga",
+      "nameNormalized": "patenga",
+      "districtCode": "CHATTOGRAM_CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CHATTOGRAM_BANDAR",
+      "name": "Bandar",
+      "nameNormalized": "bandar",
+      "districtCode": "CHATTOGRAM_CHATTOGRAM"
+    },
+    {
+      "code": "CHATTOGRAM_CUMILLA_CUMILLA_SADAR",
+      "name": "Cumilla Sadar",
+      "nameNormalized": "cumilla-sadar",
+      "districtCode": "CHATTOGRAM_CUMILLA"
+    },
+    {
+      "code": "CHATTOGRAM_CUMILLA_BARURA",
+      "name": "Barura",
+      "nameNormalized": "barura",
+      "districtCode": "CHATTOGRAM_CUMILLA"
+    },
+    {
+      "code": "CHATTOGRAM_CUMILLA_BRAHMANPARA",
+      "name": "Brahmanpara",
+      "nameNormalized": "brahmanpara",
+      "districtCode": "CHATTOGRAM_CUMILLA"
+    },
+    {
+      "code": "CHATTOGRAM_CUMILLA_BURICHANG",
+      "name": "Burichang",
+      "nameNormalized": "burichang",
+      "districtCode": "CHATTOGRAM_CUMILLA"
+    },
+    {
+      "code": "CHATTOGRAM_CUMILLA_CHANDINA",
+      "name": "Chandina",
+      "nameNormalized": "chandina",
+      "districtCode": "CHATTOGRAM_CUMILLA"
+    },
+    {
+      "code": "CHATTOGRAM_CUMILLA_CHAUDDAGRAM",
+      "name": "Chauddagram",
+      "nameNormalized": "chauddagram",
+      "districtCode": "CHATTOGRAM_CUMILLA"
+    },
+    {
+      "code": "CHATTOGRAM_CUMILLA_DAUDKANDI",
+      "name": "Daudkandi",
+      "nameNormalized": "daudkandi",
+      "districtCode": "CHATTOGRAM_CUMILLA"
+    },
+    {
+      "code": "CHATTOGRAM_CUMILLA_DEBIDWAR",
+      "name": "Debidwar",
+      "nameNormalized": "debidwar",
+      "districtCode": "CHATTOGRAM_CUMILLA"
+    },
+    {
+      "code": "CHATTOGRAM_CUMILLA_HOMNA",
+      "name": "Homna",
+      "nameNormalized": "homna",
+      "districtCode": "CHATTOGRAM_CUMILLA"
+    },
+    {
+      "code": "CHATTOGRAM_CUMILLA_LAKSAM",
+      "name": "Laksam",
+      "nameNormalized": "laksam",
+      "districtCode": "CHATTOGRAM_CUMILLA"
+    },
+    {
+      "code": "CHATTOGRAM_CUMILLA_LALMAI",
+      "name": "Lalmai",
+      "nameNormalized": "lalmai",
+      "districtCode": "CHATTOGRAM_CUMILLA"
+    },
+    {
+      "code": "CHATTOGRAM_CUMILLA_MEGHNA",
+      "name": "Meghna",
+      "nameNormalized": "meghna",
+      "districtCode": "CHATTOGRAM_CUMILLA"
+    },
+    {
+      "code": "CHATTOGRAM_CUMILLA_MONOHARGONJ",
+      "name": "Monohargonj",
+      "nameNormalized": "monohargonj",
+      "districtCode": "CHATTOGRAM_CUMILLA"
+    },
+    {
+      "code": "CHATTOGRAM_CUMILLA_MURADNAGAR",
+      "name": "Muradnagar",
+      "nameNormalized": "muradnagar",
+      "districtCode": "CHATTOGRAM_CUMILLA"
+    },
+    {
+      "code": "CHATTOGRAM_CUMILLA_NANGALKOT",
+      "name": "Nangalkot",
+      "nameNormalized": "nangalkot",
+      "districtCode": "CHATTOGRAM_CUMILLA"
+    },
+    {
+      "code": "CHATTOGRAM_CUMILLA_TITAS",
+      "name": "Titas",
+      "nameNormalized": "titas",
+      "districtCode": "CHATTOGRAM_CUMILLA"
+    },
+    {
+      "code": "CHATTOGRAM_CUMILLA_CUMILLA_SADAR_DAKSHIN",
+      "name": "Cumilla Sadar Dakshin",
+      "nameNormalized": "cumilla-sadar-dakshin",
+      "districtCode": "CHATTOGRAM_CUMILLA"
+    },
+    {
+      "code": "CHATTOGRAM_COX_S_BAZAR_COX_S_BAZAR_SADAR",
+      "name": "Cox's Bazar Sadar",
+      "nameNormalized": "cox-s-bazar-sadar",
+      "districtCode": "CHATTOGRAM_COX_S_BAZAR"
+    },
+    {
+      "code": "CHATTOGRAM_COX_S_BAZAR_CHAKARIA",
+      "name": "Chakaria",
+      "nameNormalized": "chakaria",
+      "districtCode": "CHATTOGRAM_COX_S_BAZAR"
+    },
+    {
+      "code": "CHATTOGRAM_COX_S_BAZAR_KUTUBDIA",
+      "name": "Kutubdia",
+      "nameNormalized": "kutubdia",
+      "districtCode": "CHATTOGRAM_COX_S_BAZAR"
+    },
+    {
+      "code": "CHATTOGRAM_COX_S_BAZAR_MAHESHKHALI",
+      "name": "Maheshkhali",
+      "nameNormalized": "maheshkhali",
+      "districtCode": "CHATTOGRAM_COX_S_BAZAR"
+    },
+    {
+      "code": "CHATTOGRAM_COX_S_BAZAR_PEKUA",
+      "name": "Pekua",
+      "nameNormalized": "pekua",
+      "districtCode": "CHATTOGRAM_COX_S_BAZAR"
+    },
+    {
+      "code": "CHATTOGRAM_COX_S_BAZAR_RAMU",
+      "name": "Ramu",
+      "nameNormalized": "ramu",
+      "districtCode": "CHATTOGRAM_COX_S_BAZAR"
+    },
+    {
+      "code": "CHATTOGRAM_COX_S_BAZAR_TEKNAF",
+      "name": "Teknaf",
+      "nameNormalized": "teknaf",
+      "districtCode": "CHATTOGRAM_COX_S_BAZAR"
+    },
+    {
+      "code": "CHATTOGRAM_COX_S_BAZAR_UKHIA",
+      "name": "Ukhia",
+      "nameNormalized": "ukhia",
+      "districtCode": "CHATTOGRAM_COX_S_BAZAR"
+    },
+    {
+      "code": "CHATTOGRAM_FENI_FENI_SADAR",
+      "name": "Feni Sadar",
+      "nameNormalized": "feni-sadar",
+      "districtCode": "CHATTOGRAM_FENI"
+    },
+    {
+      "code": "CHATTOGRAM_FENI_CHHAGALNAIYA",
+      "name": "Chhagalnaiya",
+      "nameNormalized": "chhagalnaiya",
+      "districtCode": "CHATTOGRAM_FENI"
+    },
+    {
+      "code": "CHATTOGRAM_FENI_DAGANBHUIYAN",
+      "name": "Daganbhuiyan",
+      "nameNormalized": "daganbhuiyan",
+      "districtCode": "CHATTOGRAM_FENI"
+    },
+    {
+      "code": "CHATTOGRAM_FENI_PARSHURAM",
+      "name": "Parshuram",
+      "nameNormalized": "parshuram",
+      "districtCode": "CHATTOGRAM_FENI"
+    },
+    {
+      "code": "CHATTOGRAM_FENI_SONAGAZI",
+      "name": "Sonagazi",
+      "nameNormalized": "sonagazi",
+      "districtCode": "CHATTOGRAM_FENI"
+    },
+    {
+      "code": "CHATTOGRAM_FENI_FULGAZI",
+      "name": "Fulgazi",
+      "nameNormalized": "fulgazi",
+      "districtCode": "CHATTOGRAM_FENI"
+    },
+    {
+      "code": "CHATTOGRAM_KHAGRACHHARI_KHAGRACHHARI_SADAR",
+      "name": "Khagrachhari Sadar",
+      "nameNormalized": "khagrachhari-sadar",
+      "districtCode": "CHATTOGRAM_KHAGRACHHARI"
+    },
+    {
+      "code": "CHATTOGRAM_KHAGRACHHARI_DIGHINALA",
+      "name": "Dighinala",
+      "nameNormalized": "dighinala",
+      "districtCode": "CHATTOGRAM_KHAGRACHHARI"
+    },
+    {
+      "code": "CHATTOGRAM_KHAGRACHHARI_LAKSHMICHHARI",
+      "name": "Lakshmichhari",
+      "nameNormalized": "lakshmichhari",
+      "districtCode": "CHATTOGRAM_KHAGRACHHARI"
+    },
+    {
+      "code": "CHATTOGRAM_KHAGRACHHARI_MAHALCHHARI",
+      "name": "Mahalchhari",
+      "nameNormalized": "mahalchhari",
+      "districtCode": "CHATTOGRAM_KHAGRACHHARI"
+    },
+    {
+      "code": "CHATTOGRAM_KHAGRACHHARI_MANIKCHHARI",
+      "name": "Manikchhari",
+      "nameNormalized": "manikchhari",
+      "districtCode": "CHATTOGRAM_KHAGRACHHARI"
+    },
+    {
+      "code": "CHATTOGRAM_KHAGRACHHARI_MATIRANGA",
+      "name": "Matiranga",
+      "nameNormalized": "matiranga",
+      "districtCode": "CHATTOGRAM_KHAGRACHHARI"
+    },
+    {
+      "code": "CHATTOGRAM_KHAGRACHHARI_PANCHHARI",
+      "name": "Panchhari",
+      "nameNormalized": "panchhari",
+      "districtCode": "CHATTOGRAM_KHAGRACHHARI"
+    },
+    {
+      "code": "CHATTOGRAM_KHAGRACHHARI_RAMGARH",
+      "name": "Ramgarh",
+      "nameNormalized": "ramgarh",
+      "districtCode": "CHATTOGRAM_KHAGRACHHARI"
+    },
+    {
+      "code": "CHATTOGRAM_LAKSHMIPUR_LAKSHMIPUR_SADAR",
+      "name": "Lakshmipur Sadar",
+      "nameNormalized": "lakshmipur-sadar",
+      "districtCode": "CHATTOGRAM_LAKSHMIPUR"
+    },
+    {
+      "code": "CHATTOGRAM_LAKSHMIPUR_RAIPUR",
+      "name": "Raipur",
+      "nameNormalized": "raipur",
+      "districtCode": "CHATTOGRAM_LAKSHMIPUR"
+    },
+    {
+      "code": "CHATTOGRAM_LAKSHMIPUR_RAMGANJ",
+      "name": "Ramganj",
+      "nameNormalized": "ramganj",
+      "districtCode": "CHATTOGRAM_LAKSHMIPUR"
+    },
+    {
+      "code": "CHATTOGRAM_LAKSHMIPUR_RAMGATI",
+      "name": "Ramgati",
+      "nameNormalized": "ramgati",
+      "districtCode": "CHATTOGRAM_LAKSHMIPUR"
+    },
+    {
+      "code": "CHATTOGRAM_LAKSHMIPUR_KAMALNAGAR",
+      "name": "Kamalnagar",
+      "nameNormalized": "kamalnagar",
+      "districtCode": "CHATTOGRAM_LAKSHMIPUR"
+    },
+    {
+      "code": "CHATTOGRAM_NOAKHALI_NOAKHALI_SADAR",
+      "name": "Noakhali Sadar",
+      "nameNormalized": "noakhali-sadar",
+      "districtCode": "CHATTOGRAM_NOAKHALI"
+    },
+    {
+      "code": "CHATTOGRAM_NOAKHALI_BEGUMGANJ",
+      "name": "Begumganj",
+      "nameNormalized": "begumganj",
+      "districtCode": "CHATTOGRAM_NOAKHALI"
+    },
+    {
+      "code": "CHATTOGRAM_NOAKHALI_CHATKHIL",
+      "name": "Chatkhil",
+      "nameNormalized": "chatkhil",
+      "districtCode": "CHATTOGRAM_NOAKHALI"
+    },
+    {
+      "code": "CHATTOGRAM_NOAKHALI_COMPANIGANJ",
+      "name": "Companiganj",
+      "nameNormalized": "companiganj",
+      "districtCode": "CHATTOGRAM_NOAKHALI"
+    },
+    {
+      "code": "CHATTOGRAM_NOAKHALI_HATIYA",
+      "name": "Hatiya",
+      "nameNormalized": "hatiya",
+      "districtCode": "CHATTOGRAM_NOAKHALI"
+    },
+    {
+      "code": "CHATTOGRAM_NOAKHALI_KABIRHAT",
+      "name": "Kabirhat",
+      "nameNormalized": "kabirhat",
+      "districtCode": "CHATTOGRAM_NOAKHALI"
+    },
+    {
+      "code": "CHATTOGRAM_NOAKHALI_SENBAGH",
+      "name": "Senbagh",
+      "nameNormalized": "senbagh",
+      "districtCode": "CHATTOGRAM_NOAKHALI"
+    },
+    {
+      "code": "CHATTOGRAM_NOAKHALI_SONAIMURI",
+      "name": "Sonaimuri",
+      "nameNormalized": "sonaimuri",
+      "districtCode": "CHATTOGRAM_NOAKHALI"
+    },
+    {
+      "code": "CHATTOGRAM_NOAKHALI_SUBARNACHAR",
+      "name": "Subarnachar",
+      "nameNormalized": "subarnachar",
+      "districtCode": "CHATTOGRAM_NOAKHALI"
+    },
+    {
+      "code": "CHATTOGRAM_RANGAMATI_RANGAMATI_SADAR",
+      "name": "Rangamati Sadar",
+      "nameNormalized": "rangamati-sadar",
+      "districtCode": "CHATTOGRAM_RANGAMATI"
+    },
+    {
+      "code": "CHATTOGRAM_RANGAMATI_BAGAICHHARI",
+      "name": "Bagaichhari",
+      "nameNormalized": "bagaichhari",
+      "districtCode": "CHATTOGRAM_RANGAMATI"
+    },
+    {
+      "code": "CHATTOGRAM_RANGAMATI_BARKAL",
+      "name": "Barkal",
+      "nameNormalized": "barkal",
+      "districtCode": "CHATTOGRAM_RANGAMATI"
+    },
+    {
+      "code": "CHATTOGRAM_RANGAMATI_BELAICHHARI",
+      "name": "Belaichhari",
+      "nameNormalized": "belaichhari",
+      "districtCode": "CHATTOGRAM_RANGAMATI"
+    },
+    {
+      "code": "CHATTOGRAM_RANGAMATI_JURAICHHARI",
+      "name": "Juraichhari",
+      "nameNormalized": "juraichhari",
+      "districtCode": "CHATTOGRAM_RANGAMATI"
+    },
+    {
+      "code": "CHATTOGRAM_RANGAMATI_KAPTAI",
+      "name": "Kaptai",
+      "nameNormalized": "kaptai",
+      "districtCode": "CHATTOGRAM_RANGAMATI"
+    },
+    {
+      "code": "CHATTOGRAM_RANGAMATI_KAWKHALI",
+      "name": "Kawkhali",
+      "nameNormalized": "kawkhali",
+      "districtCode": "CHATTOGRAM_RANGAMATI"
+    },
+    {
+      "code": "CHATTOGRAM_RANGAMATI_LANGADU",
+      "name": "Langadu",
+      "nameNormalized": "langadu",
+      "districtCode": "CHATTOGRAM_RANGAMATI"
+    },
+    {
+      "code": "CHATTOGRAM_RANGAMATI_NANIARCHAR",
+      "name": "Naniarchar",
+      "nameNormalized": "naniarchar",
+      "districtCode": "CHATTOGRAM_RANGAMATI"
+    },
+    {
+      "code": "CHATTOGRAM_RANGAMATI_RAJASTHALI",
+      "name": "Rajasthali",
+      "nameNormalized": "rajasthali",
+      "districtCode": "CHATTOGRAM_RANGAMATI"
+    },
+    {
+      "code": "DHAKA_DHAKA_DHAMRAI",
+      "name": "Dhamrai",
+      "nameNormalized": "dhamrai",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_DOHAR",
+      "name": "Dohar",
+      "nameNormalized": "dohar",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_KERANIGANJ",
+      "name": "Keraniganj",
+      "nameNormalized": "keraniganj",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_NAWABGANJ",
+      "name": "Nawabganj",
+      "nameNormalized": "nawabganj",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_SAVAR",
+      "name": "Savar",
+      "nameNormalized": "savar",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_ADABOR",
+      "name": "Adabor",
+      "nameNormalized": "adabor",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_BADDA",
+      "name": "Badda",
+      "nameNormalized": "badda",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_BANGSHAL",
+      "name": "Bangshal",
+      "nameNormalized": "bangshal",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_BIMAN_BANDAR",
+      "name": "Biman Bandar",
+      "nameNormalized": "biman-bandar",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_CANTONMENT",
+      "name": "Cantonment",
+      "nameNormalized": "cantonment",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_CHAK_BAZAR",
+      "name": "Chak Bazar",
+      "nameNormalized": "chak-bazar",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_DAKSHINKHAN",
+      "name": "Dakshinkhan",
+      "nameNormalized": "dakshinkhan",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_DARUS_SALAM",
+      "name": "Darus Salam",
+      "nameNormalized": "darus-salam",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_DEMRA",
+      "name": "Demra",
+      "nameNormalized": "demra",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_DHANMONDI",
+      "name": "Dhanmondi",
+      "nameNormalized": "dhanmondi",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_GENDARIA",
+      "name": "Gendaria",
+      "nameNormalized": "gendaria",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_GULSHAN",
+      "name": "Gulshan",
+      "nameNormalized": "gulshan",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_HAZARIBAGH",
+      "name": "Hazaribagh",
+      "nameNormalized": "hazaribagh",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_JATRABARI",
+      "name": "Jatrabari",
+      "nameNormalized": "jatrabari",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_KADAMTALI",
+      "name": "Kadamtali",
+      "nameNormalized": "kadamtali",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_KAFRUL",
+      "name": "Kafrul",
+      "nameNormalized": "kafrul",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_KALABAGAN",
+      "name": "Kalabagan",
+      "nameNormalized": "kalabagan",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_KAMRANGIRCHAR",
+      "name": "Kamrangirchar",
+      "nameNormalized": "kamrangirchar",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_KHILGAON",
+      "name": "Khilgaon",
+      "nameNormalized": "khilgaon",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_KHILKHET",
+      "name": "Khilkhet",
+      "nameNormalized": "khilkhet",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_KOTWALI",
+      "name": "Kotwali",
+      "nameNormalized": "kotwali",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_LALBAGH",
+      "name": "Lalbagh",
+      "nameNormalized": "lalbagh",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_MIRPUR",
+      "name": "Mirpur",
+      "nameNormalized": "mirpur",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_MOHAMMADPUR",
+      "name": "Mohammadpur",
+      "nameNormalized": "mohammadpur",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_MOTIJHEEL",
+      "name": "Motijheel",
+      "nameNormalized": "motijheel",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_NEW_MARKET",
+      "name": "New Market",
+      "nameNormalized": "new-market",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_PALLABI",
+      "name": "Pallabi",
+      "nameNormalized": "pallabi",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_PALTAN",
+      "name": "Paltan",
+      "nameNormalized": "paltan",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_RAMNA",
+      "name": "Ramna",
+      "nameNormalized": "ramna",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_RAMPURA",
+      "name": "Rampura",
+      "nameNormalized": "rampura",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_SABUJBAGH",
+      "name": "Sabujbagh",
+      "nameNormalized": "sabujbagh",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_SHAH_ALI",
+      "name": "Shah Ali",
+      "nameNormalized": "shah-ali",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_SHAHBAGH",
+      "name": "Shahbagh",
+      "nameNormalized": "shahbagh",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_SHER_E_BANGLA_NAGAR",
+      "name": "Sher-e-Bangla Nagar",
+      "nameNormalized": "sher-e-bangla-nagar",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_SHYAMPUR",
+      "name": "Shyampur",
+      "nameNormalized": "shyampur",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_SUTRAPUR",
+      "name": "Sutrapur",
+      "nameNormalized": "sutrapur",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_TEJGAON",
+      "name": "Tejgaon",
+      "nameNormalized": "tejgaon",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_TEJGAON_INDUSTRIAL_AREA",
+      "name": "Tejgaon Industrial Area",
+      "nameNormalized": "tejgaon-industrial-area",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_TURAG",
+      "name": "Turag",
+      "nameNormalized": "turag",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_UTTARA",
+      "name": "Uttara",
+      "nameNormalized": "uttara",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_UTTAR_KHAN",
+      "name": "Uttar Khan",
+      "nameNormalized": "uttar-khan",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_DHAKA_WARI",
+      "name": "Wari",
+      "nameNormalized": "wari",
+      "districtCode": "DHAKA_DHAKA"
+    },
+    {
+      "code": "DHAKA_FARIDPUR_FARIDPUR_SADAR",
+      "name": "Faridpur Sadar",
+      "nameNormalized": "faridpur-sadar",
+      "districtCode": "DHAKA_FARIDPUR"
+    },
+    {
+      "code": "DHAKA_FARIDPUR_ALFADANGA",
+      "name": "Alfadanga",
+      "nameNormalized": "alfadanga",
+      "districtCode": "DHAKA_FARIDPUR"
+    },
+    {
+      "code": "DHAKA_FARIDPUR_BHANGA",
+      "name": "Bhanga",
+      "nameNormalized": "bhanga",
+      "districtCode": "DHAKA_FARIDPUR"
+    },
+    {
+      "code": "DHAKA_FARIDPUR_BOALMARI",
+      "name": "Boalmari",
+      "nameNormalized": "boalmari",
+      "districtCode": "DHAKA_FARIDPUR"
+    },
+    {
+      "code": "DHAKA_FARIDPUR_CHARBHADRASAN",
+      "name": "Charbhadrasan",
+      "nameNormalized": "charbhadrasan",
+      "districtCode": "DHAKA_FARIDPUR"
+    },
+    {
+      "code": "DHAKA_FARIDPUR_MADHUKHALI",
+      "name": "Madhukhali",
+      "nameNormalized": "madhukhali",
+      "districtCode": "DHAKA_FARIDPUR"
+    },
+    {
+      "code": "DHAKA_FARIDPUR_NAGARKANDA",
+      "name": "Nagarkanda",
+      "nameNormalized": "nagarkanda",
+      "districtCode": "DHAKA_FARIDPUR"
+    },
+    {
+      "code": "DHAKA_FARIDPUR_SADARPUR",
+      "name": "Sadarpur",
+      "nameNormalized": "sadarpur",
+      "districtCode": "DHAKA_FARIDPUR"
+    },
+    {
+      "code": "DHAKA_FARIDPUR_SALTHA",
+      "name": "Saltha",
+      "nameNormalized": "saltha",
+      "districtCode": "DHAKA_FARIDPUR"
+    },
+    {
+      "code": "DHAKA_GAZIPUR_GAZIPUR_SADAR",
+      "name": "Gazipur Sadar",
+      "nameNormalized": "gazipur-sadar",
+      "districtCode": "DHAKA_GAZIPUR"
+    },
+    {
+      "code": "DHAKA_GAZIPUR_KALIAKAIR",
+      "name": "Kaliakair",
+      "nameNormalized": "kaliakair",
+      "districtCode": "DHAKA_GAZIPUR"
+    },
+    {
+      "code": "DHAKA_GAZIPUR_KALIGANJ",
+      "name": "Kaliganj",
+      "nameNormalized": "kaliganj",
+      "districtCode": "DHAKA_GAZIPUR"
+    },
+    {
+      "code": "DHAKA_GAZIPUR_KAPASIA",
+      "name": "Kapasia",
+      "nameNormalized": "kapasia",
+      "districtCode": "DHAKA_GAZIPUR"
+    },
+    {
+      "code": "DHAKA_GAZIPUR_SREEPUR",
+      "name": "Sreepur",
+      "nameNormalized": "sreepur",
+      "districtCode": "DHAKA_GAZIPUR"
+    },
+    {
+      "code": "DHAKA_GOPALGANJ_GOPALGANJ_SADAR",
+      "name": "Gopalganj Sadar",
+      "nameNormalized": "gopalganj-sadar",
+      "districtCode": "DHAKA_GOPALGANJ"
+    },
+    {
+      "code": "DHAKA_GOPALGANJ_KASHIANI",
+      "name": "Kashiani",
+      "nameNormalized": "kashiani",
+      "districtCode": "DHAKA_GOPALGANJ"
+    },
+    {
+      "code": "DHAKA_GOPALGANJ_KOTALIPARA",
+      "name": "Kotalipara",
+      "nameNormalized": "kotalipara",
+      "districtCode": "DHAKA_GOPALGANJ"
+    },
+    {
+      "code": "DHAKA_GOPALGANJ_MUKSUDPUR",
+      "name": "Muksudpur",
+      "nameNormalized": "muksudpur",
+      "districtCode": "DHAKA_GOPALGANJ"
+    },
+    {
+      "code": "DHAKA_GOPALGANJ_TUNGIPARA",
+      "name": "Tungipara",
+      "nameNormalized": "tungipara",
+      "districtCode": "DHAKA_GOPALGANJ"
+    },
+    {
+      "code": "DHAKA_KISHOREGANJ_KISHOREGANJ_SADAR",
+      "name": "Kishoreganj Sadar",
+      "nameNormalized": "kishoreganj-sadar",
+      "districtCode": "DHAKA_KISHOREGANJ"
+    },
+    {
+      "code": "DHAKA_KISHOREGANJ_AUSTAGRAM",
+      "name": "Austagram",
+      "nameNormalized": "austagram",
+      "districtCode": "DHAKA_KISHOREGANJ"
+    },
+    {
+      "code": "DHAKA_KISHOREGANJ_BAJITPUR",
+      "name": "Bajitpur",
+      "nameNormalized": "bajitpur",
+      "districtCode": "DHAKA_KISHOREGANJ"
+    },
+    {
+      "code": "DHAKA_KISHOREGANJ_BHAIRAB",
+      "name": "Bhairab",
+      "nameNormalized": "bhairab",
+      "districtCode": "DHAKA_KISHOREGANJ"
+    },
+    {
+      "code": "DHAKA_KISHOREGANJ_HOSSAINPUR",
+      "name": "Hossainpur",
+      "nameNormalized": "hossainpur",
+      "districtCode": "DHAKA_KISHOREGANJ"
+    },
+    {
+      "code": "DHAKA_KISHOREGANJ_ITNA",
+      "name": "Itna",
+      "nameNormalized": "itna",
+      "districtCode": "DHAKA_KISHOREGANJ"
+    },
+    {
+      "code": "DHAKA_KISHOREGANJ_KARIMGANJ",
+      "name": "Karimganj",
+      "nameNormalized": "karimganj",
+      "districtCode": "DHAKA_KISHOREGANJ"
+    },
+    {
+      "code": "DHAKA_KISHOREGANJ_KATIADI",
+      "name": "Katiadi",
+      "nameNormalized": "katiadi",
+      "districtCode": "DHAKA_KISHOREGANJ"
+    },
+    {
+      "code": "DHAKA_KISHOREGANJ_KULIARCHAR",
+      "name": "Kuliarchar",
+      "nameNormalized": "kuliarchar",
+      "districtCode": "DHAKA_KISHOREGANJ"
+    },
+    {
+      "code": "DHAKA_KISHOREGANJ_MITHAMAIN",
+      "name": "Mithamain",
+      "nameNormalized": "mithamain",
+      "districtCode": "DHAKA_KISHOREGANJ"
+    },
+    {
+      "code": "DHAKA_KISHOREGANJ_NIKLI",
+      "name": "Nikli",
+      "nameNormalized": "nikli",
+      "districtCode": "DHAKA_KISHOREGANJ"
+    },
+    {
+      "code": "DHAKA_KISHOREGANJ_PAKUNDIA",
+      "name": "Pakundia",
+      "nameNormalized": "pakundia",
+      "districtCode": "DHAKA_KISHOREGANJ"
+    },
+    {
+      "code": "DHAKA_KISHOREGANJ_TARAIL",
+      "name": "Tarail",
+      "nameNormalized": "tarail",
+      "districtCode": "DHAKA_KISHOREGANJ"
+    },
+    {
+      "code": "DHAKA_MADARIPUR_MADARIPUR_SADAR",
+      "name": "Madaripur Sadar",
+      "nameNormalized": "madaripur-sadar",
+      "districtCode": "DHAKA_MADARIPUR"
+    },
+    {
+      "code": "DHAKA_MADARIPUR_KALKINI",
+      "name": "Kalkini",
+      "nameNormalized": "kalkini",
+      "districtCode": "DHAKA_MADARIPUR"
+    },
+    {
+      "code": "DHAKA_MADARIPUR_RAJOIR",
+      "name": "Rajoir",
+      "nameNormalized": "rajoir",
+      "districtCode": "DHAKA_MADARIPUR"
+    },
+    {
+      "code": "DHAKA_MADARIPUR_SHIBCHAR",
+      "name": "Shibchar",
+      "nameNormalized": "shibchar",
+      "districtCode": "DHAKA_MADARIPUR"
+    },
+    {
+      "code": "DHAKA_MANIKGANJ_MANIKGANJ_SADAR",
+      "name": "Manikganj Sadar",
+      "nameNormalized": "manikganj-sadar",
+      "districtCode": "DHAKA_MANIKGANJ"
+    },
+    {
+      "code": "DHAKA_MANIKGANJ_DAULATPUR",
+      "name": "Daulatpur",
+      "nameNormalized": "daulatpur",
+      "districtCode": "DHAKA_MANIKGANJ"
+    },
+    {
+      "code": "DHAKA_MANIKGANJ_GHIOR",
+      "name": "Ghior",
+      "nameNormalized": "ghior",
+      "districtCode": "DHAKA_MANIKGANJ"
+    },
+    {
+      "code": "DHAKA_MANIKGANJ_HARIRAMPUR",
+      "name": "Harirampur",
+      "nameNormalized": "harirampur",
+      "districtCode": "DHAKA_MANIKGANJ"
+    },
+    {
+      "code": "DHAKA_MANIKGANJ_SATURIA",
+      "name": "Saturia",
+      "nameNormalized": "saturia",
+      "districtCode": "DHAKA_MANIKGANJ"
+    },
+    {
+      "code": "DHAKA_MANIKGANJ_SHIBALAYA",
+      "name": "Shibalaya",
+      "nameNormalized": "shibalaya",
+      "districtCode": "DHAKA_MANIKGANJ"
+    },
+    {
+      "code": "DHAKA_MANIKGANJ_SINGAIR",
+      "name": "Singair",
+      "nameNormalized": "singair",
+      "districtCode": "DHAKA_MANIKGANJ"
+    },
+    {
+      "code": "DHAKA_MUNSHIGANJ_MUNSHIGANJ_SADAR",
+      "name": "Munshiganj Sadar",
+      "nameNormalized": "munshiganj-sadar",
+      "districtCode": "DHAKA_MUNSHIGANJ"
+    },
+    {
+      "code": "DHAKA_MUNSHIGANJ_GAZARIA",
+      "name": "Gazaria",
+      "nameNormalized": "gazaria",
+      "districtCode": "DHAKA_MUNSHIGANJ"
+    },
+    {
+      "code": "DHAKA_MUNSHIGANJ_LOHAJANG",
+      "name": "Lohajang",
+      "nameNormalized": "lohajang",
+      "districtCode": "DHAKA_MUNSHIGANJ"
+    },
+    {
+      "code": "DHAKA_MUNSHIGANJ_SIRAJDIKHAN",
+      "name": "Sirajdikhan",
+      "nameNormalized": "sirajdikhan",
+      "districtCode": "DHAKA_MUNSHIGANJ"
+    },
+    {
+      "code": "DHAKA_MUNSHIGANJ_SREENAGAR",
+      "name": "Sreenagar",
+      "nameNormalized": "sreenagar",
+      "districtCode": "DHAKA_MUNSHIGANJ"
+    },
+    {
+      "code": "DHAKA_MUNSHIGANJ_TONGIBARI",
+      "name": "Tongibari",
+      "nameNormalized": "tongibari",
+      "districtCode": "DHAKA_MUNSHIGANJ"
+    },
+    {
+      "code": "DHAKA_NARAYANGANJ_NARAYANGANJ_SADAR",
+      "name": "Narayanganj Sadar",
+      "nameNormalized": "narayanganj-sadar",
+      "districtCode": "DHAKA_NARAYANGANJ"
+    },
+    {
+      "code": "DHAKA_NARAYANGANJ_BANDAR",
+      "name": "Bandar",
+      "nameNormalized": "bandar",
+      "districtCode": "DHAKA_NARAYANGANJ"
+    },
+    {
+      "code": "DHAKA_NARAYANGANJ_RUPGANJ",
+      "name": "Rupganj",
+      "nameNormalized": "rupganj",
+      "districtCode": "DHAKA_NARAYANGANJ"
+    },
+    {
+      "code": "DHAKA_NARAYANGANJ_SONARGAON",
+      "name": "Sonargaon",
+      "nameNormalized": "sonargaon",
+      "districtCode": "DHAKA_NARAYANGANJ"
+    },
+    {
+      "code": "DHAKA_NARAYANGANJ_ARAIHAZAR",
+      "name": "Araihazar",
+      "nameNormalized": "araihazar",
+      "districtCode": "DHAKA_NARAYANGANJ"
+    },
+    {
+      "code": "DHAKA_NARSINGDI_NARSINGDI_SADAR",
+      "name": "Narsingdi Sadar",
+      "nameNormalized": "narsingdi-sadar",
+      "districtCode": "DHAKA_NARSINGDI"
+    },
+    {
+      "code": "DHAKA_NARSINGDI_BELABO",
+      "name": "Belabo",
+      "nameNormalized": "belabo",
+      "districtCode": "DHAKA_NARSINGDI"
+    },
+    {
+      "code": "DHAKA_NARSINGDI_MONOHARDI",
+      "name": "Monohardi",
+      "nameNormalized": "monohardi",
+      "districtCode": "DHAKA_NARSINGDI"
+    },
+    {
+      "code": "DHAKA_NARSINGDI_PALASH",
+      "name": "Palash",
+      "nameNormalized": "palash",
+      "districtCode": "DHAKA_NARSINGDI"
+    },
+    {
+      "code": "DHAKA_NARSINGDI_RAIPURA",
+      "name": "Raipura",
+      "nameNormalized": "raipura",
+      "districtCode": "DHAKA_NARSINGDI"
+    },
+    {
+      "code": "DHAKA_NARSINGDI_SHIBPUR",
+      "name": "Shibpur",
+      "nameNormalized": "shibpur",
+      "districtCode": "DHAKA_NARSINGDI"
+    },
+    {
+      "code": "DHAKA_RAJBARI_RAJBARI_SADAR",
+      "name": "Rajbari Sadar",
+      "nameNormalized": "rajbari-sadar",
+      "districtCode": "DHAKA_RAJBARI"
+    },
+    {
+      "code": "DHAKA_RAJBARI_BALIAKANDI",
+      "name": "Baliakandi",
+      "nameNormalized": "baliakandi",
+      "districtCode": "DHAKA_RAJBARI"
+    },
+    {
+      "code": "DHAKA_RAJBARI_GOALANDA",
+      "name": "Goalanda",
+      "nameNormalized": "goalanda",
+      "districtCode": "DHAKA_RAJBARI"
+    },
+    {
+      "code": "DHAKA_RAJBARI_PANGSHA",
+      "name": "Pangsha",
+      "nameNormalized": "pangsha",
+      "districtCode": "DHAKA_RAJBARI"
+    },
+    {
+      "code": "DHAKA_RAJBARI_KALUKHALI",
+      "name": "Kalukhali",
+      "nameNormalized": "kalukhali",
+      "districtCode": "DHAKA_RAJBARI"
+    },
+    {
+      "code": "DHAKA_SHARIATPUR_SHARIATPUR_SADAR",
+      "name": "Shariatpur Sadar",
+      "nameNormalized": "shariatpur-sadar",
+      "districtCode": "DHAKA_SHARIATPUR"
+    },
+    {
+      "code": "DHAKA_SHARIATPUR_BHEDARGANJ",
+      "name": "Bhedarganj",
+      "nameNormalized": "bhedarganj",
+      "districtCode": "DHAKA_SHARIATPUR"
+    },
+    {
+      "code": "DHAKA_SHARIATPUR_DAMUDYA",
+      "name": "Damudya",
+      "nameNormalized": "damudya",
+      "districtCode": "DHAKA_SHARIATPUR"
+    },
+    {
+      "code": "DHAKA_SHARIATPUR_GOSAIRHAT",
+      "name": "Gosairhat",
+      "nameNormalized": "gosairhat",
+      "districtCode": "DHAKA_SHARIATPUR"
+    },
+    {
+      "code": "DHAKA_SHARIATPUR_NARIA",
+      "name": "Naria",
+      "nameNormalized": "naria",
+      "districtCode": "DHAKA_SHARIATPUR"
+    },
+    {
+      "code": "DHAKA_SHARIATPUR_ZAJIRA",
+      "name": "Zajira",
+      "nameNormalized": "zajira",
+      "districtCode": "DHAKA_SHARIATPUR"
+    },
+    {
+      "code": "DHAKA_TANGAIL_TANGAIL_SADAR",
+      "name": "Tangail Sadar",
+      "nameNormalized": "tangail-sadar",
+      "districtCode": "DHAKA_TANGAIL"
+    },
+    {
+      "code": "DHAKA_TANGAIL_BASAIL",
+      "name": "Basail",
+      "nameNormalized": "basail",
+      "districtCode": "DHAKA_TANGAIL"
+    },
+    {
+      "code": "DHAKA_TANGAIL_BHUAPUR",
+      "name": "Bhuapur",
+      "nameNormalized": "bhuapur",
+      "districtCode": "DHAKA_TANGAIL"
+    },
+    {
+      "code": "DHAKA_TANGAIL_DELDUAR",
+      "name": "Delduar",
+      "nameNormalized": "delduar",
+      "districtCode": "DHAKA_TANGAIL"
+    },
+    {
+      "code": "DHAKA_TANGAIL_DHANBARI",
+      "name": "Dhanbari",
+      "nameNormalized": "dhanbari",
+      "districtCode": "DHAKA_TANGAIL"
+    },
+    {
+      "code": "DHAKA_TANGAIL_GHATAIL",
+      "name": "Ghatail",
+      "nameNormalized": "ghatail",
+      "districtCode": "DHAKA_TANGAIL"
+    },
+    {
+      "code": "DHAKA_TANGAIL_GOPALPUR",
+      "name": "Gopalpur",
+      "nameNormalized": "gopalpur",
+      "districtCode": "DHAKA_TANGAIL"
+    },
+    {
+      "code": "DHAKA_TANGAIL_KALIHATI",
+      "name": "Kalihati",
+      "nameNormalized": "kalihati",
+      "districtCode": "DHAKA_TANGAIL"
+    },
+    {
+      "code": "DHAKA_TANGAIL_MADHUPUR",
+      "name": "Madhupur",
+      "nameNormalized": "madhupur",
+      "districtCode": "DHAKA_TANGAIL"
+    },
+    {
+      "code": "DHAKA_TANGAIL_MIRZAPUR",
+      "name": "Mirzapur",
+      "nameNormalized": "mirzapur",
+      "districtCode": "DHAKA_TANGAIL"
+    },
+    {
+      "code": "DHAKA_TANGAIL_NAGARPUR",
+      "name": "Nagarpur",
+      "nameNormalized": "nagarpur",
+      "districtCode": "DHAKA_TANGAIL"
+    },
+    {
+      "code": "DHAKA_TANGAIL_SAKHIPUR",
+      "name": "Sakhipur",
+      "nameNormalized": "sakhipur",
+      "districtCode": "DHAKA_TANGAIL"
+    },
+    {
+      "code": "KHULNA_BAGERHAT_BAGERHAT_SADAR",
+      "name": "Bagerhat Sadar",
+      "nameNormalized": "bagerhat-sadar",
+      "districtCode": "KHULNA_BAGERHAT"
+    },
+    {
+      "code": "KHULNA_BAGERHAT_CHITALMARI",
+      "name": "Chitalmari",
+      "nameNormalized": "chitalmari",
+      "districtCode": "KHULNA_BAGERHAT"
+    },
+    {
+      "code": "KHULNA_BAGERHAT_FAKIRHAT",
+      "name": "Fakirhat",
+      "nameNormalized": "fakirhat",
+      "districtCode": "KHULNA_BAGERHAT"
+    },
+    {
+      "code": "KHULNA_BAGERHAT_KACHUA",
+      "name": "Kachua",
+      "nameNormalized": "kachua",
+      "districtCode": "KHULNA_BAGERHAT"
+    },
+    {
+      "code": "KHULNA_BAGERHAT_MOLLAHAT",
+      "name": "Mollahat",
+      "nameNormalized": "mollahat",
+      "districtCode": "KHULNA_BAGERHAT"
+    },
+    {
+      "code": "KHULNA_BAGERHAT_MONGLA",
+      "name": "Mongla",
+      "nameNormalized": "mongla",
+      "districtCode": "KHULNA_BAGERHAT"
+    },
+    {
+      "code": "KHULNA_BAGERHAT_MORRELGANJ",
+      "name": "Morrelganj",
+      "nameNormalized": "morrelganj",
+      "districtCode": "KHULNA_BAGERHAT"
+    },
+    {
+      "code": "KHULNA_BAGERHAT_RAMPAL",
+      "name": "Rampal",
+      "nameNormalized": "rampal",
+      "districtCode": "KHULNA_BAGERHAT"
+    },
+    {
+      "code": "KHULNA_BAGERHAT_SARANKHOLA",
+      "name": "Sarankhola",
+      "nameNormalized": "sarankhola",
+      "districtCode": "KHULNA_BAGERHAT"
+    },
+    {
+      "code": "KHULNA_CHUADANGA_CHUADANGA_SADAR",
+      "name": "Chuadanga Sadar",
+      "nameNormalized": "chuadanga-sadar",
+      "districtCode": "KHULNA_CHUADANGA"
+    },
+    {
+      "code": "KHULNA_CHUADANGA_ALAMDANGA",
+      "name": "Alamdanga",
+      "nameNormalized": "alamdanga",
+      "districtCode": "KHULNA_CHUADANGA"
+    },
+    {
+      "code": "KHULNA_CHUADANGA_DAMURHUDA",
+      "name": "Damurhuda",
+      "nameNormalized": "damurhuda",
+      "districtCode": "KHULNA_CHUADANGA"
+    },
+    {
+      "code": "KHULNA_CHUADANGA_JIBANNAGAR",
+      "name": "Jibannagar",
+      "nameNormalized": "jibannagar",
+      "districtCode": "KHULNA_CHUADANGA"
+    },
+    {
+      "code": "KHULNA_JASHORE_JASHORE_SADAR",
+      "name": "Jashore Sadar",
+      "nameNormalized": "jashore-sadar",
+      "districtCode": "KHULNA_JASHORE"
+    },
+    {
+      "code": "KHULNA_JASHORE_ABHAYNAGAR",
+      "name": "Abhaynagar",
+      "nameNormalized": "abhaynagar",
+      "districtCode": "KHULNA_JASHORE"
+    },
+    {
+      "code": "KHULNA_JASHORE_BAGHERPARA",
+      "name": "Bagherpara",
+      "nameNormalized": "bagherpara",
+      "districtCode": "KHULNA_JASHORE"
+    },
+    {
+      "code": "KHULNA_JASHORE_CHAUGACHHA",
+      "name": "Chaugachha",
+      "nameNormalized": "chaugachha",
+      "districtCode": "KHULNA_JASHORE"
+    },
+    {
+      "code": "KHULNA_JASHORE_JHIKARGACHHA",
+      "name": "Jhikargachha",
+      "nameNormalized": "jhikargachha",
+      "districtCode": "KHULNA_JASHORE"
+    },
+    {
+      "code": "KHULNA_JASHORE_KESHABPUR",
+      "name": "Keshabpur",
+      "nameNormalized": "keshabpur",
+      "districtCode": "KHULNA_JASHORE"
+    },
+    {
+      "code": "KHULNA_JASHORE_MANIRAMPUR",
+      "name": "Manirampur",
+      "nameNormalized": "manirampur",
+      "districtCode": "KHULNA_JASHORE"
+    },
+    {
+      "code": "KHULNA_JASHORE_SHARSHA",
+      "name": "Sharsha",
+      "nameNormalized": "sharsha",
+      "districtCode": "KHULNA_JASHORE"
+    },
+    {
+      "code": "KHULNA_JHENAIDAH_JHENAIDAH_SADAR",
+      "name": "Jhenaidah Sadar",
+      "nameNormalized": "jhenaidah-sadar",
+      "districtCode": "KHULNA_JHENAIDAH"
+    },
+    {
+      "code": "KHULNA_JHENAIDAH_HARINAKUNDA",
+      "name": "Harinakunda",
+      "nameNormalized": "harinakunda",
+      "districtCode": "KHULNA_JHENAIDAH"
+    },
+    {
+      "code": "KHULNA_JHENAIDAH_KALIGANJ",
+      "name": "Kaliganj",
+      "nameNormalized": "kaliganj",
+      "districtCode": "KHULNA_JHENAIDAH"
+    },
+    {
+      "code": "KHULNA_JHENAIDAH_KOTCHANDPUR",
+      "name": "Kotchandpur",
+      "nameNormalized": "kotchandpur",
+      "districtCode": "KHULNA_JHENAIDAH"
+    },
+    {
+      "code": "KHULNA_JHENAIDAH_MAHESHPUR",
+      "name": "Maheshpur",
+      "nameNormalized": "maheshpur",
+      "districtCode": "KHULNA_JHENAIDAH"
+    },
+    {
+      "code": "KHULNA_JHENAIDAH_SHAILKUPA",
+      "name": "Shailkupa",
+      "nameNormalized": "shailkupa",
+      "districtCode": "KHULNA_JHENAIDAH"
+    },
+    {
+      "code": "KHULNA_KHULNA_KHULNA_SADAR",
+      "name": "Khulna Sadar",
+      "nameNormalized": "khulna-sadar",
+      "districtCode": "KHULNA_KHULNA"
+    },
+    {
+      "code": "KHULNA_KHULNA_BATIAGHATA",
+      "name": "Batiaghata",
+      "nameNormalized": "batiaghata",
+      "districtCode": "KHULNA_KHULNA"
+    },
+    {
+      "code": "KHULNA_KHULNA_DACOPE",
+      "name": "Dacope",
+      "nameNormalized": "dacope",
+      "districtCode": "KHULNA_KHULNA"
+    },
+    {
+      "code": "KHULNA_KHULNA_DUMURIA",
+      "name": "Dumuria",
+      "nameNormalized": "dumuria",
+      "districtCode": "KHULNA_KHULNA"
+    },
+    {
+      "code": "KHULNA_KHULNA_DIGHALIA",
+      "name": "Dighalia",
+      "nameNormalized": "dighalia",
+      "districtCode": "KHULNA_KHULNA"
+    },
+    {
+      "code": "KHULNA_KHULNA_KOYRA",
+      "name": "Koyra",
+      "nameNormalized": "koyra",
+      "districtCode": "KHULNA_KHULNA"
+    },
+    {
+      "code": "KHULNA_KHULNA_PAIKGACHHA",
+      "name": "Paikgachha",
+      "nameNormalized": "paikgachha",
+      "districtCode": "KHULNA_KHULNA"
+    },
+    {
+      "code": "KHULNA_KHULNA_PHULTALA",
+      "name": "Phultala",
+      "nameNormalized": "phultala",
+      "districtCode": "KHULNA_KHULNA"
+    },
+    {
+      "code": "KHULNA_KHULNA_RUPSHA",
+      "name": "Rupsha",
+      "nameNormalized": "rupsha",
+      "districtCode": "KHULNA_KHULNA"
+    },
+    {
+      "code": "KHULNA_KHULNA_TEROKHADA",
+      "name": "Terokhada",
+      "nameNormalized": "terokhada",
+      "districtCode": "KHULNA_KHULNA"
+    },
+    {
+      "code": "KHULNA_KHULNA_KHALISHPUR",
+      "name": "Khalishpur",
+      "nameNormalized": "khalishpur",
+      "districtCode": "KHULNA_KHULNA"
+    },
+    {
+      "code": "KHULNA_KHULNA_KHAN_JAHAN_ALI",
+      "name": "Khan Jahan Ali",
+      "nameNormalized": "khan-jahan-ali",
+      "districtCode": "KHULNA_KHULNA"
+    },
+    {
+      "code": "KHULNA_KHULNA_KOTWALI",
+      "name": "Kotwali",
+      "nameNormalized": "kotwali",
+      "districtCode": "KHULNA_KHULNA"
+    },
+    {
+      "code": "KHULNA_KHULNA_DAULATPUR",
+      "name": "Daulatpur",
+      "nameNormalized": "daulatpur",
+      "districtCode": "KHULNA_KHULNA"
+    },
+    {
+      "code": "KHULNA_KHULNA_SONADANGA",
+      "name": "Sonadanga",
+      "nameNormalized": "sonadanga",
+      "districtCode": "KHULNA_KHULNA"
+    },
+    {
+      "code": "KHULNA_KUSHTIA_KUSHTIA_SADAR",
+      "name": "Kushtia Sadar",
+      "nameNormalized": "kushtia-sadar",
+      "districtCode": "KHULNA_KUSHTIA"
+    },
+    {
+      "code": "KHULNA_KUSHTIA_BHERAMARA",
+      "name": "Bheramara",
+      "nameNormalized": "bheramara",
+      "districtCode": "KHULNA_KUSHTIA"
+    },
+    {
+      "code": "KHULNA_KUSHTIA_DAULATPUR",
+      "name": "Daulatpur",
+      "nameNormalized": "daulatpur",
+      "districtCode": "KHULNA_KUSHTIA"
+    },
+    {
+      "code": "KHULNA_KUSHTIA_KHOKSA",
+      "name": "Khoksa",
+      "nameNormalized": "khoksa",
+      "districtCode": "KHULNA_KUSHTIA"
+    },
+    {
+      "code": "KHULNA_KUSHTIA_KUMARKHALI",
+      "name": "Kumarkhali",
+      "nameNormalized": "kumarkhali",
+      "districtCode": "KHULNA_KUSHTIA"
+    },
+    {
+      "code": "KHULNA_KUSHTIA_MIRPUR",
+      "name": "Mirpur",
+      "nameNormalized": "mirpur",
+      "districtCode": "KHULNA_KUSHTIA"
+    },
+    {
+      "code": "KHULNA_MAGURA_MAGURA_SADAR",
+      "name": "Magura Sadar",
+      "nameNormalized": "magura-sadar",
+      "districtCode": "KHULNA_MAGURA"
+    },
+    {
+      "code": "KHULNA_MAGURA_MOHAMMADPUR",
+      "name": "Mohammadpur",
+      "nameNormalized": "mohammadpur",
+      "districtCode": "KHULNA_MAGURA"
+    },
+    {
+      "code": "KHULNA_MAGURA_SHALIKHA",
+      "name": "Shalikha",
+      "nameNormalized": "shalikha",
+      "districtCode": "KHULNA_MAGURA"
+    },
+    {
+      "code": "KHULNA_MAGURA_SREEPUR",
+      "name": "Sreepur",
+      "nameNormalized": "sreepur",
+      "districtCode": "KHULNA_MAGURA"
+    },
+    {
+      "code": "KHULNA_MEHERPUR_MEHERPUR_SADAR",
+      "name": "Meherpur Sadar",
+      "nameNormalized": "meherpur-sadar",
+      "districtCode": "KHULNA_MEHERPUR"
+    },
+    {
+      "code": "KHULNA_MEHERPUR_GANGNI",
+      "name": "Gangni",
+      "nameNormalized": "gangni",
+      "districtCode": "KHULNA_MEHERPUR"
+    },
+    {
+      "code": "KHULNA_MEHERPUR_MUJIBNAGAR",
+      "name": "Mujibnagar",
+      "nameNormalized": "mujibnagar",
+      "districtCode": "KHULNA_MEHERPUR"
+    },
+    {
+      "code": "KHULNA_NARAIL_NARAIL_SADAR",
+      "name": "Narail Sadar",
+      "nameNormalized": "narail-sadar",
+      "districtCode": "KHULNA_NARAIL"
+    },
+    {
+      "code": "KHULNA_NARAIL_KALIA",
+      "name": "Kalia",
+      "nameNormalized": "kalia",
+      "districtCode": "KHULNA_NARAIL"
+    },
+    {
+      "code": "KHULNA_NARAIL_LOHAGARA",
+      "name": "Lohagara",
+      "nameNormalized": "lohagara",
+      "districtCode": "KHULNA_NARAIL"
+    },
+    {
+      "code": "KHULNA_SATKHIRA_SATKHIRA_SADAR",
+      "name": "Satkhira Sadar",
+      "nameNormalized": "satkhira-sadar",
+      "districtCode": "KHULNA_SATKHIRA"
+    },
+    {
+      "code": "KHULNA_SATKHIRA_ASSASUNI",
+      "name": "Assasuni",
+      "nameNormalized": "assasuni",
+      "districtCode": "KHULNA_SATKHIRA"
+    },
+    {
+      "code": "KHULNA_SATKHIRA_DEBHATA",
+      "name": "Debhata",
+      "nameNormalized": "debhata",
+      "districtCode": "KHULNA_SATKHIRA"
+    },
+    {
+      "code": "KHULNA_SATKHIRA_KALAROA",
+      "name": "Kalaroa",
+      "nameNormalized": "kalaroa",
+      "districtCode": "KHULNA_SATKHIRA"
+    },
+    {
+      "code": "KHULNA_SATKHIRA_KALIGANJ",
+      "name": "Kaliganj",
+      "nameNormalized": "kaliganj",
+      "districtCode": "KHULNA_SATKHIRA"
+    },
+    {
+      "code": "KHULNA_SATKHIRA_SHYAMNAGAR",
+      "name": "Shyamnagar",
+      "nameNormalized": "shyamnagar",
+      "districtCode": "KHULNA_SATKHIRA"
+    },
+    {
+      "code": "KHULNA_SATKHIRA_TALA",
+      "name": "Tala",
+      "nameNormalized": "tala",
+      "districtCode": "KHULNA_SATKHIRA"
+    },
+    {
+      "code": "MYMENSINGH_JAMALPUR_JAMALPUR_SADAR",
+      "name": "Jamalpur Sadar",
+      "nameNormalized": "jamalpur-sadar",
+      "districtCode": "MYMENSINGH_JAMALPUR"
+    },
+    {
+      "code": "MYMENSINGH_JAMALPUR_BAKSHIGANJ",
+      "name": "Bakshiganj",
+      "nameNormalized": "bakshiganj",
+      "districtCode": "MYMENSINGH_JAMALPUR"
+    },
+    {
+      "code": "MYMENSINGH_JAMALPUR_DEWANGANJ",
+      "name": "Dewanganj",
+      "nameNormalized": "dewanganj",
+      "districtCode": "MYMENSINGH_JAMALPUR"
+    },
+    {
+      "code": "MYMENSINGH_JAMALPUR_ISLAMPUR",
+      "name": "Islampur",
+      "nameNormalized": "islampur",
+      "districtCode": "MYMENSINGH_JAMALPUR"
+    },
+    {
+      "code": "MYMENSINGH_JAMALPUR_MADARGANJ",
+      "name": "Madarganj",
+      "nameNormalized": "madarganj",
+      "districtCode": "MYMENSINGH_JAMALPUR"
+    },
+    {
+      "code": "MYMENSINGH_JAMALPUR_MELANDAHA",
+      "name": "Melandaha",
+      "nameNormalized": "melandaha",
+      "districtCode": "MYMENSINGH_JAMALPUR"
+    },
+    {
+      "code": "MYMENSINGH_JAMALPUR_SARISHABARI",
+      "name": "Sarishabari",
+      "nameNormalized": "sarishabari",
+      "districtCode": "MYMENSINGH_JAMALPUR"
+    },
+    {
+      "code": "MYMENSINGH_MYMENSINGH_MYMENSINGH_SADAR",
+      "name": "Mymensingh Sadar",
+      "nameNormalized": "mymensingh-sadar",
+      "districtCode": "MYMENSINGH_MYMENSINGH"
+    },
+    {
+      "code": "MYMENSINGH_MYMENSINGH_BHALUKA",
+      "name": "Bhaluka",
+      "nameNormalized": "bhaluka",
+      "districtCode": "MYMENSINGH_MYMENSINGH"
+    },
+    {
+      "code": "MYMENSINGH_MYMENSINGH_DHOBAURA",
+      "name": "Dhobaura",
+      "nameNormalized": "dhobaura",
+      "districtCode": "MYMENSINGH_MYMENSINGH"
+    },
+    {
+      "code": "MYMENSINGH_MYMENSINGH_FULBARIA",
+      "name": "Fulbaria",
+      "nameNormalized": "fulbaria",
+      "districtCode": "MYMENSINGH_MYMENSINGH"
+    },
+    {
+      "code": "MYMENSINGH_MYMENSINGH_GAFFARGAON",
+      "name": "Gaffargaon",
+      "nameNormalized": "gaffargaon",
+      "districtCode": "MYMENSINGH_MYMENSINGH"
+    },
+    {
+      "code": "MYMENSINGH_MYMENSINGH_GAURIPUR",
+      "name": "Gauripur",
+      "nameNormalized": "gauripur",
+      "districtCode": "MYMENSINGH_MYMENSINGH"
+    },
+    {
+      "code": "MYMENSINGH_MYMENSINGH_HALUAGHAT",
+      "name": "Haluaghat",
+      "nameNormalized": "haluaghat",
+      "districtCode": "MYMENSINGH_MYMENSINGH"
+    },
+    {
+      "code": "MYMENSINGH_MYMENSINGH_ISHWARGANJ",
+      "name": "Ishwarganj",
+      "nameNormalized": "ishwarganj",
+      "districtCode": "MYMENSINGH_MYMENSINGH"
+    },
+    {
+      "code": "MYMENSINGH_MYMENSINGH_MUKTAGACHHA",
+      "name": "Muktagachha",
+      "nameNormalized": "muktagachha",
+      "districtCode": "MYMENSINGH_MYMENSINGH"
+    },
+    {
+      "code": "MYMENSINGH_MYMENSINGH_NANDAIL",
+      "name": "Nandail",
+      "nameNormalized": "nandail",
+      "districtCode": "MYMENSINGH_MYMENSINGH"
+    },
+    {
+      "code": "MYMENSINGH_MYMENSINGH_PHULPUR",
+      "name": "Phulpur",
+      "nameNormalized": "phulpur",
+      "districtCode": "MYMENSINGH_MYMENSINGH"
+    },
+    {
+      "code": "MYMENSINGH_MYMENSINGH_TRISHAL",
+      "name": "Trishal",
+      "nameNormalized": "trishal",
+      "districtCode": "MYMENSINGH_MYMENSINGH"
+    },
+    {
+      "code": "MYMENSINGH_MYMENSINGH_TARA_KHANDA",
+      "name": "Tara Khanda",
+      "nameNormalized": "tara-khanda",
+      "districtCode": "MYMENSINGH_MYMENSINGH"
+    },
+    {
+      "code": "MYMENSINGH_NETROKONA_NETROKONA_SADAR",
+      "name": "Netrokona Sadar",
+      "nameNormalized": "netrokona-sadar",
+      "districtCode": "MYMENSINGH_NETROKONA"
+    },
+    {
+      "code": "MYMENSINGH_NETROKONA_ATPARA",
+      "name": "Atpara",
+      "nameNormalized": "atpara",
+      "districtCode": "MYMENSINGH_NETROKONA"
+    },
+    {
+      "code": "MYMENSINGH_NETROKONA_BARHATTA",
+      "name": "Barhatta",
+      "nameNormalized": "barhatta",
+      "districtCode": "MYMENSINGH_NETROKONA"
+    },
+    {
+      "code": "MYMENSINGH_NETROKONA_DURGAPUR",
+      "name": "Durgapur",
+      "nameNormalized": "durgapur",
+      "districtCode": "MYMENSINGH_NETROKONA"
+    },
+    {
+      "code": "MYMENSINGH_NETROKONA_KALMAKANDA",
+      "name": "Kalmakanda",
+      "nameNormalized": "kalmakanda",
+      "districtCode": "MYMENSINGH_NETROKONA"
+    },
+    {
+      "code": "MYMENSINGH_NETROKONA_KENDUA",
+      "name": "Kendua",
+      "nameNormalized": "kendua",
+      "districtCode": "MYMENSINGH_NETROKONA"
+    },
+    {
+      "code": "MYMENSINGH_NETROKONA_KHALIAJURI",
+      "name": "Khaliajuri",
+      "nameNormalized": "khaliajuri",
+      "districtCode": "MYMENSINGH_NETROKONA"
+    },
+    {
+      "code": "MYMENSINGH_NETROKONA_MADAN",
+      "name": "Madan",
+      "nameNormalized": "madan",
+      "districtCode": "MYMENSINGH_NETROKONA"
+    },
+    {
+      "code": "MYMENSINGH_NETROKONA_MOHANGANJ",
+      "name": "Mohanganj",
+      "nameNormalized": "mohanganj",
+      "districtCode": "MYMENSINGH_NETROKONA"
+    },
+    {
+      "code": "MYMENSINGH_NETROKONA_PURBADHALA",
+      "name": "Purbadhala",
+      "nameNormalized": "purbadhala",
+      "districtCode": "MYMENSINGH_NETROKONA"
+    },
+    {
+      "code": "MYMENSINGH_SHERPUR_SHERPUR_SADAR",
+      "name": "Sherpur Sadar",
+      "nameNormalized": "sherpur-sadar",
+      "districtCode": "MYMENSINGH_SHERPUR"
+    },
+    {
+      "code": "MYMENSINGH_SHERPUR_JHENAIGATI",
+      "name": "Jhenaigati",
+      "nameNormalized": "jhenaigati",
+      "districtCode": "MYMENSINGH_SHERPUR"
+    },
+    {
+      "code": "MYMENSINGH_SHERPUR_NAKLA",
+      "name": "Nakla",
+      "nameNormalized": "nakla",
+      "districtCode": "MYMENSINGH_SHERPUR"
+    },
+    {
+      "code": "MYMENSINGH_SHERPUR_NALITABARI",
+      "name": "Nalitabari",
+      "nameNormalized": "nalitabari",
+      "districtCode": "MYMENSINGH_SHERPUR"
+    },
+    {
+      "code": "MYMENSINGH_SHERPUR_SREEBARDI",
+      "name": "Sreebardi",
+      "nameNormalized": "sreebardi",
+      "districtCode": "MYMENSINGH_SHERPUR"
+    },
+    {
+      "code": "RAJSHAHI_BOGURA_BOGURA_SADAR",
+      "name": "Bogura Sadar",
+      "nameNormalized": "bogura-sadar",
+      "districtCode": "RAJSHAHI_BOGURA"
+    },
+    {
+      "code": "RAJSHAHI_BOGURA_ADAMDIGHI",
+      "name": "Adamdighi",
+      "nameNormalized": "adamdighi",
+      "districtCode": "RAJSHAHI_BOGURA"
+    },
+    {
+      "code": "RAJSHAHI_BOGURA_DHUNAT",
+      "name": "Dhunat",
+      "nameNormalized": "dhunat",
+      "districtCode": "RAJSHAHI_BOGURA"
+    },
+    {
+      "code": "RAJSHAHI_BOGURA_DHUPCHANCHIA",
+      "name": "Dhupchanchia",
+      "nameNormalized": "dhupchanchia",
+      "districtCode": "RAJSHAHI_BOGURA"
+    },
+    {
+      "code": "RAJSHAHI_BOGURA_GABTALI",
+      "name": "Gabtali",
+      "nameNormalized": "gabtali",
+      "districtCode": "RAJSHAHI_BOGURA"
+    },
+    {
+      "code": "RAJSHAHI_BOGURA_KAHALOO",
+      "name": "Kahaloo",
+      "nameNormalized": "kahaloo",
+      "districtCode": "RAJSHAHI_BOGURA"
+    },
+    {
+      "code": "RAJSHAHI_BOGURA_NANDIGRAM",
+      "name": "Nandigram",
+      "nameNormalized": "nandigram",
+      "districtCode": "RAJSHAHI_BOGURA"
+    },
+    {
+      "code": "RAJSHAHI_BOGURA_SARIAKANDI",
+      "name": "Sariakandi",
+      "nameNormalized": "sariakandi",
+      "districtCode": "RAJSHAHI_BOGURA"
+    },
+    {
+      "code": "RAJSHAHI_BOGURA_SHAJAHANPUR",
+      "name": "Shajahanpur",
+      "nameNormalized": "shajahanpur",
+      "districtCode": "RAJSHAHI_BOGURA"
+    },
+    {
+      "code": "RAJSHAHI_BOGURA_SHERPUR",
+      "name": "Sherpur",
+      "nameNormalized": "sherpur",
+      "districtCode": "RAJSHAHI_BOGURA"
+    },
+    {
+      "code": "RAJSHAHI_BOGURA_SHIBGANJ",
+      "name": "Shibganj",
+      "nameNormalized": "shibganj",
+      "districtCode": "RAJSHAHI_BOGURA"
+    },
+    {
+      "code": "RAJSHAHI_BOGURA_SONATALA",
+      "name": "Sonatala",
+      "nameNormalized": "sonatala",
+      "districtCode": "RAJSHAHI_BOGURA"
+    },
+    {
+      "code": "RAJSHAHI_JOYPURHAT_JOYPURHAT_SADAR",
+      "name": "Joypurhat Sadar",
+      "nameNormalized": "joypurhat-sadar",
+      "districtCode": "RAJSHAHI_JOYPURHAT"
+    },
+    {
+      "code": "RAJSHAHI_JOYPURHAT_AKKELPUR",
+      "name": "Akkelpur",
+      "nameNormalized": "akkelpur",
+      "districtCode": "RAJSHAHI_JOYPURHAT"
+    },
+    {
+      "code": "RAJSHAHI_JOYPURHAT_KALAI",
+      "name": "Kalai",
+      "nameNormalized": "kalai",
+      "districtCode": "RAJSHAHI_JOYPURHAT"
+    },
+    {
+      "code": "RAJSHAHI_JOYPURHAT_KHETLAL",
+      "name": "Khetlal",
+      "nameNormalized": "khetlal",
+      "districtCode": "RAJSHAHI_JOYPURHAT"
+    },
+    {
+      "code": "RAJSHAHI_JOYPURHAT_PANCHBIBI",
+      "name": "Panchbibi",
+      "nameNormalized": "panchbibi",
+      "districtCode": "RAJSHAHI_JOYPURHAT"
+    },
+    {
+      "code": "RAJSHAHI_NAOGAON_NAOGAON_SADAR",
+      "name": "Naogaon Sadar",
+      "nameNormalized": "naogaon-sadar",
+      "districtCode": "RAJSHAHI_NAOGAON"
+    },
+    {
+      "code": "RAJSHAHI_NAOGAON_ATRAI",
+      "name": "Atrai",
+      "nameNormalized": "atrai",
+      "districtCode": "RAJSHAHI_NAOGAON"
+    },
+    {
+      "code": "RAJSHAHI_NAOGAON_BADALGACHHI",
+      "name": "Badalgachhi",
+      "nameNormalized": "badalgachhi",
+      "districtCode": "RAJSHAHI_NAOGAON"
+    },
+    {
+      "code": "RAJSHAHI_NAOGAON_DHAMOIRHAT",
+      "name": "Dhamoirhat",
+      "nameNormalized": "dhamoirhat",
+      "districtCode": "RAJSHAHI_NAOGAON"
+    },
+    {
+      "code": "RAJSHAHI_NAOGAON_MANDA",
+      "name": "Manda",
+      "nameNormalized": "manda",
+      "districtCode": "RAJSHAHI_NAOGAON"
+    },
+    {
+      "code": "RAJSHAHI_NAOGAON_MAHADEBPUR",
+      "name": "Mahadebpur",
+      "nameNormalized": "mahadebpur",
+      "districtCode": "RAJSHAHI_NAOGAON"
+    },
+    {
+      "code": "RAJSHAHI_NAOGAON_NIAMATPUR",
+      "name": "Niamatpur",
+      "nameNormalized": "niamatpur",
+      "districtCode": "RAJSHAHI_NAOGAON"
+    },
+    {
+      "code": "RAJSHAHI_NAOGAON_PATNITALA",
+      "name": "Patnitala",
+      "nameNormalized": "patnitala",
+      "districtCode": "RAJSHAHI_NAOGAON"
+    },
+    {
+      "code": "RAJSHAHI_NAOGAON_PORSHA",
+      "name": "Porsha",
+      "nameNormalized": "porsha",
+      "districtCode": "RAJSHAHI_NAOGAON"
+    },
+    {
+      "code": "RAJSHAHI_NAOGAON_RANINAGAR",
+      "name": "Raninagar",
+      "nameNormalized": "raninagar",
+      "districtCode": "RAJSHAHI_NAOGAON"
+    },
+    {
+      "code": "RAJSHAHI_NAOGAON_SAPAHAR",
+      "name": "Sapahar",
+      "nameNormalized": "sapahar",
+      "districtCode": "RAJSHAHI_NAOGAON"
+    },
+    {
+      "code": "RAJSHAHI_NATORE_NATORE_SADAR",
+      "name": "Natore Sadar",
+      "nameNormalized": "natore-sadar",
+      "districtCode": "RAJSHAHI_NATORE"
+    },
+    {
+      "code": "RAJSHAHI_NATORE_BAGATIPARA",
+      "name": "Bagatipara",
+      "nameNormalized": "bagatipara",
+      "districtCode": "RAJSHAHI_NATORE"
+    },
+    {
+      "code": "RAJSHAHI_NATORE_BARAIGRAM",
+      "name": "Baraigram",
+      "nameNormalized": "baraigram",
+      "districtCode": "RAJSHAHI_NATORE"
+    },
+    {
+      "code": "RAJSHAHI_NATORE_GURUDASPUR",
+      "name": "Gurudaspur",
+      "nameNormalized": "gurudaspur",
+      "districtCode": "RAJSHAHI_NATORE"
+    },
+    {
+      "code": "RAJSHAHI_NATORE_LALPUR",
+      "name": "Lalpur",
+      "nameNormalized": "lalpur",
+      "districtCode": "RAJSHAHI_NATORE"
+    },
+    {
+      "code": "RAJSHAHI_NATORE_NALDANGA",
+      "name": "Naldanga",
+      "nameNormalized": "naldanga",
+      "districtCode": "RAJSHAHI_NATORE"
+    },
+    {
+      "code": "RAJSHAHI_NATORE_SINGRA",
+      "name": "Singra",
+      "nameNormalized": "singra",
+      "districtCode": "RAJSHAHI_NATORE"
+    },
+    {
+      "code": "RAJSHAHI_CHAPAI_NAWABGANJ_CHAPAI_NAWABGANJ_SADAR",
+      "name": "Chapai Nawabganj Sadar",
+      "nameNormalized": "chapai-nawabganj-sadar",
+      "districtCode": "RAJSHAHI_CHAPAI_NAWABGANJ"
+    },
+    {
+      "code": "RAJSHAHI_CHAPAI_NAWABGANJ_BHOLAHAT",
+      "name": "Bholahat",
+      "nameNormalized": "bholahat",
+      "districtCode": "RAJSHAHI_CHAPAI_NAWABGANJ"
+    },
+    {
+      "code": "RAJSHAHI_CHAPAI_NAWABGANJ_GOMASTAPUR",
+      "name": "Gomastapur",
+      "nameNormalized": "gomastapur",
+      "districtCode": "RAJSHAHI_CHAPAI_NAWABGANJ"
+    },
+    {
+      "code": "RAJSHAHI_CHAPAI_NAWABGANJ_NACHOLE",
+      "name": "Nachole",
+      "nameNormalized": "nachole",
+      "districtCode": "RAJSHAHI_CHAPAI_NAWABGANJ"
+    },
+    {
+      "code": "RAJSHAHI_CHAPAI_NAWABGANJ_SHIBGANJ",
+      "name": "Shibganj",
+      "nameNormalized": "shibganj",
+      "districtCode": "RAJSHAHI_CHAPAI_NAWABGANJ"
+    },
+    {
+      "code": "RAJSHAHI_PABNA_PABNA_SADAR",
+      "name": "Pabna Sadar",
+      "nameNormalized": "pabna-sadar",
+      "districtCode": "RAJSHAHI_PABNA"
+    },
+    {
+      "code": "RAJSHAHI_PABNA_ATGHARIA",
+      "name": "Atgharia",
+      "nameNormalized": "atgharia",
+      "districtCode": "RAJSHAHI_PABNA"
+    },
+    {
+      "code": "RAJSHAHI_PABNA_BERA",
+      "name": "Bera",
+      "nameNormalized": "bera",
+      "districtCode": "RAJSHAHI_PABNA"
+    },
+    {
+      "code": "RAJSHAHI_PABNA_BHANGURA",
+      "name": "Bhangura",
+      "nameNormalized": "bhangura",
+      "districtCode": "RAJSHAHI_PABNA"
+    },
+    {
+      "code": "RAJSHAHI_PABNA_CHATMOHAR",
+      "name": "Chatmohar",
+      "nameNormalized": "chatmohar",
+      "districtCode": "RAJSHAHI_PABNA"
+    },
+    {
+      "code": "RAJSHAHI_PABNA_FARIDPUR",
+      "name": "Faridpur",
+      "nameNormalized": "faridpur",
+      "districtCode": "RAJSHAHI_PABNA"
+    },
+    {
+      "code": "RAJSHAHI_PABNA_ISHWARDI",
+      "name": "Ishwardi",
+      "nameNormalized": "ishwardi",
+      "districtCode": "RAJSHAHI_PABNA"
+    },
+    {
+      "code": "RAJSHAHI_PABNA_SANTHIA",
+      "name": "Santhia",
+      "nameNormalized": "santhia",
+      "districtCode": "RAJSHAHI_PABNA"
+    },
+    {
+      "code": "RAJSHAHI_PABNA_SUJANAGAR",
+      "name": "Sujanagar",
+      "nameNormalized": "sujanagar",
+      "districtCode": "RAJSHAHI_PABNA"
+    },
+    {
+      "code": "RAJSHAHI_RAJSHAHI_BOALIA",
+      "name": "Boalia",
+      "nameNormalized": "boalia",
+      "districtCode": "RAJSHAHI_RAJSHAHI"
+    },
+    {
+      "code": "RAJSHAHI_RAJSHAHI_MOTIHAR",
+      "name": "Motihar",
+      "nameNormalized": "motihar",
+      "districtCode": "RAJSHAHI_RAJSHAHI"
+    },
+    {
+      "code": "RAJSHAHI_RAJSHAHI_SHAH_MAKHDUM",
+      "name": "Shah Makhdum",
+      "nameNormalized": "shah-makhdum",
+      "districtCode": "RAJSHAHI_RAJSHAHI"
+    },
+    {
+      "code": "RAJSHAHI_RAJSHAHI_RAJPARA",
+      "name": "Rajpara",
+      "nameNormalized": "rajpara",
+      "districtCode": "RAJSHAHI_RAJSHAHI"
+    },
+    {
+      "code": "RAJSHAHI_RAJSHAHI_BAGHA",
+      "name": "Bagha",
+      "nameNormalized": "bagha",
+      "districtCode": "RAJSHAHI_RAJSHAHI"
+    },
+    {
+      "code": "RAJSHAHI_RAJSHAHI_CHARGHAT",
+      "name": "Charghat",
+      "nameNormalized": "charghat",
+      "districtCode": "RAJSHAHI_RAJSHAHI"
+    },
+    {
+      "code": "RAJSHAHI_RAJSHAHI_DURGAPUR",
+      "name": "Durgapur",
+      "nameNormalized": "durgapur",
+      "districtCode": "RAJSHAHI_RAJSHAHI"
+    },
+    {
+      "code": "RAJSHAHI_RAJSHAHI_GODAGARI",
+      "name": "Godagari",
+      "nameNormalized": "godagari",
+      "districtCode": "RAJSHAHI_RAJSHAHI"
+    },
+    {
+      "code": "RAJSHAHI_RAJSHAHI_MOHANPUR",
+      "name": "Mohanpur",
+      "nameNormalized": "mohanpur",
+      "districtCode": "RAJSHAHI_RAJSHAHI"
+    },
+    {
+      "code": "RAJSHAHI_RAJSHAHI_PABA",
+      "name": "Paba",
+      "nameNormalized": "paba",
+      "districtCode": "RAJSHAHI_RAJSHAHI"
+    },
+    {
+      "code": "RAJSHAHI_RAJSHAHI_PUTHIA",
+      "name": "Puthia",
+      "nameNormalized": "puthia",
+      "districtCode": "RAJSHAHI_RAJSHAHI"
+    },
+    {
+      "code": "RAJSHAHI_RAJSHAHI_TANORE",
+      "name": "Tanore",
+      "nameNormalized": "tanore",
+      "districtCode": "RAJSHAHI_RAJSHAHI"
+    },
+    {
+      "code": "RAJSHAHI_SIRAJGANJ_SIRAJGANJ_SADAR",
+      "name": "Sirajganj Sadar",
+      "nameNormalized": "sirajganj-sadar",
+      "districtCode": "RAJSHAHI_SIRAJGANJ"
+    },
+    {
+      "code": "RAJSHAHI_SIRAJGANJ_BELKUCHI",
+      "name": "Belkuchi",
+      "nameNormalized": "belkuchi",
+      "districtCode": "RAJSHAHI_SIRAJGANJ"
+    },
+    {
+      "code": "RAJSHAHI_SIRAJGANJ_CHAUHALI",
+      "name": "Chauhali",
+      "nameNormalized": "chauhali",
+      "districtCode": "RAJSHAHI_SIRAJGANJ"
+    },
+    {
+      "code": "RAJSHAHI_SIRAJGANJ_KAMARKHANDA",
+      "name": "Kamarkhanda",
+      "nameNormalized": "kamarkhanda",
+      "districtCode": "RAJSHAHI_SIRAJGANJ"
+    },
+    {
+      "code": "RAJSHAHI_SIRAJGANJ_KAZIPUR",
+      "name": "Kazipur",
+      "nameNormalized": "kazipur",
+      "districtCode": "RAJSHAHI_SIRAJGANJ"
+    },
+    {
+      "code": "RAJSHAHI_SIRAJGANJ_RAIGANJ",
+      "name": "Raiganj",
+      "nameNormalized": "raiganj",
+      "districtCode": "RAJSHAHI_SIRAJGANJ"
+    },
+    {
+      "code": "RAJSHAHI_SIRAJGANJ_SHAHJADPUR",
+      "name": "Shahjadpur",
+      "nameNormalized": "shahjadpur",
+      "districtCode": "RAJSHAHI_SIRAJGANJ"
+    },
+    {
+      "code": "RAJSHAHI_SIRAJGANJ_TARASH",
+      "name": "Tarash",
+      "nameNormalized": "tarash",
+      "districtCode": "RAJSHAHI_SIRAJGANJ"
+    },
+    {
+      "code": "RAJSHAHI_SIRAJGANJ_ULLAHPARA",
+      "name": "Ullahpara",
+      "nameNormalized": "ullahpara",
+      "districtCode": "RAJSHAHI_SIRAJGANJ"
+    },
+    {
+      "code": "RANGPUR_DINAJPUR_DINAJPUR_SADAR",
+      "name": "Dinajpur Sadar",
+      "nameNormalized": "dinajpur-sadar",
+      "districtCode": "RANGPUR_DINAJPUR"
+    },
+    {
+      "code": "RANGPUR_DINAJPUR_BIRAMPUR",
+      "name": "Birampur",
+      "nameNormalized": "birampur",
+      "districtCode": "RANGPUR_DINAJPUR"
+    },
+    {
+      "code": "RANGPUR_DINAJPUR_BIRGANJ",
+      "name": "Birganj",
+      "nameNormalized": "birganj",
+      "districtCode": "RANGPUR_DINAJPUR"
+    },
+    {
+      "code": "RANGPUR_DINAJPUR_BIRAL",
+      "name": "Biral",
+      "nameNormalized": "biral",
+      "districtCode": "RANGPUR_DINAJPUR"
+    },
+    {
+      "code": "RANGPUR_DINAJPUR_BOCHAGANJ",
+      "name": "Bochaganj",
+      "nameNormalized": "bochaganj",
+      "districtCode": "RANGPUR_DINAJPUR"
+    },
+    {
+      "code": "RANGPUR_DINAJPUR_CHIRIRBANDAR",
+      "name": "Chirirbandar",
+      "nameNormalized": "chirirbandar",
+      "districtCode": "RANGPUR_DINAJPUR"
+    },
+    {
+      "code": "RANGPUR_DINAJPUR_FULBARI",
+      "name": "Fulbari",
+      "nameNormalized": "fulbari",
+      "districtCode": "RANGPUR_DINAJPUR"
+    },
+    {
+      "code": "RANGPUR_DINAJPUR_GHORAGHAT",
+      "name": "Ghoraghat",
+      "nameNormalized": "ghoraghat",
+      "districtCode": "RANGPUR_DINAJPUR"
+    },
+    {
+      "code": "RANGPUR_DINAJPUR_HAKIMPUR",
+      "name": "Hakimpur",
+      "nameNormalized": "hakimpur",
+      "districtCode": "RANGPUR_DINAJPUR"
+    },
+    {
+      "code": "RANGPUR_DINAJPUR_KAHAROLE",
+      "name": "Kaharole",
+      "nameNormalized": "kaharole",
+      "districtCode": "RANGPUR_DINAJPUR"
+    },
+    {
+      "code": "RANGPUR_DINAJPUR_KHANSAMA",
+      "name": "Khansama",
+      "nameNormalized": "khansama",
+      "districtCode": "RANGPUR_DINAJPUR"
+    },
+    {
+      "code": "RANGPUR_DINAJPUR_NAWABGANJ",
+      "name": "Nawabganj",
+      "nameNormalized": "nawabganj",
+      "districtCode": "RANGPUR_DINAJPUR"
+    },
+    {
+      "code": "RANGPUR_DINAJPUR_PARBATIPUR",
+      "name": "Parbatipur",
+      "nameNormalized": "parbatipur",
+      "districtCode": "RANGPUR_DINAJPUR"
+    },
+    {
+      "code": "RANGPUR_GAIBANDHA_GAIBANDHA_SADAR",
+      "name": "Gaibandha Sadar",
+      "nameNormalized": "gaibandha-sadar",
+      "districtCode": "RANGPUR_GAIBANDHA"
+    },
+    {
+      "code": "RANGPUR_GAIBANDHA_FULCHHARI",
+      "name": "Fulchhari",
+      "nameNormalized": "fulchhari",
+      "districtCode": "RANGPUR_GAIBANDHA"
+    },
+    {
+      "code": "RANGPUR_GAIBANDHA_GOBINDAGANJ",
+      "name": "Gobindaganj",
+      "nameNormalized": "gobindaganj",
+      "districtCode": "RANGPUR_GAIBANDHA"
+    },
+    {
+      "code": "RANGPUR_GAIBANDHA_PALASHBARI",
+      "name": "Palashbari",
+      "nameNormalized": "palashbari",
+      "districtCode": "RANGPUR_GAIBANDHA"
+    },
+    {
+      "code": "RANGPUR_GAIBANDHA_SADULLAPUR",
+      "name": "Sadullapur",
+      "nameNormalized": "sadullapur",
+      "districtCode": "RANGPUR_GAIBANDHA"
+    },
+    {
+      "code": "RANGPUR_GAIBANDHA_SAGHATA",
+      "name": "Saghata",
+      "nameNormalized": "saghata",
+      "districtCode": "RANGPUR_GAIBANDHA"
+    },
+    {
+      "code": "RANGPUR_GAIBANDHA_SUNDARGANJ",
+      "name": "Sundarganj",
+      "nameNormalized": "sundarganj",
+      "districtCode": "RANGPUR_GAIBANDHA"
+    },
+    {
+      "code": "RANGPUR_KURIGRAM_KURIGRAM_SADAR",
+      "name": "Kurigram Sadar",
+      "nameNormalized": "kurigram-sadar",
+      "districtCode": "RANGPUR_KURIGRAM"
+    },
+    {
+      "code": "RANGPUR_KURIGRAM_BHURUNGAMARI",
+      "name": "Bhurungamari",
+      "nameNormalized": "bhurungamari",
+      "districtCode": "RANGPUR_KURIGRAM"
+    },
+    {
+      "code": "RANGPUR_KURIGRAM_CHAR_RAJIBPUR",
+      "name": "Char Rajibpur",
+      "nameNormalized": "char-rajibpur",
+      "districtCode": "RANGPUR_KURIGRAM"
+    },
+    {
+      "code": "RANGPUR_KURIGRAM_CHILMARI",
+      "name": "Chilmari",
+      "nameNormalized": "chilmari",
+      "districtCode": "RANGPUR_KURIGRAM"
+    },
+    {
+      "code": "RANGPUR_KURIGRAM_PHULBARI",
+      "name": "Phulbari",
+      "nameNormalized": "phulbari",
+      "districtCode": "RANGPUR_KURIGRAM"
+    },
+    {
+      "code": "RANGPUR_KURIGRAM_NAGESHWARI",
+      "name": "Nageshwari",
+      "nameNormalized": "nageshwari",
+      "districtCode": "RANGPUR_KURIGRAM"
+    },
+    {
+      "code": "RANGPUR_KURIGRAM_RAJARHAT",
+      "name": "Rajarhat",
+      "nameNormalized": "rajarhat",
+      "districtCode": "RANGPUR_KURIGRAM"
+    },
+    {
+      "code": "RANGPUR_KURIGRAM_RAUMARI",
+      "name": "Raumari",
+      "nameNormalized": "raumari",
+      "districtCode": "RANGPUR_KURIGRAM"
+    },
+    {
+      "code": "RANGPUR_KURIGRAM_ULIPUR",
+      "name": "Ulipur",
+      "nameNormalized": "ulipur",
+      "districtCode": "RANGPUR_KURIGRAM"
+    },
+    {
+      "code": "RANGPUR_LALMONIRHAT_LALMONIRHAT_SADAR",
+      "name": "Lalmonirhat Sadar",
+      "nameNormalized": "lalmonirhat-sadar",
+      "districtCode": "RANGPUR_LALMONIRHAT"
+    },
+    {
+      "code": "RANGPUR_LALMONIRHAT_ADITMARI",
+      "name": "Aditmari",
+      "nameNormalized": "aditmari",
+      "districtCode": "RANGPUR_LALMONIRHAT"
+    },
+    {
+      "code": "RANGPUR_LALMONIRHAT_HATIBANDHA",
+      "name": "Hatibandha",
+      "nameNormalized": "hatibandha",
+      "districtCode": "RANGPUR_LALMONIRHAT"
+    },
+    {
+      "code": "RANGPUR_LALMONIRHAT_KALIGANJ",
+      "name": "Kaliganj",
+      "nameNormalized": "kaliganj",
+      "districtCode": "RANGPUR_LALMONIRHAT"
+    },
+    {
+      "code": "RANGPUR_LALMONIRHAT_PATGRAM",
+      "name": "Patgram",
+      "nameNormalized": "patgram",
+      "districtCode": "RANGPUR_LALMONIRHAT"
+    },
+    {
+      "code": "RANGPUR_NILPHAMARI_NILPHAMARI_SADAR",
+      "name": "Nilphamari Sadar",
+      "nameNormalized": "nilphamari-sadar",
+      "districtCode": "RANGPUR_NILPHAMARI"
+    },
+    {
+      "code": "RANGPUR_NILPHAMARI_DIMLA",
+      "name": "Dimla",
+      "nameNormalized": "dimla",
+      "districtCode": "RANGPUR_NILPHAMARI"
+    },
+    {
+      "code": "RANGPUR_NILPHAMARI_DOMAR",
+      "name": "Domar",
+      "nameNormalized": "domar",
+      "districtCode": "RANGPUR_NILPHAMARI"
+    },
+    {
+      "code": "RANGPUR_NILPHAMARI_JALDHAKA",
+      "name": "Jaldhaka",
+      "nameNormalized": "jaldhaka",
+      "districtCode": "RANGPUR_NILPHAMARI"
+    },
+    {
+      "code": "RANGPUR_NILPHAMARI_KISHOREGANJ",
+      "name": "Kishoreganj",
+      "nameNormalized": "kishoreganj",
+      "districtCode": "RANGPUR_NILPHAMARI"
+    },
+    {
+      "code": "RANGPUR_NILPHAMARI_SAIDPUR",
+      "name": "Saidpur",
+      "nameNormalized": "saidpur",
+      "districtCode": "RANGPUR_NILPHAMARI"
+    },
+    {
+      "code": "RANGPUR_PANCHAGARH_PANCHAGARH_SADAR",
+      "name": "Panchagarh Sadar",
+      "nameNormalized": "panchagarh-sadar",
+      "districtCode": "RANGPUR_PANCHAGARH"
+    },
+    {
+      "code": "RANGPUR_PANCHAGARH_ATWARI",
+      "name": "Atwari",
+      "nameNormalized": "atwari",
+      "districtCode": "RANGPUR_PANCHAGARH"
+    },
+    {
+      "code": "RANGPUR_PANCHAGARH_BODA",
+      "name": "Boda",
+      "nameNormalized": "boda",
+      "districtCode": "RANGPUR_PANCHAGARH"
+    },
+    {
+      "code": "RANGPUR_PANCHAGARH_DEBIGANJ",
+      "name": "Debiganj",
+      "nameNormalized": "debiganj",
+      "districtCode": "RANGPUR_PANCHAGARH"
+    },
+    {
+      "code": "RANGPUR_PANCHAGARH_TETULIA",
+      "name": "Tetulia",
+      "nameNormalized": "tetulia",
+      "districtCode": "RANGPUR_PANCHAGARH"
+    },
+    {
+      "code": "RANGPUR_RANGPUR_RANGPUR_SADAR",
+      "name": "Rangpur Sadar",
+      "nameNormalized": "rangpur-sadar",
+      "districtCode": "RANGPUR_RANGPUR"
+    },
+    {
+      "code": "RANGPUR_RANGPUR_BADARGANJ",
+      "name": "Badarganj",
+      "nameNormalized": "badarganj",
+      "districtCode": "RANGPUR_RANGPUR"
+    },
+    {
+      "code": "RANGPUR_RANGPUR_GANGACHARA",
+      "name": "Gangachara",
+      "nameNormalized": "gangachara",
+      "districtCode": "RANGPUR_RANGPUR"
+    },
+    {
+      "code": "RANGPUR_RANGPUR_KAUNIA",
+      "name": "Kaunia",
+      "nameNormalized": "kaunia",
+      "districtCode": "RANGPUR_RANGPUR"
+    },
+    {
+      "code": "RANGPUR_RANGPUR_MITHAPUKUR",
+      "name": "Mithapukur",
+      "nameNormalized": "mithapukur",
+      "districtCode": "RANGPUR_RANGPUR"
+    },
+    {
+      "code": "RANGPUR_RANGPUR_PIRGACHHA",
+      "name": "Pirgachha",
+      "nameNormalized": "pirgachha",
+      "districtCode": "RANGPUR_RANGPUR"
+    },
+    {
+      "code": "RANGPUR_RANGPUR_PIRGANJ",
+      "name": "Pirganj",
+      "nameNormalized": "pirganj",
+      "districtCode": "RANGPUR_RANGPUR"
+    },
+    {
+      "code": "RANGPUR_RANGPUR_TARAGANJ",
+      "name": "Taraganj",
+      "nameNormalized": "taraganj",
+      "districtCode": "RANGPUR_RANGPUR"
+    },
+    {
+      "code": "RANGPUR_THAKURGAON_THAKURGAON_SADAR",
+      "name": "Thakurgaon Sadar",
+      "nameNormalized": "thakurgaon-sadar",
+      "districtCode": "RANGPUR_THAKURGAON"
+    },
+    {
+      "code": "RANGPUR_THAKURGAON_BALIADANGI",
+      "name": "Baliadangi",
+      "nameNormalized": "baliadangi",
+      "districtCode": "RANGPUR_THAKURGAON"
+    },
+    {
+      "code": "RANGPUR_THAKURGAON_HARIPUR",
+      "name": "Haripur",
+      "nameNormalized": "haripur",
+      "districtCode": "RANGPUR_THAKURGAON"
+    },
+    {
+      "code": "RANGPUR_THAKURGAON_PIRGANJ",
+      "name": "Pirganj",
+      "nameNormalized": "pirganj",
+      "districtCode": "RANGPUR_THAKURGAON"
+    },
+    {
+      "code": "RANGPUR_THAKURGAON_RANISANKAIL",
+      "name": "Ranisankail",
+      "nameNormalized": "ranisankail",
+      "districtCode": "RANGPUR_THAKURGAON"
+    },
+    {
+      "code": "SYLHET_HABIGANJ_HABIGANJ_SADAR",
+      "name": "Habiganj Sadar",
+      "nameNormalized": "habiganj-sadar",
+      "districtCode": "SYLHET_HABIGANJ"
+    },
+    {
+      "code": "SYLHET_HABIGANJ_AJMIRIGANJ",
+      "name": "Ajmiriganj",
+      "nameNormalized": "ajmiriganj",
+      "districtCode": "SYLHET_HABIGANJ"
+    },
+    {
+      "code": "SYLHET_HABIGANJ_BAHUBAL",
+      "name": "Bahubal",
+      "nameNormalized": "bahubal",
+      "districtCode": "SYLHET_HABIGANJ"
+    },
+    {
+      "code": "SYLHET_HABIGANJ_BANIACHONG",
+      "name": "Baniachong",
+      "nameNormalized": "baniachong",
+      "districtCode": "SYLHET_HABIGANJ"
+    },
+    {
+      "code": "SYLHET_HABIGANJ_CHUNARUGHAT",
+      "name": "Chunarughat",
+      "nameNormalized": "chunarughat",
+      "districtCode": "SYLHET_HABIGANJ"
+    },
+    {
+      "code": "SYLHET_HABIGANJ_LAKHAI",
+      "name": "Lakhai",
+      "nameNormalized": "lakhai",
+      "districtCode": "SYLHET_HABIGANJ"
+    },
+    {
+      "code": "SYLHET_HABIGANJ_MADHABPUR",
+      "name": "Madhabpur",
+      "nameNormalized": "madhabpur",
+      "districtCode": "SYLHET_HABIGANJ"
+    },
+    {
+      "code": "SYLHET_HABIGANJ_NABIGANJ",
+      "name": "Nabiganj",
+      "nameNormalized": "nabiganj",
+      "districtCode": "SYLHET_HABIGANJ"
+    },
+    {
+      "code": "SYLHET_HABIGANJ_SHAISTAGANJ",
+      "name": "Shaistaganj",
+      "nameNormalized": "shaistaganj",
+      "districtCode": "SYLHET_HABIGANJ"
+    },
+    {
+      "code": "SYLHET_MOULVIBAZAR_MOULVIBAZAR_SADAR",
+      "name": "Moulvibazar Sadar",
+      "nameNormalized": "moulvibazar-sadar",
+      "districtCode": "SYLHET_MOULVIBAZAR"
+    },
+    {
+      "code": "SYLHET_MOULVIBAZAR_BARLEKHA",
+      "name": "Barlekha",
+      "nameNormalized": "barlekha",
+      "districtCode": "SYLHET_MOULVIBAZAR"
+    },
+    {
+      "code": "SYLHET_MOULVIBAZAR_JURI",
+      "name": "Juri",
+      "nameNormalized": "juri",
+      "districtCode": "SYLHET_MOULVIBAZAR"
+    },
+    {
+      "code": "SYLHET_MOULVIBAZAR_KAMALGANJ",
+      "name": "Kamalganj",
+      "nameNormalized": "kamalganj",
+      "districtCode": "SYLHET_MOULVIBAZAR"
+    },
+    {
+      "code": "SYLHET_MOULVIBAZAR_KULAURA",
+      "name": "Kulaura",
+      "nameNormalized": "kulaura",
+      "districtCode": "SYLHET_MOULVIBAZAR"
+    },
+    {
+      "code": "SYLHET_MOULVIBAZAR_RAJNAGAR",
+      "name": "Rajnagar",
+      "nameNormalized": "rajnagar",
+      "districtCode": "SYLHET_MOULVIBAZAR"
+    },
+    {
+      "code": "SYLHET_MOULVIBAZAR_SREEMANGAL",
+      "name": "Sreemangal",
+      "nameNormalized": "sreemangal",
+      "districtCode": "SYLHET_MOULVIBAZAR"
+    },
+    {
+      "code": "SYLHET_SUNAMGANJ_SUNAMGANJ_SADAR",
+      "name": "Sunamganj Sadar",
+      "nameNormalized": "sunamganj-sadar",
+      "districtCode": "SYLHET_SUNAMGANJ"
+    },
+    {
+      "code": "SYLHET_SUNAMGANJ_BISHWAMVARPUR",
+      "name": "Bishwamvarpur",
+      "nameNormalized": "bishwamvarpur",
+      "districtCode": "SYLHET_SUNAMGANJ"
+    },
+    {
+      "code": "SYLHET_SUNAMGANJ_CHHATAK",
+      "name": "Chhatak",
+      "nameNormalized": "chhatak",
+      "districtCode": "SYLHET_SUNAMGANJ"
+    },
+    {
+      "code": "SYLHET_SUNAMGANJ_DERAI",
+      "name": "Derai",
+      "nameNormalized": "derai",
+      "districtCode": "SYLHET_SUNAMGANJ"
+    },
+    {
+      "code": "SYLHET_SUNAMGANJ_DHARAMPASHA",
+      "name": "Dharampasha",
+      "nameNormalized": "dharampasha",
+      "districtCode": "SYLHET_SUNAMGANJ"
+    },
+    {
+      "code": "SYLHET_SUNAMGANJ_DOWARABAZAR",
+      "name": "Dowarabazar",
+      "nameNormalized": "dowarabazar",
+      "districtCode": "SYLHET_SUNAMGANJ"
+    },
+    {
+      "code": "SYLHET_SUNAMGANJ_JAGANNATHPUR",
+      "name": "Jagannathpur",
+      "nameNormalized": "jagannathpur",
+      "districtCode": "SYLHET_SUNAMGANJ"
+    },
+    {
+      "code": "SYLHET_SUNAMGANJ_JAMALGANJ",
+      "name": "Jamalganj",
+      "nameNormalized": "jamalganj",
+      "districtCode": "SYLHET_SUNAMGANJ"
+    },
+    {
+      "code": "SYLHET_SUNAMGANJ_SULLAH",
+      "name": "Sullah",
+      "nameNormalized": "sullah",
+      "districtCode": "SYLHET_SUNAMGANJ"
+    },
+    {
+      "code": "SYLHET_SUNAMGANJ_TAHIRPUR",
+      "name": "Tahirpur",
+      "nameNormalized": "tahirpur",
+      "districtCode": "SYLHET_SUNAMGANJ"
+    },
+    {
+      "code": "SYLHET_SUNAMGANJ_SOUTH_SUNAMGANJ",
+      "name": "South Sunamganj",
+      "nameNormalized": "south-sunamganj",
+      "districtCode": "SYLHET_SUNAMGANJ"
+    },
+    {
+      "code": "SYLHET_SYLHET_SYLHET_SADAR",
+      "name": "Sylhet Sadar",
+      "nameNormalized": "sylhet-sadar",
+      "districtCode": "SYLHET_SYLHET"
+    },
+    {
+      "code": "SYLHET_SYLHET_BALAGANJ",
+      "name": "Balaganj",
+      "nameNormalized": "balaganj",
+      "districtCode": "SYLHET_SYLHET"
+    },
+    {
+      "code": "SYLHET_SYLHET_BEANIBAZAR",
+      "name": "Beanibazar",
+      "nameNormalized": "beanibazar",
+      "districtCode": "SYLHET_SYLHET"
+    },
+    {
+      "code": "SYLHET_SYLHET_BISHWANATH",
+      "name": "Bishwanath",
+      "nameNormalized": "bishwanath",
+      "districtCode": "SYLHET_SYLHET"
+    },
+    {
+      "code": "SYLHET_SYLHET_COMPANIGANJ",
+      "name": "Companiganj",
+      "nameNormalized": "companiganj",
+      "districtCode": "SYLHET_SYLHET"
+    },
+    {
+      "code": "SYLHET_SYLHET_DAKSHIN_SURMA",
+      "name": "Dakshin Surma",
+      "nameNormalized": "dakshin-surma",
+      "districtCode": "SYLHET_SYLHET"
+    },
+    {
+      "code": "SYLHET_SYLHET_FENCHUGANJ",
+      "name": "Fenchuganj",
+      "nameNormalized": "fenchuganj",
+      "districtCode": "SYLHET_SYLHET"
+    },
+    {
+      "code": "SYLHET_SYLHET_GOLAPGANJ",
+      "name": "Golapganj",
+      "nameNormalized": "golapganj",
+      "districtCode": "SYLHET_SYLHET"
+    },
+    {
+      "code": "SYLHET_SYLHET_GOWAINGHAT",
+      "name": "Gowainghat",
+      "nameNormalized": "gowainghat",
+      "districtCode": "SYLHET_SYLHET"
+    },
+    {
+      "code": "SYLHET_SYLHET_JAINTIAPUR",
+      "name": "Jaintiapur",
+      "nameNormalized": "jaintiapur",
+      "districtCode": "SYLHET_SYLHET"
+    },
+    {
+      "code": "SYLHET_SYLHET_KANAIGHAT",
+      "name": "Kanaighat",
+      "nameNormalized": "kanaighat",
+      "districtCode": "SYLHET_SYLHET"
+    },
+    {
+      "code": "SYLHET_SYLHET_OSMANI_NAGAR",
+      "name": "Osmani Nagar",
+      "nameNormalized": "osmani-nagar",
+      "districtCode": "SYLHET_SYLHET"
+    },
+    {
+      "code": "SYLHET_SYLHET_ZAKIGANJ",
+      "name": "Zakiganj",
+      "nameNormalized": "zakiganj",
+      "districtCode": "SYLHET_SYLHET"
+    }
+  ]
+}

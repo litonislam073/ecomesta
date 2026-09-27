@@ -13,7 +13,13 @@ import type { Request } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
+import { BillingAccessService } from '../billing/billing-access.service';
 import { CreateStoreDto } from './dto/create-store.dto';
+import {
+  STORE_SLUG_TAKEN_MESSAGE,
+  assertStoreSlugAvailable,
+  isUniqueConstraintError,
+} from './store-slug';
 
 @Injectable()
 export class StoresService {
@@ -21,6 +27,7 @@ export class StoresService {
     private readonly prisma: PrismaService,
     private readonly authorization: AuthorizationService,
     private readonly audit: AuditService,
+    private readonly billingAccess: BillingAccessService,
   ) {}
 
   async createForTenant(
@@ -33,44 +40,41 @@ export class StoresService {
       TenantRole.OWNER,
       TenantRole.ADMIN,
     ]);
+    await this.billingAccess.assertTenantCanOperate(tenantId);
 
-    const existing = await this.prisma.store.findUnique({
-      where: {
-        tenantId_slug: {
-          tenantId,
-          slug: dto.slug,
-        },
-      },
-      select: { id: true },
-    });
-    if (existing) {
-      throw new ConflictException('Store slug is already taken for this tenant');
-    }
+    await assertStoreSlugAvailable(this.prisma, dto.slug);
 
-    const result = await this.prisma.$transaction(async (tx) => {
-      const store = await tx.store.create({
-        data: {
-          tenantId,
-          name: dto.name,
-          slug: dto.slug,
-          currency: dto.currency ?? 'USD',
-          timezone: dto.timezone ?? 'UTC',
-          locale: dto.locale ?? 'en-US',
-          status: StoreStatus.DRAFT,
-        },
+    const result = await this.prisma
+      .$transaction(async (tx) => {
+        const store = await tx.store.create({
+          data: {
+            tenantId,
+            name: dto.name,
+            slug: dto.slug,
+            currency: dto.currency ?? 'BDT',
+            timezone: dto.timezone ?? 'Asia/Dhaka',
+            locale: dto.locale ?? 'en-BD',
+            status: StoreStatus.DRAFT,
+          },
+        });
+
+        const membership = await tx.storeUser.create({
+          data: {
+            storeId: store.id,
+            userId,
+            role: StoreRole.STORE_MANAGER,
+            status: MembershipStatus.ACTIVE,
+          },
+        });
+
+        return { store, membership };
+      })
+      .catch((error: unknown) => {
+        if (isUniqueConstraintError(error)) {
+          throw new ConflictException(STORE_SLUG_TAKEN_MESSAGE);
+        }
+        throw error;
       });
-
-      const membership = await tx.storeUser.create({
-        data: {
-          storeId: store.id,
-          userId,
-          role: StoreRole.STORE_MANAGER,
-          status: MembershipStatus.ACTIVE,
-        },
-      });
-
-      return { store, membership };
-    });
 
     await this.audit.log({
       action: 'STORE_CREATED',

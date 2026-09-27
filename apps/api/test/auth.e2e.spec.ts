@@ -208,4 +208,16 @@ describe('Auth (e2e)', () => {
       .send({ refreshToken })
       .expect(401);
   });
+
+  it('logout with only the refresh cookie clears the session', async () => {
+    const agent = request.agent(app.getHttpServer());
+    await agent
+      .post('/api/v1/auth/login')
+      .send({ email, password })
+      .expect(200);
+
+    await agent.post('/api/v1/auth/logout').expect(200);
+
+    await agent.post('/api/v1/auth/refresh').send({}).expect(401);
+  });
 });

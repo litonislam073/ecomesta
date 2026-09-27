@@ -23,7 +23,7 @@ export default async function CheckoutPage({
 }: {
   searchParams: Record<string, string | string[] | undefined>;
 }) {
-  await requirePublicStore(searchParams);
+  const { store } = await requirePublicStore(searchParams);
 
   return (
     <div className="space-y-6">
@@ -35,7 +35,10 @@ export default async function CheckoutPage({
           Guest checkout — final prices and stock are confirmed by the server.
         </p>
       </div>
-      <CheckoutForm />
+      <CheckoutForm
+        requirePhone={store.checkout?.requirePhone ?? false}
+        allowOrderNotes={store.checkout?.allowOrderNotes ?? true}
+      />
     </div>
   );
 }

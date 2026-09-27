@@ -1,0 +1,21 @@
+# Override for a VPS that already runs a web server on 80/443 (for example
+# CyberPanel / OpenLiteSpeed). Ecomesta's nginx is published on loopback only
+# and speaks plain HTTP; the host web server terminates TLS and proxies here.
+#
+#   DC="docker compose --env-file .env.production -f docker-compose.prod.yml -f docker-compose.shared-host.yml"
+#   $DC config --quiet
+#
+# See docs/deployment.md "Shared host" for the host web server configuration.
+
+services:
+  nginx:
+    environment:
+      PLATFORM_ROOT_DOMAIN: ${PLATFORM_ROOT_DOMAIN:?Set PLATFORM_ROOT_DOMAIN}
+      ECOMESTA_HTTP_PORT: ${ECOMESTA_HTTP_PORT:-8480}
+      NGINX_ENVSUBST_FILTER: "^(PLATFORM_ROOT_DOMAIN|ECOMESTA_HTTP_PORT)$$"
+    ports: !override
+      - "127.0.0.1:${ECOMESTA_HTTP_PORT:-8480}:80"
+    volumes: !override
+      - ./infrastructure/nginx/shared-host/templates:/etc/nginx/templates:ro
+      - ./infrastructure/nginx/snippets:/etc/nginx/snippets:ro
+      - ./infrastructure/nginx/shared-host/snippets:/etc/nginx/shared-snippets:ro

@@ -38,6 +38,10 @@ describe('Public checkout (e2e)', () => {
   let otherProductId = '';
   let limitedProductId = '';
   let draftProductId = '';
+  let freeShippingId = '';
+  let flatShippingId = '';
+  let otherStoreShippingId = '';
+  let inactiveShippingId = '';
 
   const customer = {
     name: 'Checkout Guest',
@@ -63,6 +67,7 @@ describe('Public checkout (e2e)', () => {
       customer,
       shippingAddress,
       billingSameAsShipping: true,
+      shippingMethodId: freeShippingId,
       paymentProvider: 'COD',
       paymentMethod: 'CASH',
       ...overrides,
@@ -223,6 +228,34 @@ describe('Public checkout (e2e)', () => {
       })
       .expect(201);
     otherProductId = otherProduct.body.data.id;
+
+    const freeShip = await request(app.getHttpServer())
+      .post(`/api/v1/stores/${storeId}/shipping-methods`)
+      .set('Authorization', `Bearer ${manager.token}`)
+      .send({ name: 'Free Shipping', type: 'FREE', price: '0', active: true })
+      .expect(201);
+    freeShippingId = freeShip.body.data.id;
+
+    const flatShip = await request(app.getHttpServer())
+      .post(`/api/v1/stores/${storeId}/shipping-methods`)
+      .set('Authorization', `Bearer ${manager.token}`)
+      .send({ name: 'Flat Rate', type: 'FLAT', price: '5.00', active: true })
+      .expect(201);
+    flatShippingId = flatShip.body.data.id;
+
+    const inactiveShip = await request(app.getHttpServer())
+      .post(`/api/v1/stores/${storeId}/shipping-methods`)
+      .set('Authorization', `Bearer ${manager.token}`)
+      .send({ name: 'Inactive', type: 'FLAT', price: '9.00', active: false })
+      .expect(201);
+    inactiveShippingId = inactiveShip.body.data.id;
+
+    const otherShip = await request(app.getHttpServer())
+      .post(`/api/v1/stores/${otherStoreId}/shipping-methods`)
+      .set('Authorization', `Bearer ${managerB.token}`)
+      .send({ name: 'Other Flat', type: 'FLAT', price: '3.00', active: true })
+      .expect(201);
+    otherStoreShippingId = otherShip.body.data.id;
   });
 
   afterAll(async () => {
@@ -245,6 +278,7 @@ describe('Public checkout (e2e)', () => {
     expect(res.body.data.paymentStatus).toBe('PENDING');
     expect(res.body.data.subtotal).toBe('39.98');
     expect(res.body.data.shippingTotal).toBe('0.00');
+    expect(res.body.data.shippingMethodName).toBe('Free Shipping');
     expect(res.body.data.total).toBe('39.98');
     expect(res.body.data).not.toHaveProperty('internalNote');
     expect(res.body.data).not.toHaveProperty('tenantId');
@@ -255,9 +289,65 @@ describe('Public checkout (e2e)', () => {
     });
     expect(order?.items[0]?.productName).toBe('Checkout Widget');
     expect(order?.items[0]?.unitPrice.toString()).toBe('19.99');
+    expect(order?.shippingMethodName).toBe('Free Shipping');
+    expect(order?.shippingMethodType).toBe('FREE');
     expect(order?.addresses).toHaveLength(2);
     expect(order?.payments[0]?.status).toBe('PENDING');
     expect(order?.payments[0]?.provider).toBe('COD');
+  });
+
+  it('applies flat-rate shipping from server method price, not client amounts', async () => {
+    const forbidden = await request(app.getHttpServer())
+      .post(`/api/v1/public/stores/${storeSlug}/checkout`)
+      .set('Idempotency-Key', `fake-totals-${suffix}`)
+      .send(
+        checkoutBody({
+          shippingMethodId: flatShippingId,
+          shippingTotal: '999.00',
+          grandTotal: '1.00',
+        }),
+      );
+    expect(forbidden.status).toBe(400);
+
+    const res = await request(app.getHttpServer())
+      .post(`/api/v1/public/stores/${storeSlug}/checkout`)
+      .set('Idempotency-Key', `flat-${suffix}`)
+      .send(
+        checkoutBody({
+          shippingMethodId: flatShippingId,
+        }),
+      )
+      .expect(201);
+
+    expect(res.body.data.shippingTotal).toBe('5.00');
+    expect(res.body.data.shippingMethodName).toBe('Flat Rate');
+    expect(res.body.data.total).toBe('24.99');
+  });
+
+  it('rejects inactive or cross-store shipping methods', async () => {
+    await request(app.getHttpServer())
+      .post(`/api/v1/public/stores/${storeSlug}/checkout`)
+      .set('Idempotency-Key', `inactive-ship-${suffix}`)
+      .send(checkoutBody({ shippingMethodId: inactiveShippingId }))
+      .expect(422);
+
+    await request(app.getHttpServer())
+      .post(`/api/v1/public/stores/${storeSlug}/checkout`)
+      .set('Idempotency-Key', `cross-ship-${suffix}`)
+      .send(checkoutBody({ shippingMethodId: otherStoreShippingId }))
+      .expect(404);
+  });
+
+  it('lists only active public shipping methods', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/public/stores/${storeSlug}/shipping-methods`)
+      .expect(200);
+    const ids = res.body.data.map((m: { id: string }) => m.id);
+    expect(ids).toContain(freeShippingId);
+    expect(ids).toContain(flatShippingId);
+    expect(ids).not.toContain(inactiveShippingId);
+    expect(res.body.data[0]).not.toHaveProperty('configuration');
+    expect(res.body.data[0]).not.toHaveProperty('storeId');
   });
 
   it('ignores client totals and uses current DB price after merchant change', async () => {
@@ -443,7 +533,7 @@ describe('Public checkout (e2e)', () => {
 
     const ok = await request(app.getHttpServer())
       .get(
-        `/api/v1/public/stores/${storeSlug}/orders/${placed.body.data.publicReference}`,
+        `/api/v1/public/stores/${storeSlug}/orders/${placed.body.data.publicReference}?email=${encodeURIComponent(customer.email)}`,
       )
       .expect(200);
     expect(ok.body.data.orderNumber).toBe(placed.body.data.orderNumber);

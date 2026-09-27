@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import type { Category, OffsetPageMeta, Product, ProductStatus } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
+import { DemoCatalogCta } from '@/components/catalog/demo-catalog-cta';
+import { SampleBadge } from '@/components/catalog/sample-badge';
 import { StatusBadge } from '@/components/catalog/status-badge';
 import { StoreScoped } from '@/components/catalog/store-scoped';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -127,6 +129,12 @@ function ProductsContent() {
         ) : null}
       </div>
 
+      <DemoCatalogCta
+        storeId={selectedStoreId}
+        canWrite={canWrite}
+        onImported={load}
+      />
+
       <form
         className="flex flex-wrap gap-2"
         onSubmit={(event: FormEvent) => {
@@ -249,12 +257,15 @@ function ProductsContent() {
                   className="border-b border-[var(--color-border)] last:border-b-0"
                 >
                   <td className="px-4 py-3">
-                    <Link
-                      className="font-medium text-[var(--color-accent)] hover:underline"
-                      href={`/dashboard/products/${product.id}`}
-                    >
-                      {product.name}
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        className="font-medium text-[var(--color-accent)] hover:underline"
+                        href={`/dashboard/products/${product.id}`}
+                      >
+                        {product.name}
+                      </Link>
+                      {product.isDemo ? <SampleBadge /> : null}
+                    </div>
                     <p className="text-xs text-[var(--color-muted)]">{product.productType}</p>
                   </td>
                   <td className="px-4 py-3">{product.sku ?? '—'}</td>

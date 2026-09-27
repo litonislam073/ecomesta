@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { MembershipStatus, PlatformRole, UserStatus } from '@prisma/client';
 import type { Request, Response } from 'express';
+import { clientIp } from '../../common/utils/request-host.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PasswordService } from './password.service';
 import { AuthRateLimitService } from './auth-rate-limit.service';
@@ -69,7 +70,7 @@ export class AuthService {
       success: true as const,
       data: {
         accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
+        ...this.refreshTokenBodyField(tokens.refreshToken),
         expiresIn: tokens.expiresIn,
         user: await this.toSafeProfile(user.id),
       },
@@ -104,7 +105,7 @@ export class AuthService {
       success: true as const,
       data: {
         accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
+        ...this.refreshTokenBodyField(tokens.refreshToken),
         expiresIn: tokens.expiresIn,
         user: await this.toSafeProfile(user.id),
       },
@@ -178,7 +179,7 @@ export class AuthService {
       success: true as const,
       data: {
         accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
+        ...this.refreshTokenBodyField(tokens.refreshToken),
         expiresIn: tokens.expiresIn,
       },
     };
@@ -200,6 +201,85 @@ export class AuthService {
       success: true as const,
       data: { loggedOut: true },
     };
+  }
+
+  /**
+   * Logout that works with a Bearer access token and/or the HttpOnly refresh
+   * cookie. Always clears the refresh cookie so a subsequent visit to /login
+   * cannot silently recover a stale browser session.
+   */
+  async logoutFlexible(
+    req: Request,
+    res: Response,
+    authorizationHeader?: string,
+  ) {
+    const bearer = this.parseBearer(authorizationHeader);
+    if (bearer) {
+      try {
+        const payload = await this.jwtService.verifyAsync<AccessTokenPayload>(
+          bearer,
+          {
+            secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
+          },
+        );
+        if (payload.typ === 'access' && payload.sid && payload.sub) {
+          await this.prisma.authSession.updateMany({
+            where: {
+              id: payload.sid,
+              userId: payload.sub,
+              revokedAt: null,
+            },
+            data: { revokedAt: new Date() },
+          });
+        }
+      } catch {
+        // Access token may already be expired; still try the refresh cookie.
+      }
+    }
+
+    const cookieToken = (
+      req.cookies?.[REFRESH_COOKIE_NAME] as string | undefined
+    )?.trim();
+    if (cookieToken) {
+      try {
+        const payload = await this.jwtService.verifyAsync<RefreshTokenPayload>(
+          cookieToken,
+          {
+            secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+          },
+        );
+        if (payload.typ === 'refresh' && payload.sid && payload.sub) {
+          await this.prisma.authSession.updateMany({
+            where: {
+              id: payload.sid,
+              userId: payload.sub,
+              revokedAt: null,
+            },
+            data: { revokedAt: new Date() },
+          });
+        }
+      } catch {
+        // Invalid/expired refresh cookie — still clear it below.
+      }
+    }
+
+    this.clearRefreshCookie(res);
+
+    return {
+      success: true as const,
+      data: { loggedOut: true },
+    };
+  }
+
+  private parseBearer(authorizationHeader?: string): string | null {
+    if (!authorizationHeader) {
+      return null;
+    }
+    const [scheme, token] = authorizationHeader.split(' ');
+    if (!scheme || scheme.toLowerCase() !== 'bearer' || !token?.trim()) {
+      return null;
+    }
+    return token.trim();
   }
 
   async me(userId: string): Promise<{ success: true; data: SafeUserProfile }> {
@@ -366,11 +446,7 @@ export class AuthService {
   }
 
   private clientIp(req: Request): string {
-    const forwarded = req.headers['x-forwarded-for'];
-    if (typeof forwarded === 'string' && forwarded.length > 0) {
-      return forwarded.split(',')[0]?.trim() || 'unknown';
-    }
-    return req.ip || req.socket.remoteAddress || 'unknown';
+    return clientIp(req) ?? 'unknown';
   }
 
   private async enforceRateLimit(key: string, limit: number, windowSeconds: number): Promise<void> {
@@ -382,25 +458,97 @@ export class AuthService {
 
   private setRefreshCookie(res: Response, refreshToken: string): void {
     const refreshExpiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') ?? '7d';
-    const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
+    const cookiePolicy = this.refreshCookiePolicy();
 
     res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'none' : 'lax',
+      secure: cookiePolicy.secure,
+      sameSite: cookiePolicy.sameSite,
       path: '/api/v1/auth',
       maxAge: this.parseDurationMs(refreshExpiresIn),
     });
   }
 
   private clearRefreshCookie(res: Response): void {
-    const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
+    const cookiePolicy = this.refreshCookiePolicy();
     res.clearCookie(REFRESH_COOKIE_NAME, {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'none' : 'lax',
+      secure: cookiePolicy.secure,
+      sameSite: cookiePolicy.sameSite,
       path: '/api/v1/auth',
     });
+  }
+
+  /**
+   * SameSite=Lax when API and dashboards share a site (incl. localhost ports).
+   * Cross-site deployments keep SameSite=None + Secure and omit refreshToken
+   * from JSON so XSS cannot exfiltrate the body token alongside the cookie.
+   */
+  private refreshCookiePolicy(): {
+    sameSite: 'lax' | 'none';
+    secure: boolean;
+    omitBodyRefreshToken: boolean;
+  } {
+    const isProduction =
+      this.configService.get<string>('NODE_ENV') === 'production';
+    const crossSite = this.isCrossSiteAuthDeployment();
+    if (crossSite) {
+      return {
+        sameSite: 'none',
+        secure: true,
+        omitBodyRefreshToken: true,
+      };
+    }
+    return {
+      sameSite: 'lax',
+      secure: isProduction,
+      // Production still omits body refresh when cookie is set (merchant/admin
+      // use cookie refresh). Non-production keeps body token for API tests.
+      omitBodyRefreshToken: isProduction,
+    };
+  }
+
+  private refreshTokenBodyField(
+    refreshToken: string,
+  ): { refreshToken: string } | Record<string, never> {
+    if (this.refreshCookiePolicy().omitBodyRefreshToken) {
+      return {};
+    }
+    return { refreshToken };
+  }
+
+  private isCrossSiteAuthDeployment(): boolean {
+    const apiUrl = this.configService.get<string>('API_URL');
+    if (!apiUrl) return false;
+    const apiSite = this.siteKey(apiUrl);
+    const origins = [
+      this.configService.get<string>('WEB_URL'),
+      this.configService.get<string>('MERCHANT_URL'),
+      this.configService.get<string>('ADMIN_URL'),
+    ].filter((v): v is string => Boolean(v));
+    return origins.some((origin) => this.siteKey(origin) !== apiSite);
+  }
+
+  /** Rough eTLD+1 / localhost site key for SameSite decisions (not a PSL parser). */
+  private siteKey(url: string): string {
+    try {
+      const hostname = new URL(url).hostname.toLowerCase();
+      if (
+        hostname === 'localhost' ||
+        hostname.endsWith('.localhost') ||
+        hostname === '127.0.0.1' ||
+        hostname === '::1'
+      ) {
+        return 'localhost';
+      }
+      const parts = hostname.split('.').filter(Boolean);
+      if (parts.length <= 2) {
+        return hostname;
+      }
+      return parts.slice(-2).join('.');
+    } catch {
+      return url;
+    }
   }
 
   private parseDurationMs(value: string): number {

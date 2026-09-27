@@ -14,10 +14,14 @@ import {
   PaymentStatus,
   Prisma,
   ProductStatus,
+  ShippingMethodType,
 } from '@prisma/client';
 import { randomBytes } from 'node:crypto';
 import { moneyToString, parseMoney } from '../../common/utils/catalog.util';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CouponValidationService } from '../coupons/coupon-validation.service';
+import type { CouponDiscountResult } from '../coupons/coupon-math';
+import { generatePaymentInternalReference } from '../payments/payment-reference.util';
 import { OrderAddressInputDto } from './dto/order.dto';
 
 export type PlaceOrderItemInput = {
@@ -34,8 +38,15 @@ export type PlaceOrderParams = {
   shippingAddressId?: string;
   billingAddressId?: string;
   customerId?: string | null;
+  /** Ignored when couponCode is set or requireActiveCatalog (public checkout). */
   discountTotal?: string | number;
+  /** Server-validated coupon code; discount computed from live catalog subtotal. */
+  couponCode?: string | null;
   shippingTotal?: string | number;
+  /** Snapshot fields captured at purchase; optional for merchant-created orders. */
+  shippingMethodName?: string | null;
+  shippingMethodType?: ShippingMethodType | null;
+  shippingZoneName?: string | null;
   customerNote?: string | null;
   internalNote?: string | null;
   paymentProvider: PaymentProvider;
@@ -65,6 +76,13 @@ type NormalizedAddress = {
   country: string;
   phone: string | null;
   email: string | null;
+  divisionId: string | null;
+  districtId: string | null;
+  upazilaId: string | null;
+  divisionName: string | null;
+  districtName: string | null;
+  upazilaName: string | null;
+  landmark: string | null;
 };
 
 const detailInclude = {
@@ -87,7 +105,10 @@ export type PlacedOrder = Prisma.OrderGetPayload<{ include: typeof detailInclude
 
 @Injectable()
 export class OrderPlacementService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly couponValidation: CouponValidationService,
+  ) {}
 
   async findByIdempotencyKey(
     storeId: string,
@@ -117,6 +138,7 @@ export class OrderPlacementService {
     order: PlacedOrder;
     tenantId: string;
     replayed: boolean;
+    appliedCoupon?: CouponDiscountResult | null;
   }> {
     if (!params.items?.length) {
       throw new BadRequestException('At least one order item is required');
@@ -140,8 +162,12 @@ export class OrderPlacementService {
       }
     }
 
-    const discountTotal = parseMoney(params.discountTotal ?? '0', 'discountTotal');
     const shippingTotal = parseMoney(params.shippingTotal ?? '0', 'shippingTotal');
+    // Public checkout never trusts client discount; merchant may pass manual discountTotal
+    // unless a couponCode is provided (coupon always wins).
+    let discountTotal = params.requireActiveCatalog
+      ? new Prisma.Decimal(0)
+      : parseMoney(params.discountTotal ?? '0', 'discountTotal');
 
     try {
       const result = await this.prisma.$transaction(async (tx) => {
@@ -154,7 +180,12 @@ export class OrderPlacementService {
             include: detailInclude,
           });
           if (raced) {
-            return { order: raced, tenantId: '', replayed: true as const };
+            return {
+              order: raced,
+              tenantId: '',
+              replayed: true as const,
+              appliedCoupon: null,
+            };
           }
         }
 
@@ -334,6 +365,23 @@ export class OrderPlacementService {
           });
         }
 
+        let appliedCoupon: CouponDiscountResult | null = null;
+        if (params.couponCode?.trim()) {
+          appliedCoupon = await this.couponValidation.lockAndValidate(tx, {
+            storeId: params.storeId,
+            code: params.couponCode,
+            subtotal,
+            identity: {
+              customerId,
+              email:
+                shippingSnapshot.email ??
+                billingSnapshot.email ??
+                null,
+            },
+          });
+          discountTotal = appliedCoupon.discount;
+        }
+
         const taxTotal = new Prisma.Decimal(0);
         const grandTotal = subtotal
           .sub(discountTotal)
@@ -454,6 +502,10 @@ export class OrderPlacementService {
             shippingTotal,
             taxTotal,
             grandTotal,
+            shippingMethodName: params.shippingMethodName?.trim() || null,
+            shippingMethodType: params.shippingMethodType ?? null,
+            shippingZoneName: params.shippingZoneName?.trim() || null,
+            couponCode: appliedCoupon?.code ?? null,
             customerNote: params.customerNote?.trim() || null,
             internalNote: params.internalNote?.trim() || null,
             items: {
@@ -488,6 +540,8 @@ export class OrderPlacementService {
                 currency: store.currency,
                 status: params.paymentStatus,
                 method: params.paymentMethod,
+                internalReference: generatePaymentInternalReference(),
+                attemptNumber: 1,
               },
             },
           },
@@ -509,10 +563,26 @@ export class OrderPlacementService {
           });
         }
 
+        if (appliedCoupon) {
+          await tx.couponUsage.create({
+            data: {
+              couponId: appliedCoupon.coupon.id,
+              orderId: order.id,
+              customerId,
+              discountAmount: appliedCoupon.discount,
+            },
+          });
+          await tx.coupon.update({
+            where: { id: appliedCoupon.coupon.id },
+            data: { usageCount: { increment: 1 } },
+          });
+        }
+
         return {
           order,
           tenantId: store.tenant_id,
           replayed: false as const,
+          appliedCoupon,
         };
       });
 
@@ -596,6 +666,13 @@ export class OrderPlacementService {
         country: address.country.toUpperCase(),
         phone: address.phone,
         email: null,
+        divisionId: address.divisionId,
+        districtId: address.districtId,
+        upazilaId: address.upazilaId,
+        divisionName: null,
+        districtName: null,
+        upazilaName: null,
+        landmark: address.landmark,
       };
     }
 
@@ -632,6 +709,13 @@ export class OrderPlacementService {
       country: input.country.trim().toUpperCase(),
       phone: input.phone?.trim() || null,
       email: input.email?.trim().toLowerCase() || null,
+      divisionId: input.divisionId ?? null,
+      districtId: input.districtId ?? null,
+      upazilaId: input.upazilaId ?? null,
+      divisionName: input.divisionName?.trim() || null,
+      districtName: input.districtName?.trim() || null,
+      upazilaName: input.upazilaName?.trim() || null,
+      landmark: input.landmark?.trim() || null,
     };
   }
 
@@ -648,6 +732,13 @@ export class OrderPlacementService {
       country: address.country,
       phone: address.phone,
       email: address.email,
+      divisionId: address.divisionId,
+      districtId: address.districtId,
+      upazilaId: address.upazilaId,
+      divisionName: address.divisionName,
+      districtName: address.districtName,
+      upazilaName: address.upazilaName,
+      landmark: address.landmark,
     };
   }
 

@@ -2,10 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { DASHBOARD_NAV } from '@/lib/nav';
+import { DASHBOARD_NAV, isNavItemActive } from '@/lib/nav';
+
+const linkBase =
+  'flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]';
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
 
   return (
     <nav aria-label="Dashboard" className="space-y-6">
@@ -16,16 +19,17 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           </p>
           <ul className="mt-2 space-y-1">
             {section.items.map((item) => {
-              const active =
-                item.href === '/dashboard'
-                  ? pathname === item.href
-                  : pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const active = isNavItemActive(pathname, item.href);
+              const exact = pathname === item.href;
+              const expanded = Boolean(item.children?.length) && active;
               return (
                 <li key={item.href}>
                   <Link
                     href={item.href}
                     onClick={onNavigate}
-                    className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] ${
+                    aria-current={exact ? 'page' : undefined}
+                    aria-expanded={item.children?.length ? expanded : undefined}
+                    className={`${linkBase} ${
                       active
                         ? 'bg-[var(--color-accent)] text-white'
                         : 'text-[var(--color-ink)] hover:bg-[#e8eeeb]'
@@ -42,6 +46,32 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                       </span>
                     ) : null}
                   </Link>
+                  {expanded ? (
+                    <ul
+                      className="ml-3 mt-1 space-y-0.5 border-l border-[var(--color-border)] pl-2"
+                      aria-label={`${item.label} sections`}
+                    >
+                      {item.children!.map((child) => {
+                        const childActive = isNavItemActive(pathname, child.href);
+                        return (
+                          <li key={child.href}>
+                            <Link
+                              href={child.href}
+                              onClick={onNavigate}
+                              aria-current={childActive ? 'page' : undefined}
+                              className={`${linkBase} py-1.5 ${
+                                childActive
+                                  ? 'font-medium text-[var(--color-accent)]'
+                                  : 'text-[var(--color-muted)] hover:bg-[#e8eeeb] hover:text-[var(--color-ink)]'
+                              }`}
+                            >
+                              {child.label}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : null}
                 </li>
               );
             })}

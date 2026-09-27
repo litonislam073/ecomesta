@@ -1,7 +1,22 @@
-import { Body, Controller, Get, Headers, Param, Post, Query, Req } from '@nestjs/common';
-import { ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { Request } from 'express';
 import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  HttpCode,
+  Param,
+  Post,
+  Query,
+  Req,
+} from '@nestjs/common';
+import { ApiHeader, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import type { Request } from 'express';
+import { BangladeshLocationsService } from '../shipping/bangladesh-locations.service';
+import { ShippingQuoteDto } from '../shipping/dto/shipping-quote.dto';
+import { ShippingQuoteService } from '../shipping/shipping-quote.service';
+import { ShippingService } from '../shipping/shipping.service';
+import {
+  CancelPublicOrderDto,
   PublicCheckoutDto,
   PublicOrderLookupQueryDto,
 } from './dto/public-checkout.dto';
@@ -18,6 +33,9 @@ export class PublicStorefrontController {
   constructor(
     private readonly publicStorefront: PublicStorefrontService,
     private readonly publicCheckout: PublicCheckoutService,
+    private readonly shipping: ShippingService,
+    private readonly shippingQuote: ShippingQuoteService,
+    private readonly locations: BangladeshLocationsService,
   ) {}
 
   @Get()
@@ -62,6 +80,64 @@ export class PublicStorefrontController {
     return this.publicStorefront.getProduct(storeSlug, productSlug);
   }
 
+  @Get('locations/divisions')
+  @ApiOperation({
+    summary: 'List Bangladesh divisions (global; gated by active store)',
+  })
+  async listDivisions(@Param('storeSlug') storeSlug: string) {
+    await this.publicStorefront.requireActiveStore(storeSlug);
+    return this.locations.listDivisions();
+  }
+
+  @Get('locations/districts')
+  @ApiOperation({ summary: 'List districts for a division' })
+  @ApiQuery({ name: 'divisionId', required: true })
+  async listDistricts(
+    @Param('storeSlug') storeSlug: string,
+    @Query('divisionId') divisionId: string,
+  ) {
+    await this.publicStorefront.requireActiveStore(storeSlug);
+    return this.locations.listDistricts(divisionId);
+  }
+
+  @Get('locations/upazilas')
+  @ApiOperation({ summary: 'List upazilas for a district' })
+  @ApiQuery({ name: 'districtId', required: true })
+  async listUpazilas(
+    @Param('storeSlug') storeSlug: string,
+    @Query('districtId') districtId: string,
+  ) {
+    await this.publicStorefront.requireActiveStore(storeSlug);
+    return this.locations.listUpazilas(districtId);
+  }
+
+  @Get('shipping-methods')
+  @ApiOperation({
+    summary:
+      'List active public shipping methods (optional zoneId; prefer POST /shipping/quote)',
+  })
+  @ApiQuery({ name: 'zoneId', required: false })
+  async listShippingMethods(
+    @Param('storeSlug') storeSlug: string,
+    @Query('zoneId') zoneId?: string,
+  ) {
+    const store = await this.publicStorefront.requireActiveStore(storeSlug);
+    return this.shipping.listPublic(store.id, zoneId);
+  }
+
+  @Post('shipping/quote')
+  @ApiOperation({
+    summary:
+      'Quote available shipping methods for location + cart (server-priced)',
+  })
+  async quoteShipping(
+    @Param('storeSlug') storeSlug: string,
+    @Body() dto: ShippingQuoteDto,
+  ) {
+    const store = await this.publicStorefront.requireActiveStore(storeSlug);
+    return this.shippingQuote.quote(store.id, dto);
+  }
+
   @Post('checkout')
   @ApiOperation({
     summary: 'Place a guest checkout order (server-priced, inventory-locked)',
@@ -82,13 +158,35 @@ export class PublicStorefrontController {
 
   @Get('orders/:publicReference')
   @ApiOperation({
-    summary: 'Look up a public order by opaque reference (optional email check)',
+    summary:
+      'Look up a public order by opaque reference (optional email/phone verification)',
   })
   getOrder(
     @Param('storeSlug') storeSlug: string,
     @Param('publicReference') publicReference: string,
     @Query() query: PublicOrderLookupQueryDto,
+    @Req() req: Request,
   ) {
-    return this.publicCheckout.getOrder(storeSlug, publicReference, query);
+    return this.publicCheckout.getOrder(
+      storeSlug,
+      publicReference,
+      query,
+      req,
+    );
+  }
+
+  @Post('orders/:publicReference/cancel')
+  @HttpCode(200)
+  @ApiOperation({
+    summary:
+      'Guest cancellation of an unpaid, unfulfilled PENDING/CONFIRMED order (store setting + email/phone proof)',
+  })
+  cancelOrder(
+    @Param('storeSlug') storeSlug: string,
+    @Param('publicReference') publicReference: string,
+    @Body() dto: CancelPublicOrderDto,
+    @Req() req: Request,
+  ) {
+    return this.publicCheckout.cancelOrder(storeSlug, publicReference, dto, req);
   }
 }

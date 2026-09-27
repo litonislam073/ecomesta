@@ -2,6 +2,8 @@
  * Shared pure utilities. Keep free of framework and environment coupling.
  */
 
+export * from './billing.js';
+
 export function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }

@@ -3,7 +3,13 @@ import { notFound } from 'next/navigation';
 import type { PublicProductDetail } from '@ecomesta/types';
 import { AddToCartPanel } from '@/components/add-to-cart-panel';
 import { publicGet, PublicApiError } from '@/lib/public-api';
-import { requirePublicStore } from '@/lib/store-resolver';
+import {
+  requirePublicStore,
+  storeCanonicalUrl,
+  storeMetadataBase,
+} from '@/lib/store-resolver';
+import { resolvePageSeo, storeOgLocale, storeRobots } from '@/lib/store-seo';
+import { fetchPublicTheme } from '@/lib/theme';
 
 export async function generateMetadata({
   params,
@@ -18,12 +24,29 @@ export async function generateMetadata({
       `/public/stores/${store.slug}/products/${encodeURIComponent(params.productSlug)}`,
     );
     const product = result.data;
+    const configuration = await fetchPublicTheme(store.slug)
+      .then((theme) => theme.configuration)
+      .catch(() => null);
+    const seo = resolvePageSeo({
+      store,
+      configuration,
+      pageTitle: product.name,
+      pageDescriptions: [product.shortDescription, product.description],
+    });
+    const path = `/products/${encodeURIComponent(params.productSlug)}`;
+    const url = storeCanonicalUrl(path, store.slug);
     return {
-      title: `${product.name} · ${store.name}`,
-      description: product.shortDescription ?? product.description ?? product.name,
+      title: { absolute: seo.title },
+      description: seo.description,
+      metadataBase: storeMetadataBase(store.slug),
+      alternates: url ? { canonical: url } : undefined,
+      robots: storeRobots(store),
       openGraph: {
-        title: product.name,
-        description: product.shortDescription ?? undefined,
+        title: seo.title,
+        description: seo.description,
+        url,
+        siteName: store.name,
+        locale: storeOgLocale(store),
         images: product.images[0] ? [product.images[0].url] : undefined,
       },
     };

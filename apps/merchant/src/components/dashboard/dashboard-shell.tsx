@@ -4,12 +4,44 @@ import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@ecomesta/ui';
+import { SubscriptionBanner, SuspendedScreen } from '@/components/billing/subscription-notices';
 import { SidebarNav } from '@/components/dashboard/sidebar-nav';
 import { StoreSelector } from '@/components/dashboard/store-selector';
+import { ViewStoreLink } from '@/components/dashboard/view-store-link';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/lib/auth-context';
+import { SubscriptionProvider, useSubscription } from '@/lib/subscription-context';
+
+const BILLING_PATH = '/dashboard/billing';
+
+/**
+ * A suspended subscription replaces every dashboard page except Plan &
+ * billing; during the grace period pages stay usable under a payment notice.
+ */
+function SubscriptionGate({ pathname, children }: { pathname: string; children: ReactNode }) {
+  const { data } = useSubscription();
+  const phase = data?.subscription?.phase;
+  const onBilling = pathname === BILLING_PATH || pathname.startsWith(`${BILLING_PATH}/`);
+  if (data && (phase === 'SUSPENDED' || phase === 'LAPSED') && !onBilling) {
+    return <SuspendedScreen data={data} />;
+  }
+  return (
+    <>
+      {data && !onBilling ? <SubscriptionBanner data={data} showTrial={pathname === '/dashboard'} /> : null}
+      {children}
+    </>
+  );
+}
 
 export function DashboardShell({ children }: { children: ReactNode }) {
+  return (
+    <SubscriptionProvider>
+      <DashboardFrame>{children}</DashboardFrame>
+    </SubscriptionProvider>
+  );
+}
+
+function DashboardFrame({ children }: { children: ReactNode }) {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -18,6 +50,15 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!loading && !user) {
       router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+      return;
+    }
+    if (
+      !loading &&
+      user &&
+      user.memberships.stores.length === 0 &&
+      !pathname.startsWith('/onboard')
+    ) {
+      router.replace('/onboard');
     }
   }, [loading, user, router, pathname]);
 
@@ -45,11 +86,9 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       <div className="mx-auto flex min-h-screen max-w-[1400px]">
         <aside className="hidden w-64 shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)] lg:block">
           <div className="sticky top-0 flex h-screen flex-col px-3 py-5">
-            <Link
-              href="/dashboard"
-              className="px-3 font-[family-name:var(--font-display)] text-xl tracking-tight"
-            >
-              Ecomesta
+            <Link href="/dashboard" className="block px-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/brand/ecomesta-logo.png" alt="Ecomesta" width={504} height={96} className="h-7 w-auto" />
             </Link>
             <p className="mt-1 px-3 text-xs text-[var(--color-muted)]">Merchant</p>
             <div className="mt-8 flex-1 overflow-y-auto pb-6">
@@ -72,6 +111,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                   Menu
                 </Button>
                 <StoreSelector />
+                <ViewStoreLink />
               </div>
               <div className="flex items-center gap-3">
                 <button
@@ -107,7 +147,9 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             </div>
           ) : null}
 
-          <main className="flex-1 px-4 py-6 md:px-6">{children}</main>
+          <main className="flex-1 px-4 py-6 md:px-6">
+            <SubscriptionGate pathname={pathname}>{children}</SubscriptionGate>
+          </main>
         </div>
       </div>
     </div>

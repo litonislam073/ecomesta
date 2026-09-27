@@ -7,6 +7,7 @@ import {
   Prisma,
   ProductStatus,
   StoreStatus,
+  TenantStatus,
 } from '@prisma/client';
 import {
   moneyToString,
@@ -15,6 +16,7 @@ import {
   parseMoney,
 } from '../../common/utils/catalog.util';
 import { PrismaService } from '../../prisma/prisma.service';
+import { BillingAccessService } from '../billing/billing-access.service';
 import {
   ListPublicCategoriesQueryDto,
   ListPublicProductsQueryDto,
@@ -22,7 +24,10 @@ import {
 
 @Injectable()
 export class PublicStorefrontService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly billingAccess: BillingAccessService,
+  ) {}
 
   async getStore(storeSlug: string) {
     const store = await this.requireActiveStore(storeSlug);
@@ -232,10 +237,16 @@ export class PublicStorefrontService {
     }
 
     const matches = await this.prisma.store.findMany({
-      where: { slug, status: StoreStatus.ACTIVE },
+      where: {
+        slug,
+        status: StoreStatus.ACTIVE,
+        // Suspended tenants are not publicly operable even if store row is ACTIVE.
+        tenant: { status: TenantStatus.ACTIVE },
+      },
       take: 2,
       select: {
         id: true,
+        tenantId: true,
         name: true,
         slug: true,
         description: true,
@@ -245,10 +256,24 @@ export class PublicStorefrontService {
         timezone: true,
         locale: true,
         status: true,
+        email: true,
+        phone: true,
+        address: true,
+        checkoutRequirePhone: true,
+        checkoutAllowOrderNotes: true,
+        allowCustomerCancellation: true,
+        seoTitle: true,
+        seoDescription: true,
+        seoKeywords: true,
+        ogTitle: true,
+        ogDescription: true,
+        ogImageUrl: true,
+        seoIndexingEnabled: true,
       },
     });
 
     if (matches.length === 0) {
+      await this.billingAccess.throwIfSuspended({ slug });
       throw new NotFoundException('Store not found');
     }
     if (matches.length > 1) {
@@ -256,7 +281,9 @@ export class PublicStorefrontService {
         'Multiple active stores share this slug; use a unique slug or domain routing',
       );
     }
-    return matches[0]!;
+    const { tenantId, ...store } = matches[0]!;
+    await this.billingAccess.assertTenantInGoodStanding(tenantId);
+    return store;
   }
 
   private availability(
@@ -277,18 +304,8 @@ export class PublicStorefrontService {
     return row.quantity - row.reservedQuantity > 0;
   }
 
-  private toStoreDto(store: {
-    id: string;
-    name: string;
-    slug: string;
-    description: string | null;
-    logoUrl: string | null;
-    faviconUrl: string | null;
-    currency: string;
-    timezone: string;
-    locale: string;
-    status: StoreStatus;
-  }) {
+  /** Public-safe store projection — contact details the merchant chose to publish, no internals. */
+  private toStoreDto(store: Awaited<ReturnType<PublicStorefrontService['requireActiveStore']>>) {
     return {
       id: store.id,
       name: store.name,
@@ -299,6 +316,27 @@ export class PublicStorefrontService {
       currency: store.currency,
       timezone: store.timezone,
       locale: store.locale,
+      language: store.locale.toLowerCase().startsWith('bn') ? 'bn' : 'en',
+      contact: {
+        email: store.email,
+        phone: store.phone,
+        address: store.address,
+      },
+      checkout: {
+        requireEmail: true,
+        requirePhone: store.checkoutRequirePhone,
+        allowOrderNotes: store.checkoutAllowOrderNotes,
+      },
+      allowCustomerCancellation: store.allowCustomerCancellation,
+      seo: {
+        title: store.seoTitle,
+        description: store.seoDescription,
+        keywords: store.seoKeywords,
+        ogTitle: store.ogTitle,
+        ogDescription: store.ogDescription,
+        ogImageUrl: store.ogImageUrl,
+        indexingEnabled: store.seoIndexingEnabled,
+      },
     };
   }
 
@@ -352,6 +390,7 @@ export class PublicStorefrontService {
       compareAtPrice: Prisma.Decimal | null;
       trackInventory: boolean;
       allowBackorder: boolean;
+      imageUrl: string | null;
       categories: {
         category: { id: string; name: string; slug: string; status: ProductStatus };
       }[];
@@ -406,7 +445,9 @@ export class PublicStorefrontService {
       compareAtPrice: moneyToString(product.compareAtPrice),
       sku: product.sku,
       available: baseAvailable,
-      images: [] as { url: string; alt: string }[],
+      images: product.imageUrl
+        ? [{ url: product.imageUrl, alt: product.name }]
+        : [],
       categories: product.categories
         .filter((c) => c.category.status === ProductStatus.ACTIVE)
         .map((c) => ({

@@ -1,0 +1,132 @@
+# Ecomesta edge for a shared host (docker-compose.shared-host.yml).
+#
+# Chain: visitor → Cloudflare (proxied, SSL Full strict) → the host's existing
+# web server (terminates TLS, accepts only Cloudflare IPs for these hostnames)
+# → this nginx on 127.0.0.1:${ECOMESTA_HTTP_PORT} (plain HTTP) → apps.
+#
+# The host web server must:
+#   - proxy ${PLATFORM_ROOT_DOMAIN}, www., api., merchant., admin. and
+#     *.${PLATFORM_ROOT_DOMAIN} here, keeping the original Host header;
+#   - reject requests for those hostnames that do not come from Cloudflare,
+#     because CF-Connecting-IP below is only trustworthy on that path.
+# See docs/deployment.md "Shared host".
+
+server_tokens off;
+client_max_body_size 2m;
+client_body_timeout 30s;
+client_header_timeout 30s;
+# keepalive_timeout is already 65s in the nginx image's nginx.conf; repeating it here is a startup error.
+
+proxy_connect_timeout 5s;
+proxy_send_timeout 60s;
+proxy_read_timeout 60s;
+
+gzip on;
+gzip_comp_level 5;
+gzip_min_length 1024;
+gzip_proxied any;
+gzip_vary on;
+gzip_types text/plain text/css application/json application/javascript text/javascript application/xml image/svg+xml;
+
+# Only the host web server reaches this nginx (published on 127.0.0.1, arriving
+# through the Docker bridge), so the visitor address comes from Cloudflare's header.
+set_real_ip_from 127.0.0.1;
+set_real_ip_from 10.0.0.0/8;
+set_real_ip_from 172.16.0.0/12;
+set_real_ip_from 192.168.0.0/16;
+real_ip_header CF-Connecting-IP;
+
+limit_req_zone $binary_remote_addr zone=storefront:10m rate=30r/s;
+limit_req_status 429;
+
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      '';
+}
+
+upstream ecomesta_api      { server api:3001;      keepalive 32; }
+upstream ecomesta_web      { server web:3000;      keepalive 32; }
+upstream ecomesta_merchant { server merchant:3002; keepalive 16; }
+upstream ecomesta_admin    { server admin:3003;    keepalive 8; }
+
+# Unknown Host: close without a response. Also serves the container healthcheck.
+server {
+    listen 80 default_server;
+    server_name _;
+
+    location = /nginx-health {
+        access_log off;
+        allow 127.0.0.1;
+        allow ::1;
+        deny all;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    location / {
+        return 444;
+    }
+}
+
+server {
+    listen 80;
+    server_name api.${PLATFORM_ROOT_DOMAIN};
+
+    include /etc/nginx/snippets/deny-hidden.conf;
+
+    location / {
+        proxy_pass http://ecomesta_api;
+        include /etc/nginx/shared-snippets/proxy.conf;
+        # SSLCommerz IPN handling calls the gateway's validation API before
+        # answering; allow for a slow upstream round-trip.
+        proxy_read_timeout 90s;
+        proxy_send_timeout 90s;
+    }
+}
+
+server {
+    listen 80;
+    server_name ${PLATFORM_ROOT_DOMAIN} www.${PLATFORM_ROOT_DOMAIN};
+
+    include /etc/nginx/snippets/security-headers.conf;
+    include /etc/nginx/snippets/deny-hidden.conf;
+    include /etc/nginx/shared-snippets/storefront.conf;
+}
+
+# Store subdomains. Exact names (api/www/merchant/admin) take precedence.
+server {
+    listen 80;
+    server_name *.${PLATFORM_ROOT_DOMAIN};
+
+    include /etc/nginx/snippets/security-headers.conf;
+    include /etc/nginx/snippets/deny-hidden.conf;
+    include /etc/nginx/shared-snippets/storefront.conf;
+}
+
+server {
+    listen 80;
+    server_name merchant.${PLATFORM_ROOT_DOMAIN};
+
+    include /etc/nginx/snippets/security-headers.conf;
+    add_header X-Robots-Tag "noindex, nofollow" always;
+    include /etc/nginx/snippets/deny-hidden.conf;
+
+    location / {
+        proxy_pass http://ecomesta_merchant;
+        include /etc/nginx/shared-snippets/proxy.conf;
+    }
+}
+
+server {
+    listen 80;
+    server_name admin.${PLATFORM_ROOT_DOMAIN};
+
+    include /etc/nginx/snippets/security-headers.conf;
+    add_header X-Robots-Tag "noindex, nofollow" always;
+    include /etc/nginx/snippets/deny-hidden.conf;
+
+    location / {
+        proxy_pass http://ecomesta_admin;
+        include /etc/nginx/shared-snippets/proxy.conf;
+    }
+}

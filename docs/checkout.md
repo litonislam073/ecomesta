@@ -1,34 +1,45 @@
-# Public Checkout (Phase 10)
+# Public Checkout (Phase 10–14)
 
-Guest checkout places real orders through the Phase 8 order pipeline. No payment gateways.
+Guest checkout places real orders through the Phase 8 order pipeline. Coupons are Phase 14 — see [coupons.md](./coupons.md). Online adapters: TEST, Stripe, SSLCommerz.
 
 ## Flow
 
-1. Customer fills `/checkout` from the store-scoped cart
-2. Browser sends product/variant IDs + quantities only (no prices)
-3. `POST /api/v1/public/stores/:storeSlug/checkout` with `Idempotency-Key`
-4. Server resolves ACTIVE store, validates ACTIVE catalog, prices from DB, locks inventory
-5. Creates Order + OrderItems (snapshots) + OrderAddresses + Payment (`PENDING`)
-6. Response includes `orderNumber` + opaque `publicReference`
-7. Storefront clears that store’s cart and opens `/order-confirmation/[reference]`
+1. Customer fills `/checkout` from the store-scoped cart (optional coupon apply)
+2. Contact → **Division / District / Upazila** → Address → **Shipping quote** → Payment → Review → Place order
+3. Browser sends product/variant IDs + quantities + location IDs + `shippingMethodId` + optional `couponCode` (no prices)
+4. `POST /api/v1/public/stores/:storeSlug/checkout` with `Idempotency-Key`
+5. Server resolves ACTIVE store, zone + active shipping method, ACTIVE catalog, prices from DB, locks inventory + coupon
+6. Creates Order + OrderItems (snapshots) + OrderAddresses (incl. BD name snapshots) + Payment + shipping snapshot + optional CouponUsage
+7. Response includes `orderNumber` + opaque `publicReference` + discount snapshot
+8. Storefront clears that store’s cart and opens `/order-confirmation/[reference]`
 
 ## Public APIs
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| POST | `/api/v1/public/stores/:storeSlug/checkout` | Requires `Idempotency-Key` |
-| GET | `/api/v1/public/stores/:storeSlug/orders/:publicReference` | Optional `?email=` match |
+| GET | `/api/v1/public/stores/:storeSlug/locations/divisions` | BD hierarchy (active store) |
+| GET | `/api/v1/public/stores/:storeSlug/locations/districts?divisionId=` | Cascading |
+| GET | `/api/v1/public/stores/:storeSlug/locations/upazilas?districtId=` | Cascading |
+| GET | `/api/v1/public/stores/:storeSlug/shipping-methods` | Active methods; prefer quote |
+| POST | `/api/v1/public/stores/:storeSlug/shipping/quote` | Server-priced methods for location + cart |
+| POST | `/api/v1/public/stores/:storeSlug/coupons/validate` | Preview discount from live catalog prices |
+| POST | `/api/v1/public/stores/:storeSlug/checkout` | Requires `Idempotency-Key` + `shippingMethodId`; optional `couponCode` + location IDs |
+| GET | `/api/v1/public/stores/:storeSlug/orders/:publicReference` | Optional `?email=` / `?phone=`; see [order-tracking.md](./order-tracking.md) |
 
-Client must not send unit prices, subtotals, shipping totals, payment status, or order status. Extra money fields are rejected by DTO whitelist.
+Client must not send unit prices, subtotals, shipping totals, discounts, payment status, or order status. Extra money fields are rejected by DTO whitelist. Coupon codes are re-validated under lock at placement.
+
+After checkout the storefront opens `/order-confirmation/[reference]`. Guests can also use `/track-order` (reference + email).
 
 ## Server-side pricing
 
 - Unit price = product `basePrice` or variant `price` at commit time
 - `subtotal` = Σ (unitPrice × quantity)
-- `shippingTotal` = **0** in Phase 10 (no shipping engine yet)
-- `discountTotal` = 0
-- `grandTotal` = subtotal + shipping − discount
+- `discountTotal` = server coupon math when `couponCode` present (else 0)
+- `shippingTotal` = server zone + method calculation (see [shipping.md](./shipping.md)); free threshold uses subtotal after discount
+- `grandTotal` = subtotal − discount + shipping (+ tax)
 - Arithmetic uses `Prisma.Decimal`
+- Order stores `shippingMethodName` + `shippingMethodType` + `shippingZoneName` + `couponCode` snapshots
+- COD requires selected method `codAllowed=true`
 
 ## Inventory transaction
 
@@ -36,11 +47,12 @@ Shared `OrderPlacementService.place()` (also used by merchant create):
 
 1. Begin Prisma transaction
 2. Allocate `EM-{sequence}` under store row update
-3. Load/validate lines (ACTIVE only for public)
-4. `SELECT … FOR UPDATE` inventory rows
-5. Deduct quantity; write `SALE` movements
-6. Create order, items, addresses, payment
-7. Commit — any failure rolls back everything
+3. Load/validate lines (ACTIVE only for public) → subtotal
+4. Lock coupon (`FOR UPDATE`) when `couponCode` set; compute discount
+5. `SELECT … FOR UPDATE` inventory rows
+6. Deduct quantity; write `SALE` movements
+7. Create order, items, addresses, payment, CouponUsage + `usageCount++`
+8. Commit — any failure rolls back everything
 
 ## Idempotency
 
@@ -64,14 +76,23 @@ Redis fixed-window via `RedisRateLimitService`: **30 checkout attempts / 60s / s
 - No customer login
 - Contact + shipping (billing optional / same-as-shipping)
 - `customerId` left null; emails live on `OrderAddress`
+- Email and shipping address are always required
+- Phone is optional unless the store enables **Require a phone number** (`checkoutRequirePhone`); the API then rejects orders without a contact or shipping phone
+- Order notes are accepted unless the store turns them off (`checkoutAllowOrderNotes`), in which case `customerNote` is dropped
 
-## Payment methods (offline only)
+## Payment methods (offline + optional online)
 
-Allowed providers: `COD`, `OTHER`  
-Allowed methods: `CASH`, `BANK_TRANSFER`, `OTHER`  
+Offline providers: `COD`, `OTHER`  
+Offline methods: `CASH`, `BANK_TRANSFER`, `OTHER`  
+
+Online (when configured): `TEST`, `STRIPE`, or `SSL_COMMERZ` with method `CARD`. Stripe and SSLCommerz use hosted checkout. See [payment-providers.md](./payment-providers.md) and [sslcommerz.md](./sslcommerz.md).
+
+Online flow:
+
+1. Create order (server totals + inventory)
+2. `POST …/payments/create` (amount from `Order.grandTotal`)
+3. Redirect to provider / continue page
+4. Verified webhook (and SSLCommerz Order Validation) updates payment status
+5. Return pages poll server status only (never mark paid)
 
 Payment status is always initialized as `PENDING`. COD is never marked `PAID` at checkout.
-
-## Future gateway integration
-
-Later phases may add Stripe / bKash / SSLCommerz as `PaymentProvider` values with separate authorization capture. Checkout should keep server-side pricing and idempotency unchanged.

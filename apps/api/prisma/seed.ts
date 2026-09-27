@@ -1,12 +1,28 @@
-import { PrismaClient, PlatformRole, TenantRole, StoreRole, MembershipStatus, TenantStatus, StoreStatus, BillingCycle, SubscriptionStatus } from '@prisma/client';
+import {
+  PrismaClient,
+  Prisma,
+  PlatformRole,
+  TenantRole,
+  StoreRole,
+  MembershipStatus,
+  TenantStatus,
+  StoreStatus,
+  BillingCycle,
+  SubscriptionStatus,
+} from '@prisma/client';
 import { hash } from '@node-rs/argon2';
+import { DEFAULT_TRIAL_MONTHS, billingCyclePrice } from '@ecomesta/utils';
+import { BUILT_IN_THEMES } from '../src/modules/themes/theme-config.types';
+import { seedBangladeshLocations } from './seed-bangladesh-locations';
 
 const prisma = new PrismaClient();
 
 async function main(): Promise<void> {
-  const adminEmail = (process.env.SEED_SUPER_ADMIN_EMAIL ?? 'admin@ecomesta.local')
-    .trim()
-    .toLowerCase();
+  const bdLocations = await seedBangladeshLocations(prisma);
+
+  const adminEmail = (
+    process.env.SEED_SUPER_ADMIN_EMAIL?.trim() || 'admin@ecomesta.local'
+  ).toLowerCase();
   const adminPassword = process.env.SEED_SUPER_ADMIN_PASSWORD;
 
   if (!adminPassword || adminPassword.trim().length < 12) {
@@ -43,28 +59,44 @@ async function main(): Promise<void> {
     },
   });
 
-  const plan = await prisma.subscriptionPlan.upsert({
-    where: { slug: 'starter' },
-    update: {
-      name: 'Starter',
-      description: 'Development starter plan for demo tenants.',
-      monthlyPrice: 29,
-      yearlyPrice: 290,
-      active: true,
-    },
-    create: {
-      name: 'Starter',
-      slug: 'starter',
-      description: 'Development starter plan for demo tenants.',
-      monthlyPrice: 29,
-      yearlyPrice: 290,
+  // BDT reference prices; 6-month and yearly prices are derived from monthlyPrice.
+  const planFeatures = [
+    'Online store on your own Ecomesta web address',
+    'Products, variants, categories and inventory',
+    'Orders, customers and shipments in one dashboard',
+    'Cash on Delivery, SSLCommerz and Stripe checkout',
+    'Bangladesh delivery zones and coupons',
+    'Storefront themes and custom domain',
+  ];
+  const plans = [
+    { slug: 'starter', name: 'Starter', monthlyPrice: 499, tagline: 'For new online businesses', highlighted: false, sortOrder: 1 },
+    { slug: 'growth', name: 'Growth', monthlyPrice: 999, tagline: 'For growing online businesses', highlighted: true, sortOrder: 2 },
+    { slug: 'business', name: 'Business', monthlyPrice: 1999, tagline: 'For established online businesses', highlighted: false, sortOrder: 3 },
+  ];
+  let plan: { id: string; slug: string } | null = null;
+  for (const item of plans) {
+    const data = {
+      name: item.name,
+      description: item.tagline,
+      monthlyPrice: item.monthlyPrice,
+      yearlyPrice: billingCyclePrice(item.monthlyPrice, 'YEARLY'),
       active: true,
       configuration: {
-        maxStores: 3,
-        maxProducts: 500,
+        trialMonths: DEFAULT_TRIAL_MONTHS,
+        tagline: item.tagline,
+        highlighted: item.highlighted,
+        sortOrder: item.sortOrder,
+        features: planFeatures,
       },
-    },
-  });
+    };
+    const saved = await prisma.subscriptionPlan.upsert({
+      where: { slug: item.slug },
+      update: data,
+      create: { slug: item.slug, ...data },
+    });
+    plan ??= saved;
+  }
+  if (!plan) throw new Error('No subscription plan seeded');
 
   const tenant = await prisma.tenant.upsert({
     where: { slug: 'demo-merchant' },
@@ -99,12 +131,7 @@ async function main(): Promise<void> {
   });
 
   const store = await prisma.store.upsert({
-    where: {
-      tenantId_slug: {
-        tenantId: tenant.id,
-        slug: 'demo-store',
-      },
-    },
+    where: { slug: 'demo-store' },
     update: {
       name: 'Demo Store',
       description: 'Seeded demo store for local development.',
@@ -144,6 +171,29 @@ async function main(): Promise<void> {
     },
   });
 
+  for (const theme of BUILT_IN_THEMES) {
+    await prisma.theme.upsert({
+      where: { slug: theme.slug },
+      update: {
+        name: theme.name,
+        version: theme.version,
+        description: theme.description,
+        previewImageUrl: theme.previewImageUrl,
+        configuration: theme.configuration as Prisma.InputJsonValue,
+        active: true,
+      },
+      create: {
+        slug: theme.slug,
+        name: theme.name,
+        version: theme.version,
+        description: theme.description,
+        previewImageUrl: theme.previewImageUrl,
+        configuration: theme.configuration as Prisma.InputJsonValue,
+        active: true,
+      },
+    });
+  }
+
   const existingSubscription = await prisma.subscription.findFirst({
     where: {
       tenantId: tenant.id,
@@ -173,7 +223,15 @@ async function main(): Promise<void> {
   // eslint-disable-next-line no-console
   console.log(`  Store: ${store.slug}`);
   // eslint-disable-next-line no-console
-  console.log(`  Plan: ${plan.slug}`);
+  console.log(`  Plans: ${plans.map((item) => item.slug).join(', ')}`);
+  // eslint-disable-next-line no-console
+  console.log(
+    `  Themes: ${BUILT_IN_THEMES.map((theme) => theme.slug).join(', ')}`,
+  );
+  // eslint-disable-next-line no-console
+  console.log(
+    `  BD locations: ${bdLocations.divisions} divisions, ${bdLocations.districts} districts, ${bdLocations.upazilas} upazilas`,
+  );
 }
 
 main()

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { Fraunces, Source_Sans_3 } from 'next/font/google';
+import { AppProviders } from '@/components/providers';
 import './globals.css';
 
 const sourceSans = Source_Sans_3({
@@ -17,13 +18,15 @@ const fraunces = Fraunces({
 
 export const metadata: Metadata = {
   title: 'Ecomesta Admin',
-  description: 'Platform administration for Ecomesta',
+  description: 'Super Admin console for the Ecomesta platform',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${sourceSans.variable} ${fraunces.variable}`}>
-      <body>{children}</body>
+      <body>
+        <AppProviders>{children}</AppProviders>
+      </body>
     </html>
   );
 }

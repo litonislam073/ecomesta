@@ -10,8 +10,15 @@ export class PublicApiError extends Error {
   }
 }
 
-function apiBaseUrl(): string {
-  const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
+/**
+ * Server-side renders call the API over the private network when
+ * API_INTERNAL_URL is set; browsers always use the public URL.
+ */
+export function apiBaseUrl(): string {
+  const internal =
+    typeof window === 'undefined' ? process.env.API_INTERNAL_URL?.trim() : undefined;
+  const base =
+    internal || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
   return base.replace(/\/$/, '');
 }
 
@@ -45,12 +52,15 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return payload as T;
 }
 
-export async function publicGet<T>(path: string, init?: { signal?: AbortSignal }): Promise<T> {
+export async function publicGet<T>(
+  path: string,
+  init?: { signal?: AbortSignal; fresh?: boolean },
+): Promise<T> {
   const response = await fetch(`${apiBaseUrl()}${path}`, {
     method: 'GET',
     headers: { Accept: 'application/json' },
     signal: init?.signal,
-    next: { revalidate: 30 },
+    ...(init?.fresh ? { cache: 'no-store' as const } : { next: { revalidate: 30 } }),
   });
   return parseResponse<T>(response);
 }

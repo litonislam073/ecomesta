@@ -1,14 +1,19 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+import { DemoCatalogCta } from '@/components/catalog/demo-catalog-cta';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/lib/auth-context';
+import { useCanManageStore } from '@/lib/permissions';
 import { useStoreContext } from '@/lib/store-context';
 
 export default function DashboardHomePage() {
   const { user, loading: authLoading } = useAuth();
   const { selectedStore, stores, loading: storesLoading } = useStoreContext();
+  const canWrite = useCanManageStore();
+  const router = useRouter();
 
   if (authLoading || storesLoading) {
     return <LoadingState label="Loading dashboard" />;
@@ -31,6 +36,14 @@ export default function DashboardHomePage() {
           Account and store context for your merchant workspace.
         </p>
       </div>
+
+      {selectedStore ? (
+        <DemoCatalogCta
+          storeId={selectedStore.id}
+          canWrite={canWrite}
+          onImported={() => router.push('/dashboard/products')}
+        />
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <Card title="Selected store">

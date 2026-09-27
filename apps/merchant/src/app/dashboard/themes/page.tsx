@@ -1,10 +1,6 @@
-﻿import { ComingSoonPage } from '@/components/dashboard/coming-soon';
+﻿import { redirect } from 'next/navigation';
 
+/** Legacy placeholder route; theme customization lives at /dashboard/theme. */
 export default function Page() {
-  return (
-    <ComingSoonPage
-      title="Themes"
-      description="Theme customization is reserved for a later phase."
-    />
-  );
+  redirect('/dashboard/theme');
 }

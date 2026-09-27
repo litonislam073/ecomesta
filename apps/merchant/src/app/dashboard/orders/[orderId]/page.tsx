@@ -8,13 +8,15 @@ import type {
   OrderDetail,
   OrderStatus,
   PaymentStatus,
+  ShipmentStatus,
 } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
 import { StatusBadge } from '@/components/catalog/status-badge';
 import { StoreScoped } from '@/components/catalog/store-scoped';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { OrderTimeline } from '@/components/order-timeline';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
+import { Input } from '@/components/ui/input';
 import { LoadingState } from '@/components/ui/loading-state';
 import { Select } from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast';
@@ -42,6 +44,15 @@ const FULFILLMENT_NEXT: Partial<Record<FulfillmentStatus, FulfillmentStatus[]>> 
   FULFILLED: ['RETURNED'],
 };
 
+const SHIPMENT_NEXT: Partial<Record<ShipmentStatus, ShipmentStatus[]>> = {
+  PENDING: ['LABEL_CREATED', 'SHIPPED', 'CANCELLED'],
+  LABEL_CREATED: ['SHIPPED', 'CANCELLED'],
+  SHIPPED: ['IN_TRANSIT', 'DELIVERED', 'FAILED', 'RETURNED'],
+  IN_TRANSIT: ['DELIVERED', 'FAILED', 'RETURNED'],
+  DELIVERED: ['RETURNED'],
+  FAILED: ['PENDING', 'CANCELLED'],
+};
+
 function formatPerson(
   first: string | null,
   last: string | null,
@@ -63,6 +74,8 @@ function OrderDetailContent() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [trackingDraft, setTrackingDraft] = useState('');
 
   const load = useCallback(async () => {
     if (!selectedStoreId || !orderId) {
@@ -95,7 +108,11 @@ function OrderDetailContent() {
     void load();
   }, [load]);
 
-  async function patchStatus(path: string, body: Record<string, string>, success: string) {
+  async function patchStatus(
+    path: string,
+    body: Record<string, string>,
+    success: string,
+  ) {
     if (!selectedStoreId || !orderId) return;
     setBusy(true);
     try {
@@ -113,8 +130,51 @@ function OrderDetailContent() {
   }
 
   async function onCancel() {
-    await patchStatus('status', { status: 'CANCELLED' }, 'Order cancelled.');
+    const body: Record<string, string> = { status: 'CANCELLED' };
+    if (cancelReason.trim()) {
+      body.reason = cancelReason.trim().slice(0, 500);
+    }
+    await patchStatus('status', body, 'Order cancelled.');
     setCancelOpen(false);
+    setCancelReason('');
+  }
+
+  async function createShipment() {
+    if (!selectedStoreId || !orderId) return;
+    setBusy(true);
+    try {
+      await api.post(`/stores/${selectedStoreId}/orders/${orderId}/shipments`, {
+        provider: 'MANUAL',
+        status: 'PENDING',
+      });
+      pushToast('Shipment created', 'success');
+      await load();
+    } catch (err) {
+      pushToast(humanApiError(err, 'Could not create shipment'), 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function updateShipment(
+    shipmentId: string,
+    body: { status?: ShipmentStatus; trackingNumber?: string },
+  ) {
+    if (!selectedStoreId || !orderId) return;
+    setBusy(true);
+    try {
+      await api.patch(
+        `/stores/${selectedStoreId}/orders/${orderId}/shipments/${shipmentId}`,
+        body,
+      );
+      pushToast('Shipment updated', 'success');
+      setTrackingDraft('');
+      await load();
+    } catch (err) {
+      pushToast(humanApiError(err, 'Could not update shipment'), 'error');
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (!selectedStoreId) {
@@ -154,6 +214,11 @@ function OrderDetailContent() {
               <StatusBadge status={order.fulfillmentStatus} />
             </div>
           ) : null}
+          {order?.publicReference ? (
+            <p className="mt-2 text-xs text-[var(--color-muted)]">
+              Public reference: {order.publicReference}
+            </p>
+          ) : null}
         </div>
         {canWrite && order && nextStatuses.includes('CANCELLED') ? (
           <Button variant="danger" onClick={() => setCancelOpen(true)} disabled={busy}>
@@ -181,6 +246,14 @@ function OrderDetailContent() {
               <p className="text-sm text-[var(--color-muted)]">
                 {order.customer?.phone ?? shipping?.phone ?? '—'}
               </p>
+              {order.customerNote ? (
+                <p className="mt-2 text-sm">Note: {order.customerNote}</p>
+              ) : null}
+              {order.cancelReason ? (
+                <p className="mt-2 text-sm text-[var(--color-muted)]">
+                  Cancel reason: {order.cancelReason}
+                </p>
+              ) : null}
             </div>
             <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
               <h2 className="font-semibold">Placed</h2>
@@ -188,6 +261,12 @@ function OrderDetailContent() {
               <p className="text-sm text-[var(--color-muted)]">
                 Updated {new Date(order.updatedAt).toLocaleString()}
               </p>
+              {order.shippingMethodName ? (
+                <p className="mt-2 text-sm">
+                  Shipping: {order.shippingMethodName}
+                  {order.shippingMethodType ? ` (${order.shippingMethodType})` : ''}
+                </p>
+              ) : null}
             </div>
             <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
               <h2 className="font-semibold">Totals</h2>
@@ -199,7 +278,10 @@ function OrderDetailContent() {
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt>Discount</dt>
+                  <dt>
+                    Discount
+                    {order.couponCode ? ` (${order.couponCode})` : ''}
+                  </dt>
                   <dd>
                     {order.currency} {order.discountTotal}
                   </dd>
@@ -305,6 +387,13 @@ function OrderDetailContent() {
             />
           )}
 
+          <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+            <h2 className="font-semibold">Timeline</h2>
+            <div className="mt-4">
+              <OrderTimeline events={order.timeline ?? []} />
+            </div>
+          </section>
+
           <section className="space-y-3">
             <h2 className="text-xl font-semibold">Items</h2>
             <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
@@ -400,50 +489,186 @@ function OrderDetailContent() {
             </div>
           </section>
 
-          {order.payments.length > 0 ? (
-            <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-              <h2 className="font-semibold">Payment</h2>
-              <ul className="mt-2 space-y-2 text-sm">
+          <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+            <h2 className="font-semibold">Payment</h2>
+            {order.payments.length === 0 ? (
+              <p className="mt-2 text-sm text-[var(--color-muted)]">No payments recorded.</p>
+            ) : (
+              <ul className="mt-2 space-y-3 text-sm">
                 {order.payments.map((p) => (
-                  <li key={p.id} className="flex flex-wrap justify-between gap-2">
-                    <span>
-                      {p.provider} · {p.method}
-                    </span>
-                    <span>
-                      {p.currency} {p.amount} · {p.status}
-                    </span>
+                  <li
+                    key={p.id}
+                    className="rounded-md border border-[var(--color-border)] p-3"
+                  >
+                    <div className="flex flex-wrap justify-between gap-2">
+                      <span>
+                        {p.provider} · {p.method}
+                      </span>
+                      <StatusBadge status={p.status} />
+                    </div>
+                    <p className="mt-1 text-[var(--color-muted)]">
+                      {p.currency} {p.amount}
+                      {p.attemptNumber != null ? ` · attempt ${p.attemptNumber}` : ''}
+                    </p>
+                    {p.internalReference ? (
+                      <p className="text-xs text-[var(--color-muted)]">
+                        Ref: {p.internalReference}
+                      </p>
+                    ) : null}
+                    <p className="text-xs text-[var(--color-muted)]">
+                      {new Date(p.createdAt).toLocaleString()}
+                    </p>
                   </li>
                 ))}
               </ul>
-            </section>
-          ) : null}
+            )}
+          </section>
 
-          {order.shipments.length > 0 ? (
-            <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+          <section className="space-y-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-semibold">Shipments</h2>
-              <ul className="mt-2 space-y-2 text-sm">
-                {order.shipments.map((s) => (
-                  <li key={s.id}>
-                    {s.provider} · {s.status}
-                    {s.trackingNumber ? ` · ${s.trackingNumber}` : ''}
-                  </li>
-                ))}
+              {canWrite && order.status !== 'CANCELLED' ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={busy}
+                  onClick={() => void createShipment()}
+                >
+                  Create shipment
+                </Button>
+              ) : null}
+            </div>
+            {order.shipments.length === 0 ? (
+              <p className="text-sm text-[var(--color-muted)]">
+                No shipments yet.
+                {order.shippingMethodName
+                  ? ` Checkout method: ${order.shippingMethodName}.`
+                  : ''}
+              </p>
+            ) : (
+              <ul className="space-y-3 text-sm">
+                {order.shipments.map((s) => {
+                  const next =
+                    SHIPMENT_NEXT[(s.status as ShipmentStatus) ?? 'PENDING'] ?? [];
+                  return (
+                    <li
+                      key={s.id}
+                      className="rounded-md border border-[var(--color-border)] p-3"
+                    >
+                      <div className="flex flex-wrap justify-between gap-2">
+                        <span>
+                          {s.provider} · {s.status}
+                          {s.trackingNumber ? ` · ${s.trackingNumber}` : ''}
+                        </span>
+                      </div>
+                      {canWrite && next.length > 0 ? (
+                        <div className="mt-2 flex flex-wrap items-end gap-2">
+                          <label className="space-y-1">
+                            <span className="text-xs text-[var(--color-muted)]">
+                              Tracking
+                            </span>
+                            <Input
+                              value={trackingDraft}
+                              onChange={(e) => setTrackingDraft(e.target.value)}
+                              placeholder={s.trackingNumber ?? 'Tracking number'}
+                              maxLength={120}
+                            />
+                          </label>
+                          <Select
+                            value=""
+                            disabled={busy}
+                            onChange={(e) => {
+                              const value = e.target.value as ShipmentStatus;
+                              if (value) {
+                                void updateShipment(s.id, {
+                                  status: value,
+                                  trackingNumber:
+                                    trackingDraft.trim() ||
+                                    s.trackingNumber ||
+                                    undefined,
+                                });
+                              }
+                            }}
+                          >
+                            <option value="">Update status…</option>
+                            {next.map((status) => (
+                              <option key={status} value={status}>
+                                {status}
+                              </option>
+                            ))}
+                          </Select>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={busy || !trackingDraft.trim()}
+                            onClick={() =>
+                              void updateShipment(s.id, {
+                                trackingNumber: trackingDraft.trim(),
+                              })
+                            }
+                          >
+                            Save tracking
+                          </Button>
+                        </div>
+                      ) : null}
+                    </li>
+                  );
+                })}
               </ul>
+            )}
+          </section>
+
+          {order.internalNote && canWrite ? (
+            <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-sm">
+              <h2 className="font-semibold">Internal note</h2>
+              <p className="mt-2 text-[var(--color-muted)]">{order.internalNote}</p>
             </section>
           ) : null}
         </>
       ) : null}
 
-      <ConfirmDialog
-        open={cancelOpen}
-        title="Cancel this order?"
-        description="Inventory deducted for this order will be restored once. This cannot be undone."
-        confirmLabel="Cancel order"
-        danger
-        busy={busy}
-        onCancel={() => setCancelOpen(false)}
-        onConfirm={() => void onCancel()}
-      />
+      {cancelOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cancel-order-title"
+        >
+          <div className="w-full max-w-md rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-lg">
+            <h2 id="cancel-order-title" className="text-lg font-semibold">
+              Cancel this order?
+            </h2>
+            <p className="mt-2 text-sm text-[var(--color-muted)]">
+              Inventory deducted for this order will be restored once. This cannot be
+              undone.
+            </p>
+            <label className="mt-4 block space-y-1 text-sm">
+              <span>Customer-facing reason (optional)</span>
+              <Input
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                maxLength={500}
+                placeholder="e.g. Item out of stock"
+              />
+            </label>
+            <div className="mt-6 flex justify-end gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setCancelOpen(false);
+                  setCancelReason('');
+                }}
+                disabled={busy}
+              >
+                Keep order
+              </Button>
+              <Button variant="danger" onClick={() => void onCancel()} disabled={busy}>
+                {busy ? 'Working…' : 'Cancel order'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

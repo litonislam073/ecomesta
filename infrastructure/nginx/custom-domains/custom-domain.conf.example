@@ -1,0 +1,19 @@
+# Template for one verified custom store domain. Copy to <domain>.conf on the
+# VPS, replace every STORE_DOMAIN, and only after the certificate exists
+# (docs/deployment.md §10 "Custom domain certificates"). Files ending in
+# .example are not loaded by nginx.
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name STORE_DOMAIN;
+
+    ssl_certificate     /etc/letsencrypt/live/STORE_DOMAIN/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/STORE_DOMAIN/privkey.pem;
+    include /etc/nginx/snippets/tls.conf;
+    include /etc/nginx/snippets/security-headers.conf;
+
+    include /etc/nginx/snippets/deny-hidden.conf;
+    include /etc/nginx/snippets/storefront.conf;
+}

@@ -155,6 +155,16 @@ const sampleOrder = {
     },
   ],
   shipments: [],
+  timeline: [
+    {
+      type: 'ORDER_CREATED' as const,
+      label: 'Order placed',
+      description: 'Your order was received.',
+      occurredAt: '2026-01-01T00:00:00.000Z',
+    },
+  ],
+  publicReference: 'pub-ref-sample-1234567890',
+  cancelReason: null,
 };
 
 describe('Orders UI', () => {
@@ -213,27 +223,58 @@ describe('Orders UI', () => {
     });
   });
 
-  it('cancels an order with confirmation', async () => {
+  it('cancels an order with confirmation and optional reason', async () => {
     const user = userEvent.setup();
     api.get.mockResolvedValue({ success: true, data: sampleOrder });
     api.patch.mockResolvedValue({
       success: true,
-      data: { ...sampleOrder, status: 'CANCELLED' },
+      data: { ...sampleOrder, status: 'CANCELLED', cancelReason: 'Out of stock' },
     });
 
     render(<OrderDetailPage />);
     await screen.findByText('EM-100001');
+    expect(screen.getByText(/timeline/i)).toBeInTheDocument();
+    expect(screen.getByText(/order placed/i)).toBeInTheDocument();
+
     await user.click(screen.getByRole('button', { name: /cancel order/i }));
     const dialog = screen.getByRole('dialog');
+    await user.type(
+      within(dialog).getByPlaceholderText(/out of stock/i),
+      'Out of stock',
+    );
     await user.click(within(dialog).getByRole('button', { name: /cancel order/i }));
 
     await waitFor(() => {
       expect(api.patch).toHaveBeenCalledWith(
         '/stores/store-1/orders/ord-1/status',
-        { status: 'CANCELLED' },
+        { status: 'CANCELLED', reason: 'Out of stock' },
       );
     });
     expect(pushToast).toHaveBeenCalledWith('Order cancelled.', 'success');
+  });
+
+  it('applies sort and shipping filters on list search', async () => {
+    const user = userEvent.setup();
+    api.get.mockResolvedValue({
+      success: true,
+      data: {
+        items: [sampleOrder],
+        meta: { total: 1, page: 1, limit: 20, totalPages: 1 },
+      },
+    });
+    render(<OrdersPage />);
+    await screen.findByRole('link', { name: 'EM-100001' });
+
+    await user.selectOptions(screen.getByLabelText(/sort orders/i), 'highest');
+    await user.type(screen.getByLabelText(/shipping method filter/i), 'Free');
+    await user.click(screen.getByRole('button', { name: /^search$/i }));
+
+    await waitFor(() => {
+      const url = String(api.get.mock.calls.at(-1)?.[0] ?? '');
+      expect(url).toContain('sortBy=grandTotal');
+      expect(url).toContain('sortOrder=desc');
+      expect(url).toContain('shippingMethod=Free');
+    });
   });
 
   it('hides write controls for staff', async () => {

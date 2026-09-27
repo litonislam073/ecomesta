@@ -71,7 +71,7 @@ Platform (Super Admin)
 | --- | --- |
 | `users.email` | Globally unique identity |
 | `tenants.slug` | Globally unique tenant slug |
-| `stores(tenant_id, slug)` | Store slug unique per tenant |
+| `stores.slug` | Globally unique store slug (it is the storefront subdomain label) |
 | `tenant_users(tenant_id, user_id)` | One membership per tenant |
 | `store_users(store_id, user_id)` | One membership per store |
 | `products(store_id, slug)` | Product slug unique per store |

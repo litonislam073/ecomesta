@@ -1,0 +1,1 @@
+ALTER TYPE "BillingCycle" ADD VALUE 'SEMI_ANNUAL';

@@ -146,6 +146,8 @@ pnpm db:studio        # Prisma Studio
 - [Catalog](docs/catalog.md)
 - [Customers](docs/customers.md)
 - [Merchant dashboard](docs/merchant-dashboard.md)
+- [Merchant settings](docs/merchant-settings.md)
+- [Super Admin platform console](docs/admin-platform.md)
 
 ## License
 

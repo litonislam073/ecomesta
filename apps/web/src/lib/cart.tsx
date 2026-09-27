@@ -28,12 +28,15 @@ type CartState = {
   storeSlug: string;
   currency: string;
   lines: CartLine[];
+  /** Store-scoped coupon code draft (validated server-side at apply/checkout). */
+  couponCode: string | null;
 };
 
 type CartContextValue = {
   storeSlug: string;
   currency: string;
   lines: CartLine[];
+  couponCode: string | null;
   itemCount: number;
   subtotal: string;
   drawerOpen: boolean;
@@ -42,6 +45,7 @@ type CartContextValue = {
   setQuantity: (key: string, quantity: number) => void;
   removeItem: (key: string) => void;
   clear: () => void;
+  setCouponCode: (code: string | null) => void;
   lineKey: (line: Pick<CartLine, 'productId' | 'variantId'>) => string;
 };
 
@@ -56,7 +60,7 @@ export function lineKey(line: Pick<CartLine, 'productId' | 'variantId'>) {
 }
 
 function emptyCart(storeId: string, storeSlug: string, currency: string): CartState {
-  return { storeId, storeSlug, currency, lines: [] };
+  return { storeId, storeSlug, currency, lines: [], couponCode: null };
 }
 
 export function CartProvider({
@@ -86,6 +90,10 @@ export function CartProvider({
             ...parsed,
             currency: currency || parsed.currency,
             lines: Array.isArray(parsed.lines) ? parsed.lines : [],
+            couponCode:
+              typeof parsed.couponCode === 'string' && parsed.couponCode.trim()
+                ? parsed.couponCode.trim().toUpperCase()
+                : null,
           });
         } else {
           setState(emptyCart(storeId, storeSlug, currency));
@@ -114,6 +122,7 @@ export function CartProvider({
             storeSlug,
             currency,
             lines: [{ ...line, quantity: qty }],
+            couponCode: null,
           };
         }
         const key = lineKey(line);
@@ -158,7 +167,14 @@ export function CartProvider({
   }, []);
 
   const clear = useCallback(() => {
-    setState((prev) => ({ ...prev, lines: [] }));
+    setState((prev) => ({ ...prev, lines: [], couponCode: null }));
+  }, []);
+
+  const setCouponCode = useCallback((code: string | null) => {
+    setState((prev) => ({
+      ...prev,
+      couponCode: code?.trim() ? code.trim().toUpperCase() : null,
+    }));
   }, []);
 
   const itemCount = useMemo(
@@ -179,6 +195,7 @@ export function CartProvider({
     storeSlug,
     currency,
     lines: state.lines,
+    couponCode: state.couponCode,
     itemCount,
     subtotal,
     drawerOpen,
@@ -187,6 +204,7 @@ export function CartProvider({
     setQuantity,
     removeItem,
     clear,
+    setCouponCode,
     lineKey,
   };
 
