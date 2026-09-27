@@ -49,7 +49,7 @@ export function AuthSplit({ eyebrow, heading, description, points, children }: A
 export function AuthLayout({
   current,
   ...split
-}: AuthSplitProps & { current: MarketingCurrentPage }) {
+}: AuthSplitProps & { current?: MarketingCurrentPage }) {
   return (
     <MarketingShell
       siteOrigin={marketingSiteUrl()}

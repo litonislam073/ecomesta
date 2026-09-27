@@ -45,6 +45,18 @@ x-api-env: &api-env
   TRUST_PROXY: "true"
   TRUSTED_PROXY_HOPS: "1"
   LOG_LEVEL: ${LOG_LEVEL:-info}
+  # Transactional email (API only; never passed to the Next.js apps).
+  # Unset EMAIL_PROVIDER_MODE = delivery disabled; smtp requires every SMTP_* value.
+  EMAIL_PROVIDER_MODE: ${EMAIL_PROVIDER_MODE:-}
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
+  SMTP_FROM_NAME: ${SMTP_FROM_NAME:-}
+  SMTP_SECURE: ${SMTP_SECURE:-}
+  APP_PUBLIC_URL: ${APP_PUBLIC_URL:-}
+  SUPPORT_EMAIL: ${SUPPORT_EMAIL:-}
 
 services:
   postgres:

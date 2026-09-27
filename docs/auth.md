@@ -20,8 +20,17 @@
 | POST | `/api/v1/auth/refresh` | Refresh cookie or body |
 | POST | `/api/v1/auth/logout` | Access token |
 | GET | `/api/v1/auth/me` | Access token |
+| POST | `/api/v1/auth/forgot-password` | Public |
+| POST | `/api/v1/auth/reset-password/validate` | Public |
+| POST | `/api/v1/auth/reset-password` | Public |
+| POST | `/api/v1/auth/email-verification/send` | Access token |
+| POST | `/api/v1/auth/email-verification/confirm` | Public |
 
 OpenAPI: `/api/docs`
+
+Password reset and email verification use single-use, expiring tokens stored as
+SHA-256 hashes in `auth_tokens`. A completed reset revokes every refresh session.
+See [email.md](./email.md) for the full flow, emails and rate limits.
 
 ## Cookie vs body refresh tokens
 
@@ -48,6 +57,7 @@ Cross-app CORS uses `WEB_URL`, `MERCHANT_URL`, `ADMIN_URL`, and `CORS_ORIGINS` w
 
 1. Global Nest `ThrottlerGuard` (120 req / 60s baseline)
 2. Auth-specific Redis counters (`auth:rl:*`) for register/login/refresh, with in-memory fallback if Redis is temporarily unavailable
+3. Account recovery counters: forgot password 5/hour per IP and per email, verification email 5/hour per user and per IP (429 `TOO_MANY_REQUESTS`)
 
 ## Security middleware
 

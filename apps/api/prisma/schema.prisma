@@ -234,10 +234,35 @@ model User {
   auditLogs         AuditLog[]
   notifications     Notification[]
   authSessions      AuthSession[]
+  authTokens        AuthToken[]
+  emailDeliveries   EmailDelivery[]
 
   @@index([status])
   @@index([platformRole])
   @@map("users")
+}
+
+enum AuthTokenPurpose {
+  PASSWORD_RESET
+  EMAIL_VERIFICATION
+}
+
+/// Single-use emailed tokens. Only the SHA-256 hash of the token is stored.
+model AuthToken {
+  id          String           @id @default(uuid()) @db.Uuid
+  userId      String           @map("user_id") @db.Uuid
+  purpose     AuthTokenPurpose
+  tokenHash   String           @unique @map("token_hash")
+  expiresAt   DateTime         @map("expires_at")
+  usedAt      DateTime?        @map("used_at")
+  requestedIp String?          @map("requested_ip")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+  @@index([expiresAt])
+  @@map("auth_tokens")
 }
 
 model AuthSession {
@@ -1188,4 +1213,46 @@ model Notification {
   @@index([storeId])
   @@index([createdAt])
   @@map("notifications")
+}
+
+enum EmailDeliveryStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+/// Transactional email outbox and delivery log. Never holds passwords, tokens
+/// or rendered bodies; `payload` keeps non-secret template data only until the
+/// delivery reaches a final state, then it is cleared.
+model EmailDelivery {
+  id                String              @id @default(uuid()) @db.Uuid
+  eventType         String              @map("event_type")
+  status            EmailDeliveryStatus @default(PENDING)
+  idempotencyKey    String?             @unique @map("idempotency_key")
+  userId            String?             @map("user_id") @db.Uuid
+  tenantId          String?             @map("tenant_id") @db.Uuid
+  storeId           String?             @map("store_id") @db.Uuid
+  recipientHash     String?             @map("recipient_hash")
+  provider          String?
+  payload           Json?
+  attempts          Int                 @default(0)
+  nextAttemptAt     DateTime?           @map("next_attempt_at")
+  lockedAt          DateTime?           @map("locked_at")
+  sentAt            DateTime?           @map("sent_at")
+  failedAt          DateTime?           @map("failed_at")
+  errorCategory     String?             @map("error_category")
+  providerMessageId String?             @map("provider_message_id")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, nextAttemptAt])
+  @@index([userId])
+  @@index([tenantId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("email_deliveries")
 }

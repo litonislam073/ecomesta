@@ -14,6 +14,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { BillingAccessService } from '../billing/billing-access.service';
+import { EmailService } from '../email/email.service';
 import { CreateStoreDto } from './dto/create-store.dto';
 import {
   STORE_SLUG_TAKEN_MESSAGE,
@@ -28,6 +29,7 @@ export class StoresService {
     private readonly authorization: AuthorizationService,
     private readonly audit: AuditService,
     private readonly billingAccess: BillingAccessService,
+    private readonly email: EmailService,
   ) {}
 
   async createForTenant(
@@ -67,6 +69,23 @@ export class StoresService {
           },
         });
 
+        const owner = await tx.user.findUniqueOrThrow({
+          where: { id: userId },
+          select: { firstName: true },
+        });
+        await this.email.sendStoreCreated(
+          { userId, tenantId, storeId: store.id },
+          {
+            firstName: owner.firstName,
+            storeName: store.name,
+            storeSlug: store.slug,
+            planName: null,
+            billingCycle: null,
+            trialEndsAt: null,
+          },
+          tx,
+        );
+
         return { store, membership };
       })
       .catch((error: unknown) => {
@@ -75,6 +94,7 @@ export class StoresService {
         }
         throw error;
       });
+    this.email.dispatchPending();
 
     await this.audit.log({
       action: 'STORE_CREATED',

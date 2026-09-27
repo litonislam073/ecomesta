@@ -70,7 +70,10 @@ export const DASHBOARD_NAV: NavSection[] = [
   },
   {
     title: 'Account',
-    items: [{ href: '/dashboard/billing', label: 'Plan & billing', ready: true }],
+    items: [
+      { href: '/dashboard/billing', label: 'Plan & billing', ready: true },
+      { href: '/dashboard/support', label: 'Help & support', ready: true },
+    ],
   },
 ];
 

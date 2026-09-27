@@ -8,11 +8,17 @@ export default function NotificationSettingsPage() {
         title="Notifications"
         description="Email notifications for you and your customers."
       />
-      <Card title="Email notifications">
+      <Card title="Account emails">
         <p className="text-sm text-[var(--color-muted)]">
-          Notification infrastructure will be connected when email delivery is enabled.
-          Until then, new orders appear in your dashboard and customers follow their order
-          on the tracking page.
+          Ecomesta emails your account address about your account and security: your welcome
+          message, email confirmation, new stores, password reset links and password changes.
+          These emails can&apos;t be turned off.
+        </p>
+      </Card>
+      <Card title="Order notifications">
+        <p className="text-sm text-[var(--color-muted)]">
+          Order emails for you and your customers are not available yet. New orders appear in
+          your dashboard and customers follow their order on the tracking page.
         </p>
       </Card>
     </div>

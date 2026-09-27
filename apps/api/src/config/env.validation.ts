@@ -1,6 +1,8 @@
 import { plainToInstance } from 'class-transformer';
 import {
+  IsEmail,
   IsEnum,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -10,6 +12,9 @@ import {
   Min,
   validateSync,
 } from 'class-validator';
+
+export const EMAIL_PROVIDER_MODES = ['smtp', 'console', 'disabled'] as const;
+export type EmailProviderMode = (typeof EMAIL_PROVIDER_MODES)[number];
 
 enum NodeEnvironment {
   Development = 'development',
@@ -119,9 +124,89 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsString()
   TRUSTED_PROXY_HOPS?: string;
+
+  /**
+   * `smtp` delivers through SMTP_*; `console` logs safe metadata only
+   * (development/test); `disabled` records deliveries as skipped. Defaults to
+   * `console` outside production and `disabled` in production.
+   */
+  @IsOptional()
+  @IsIn(EMAIL_PROVIDER_MODES)
+  EMAIL_PROVIDER_MODE?: EmailProviderMode;
+
+  @IsOptional()
+  @IsString()
+  SMTP_HOST?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(65535)
+  SMTP_PORT?: number;
+
+  @IsOptional()
+  @IsString()
+  SMTP_USER?: string;
+
+  @IsOptional()
+  @IsString()
+  SMTP_PASSWORD?: string;
+
+  @IsOptional()
+  @IsEmail()
+  SMTP_FROM_EMAIL?: string;
+
+  @IsOptional()
+  @IsString()
+  SMTP_FROM_NAME?: string;
+
+  /** `true` for implicit TLS (port 465); STARTTLS is used otherwise. */
+  @IsOptional()
+  @IsIn(['true', 'false'])
+  SMTP_SECURE?: string;
+
+  /** Public marketing origin used for links and the logo in emails. Falls back to WEB_URL. */
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  APP_PUBLIC_URL?: string;
+
+  @IsOptional()
+  @IsEmail()
+  SUPPORT_EMAIL?: string;
+
+  /** Development only: write rendered emails to this directory instead of logging nothing. */
+  @IsOptional()
+  @IsString()
+  EMAIL_PREVIEW_DIR?: string;
+
+  @IsOptional()
+  @IsString()
+  EMAIL_DISPATCH_INTERVAL_MS?: string;
 }
 
-export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {
+/** Optional settings where an empty `KEY=` line in an env file means "not set". */
+const EMPTY_MEANS_UNSET = [
+  'EMAIL_PROVIDER_MODE',
+  'SMTP_HOST',
+  'SMTP_PORT',
+  'SMTP_USER',
+  'SMTP_PASSWORD',
+  'SMTP_FROM_EMAIL',
+  'SMTP_FROM_NAME',
+  'SMTP_SECURE',
+  'APP_PUBLIC_URL',
+  'SUPPORT_EMAIL',
+  'EMAIL_PREVIEW_DIR',
+  'EMAIL_DISPATCH_INTERVAL_MS',
+];
+
+export function validateEnv(rawConfig: Record<string, unknown>): EnvironmentVariables {
+  const config = { ...rawConfig };
+  for (const key of EMPTY_MEANS_UNSET) {
+    if (typeof config[key] === 'string' && (config[key] as string).trim() === '') {
+      delete config[key];
+    }
+  }
   const validated = plainToInstance(EnvironmentVariables, config, {
     enableImplicitConversion: true,
   });
@@ -303,4 +388,41 @@ function assertProductionSafety(env: EnvironmentVariables): void {
   if (isLocalHostname(rootDomain) || !rootDomain.includes('.')) {
     fail('PLATFORM_ROOT_DOMAIN must be a public domain in production');
   }
+
+  assertProductionEmail(env);
+}
+
+function assertProductionEmail(env: EnvironmentVariables): void {
+  if (env.EMAIL_PROVIDER_MODE === 'console') {
+    fail('EMAIL_PROVIDER_MODE=console is not allowed in production; use smtp or disabled');
+  }
+  if (env.EMAIL_PREVIEW_DIR?.trim()) {
+    fail('EMAIL_PREVIEW_DIR must not be set in production');
+  }
+  if (env.EMAIL_PROVIDER_MODE !== 'smtp') {
+    return;
+  }
+  const required = {
+    SMTP_HOST: env.SMTP_HOST,
+    SMTP_PORT: env.SMTP_PORT,
+    SMTP_USER: env.SMTP_USER,
+    SMTP_PASSWORD: env.SMTP_PASSWORD,
+    SMTP_FROM_EMAIL: env.SMTP_FROM_EMAIL,
+    SMTP_FROM_NAME: env.SMTP_FROM_NAME,
+    SUPPORT_EMAIL: env.SUPPORT_EMAIL,
+    APP_PUBLIC_URL: env.APP_PUBLIC_URL,
+  };
+  const missing = Object.entries(required)
+    .filter(([, value]) => value === undefined || String(value).trim() === '')
+    .map(([name]) => name);
+  if (missing.length > 0) {
+    fail(`EMAIL_PROVIDER_MODE=smtp requires ${missing.join(', ')}`);
+  }
+  if (PLACEHOLDER_PATTERN.test(env.SMTP_PASSWORD ?? '')) {
+    fail('SMTP_PASSWORD looks like a placeholder value');
+  }
+  if (isLocalHostname(env.SMTP_HOST ?? '')) {
+    fail('SMTP_HOST must not point at a local/development host in production');
+  }
+  assertPublicHttpsUrl('APP_PUBLIC_URL', env.APP_PUBLIC_URL ?? '');
 }

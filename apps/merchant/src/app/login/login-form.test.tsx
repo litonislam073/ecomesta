@@ -79,7 +79,7 @@ describe('Login form', () => {
     expect(screen.getByLabelText('Password')).toHaveAttribute('autocomplete', 'current-password');
     expect(screen.getByRole('link', { name: 'Create your store' })).toHaveAttribute('href', '/register');
     expect(screen.getByText('Your account is protected with secure authentication.')).toBeInTheDocument();
-    expect(screen.queryByText(/forgot/i)).toBeNull();
+    expect(screen.getByRole('link', { name: 'Forgot password?' })).toHaveAttribute('href', '/forgot-password');
   });
 
   it('submits email and password to login', async () => {

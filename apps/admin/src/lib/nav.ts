@@ -29,6 +29,10 @@ export const ADMIN_NAV: NavSection[] = [
     ],
   },
   {
+    title: 'Platform',
+    items: [{ href: '/dashboard/email', label: 'Email' }],
+  },
+  {
     title: 'Compliance',
     items: [{ href: '/dashboard/audit-logs', label: 'Audit Logs' }],
   },

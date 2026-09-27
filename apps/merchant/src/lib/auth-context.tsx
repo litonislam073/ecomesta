@@ -16,6 +16,7 @@ export interface AuthUser {
   email: string;
   firstName: string | null;
   lastName: string | null;
+  emailVerified?: boolean;
   platformRole: string;
   status: string;
   memberships: {

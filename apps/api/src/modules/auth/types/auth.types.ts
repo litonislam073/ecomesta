@@ -46,6 +46,7 @@ export interface SafeUserProfile {
   firstName: string | null;
   lastName: string | null;
   phone: string | null;
+  emailVerified: boolean;
   status: string;
   platformRole: string;
   memberships: {

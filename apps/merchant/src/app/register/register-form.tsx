@@ -7,17 +7,11 @@ import { Button } from '@ecomesta/ui';
 import { LoadingState } from '@/components/ui/loading-state';
 import { AuthField, FormAlert, PasswordField, SecureNote } from '@/components/auth/auth-fields';
 import { authErrorMessage, isValidEmail } from '@/components/auth/auth-errors';
+import { PasswordRules, meetsPasswordRules } from '@/components/auth/password-rules';
 import { billingCycleDefinition } from '@ecomesta/utils';
 import { useAuth } from '@/lib/auth-context';
 import { readPlanSelection, safeNextPath, withPlanSelection } from '@/lib/plan-selection';
 import { usePublicPlans } from '@/lib/subscription-context';
-
-/** Mirrors RegisterDto in the API; the API remains the source of truth. */
-const PASSWORD_RULES = [
-  { id: 'length', label: '8 to 128 characters', test: (v: string) => v.length >= 8 && v.length <= 128 },
-  { id: 'letter', label: 'At least one letter', test: (v: string) => /[A-Za-z]/.test(v) },
-  { id: 'number', label: 'At least one number', test: (v: string) => /\d/.test(v) },
-] as const;
 
 type Field = 'firstName' | 'lastName' | 'email' | 'phone' | 'password';
 type FieldErrors = Partial<Record<Field, string>>;
@@ -40,34 +34,10 @@ function validate(values: Record<Field, string>): FieldErrors {
   else if (!isValidEmail(values.email)) errors.email = 'Enter a valid email address.';
   if (values.phone.trim().length > 32) errors.phone = 'Use 32 characters or fewer.';
   if (!values.password) errors.password = 'Create a password.';
-  else if (!PASSWORD_RULES.every((rule) => rule.test(values.password))) {
+  else if (!meetsPasswordRules(values.password)) {
     errors.password = 'Password does not meet the requirements below.';
   }
   return errors;
-}
-
-function PasswordRules({ password }: { password: string }) {
-  return (
-    <ul className="mt-1 grid gap-1 sm:grid-cols-3" aria-label="Password requirements">
-      {PASSWORD_RULES.map((rule) => {
-        const met = rule.test(password);
-        return (
-          <li
-            key={rule.id}
-            className={`flex items-center gap-1.5 text-sm ${met ? 'text-[var(--color-accent)]' : 'text-[var(--color-muted)]'}`}
-          >
-            <svg aria-hidden="true" viewBox="0 0 20 20" className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              {met ? <path d="M4 10.5l4 4 8-9" /> : <circle cx="10" cy="10" r="3" />}
-            </svg>
-            <span>
-              {rule.label}
-              <span className="sr-only">{met ? ' (met)' : ' (not met)'}</span>
-            </span>
-          </li>
-        );
-      })}
-    </ul>
-  );
 }
 
 export default function RegisterPage() {

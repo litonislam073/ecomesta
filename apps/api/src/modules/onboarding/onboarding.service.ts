@@ -12,6 +12,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { BillingService } from '../billing/billing.service';
 import { SubscriptionLifecycleService } from '../billing/subscription-lifecycle.service';
+import { EmailService } from '../email/email.service';
 import {
   STORE_SLUG_TAKEN_MESSAGE,
   assertStoreSlugAvailable,
@@ -26,6 +27,7 @@ export class OnboardingService {
     private readonly audit: AuditService,
     private readonly billing: BillingService,
     private readonly lifecycle: SubscriptionLifecycleService,
+    private readonly email: EmailService,
   ) {}
 
   async createTenantAndStore(userId: string, dto: OnboardStoreDto, req?: Request) {
@@ -87,6 +89,23 @@ export class OnboardingService {
             })
           : null;
 
+        const owner = await tx.user.findUniqueOrThrow({
+          where: { id: userId },
+          select: { firstName: true },
+        });
+        await this.email.sendStoreCreated(
+          { userId, tenantId: tenant.id, storeId: store.id },
+          {
+            firstName: owner.firstName,
+            storeName: store.name,
+            storeSlug: store.slug,
+            planName: plan?.name ?? null,
+            billingCycle: subscription?.billingCycle ?? null,
+            trialEndsAt: subscription?.trialEndsAt?.toISOString() ?? null,
+          },
+          tx,
+        );
+
         return { tenant, store, subscription };
       })
       .catch((error: unknown) => {
@@ -96,6 +115,7 @@ export class OnboardingService {
         }
         throw error;
       });
+    this.email.dispatchPending();
 
     await this.audit.log({
       action: 'TENANT_CREATED',

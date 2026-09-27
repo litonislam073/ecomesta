@@ -124,6 +124,14 @@ export default function LoginPage() {
             if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: undefined }));
           }}
         />
+        <div className="-mt-2 text-right">
+          <Link
+            href="/forgot-password"
+            className="rounded-sm text-sm font-semibold text-[var(--color-accent)] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          >
+            Forgot password?
+          </Link>
+        </div>
 
         {error ? <FormAlert message={error.message} details={error.details} /> : null}
 

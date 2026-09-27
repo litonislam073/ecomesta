@@ -122,4 +122,70 @@ describe('validateEnv production gates', () => {
       /PLATFORM_ROOT_DOMAIN must be a public domain/,
     );
   });
+
+  describe('email', () => {
+    const smtp = {
+      EMAIL_PROVIDER_MODE: 'smtp',
+      SMTP_HOST: 'smtp.mailprovider.net',
+      SMTP_PORT: '587',
+      SMTP_USER: 'ecomesta-mailer',
+      SMTP_PASSWORD: 'kP9vT2mQ7xL4sN8wR3zB',
+      SMTP_FROM_EMAIL: 'no-reply@ecomesta.com',
+      SMTP_FROM_NAME: 'Ecomesta',
+      SMTP_SECURE: 'false',
+      SUPPORT_EMAIL: 'support@ecomesta.com',
+      APP_PUBLIC_URL: 'https://ecomesta.com',
+    };
+
+    it('starts without any email settings (delivery disabled)', () => {
+      expect(messageFor({})).toBe('');
+    });
+
+    it('treats empty email variables as unset', () => {
+      expect(
+        messageFor({ EMAIL_PROVIDER_MODE: '', SMTP_PORT: '', SMTP_FROM_EMAIL: '', APP_PUBLIC_URL: '' }),
+      ).toBe('');
+    });
+
+    it('accepts a complete SMTP configuration', () => {
+      expect(messageFor(smtp)).toBe('');
+    });
+
+    it('requires every SMTP setting when EMAIL_PROVIDER_MODE=smtp', () => {
+      for (const key of [
+        'SMTP_HOST',
+        'SMTP_PORT',
+        'SMTP_USER',
+        'SMTP_PASSWORD',
+        'SMTP_FROM_EMAIL',
+        'SMTP_FROM_NAME',
+        'SUPPORT_EMAIL',
+        'APP_PUBLIC_URL',
+      ]) {
+        expect(messageFor({ ...smtp, [key]: undefined })).toMatch(new RegExp(key));
+      }
+    });
+
+    it('rejects placeholder SMTP passwords, local hosts and http public URLs', () => {
+      expect(messageFor({ ...smtp, SMTP_PASSWORD: 'CHANGE_ME' })).toMatch(/SMTP_PASSWORD/);
+      expect(messageFor({ ...smtp, SMTP_HOST: 'localhost' })).toMatch(/SMTP_HOST/);
+      expect(messageFor({ ...smtp, APP_PUBLIC_URL: 'http://ecomesta.com' })).toMatch(/APP_PUBLIC_URL/);
+    });
+
+    it('rejects console mode and preview directories in production', () => {
+      expect(messageFor({ EMAIL_PROVIDER_MODE: 'console' })).toMatch(/console is not allowed/);
+      expect(messageFor({ EMAIL_PREVIEW_DIR: '/tmp/mail' })).toMatch(/EMAIL_PREVIEW_DIR/);
+    });
+
+    it('rejects unknown modes and malformed addresses', () => {
+      expect(messageFor({ EMAIL_PROVIDER_MODE: 'sendmail' })).not.toBe('');
+      expect(messageFor({ ...smtp, SUPPORT_EMAIL: 'not-an-email' })).not.toBe('');
+    });
+
+    it('does not print SMTP secrets in validation errors', () => {
+      const message = messageFor({ ...smtp, SMTP_FROM_NAME: undefined });
+      expect(message).not.toContain(smtp.SMTP_PASSWORD);
+      expect(message).not.toContain(smtp.SMTP_USER);
+    });
+  });
 });

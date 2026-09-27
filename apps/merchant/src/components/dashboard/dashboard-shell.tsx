@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@ecomesta/ui';
 import { SubscriptionBanner, SuspendedScreen } from '@/components/billing/subscription-notices';
+import { EmailVerificationBanner } from '@/components/dashboard/email-verification-banner';
 import { SidebarNav } from '@/components/dashboard/sidebar-nav';
 import { StoreSelector } from '@/components/dashboard/store-selector';
 import { ViewStoreLink } from '@/components/dashboard/view-store-link';
@@ -148,6 +149,7 @@ function DashboardFrame({ children }: { children: ReactNode }) {
           ) : null}
 
           <main className="flex-1 px-4 py-6 md:px-6">
+            <EmailVerificationBanner />
             <SubscriptionGate pathname={pathname}>{children}</SubscriptionGate>
           </main>
         </div>

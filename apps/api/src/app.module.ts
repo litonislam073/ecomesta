@@ -19,6 +19,7 @@ import { CategoriesModule } from './modules/categories/categories.module';
 import { CustomersModule } from './modules/customers/customers.module';
 import { DemoCatalogModule } from './modules/demo-catalog/demo-catalog.module';
 import { DomainsModule } from './modules/domains/domains.module';
+import { EmailModule } from './modules/email/email.module';
 import { CouponsModule } from './modules/coupons/coupons.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { MembershipModule } from './modules/membership/membership.module';
@@ -30,6 +31,7 @@ import { PublicStorefrontModule } from './modules/public-storefront/public-store
 import { ShipmentsModule } from './modules/shipments/shipments.module';
 import { ShippingModule } from './modules/shipping/shipping.module';
 import { StoresModule } from './modules/stores/stores.module';
+import { SupportModule } from './modules/support/support.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { ThemesModule } from './modules/themes/themes.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -62,6 +64,7 @@ import { RedisModule } from './redis/redis.module';
           'req.headers.cookie',
           'req.body.password',
           'req.body.refreshToken',
+          'req.body.token',
           'res.headers["set-cookie"]',
         ],
       },
@@ -84,6 +87,7 @@ import { RedisModule } from './redis/redis.module';
     PrismaModule,
     RedisModule,
     AuditModule,
+    EmailModule,
     AuthorizationModule,
     BillingModule,
     HealthModule,
@@ -106,6 +110,7 @@ import { RedisModule } from './redis/redis.module';
     ThemesModule,
     DomainsModule,
     AdminModule,
+    SupportModule,
   ],
   providers: [
     {

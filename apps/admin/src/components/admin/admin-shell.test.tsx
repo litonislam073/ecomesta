@@ -59,6 +59,7 @@ describe('Admin shell auth gate', () => {
     expect(screen.getByRole('navigation', { name: /platform admin/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Users' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Audit Logs' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Email' })).toHaveAttribute('href', '/dashboard/email');
   });
 
   it('shows a session placeholder while the refresh call is in flight', () => {

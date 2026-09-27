@@ -380,8 +380,9 @@ describe('Merchant settings', () => {
     it('notifications page does not offer fake toggles', () => {
       render(<NotificationSettingsPage />);
       expect(
-        screen.getByText(/Notification infrastructure will be connected when email delivery is enabled/),
+        screen.getByText(/Order emails for you and your customers are not available yet/),
       ).toBeInTheDocument();
+      expect(screen.getByText(/password reset links and password changes/)).toBeInTheDocument();
       expect(screen.queryByRole('checkbox')).toBeNull();
     });
 

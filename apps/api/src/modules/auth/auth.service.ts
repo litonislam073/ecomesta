@@ -10,6 +10,7 @@ import { MembershipStatus, PlatformRole, UserStatus } from '@prisma/client';
 import type { Request, Response } from 'express';
 import { clientIp } from '../../common/utils/request-host.util';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EmailService } from '../email/email.service';
 import { PasswordService } from './password.service';
 import { AuthRateLimitService } from './auth-rate-limit.service';
 import { LoginDto } from './dto/login.dto';
@@ -39,6 +40,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly rateLimit: AuthRateLimitService,
+    private readonly email: EmailService,
   ) {}
 
   async register(dto: RegisterDto, req: Request, res: Response) {
@@ -51,17 +53,22 @@ export class AuthService {
     }
 
     const passwordHash = await this.passwordService.hash(dto.password);
-    const user = await this.prisma.user.create({
-      data: {
-        email,
-        passwordHash,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        phone: dto.phone,
-        platformRole: PlatformRole.USER,
-        status: UserStatus.ACTIVE,
-      },
+    const user = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          email,
+          passwordHash,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          phone: dto.phone,
+          platformRole: PlatformRole.USER,
+          status: UserStatus.ACTIVE,
+        },
+      });
+      await this.email.sendWelcomeEmail(created, tx);
+      return created;
     });
+    this.email.dispatchPending();
 
     const tokens = await this.issueSession(user.id, user.email, user.platformRole, req);
     this.setRefreshCookie(res, tokens.refreshToken);
@@ -362,6 +369,7 @@ export class AuthService {
         phone: true,
         status: true,
         platformRole: true,
+        emailVerifiedAt: true,
       },
     });
 
@@ -373,6 +381,7 @@ export class AuthService {
       firstName: user.firstName,
       lastName: user.lastName,
       phone: user.phone,
+      emailVerified: user.emailVerifiedAt !== null,
       status: user.status,
       platformRole: user.platformRole,
       memberships,

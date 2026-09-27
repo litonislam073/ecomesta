@@ -11,8 +11,10 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
+import { AccountRecoveryService } from './account-recovery.service';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { EmailTokenDto, ForgotPasswordDto, ResetPasswordDto } from './dto/account-recovery.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -23,7 +25,10 @@ import { REFRESH_COOKIE_NAME } from './types/auth.types';
 @ApiTags('auth')
 @Controller({ path: 'auth', version: '1' })
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly recovery: AccountRecoveryService,
+  ) {}
 
   @Post('register')
   @ApiOperation({ summary: 'Register a new user account' })
@@ -85,5 +90,44 @@ export class AuthController {
   @ApiOperation({ summary: 'Return the authenticated user profile and memberships' })
   async me(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.me(user.userId);
+  }
+
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Email password reset instructions (generic response whether or not the account exists)',
+  })
+  forgotPassword(@Body() dto: ForgotPasswordDto, @Req() req: Request) {
+    return this.recovery.forgotPassword(dto.email, req);
+  }
+
+  @Post('reset-password/validate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Check that a password reset token is valid, unused and unexpired' })
+  validateResetToken(@Body() dto: EmailTokenDto, @Req() req: Request) {
+    return this.recovery.validateResetToken(dto.token, req);
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Set a new password with a reset token and revoke all sessions' })
+  resetPassword(@Body() dto: ResetPasswordDto, @Req() req: Request) {
+    return this.recovery.resetPassword(dto.token, dto.password, req);
+  }
+
+  @Post('email-verification/send')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Email a verification link to the signed-in user' })
+  sendEmailVerification(@CurrentUser() user: AuthenticatedUser, @Req() req: Request) {
+    return this.recovery.requestEmailVerification(user.userId, req);
+  }
+
+  @Post('email-verification/confirm')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Confirm an email address with a verification token' })
+  confirmEmailVerification(@Body() dto: EmailTokenDto, @Req() req: Request) {
+    return this.recovery.confirmEmailVerification(dto.token, req);
   }
 }

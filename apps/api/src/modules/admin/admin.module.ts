@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { AdminAuditController } from './admin-audit.controller';
 import { AdminAuditService } from './admin-audit.service';
+import { AdminEmailController } from './admin-email.controller';
 import { AdminPlansController } from './admin-plans.controller';
 import { AdminPlansService } from './admin-plans.service';
 import { AdminStatsService } from './admin-stats.service';
@@ -25,6 +26,7 @@ import { AdminController } from './admin.controller';
     AdminPlansController,
     AdminSubscriptionsController,
     AdminAuditController,
+    AdminEmailController,
   ],
   providers: [
     AdminStatsService,

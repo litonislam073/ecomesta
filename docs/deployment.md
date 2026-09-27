@@ -161,6 +161,22 @@ short / well-known one), `http://` or localhost app URLs or CORS origins, a `*`
 CORS origin, or a missing / non-public `PLATFORM_ROOT_DOMAIN`.
 `scripts/deploy-staging.sh` runs a lighter pre-check before building.
 
+**Transactional email** (API only, see [email.md](./email.md)):
+
+| Variable | Value |
+| --- | --- |
+| `EMAIL_PROVIDER_MODE` | `smtp` (leave unset/`disabled` until SMTP is ready; `console` is rejected) |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` | Provider server; `587` + `false` (STARTTLS) or `465` + `true` |
+| `SMTP_USER` / `SMTP_PASSWORD` | Provider credentials (never `NEXT_PUBLIC_*`) |
+| `SMTP_FROM_EMAIL` / `SMTP_FROM_NAME` | e.g. `no-reply@<root>` / `Ecomesta` |
+| `APP_PUBLIC_URL` | `https://<root>` |
+| `SUPPORT_EMAIL` | Inbox that receives merchant support requests |
+
+With `smtp`, the API refuses to start if any of these is missing, the password
+is a placeholder, the host is local or `APP_PUBLIC_URL` is not public https.
+Configure SPF, DKIM and DMARC for the sender domain. Email delivery runs inside
+the existing `api` container; no extra service is needed.
+
 Never commit `.env.production`; it is git-ignored, excluded from Docker build
 contexts (`.dockerignore`), and never copied into images.
 
@@ -504,6 +520,7 @@ Migration compatibility rules (Prisma has no down migrations here):
 | Logged out on every refresh | Refresh cookie needs HTTPS (`Secure`); check the API is reached via `https://api.<root>` |
 | Many `429` on login/checkout | Per-IP limits; check nginx passes the real client IP (`X-Forwarded-For`) |
 | Wrong architecture (`exec format error`) | Image built on a different CPU architecture; build on the VPS |
+| Emails not arriving | Super Admin → Email shows the mode and failure category; see [email.md](./email.md#troubleshooting) |
 
 ---
 
