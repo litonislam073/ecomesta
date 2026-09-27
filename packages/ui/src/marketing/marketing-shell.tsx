@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { MarketingHeaderFrame } from './header-frame';
 import { MobileNav } from './mobile-nav';
 import { FOOTER_NAV, PRIMARY_NAV, marketingHref } from './nav';
 import { ButtonLink } from './primitives';
@@ -51,7 +52,7 @@ export function MarketingHeader({
   }));
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/75">
+    <MarketingHeaderFrame>
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-3 focus:z-50 focus:rounded-md focus:bg-white focus:px-4 focus:py-2 focus:shadow"
@@ -88,7 +89,7 @@ export function MarketingHeader({
           <MobileNav items={primary} loginHref={loginHref} registerHref={registerHref} />
         </div>
       </div>
-    </header>
+    </MarketingHeaderFrame>
   );
 }
 

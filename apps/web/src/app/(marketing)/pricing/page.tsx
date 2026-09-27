@@ -1,5 +1,6 @@
 import type { PublicPlan } from '@ecomesta/types';
 import { PAYMENT_GRACE_DAYS } from '@ecomesta/utils';
+import { FadeUp } from '@/components/animations/fade';
 import { CtaSection, FaqList, JsonLd, PageHero } from '@/components/marketing/blocks';
 import { PricingPlans } from '@/components/marketing/pricing-plans';
 import { ButtonLink, Container } from '@/components/marketing/ui';
@@ -96,12 +97,14 @@ export default async function PricingPage() {
       </section>
       <section aria-labelledby="pricing-faq" className="border-t border-[var(--color-border)] bg-white/60 py-14">
         <Container className="max-w-3xl">
-          <h2 id="pricing-faq" className="font-display text-2xl tracking-tight sm:text-3xl">
-            Pricing questions
-          </h2>
-          <div className="mt-6">
-            <FaqList faqs={FAQS} />
-          </div>
+          <FadeUp>
+            <h2 id="pricing-faq" className="font-display text-2xl tracking-tight sm:text-3xl">
+              Pricing questions
+            </h2>
+            <div className="mt-6">
+              <FaqList faqs={FAQS} />
+            </div>
+          </FadeUp>
         </Container>
       </section>
       <CtaSection />

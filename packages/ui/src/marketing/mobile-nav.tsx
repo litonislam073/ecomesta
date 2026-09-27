@@ -51,8 +51,10 @@ export function MobileNav({
 
       <div
         id={panelId}
-        hidden={!open}
-        className="absolute inset-x-0 top-full border-b border-[var(--color-border)] bg-white shadow-lg"
+        aria-hidden={!open}
+        className={`absolute inset-x-0 top-full border-b border-[var(--color-border)] bg-white shadow-lg transition-[opacity,transform,visibility] duration-200 ease-out motion-reduce:transition-none ${
+          open ? 'visible translate-y-0 opacity-100' : 'pointer-events-none invisible -translate-y-2 opacity-0'
+        }`}
       >
         <nav aria-label="Mobile" className="mx-auto max-w-6xl px-4 py-4 sm:px-6">
           <ul className="space-y-1">

@@ -1,4 +1,5 @@
 import { CtaSection, JsonLd, LinkCard, PageHero } from '@/components/marketing/blocks';
+import { FadeUp } from '@/components/animations/fade';
 import { ButtonLink, Container } from '@/components/marketing/ui';
 import { breadcrumbJsonLd, buildMetadata } from '@/lib/marketing/seo';
 import { contactEmail, loginUrl, registerUrl } from '@/lib/marketing/site';
@@ -28,7 +29,7 @@ export default function ContactPage() {
         crumbs={CRUMBS}
       />
       <Container className="grid gap-8 py-14 lg:grid-cols-2">
-        <section aria-labelledby="reach-us" className="rounded-2xl border border-[var(--color-border)] bg-white p-8">
+        <FadeUp as="section" aria-labelledby="reach-us" className="rounded-2xl border border-[var(--color-border)] bg-white p-8">
           <h2 id="reach-us" className="font-display text-2xl tracking-tight">
             Reach the Ecomesta team
           </h2>
@@ -60,15 +61,15 @@ export default function ContactPage() {
               Merchant login
             </ButtonLink>
           </div>
-        </section>
-        <section aria-labelledby="self-serve" className="space-y-4">
+        </FadeUp>
+        <FadeUp as="section" delay={0.08} aria-labelledby="self-serve" className="space-y-4">
           <h2 id="self-serve" className="font-display text-2xl tracking-tight">
             Find answers now
           </h2>
           <LinkCard href="/faq" title="FAQ" description="Stores, payments, delivery, checkout and more." />
           <LinkCard href="/resources" title="Resources" description="Setup guides for every part of the platform." />
           <LinkCard href="/pricing" title="Pricing" description="Plans in BDT and the 2-month free trial." />
-        </section>
+        </FadeUp>
       </Container>
       <CtaSection />
     </>

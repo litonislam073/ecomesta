@@ -1,6 +1,9 @@
 import { contentPath, type ContentPage } from '@/lib/marketing/content';
 import { breadcrumbJsonLd, faqJsonLd, type Crumb } from '@/lib/marketing/seo';
 import { registerUrl } from '@/lib/marketing/site';
+import { FadeUp } from '../animations/fade';
+import { StaggerContainer } from '../animations/stagger';
+import { StaggerItem } from '../animations/stagger-item';
 import { CtaSection, FaqList, Flow, JsonLd, LinkCard, PageHero } from './blocks';
 import { ButtonLink, CheckList, Container } from './ui';
 
@@ -40,7 +43,7 @@ export function ContentPageView({ page }: { page: ContentPage }) {
       <Container className="grid gap-12 py-14 lg:grid-cols-[1fr_300px] lg:gap-16">
         <div className="min-w-0 space-y-12">
           {page.sections.map((section) => (
-            <section key={section.heading} aria-labelledby={slugify(section.heading)}>
+            <FadeUp as="section" key={section.heading} aria-labelledby={slugify(section.heading)}>
               <h2
                 id={slugify(section.heading)}
                 className="font-display text-2xl tracking-tight text-[var(--color-ink)] sm:text-3xl"
@@ -58,7 +61,7 @@ export function ContentPageView({ page }: { page: ContentPage }) {
                 </p>
               ))}
               {section.bullets ? <CheckList items={section.bullets} className="mt-5" /> : null}
-            </section>
+            </FadeUp>
           ))}
         </div>
 
@@ -78,28 +81,30 @@ export function ContentPageView({ page }: { page: ContentPage }) {
       {page.faqs.length ? (
         <section aria-labelledby="page-faq" className="border-t border-[var(--color-border)] bg-white/60 py-14">
           <Container className="max-w-3xl">
-            <h2 id="page-faq" className="font-display text-2xl tracking-tight sm:text-3xl">
-              Frequently asked questions
-            </h2>
-            <div className="mt-6">
-              <FaqList faqs={page.faqs} />
-            </div>
+            <FadeUp>
+              <h2 id="page-faq" className="font-display text-2xl tracking-tight sm:text-3xl">
+                Frequently asked questions
+              </h2>
+              <div className="mt-6">
+                <FaqList faqs={page.faqs} />
+              </div>
+            </FadeUp>
           </Container>
         </section>
       ) : null}
 
       <section aria-labelledby="related-heading" className="py-14">
         <Container>
-          <h2 id="related-heading" className="font-display text-2xl tracking-tight sm:text-3xl">
+          <FadeUp as="h2" distance={16} id="related-heading" className="font-display text-2xl tracking-tight sm:text-3xl">
             Related
-          </h2>
-          <ul className="mt-6 grid gap-4 md:grid-cols-3">
+          </FadeUp>
+          <StaggerContainer as="ul" className="mt-6 grid gap-4 md:grid-cols-3">
             {page.related.map((link) => (
-              <li key={link.href}>
+              <StaggerItem as="li" key={link.href}>
                 <LinkCard href={link.href} title={link.label} description={link.description} />
-              </li>
+              </StaggerItem>
             ))}
-          </ul>
+          </StaggerContainer>
         </Container>
       </section>
 
@@ -135,13 +140,13 @@ export function HubPageView({
       </PageHero>
       <section aria-label={`${eyebrow} pages`} className="py-14">
         <Container>
-          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <StaggerContainer as="ul" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {pages.map((page) => (
-              <li key={page.slug}>
+              <StaggerItem as="li" key={page.slug}>
                 <LinkCard href={contentPath(page)} title={page.name} description={page.summary} headingLevel={2} />
-              </li>
+              </StaggerItem>
             ))}
-          </ul>
+          </StaggerContainer>
         </Container>
       </section>
       {children}

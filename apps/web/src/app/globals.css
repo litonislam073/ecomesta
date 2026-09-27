@@ -17,3 +17,120 @@ body {
     linear-gradient(180deg, #f7f4ef 0%, #efe8dc 100%);
   min-height: 100vh;
 }
+
+/*
+ * Marketing motion. Entrances use `backwards` fill so the element returns to its own
+ * styles (including hover transforms) once the animation ends.
+ */
+@keyframes em-enter {
+  from {
+    opacity: 0;
+    transform: var(--em-from);
+  }
+}
+
+@keyframes em-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes em-float {
+  50% {
+    transform: translate3d(0, -6px, 0);
+  }
+}
+
+@keyframes em-drift {
+  from {
+    transform: scale(1.06);
+  }
+  to {
+    transform: scale(1.06) translate3d(-1.5%, 1.5%, 0);
+  }
+}
+
+@keyframes em-price-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 4px, 0);
+  }
+}
+
+.em-enter {
+  --em-from: var(--em-from-lg, translate3d(0, 20px, 0));
+  animation: em-enter var(--em-duration, 600ms) cubic-bezier(0.22, 1, 0.36, 1) var(--em-delay, 0ms) backwards;
+}
+
+.em-page-in {
+  animation: em-fade 200ms ease-out backwards;
+}
+
+.em-float {
+  animation: em-float 7s ease-in-out var(--em-delay, 0ms) infinite;
+}
+
+.em-drift {
+  animation: em-drift 18s ease-in-out infinite alternate;
+}
+
+.em-price-in {
+  animation: em-price-in 180ms ease-out backwards;
+}
+
+.em-hover-lift {
+  transition:
+    transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 200ms ease-out,
+    border-color 150ms ease-out,
+    color 150ms ease-out;
+}
+
+.em-hover-icon {
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (hover: hover) {
+  .em-hover-lift:hover {
+    transform: translate3d(0, -4px, 0);
+    box-shadow: 0 16px 36px -20px rgba(16, 35, 30, 0.38);
+  }
+
+  .em-hover-lift:hover .em-hover-icon {
+    transform: translate3d(0, -1px, 0) scale(1.06);
+  }
+}
+
+@media (max-width: 767px) {
+  .em-enter {
+    --em-from: var(--em-from-sm, translate3d(0, 10px, 0));
+    animation-duration: calc(var(--em-duration, 600ms) * 0.8);
+  }
+
+  .em-float,
+  .em-drift {
+    animation: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .em-enter,
+  .em-page-in,
+  .em-float,
+  .em-drift,
+  .em-price-in {
+    animation: none !important;
+  }
+
+  .em-hover-lift {
+    transition:
+      box-shadow 150ms ease-out,
+      border-color 150ms ease-out,
+      color 150ms ease-out;
+  }
+
+  .em-hover-lift:hover,
+  .em-hover-lift:hover .em-hover-icon {
+    transform: none;
+  }
+}

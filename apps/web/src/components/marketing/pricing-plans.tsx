@@ -9,6 +9,8 @@ import {
   formatBdt,
   type BillingCycleCode,
 } from '@ecomesta/utils';
+import { StaggerContainer } from '../animations/stagger';
+import { StaggerItem } from '../animations/stagger-item';
 
 const PERIOD_SUFFIX: Record<BillingCycleCode, string> = {
   MONTHLY: '/month',
@@ -40,12 +42,25 @@ export function PricingPlans({
   merchantOrigin: string;
 }) {
   const [cycle, setCycle] = useState<BillingCycleCode>('MONTHLY');
+  const [switched, setSwitched] = useState(false);
+  const cycleIndex = Math.max(
+    0,
+    BILLING_CYCLES.findIndex((option) => option.code === cycle),
+  );
 
   return (
     <div>
       <fieldset className="mx-auto w-full max-w-md">
         <legend className="sr-only">Billing period</legend>
-        <div className="grid grid-cols-3 gap-1 rounded-xl border border-[var(--color-border)] bg-white p-1">
+        <div className="relative grid grid-cols-3 gap-1 rounded-xl border border-[var(--color-border)] bg-white p-1">
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-1 left-1 rounded-lg bg-[#10231e] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+            style={{
+              width: 'calc((100% - 1rem) / 3)',
+              transform: `translateX(calc(${cycleIndex} * (100% + 0.25rem)))`,
+            }}
+          />
           {BILLING_CYCLES.map((option) => {
             const checked = option.code === cycle;
             const id = `pricing-cycle-${option.slug}`;
@@ -53,9 +68,9 @@ export function PricingPlans({
               <label
                 key={option.code}
                 htmlFor={id}
-                className={`flex min-h-12 cursor-pointer flex-col items-center justify-center rounded-lg px-1 py-1.5 text-center text-sm has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--color-accent)] ${
+                className={`relative flex min-h-12 cursor-pointer flex-col items-center justify-center rounded-lg px-1 py-1.5 text-center text-sm transition-colors duration-200 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--color-accent)] ${
                   checked
-                    ? 'bg-[#10231e] font-semibold text-white'
+                    ? 'font-semibold text-white'
                     : 'text-[var(--color-ink)] hover:bg-[#eef5f2]'
                 }`}
               >
@@ -66,11 +81,14 @@ export function PricingPlans({
                   value={option.slug}
                   className="sr-only"
                   checked={checked}
-                  onChange={() => setCycle(option.code)}
+                  onChange={() => {
+                    setCycle(option.code);
+                    setSwitched(true);
+                  }}
                 />
                 <span>{option.label}</span>
                 {option.discountPercent > 0 ? (
-                  <span className={`text-xs ${checked ? 'text-[#b9e4d3]' : 'text-[var(--color-accent)]'}`}>
+                  <span className={`text-xs transition-colors duration-200 ${checked ? 'text-[#b9e4d3]' : 'text-[var(--color-accent)]'}`}>
                     Save {option.discountPercent}%
                   </span>
                 ) : null}
@@ -80,16 +98,17 @@ export function PricingPlans({
         </div>
       </fieldset>
 
-      <ul className="mt-10 grid gap-6 lg:grid-cols-3" aria-label="Plans">
+      <StaggerContainer as="ul" step={0.08} distance={20} className="mt-10 grid gap-6 lg:grid-cols-3" aria-label="Plans">
         {plans.map((plan) => {
           const price = priceFor(plan, cycle);
           const amount = price?.amount ?? plan.monthlyPrice;
           const headingId = `plan-${plan.slug}`;
           return (
-            <li
+            <StaggerItem
+              as="li"
               key={plan.slug}
               aria-labelledby={headingId}
-              className={`relative flex min-w-0 flex-col rounded-2xl border bg-white p-6 sm:p-8 ${
+              className={`em-hover-lift relative flex min-w-0 flex-col rounded-2xl border bg-white p-6 sm:p-8 ${
                 plan.highlighted ? 'border-2 border-[var(--color-accent)] shadow-lg' : 'border-[var(--color-border)]'
               }`}
             >
@@ -108,10 +127,15 @@ export function PricingPlans({
                 {plan.trialMonths} Months Free
               </p>
               <p className="mt-4 flex flex-wrap items-baseline gap-x-1.5">
-                <span className="font-display text-4xl tracking-tight text-[var(--color-ink)]">{formatBdt(amount)}</span>
+                <span
+                  key={switched ? cycle : undefined}
+                  className={`inline-block font-display text-4xl tracking-tight text-[var(--color-ink)] ${switched ? 'em-price-in' : ''}`}
+                >
+                  {formatBdt(amount)}
+                </span>
                 <span className="text-[var(--color-muted)]">{PERIOD_SUFFIX[cycle]} after trial</span>
               </p>
-              <p className="mt-1 min-h-5 text-sm text-[var(--color-muted)]">
+              <p key={switched ? cycle : undefined} className={`mt-1 min-h-5 text-sm text-[var(--color-muted)] ${switched ? 'em-price-in' : ''}`}>
                 {price && price.months > 1
                   ? `${formatBdt(Math.round(price.effectiveMonthly))}/month · Save ${price.discountPercent}%`
                   : 'Billed monthly after your trial'}
@@ -131,10 +155,10 @@ export function PricingPlans({
               {plan.features.length > 0 ? (
                 <CheckList className="mt-6 border-t border-[var(--color-border)] pt-6 text-sm" items={plan.features} />
               ) : null}
-            </li>
+            </StaggerItem>
           );
         })}
-      </ul>
+      </StaggerContainer>
     </div>
   );
 }

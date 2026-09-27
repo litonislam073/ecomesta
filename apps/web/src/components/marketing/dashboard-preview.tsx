@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import { Floating } from '../animations/decorative';
 
 const ORDERS = [
   { number: 'EM-100003', item: 'Cotton T-Shirt · Size M', payment: 'COD', paymentTone: 'amber', status: 'Pending' },
@@ -88,7 +89,7 @@ export function DashboardPreview() {
         </div>
       </div>
 
-      <div className="absolute -bottom-6 -left-3 hidden w-40 overflow-hidden rounded-xl border border-[var(--color-border)] bg-white shadow-xl sm:block md:-left-8">
+      <Floating className="absolute -bottom-6 -left-3 hidden w-40 overflow-hidden rounded-xl border border-[var(--color-border)] bg-white shadow-xl sm:block md:-left-8">
         <Image
           src="/demo-catalog/wireless-headphones.jpg"
           alt=""
@@ -104,12 +105,15 @@ export function DashboardPreview() {
             Add to cart
           </span>
         </div>
-      </div>
+      </Floating>
 
-      <div className="absolute -right-2 -top-4 hidden rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-[11px] shadow-lg sm:block md:-right-6">
+      <Floating
+        delay={1.2}
+        className="absolute -right-2 -top-4 hidden rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-[11px] shadow-lg sm:block md:-right-6"
+      >
         <p className="font-semibold">Payment verified</p>
         <p className="text-[var(--color-muted)]">SSLCommerz · order marked paid</p>
-      </div>
+      </Floating>
 
       <figcaption className="sr-only">
         Illustration of the Ecomesta merchant dashboard using sample products: recent orders with

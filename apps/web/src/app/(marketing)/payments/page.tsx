@@ -1,4 +1,5 @@
 import { HubPageView } from '@/components/marketing/content-page';
+import { FadeUp } from '@/components/animations/fade';
 import { CheckList, Container, SectionHeader } from '@/components/marketing/ui';
 import { PAYMENT_PAGES } from '@/lib/marketing/content';
 import { buildMetadata } from '@/lib/marketing/seo';
@@ -52,12 +53,14 @@ export default function PaymentsPage() {
     >
       <section aria-labelledby="payment-options" className="border-t border-[var(--color-border)] bg-white py-16">
         <Container>
-          <SectionHeader
-            id="payment-options"
-            title="Payment options at a glance"
-            description="A provider appears at checkout only after the store has connected and enabled it."
-          />
-          <div className="mt-8 overflow-x-auto rounded-xl border border-[var(--color-border)]">
+          <FadeUp>
+            <SectionHeader
+              id="payment-options"
+              title="Payment options at a glance"
+              description="A provider appears at checkout only after the store has connected and enabled it."
+            />
+          </FadeUp>
+          <FadeUp delay={0.06} className="mt-8 overflow-x-auto rounded-xl border border-[var(--color-border)]">
             <table className="w-full min-w-[560px] text-left text-sm">
               <thead className="bg-[#f3f6f5] text-[var(--color-ink)]">
                 <tr>
@@ -76,8 +79,8 @@ export default function PaymentsPage() {
                 ))}
               </tbody>
             </table>
-          </div>
-          <div className="mt-10 grid gap-8 md:grid-cols-2">
+          </FadeUp>
+          <FadeUp className="mt-10 grid gap-8 md:grid-cols-2">
             <div>
               <h3 className="text-lg font-semibold">What customers see</h3>
               <CheckList
@@ -98,7 +101,7 @@ export default function PaymentsPage() {
                 SSLCommerz account, and refunds are issued from your provider’s own panel.
               </p>
             </div>
-          </div>
+          </FadeUp>
         </Container>
       </section>
     </HubPageView>

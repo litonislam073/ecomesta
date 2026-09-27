@@ -1,5 +1,6 @@
 import { Flow } from '@/components/marketing/blocks';
 import { HubPageView } from '@/components/marketing/content-page';
+import { FadeUp } from '@/components/animations/fade';
 import { CheckList, Container, SectionHeader } from '@/components/marketing/ui';
 import { SHIPPING_PAGES } from '@/lib/marketing/content';
 import { buildMetadata } from '@/lib/marketing/seo';
@@ -25,16 +26,20 @@ export default function ShippingPage() {
     >
       <section aria-labelledby="shipping-flow" className="border-t border-[var(--color-border)] bg-white py-16">
         <Container className="space-y-10">
-          <SectionHeader
-            id="shipping-flow"
-            title="From address to delivery charge"
-            description="The customer’s address selects a zone, the zone offers methods, and the chosen method sets the rate — all calculated on the server."
-          />
-          <Flow
-            label="Delivery charge calculation"
-            steps={['Division', 'District', 'Upazila', 'Shipping zone', 'Shipping method', 'Shipping rate']}
-          />
-          <div className="grid gap-8 md:grid-cols-2">
+          <FadeUp>
+            <SectionHeader
+              id="shipping-flow"
+              title="From address to delivery charge"
+              description="The customer’s address selects a zone, the zone offers methods, and the chosen method sets the rate — all calculated on the server."
+            />
+          </FadeUp>
+          <FadeUp delay={0.06}>
+            <Flow
+              label="Delivery charge calculation"
+              steps={['Division', 'District', 'Upazila', 'Shipping zone', 'Shipping method', 'Shipping rate']}
+            />
+          </FadeUp>
+          <FadeUp className="grid gap-8 md:grid-cols-2">
             <div>
               <h3 className="text-lg font-semibold">Included today</h3>
               <CheckList
@@ -58,7 +63,7 @@ export default function ShippingPage() {
                 customer sees it on the order tracking page.
               </p>
             </div>
-          </div>
+          </FadeUp>
         </Container>
       </section>
     </HubPageView>

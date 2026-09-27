@@ -1,4 +1,5 @@
 import { CtaSection, JsonLd, PageHero } from '@/components/marketing/blocks';
+import { FadeUp } from '@/components/animations/fade';
 import { CheckList, Container } from '@/components/marketing/ui';
 import { breadcrumbJsonLd, buildMetadata, organizationJsonLd } from '@/lib/marketing/seo';
 
@@ -25,7 +26,7 @@ export default function AboutPage() {
         crumbs={CRUMBS}
       />
       <Container className="max-w-3xl space-y-12 py-14">
-        <section>
+        <FadeUp as="section">
           <h2 className="font-display text-2xl tracking-tight">Why we built Ecomesta</h2>
           <p className="mt-4 text-lg leading-relaxed text-[var(--color-muted)]">
             Many ecommerce tools are designed for other markets first. Selling in Bangladesh has its
@@ -33,8 +34,8 @@ export default function AboutPage() {
             Delivery, and local payment gateways. Ecomesta starts from those realities instead of
             adding them later.
           </p>
-        </section>
-        <section>
+        </FadeUp>
+        <FadeUp as="section">
           <h2 className="font-display text-2xl tracking-tight">What we care about</h2>
           <CheckList
             className="mt-5"
@@ -45,15 +46,15 @@ export default function AboutPage() {
               'Honesty — we describe what the product does today, not what it might do someday',
             ]}
           />
-        </section>
-        <section>
+        </FadeUp>
+        <FadeUp as="section">
           <h2 className="font-display text-2xl tracking-tight">Where we are today</h2>
           <p className="mt-4 text-lg leading-relaxed text-[var(--color-muted)]">
             Ecomesta already covers the core of an online store — catalog, inventory, orders,
             payments, delivery zones, coupons, themes and custom domains. Every plan starts with 2 months
             free, and we are improving the platform with feedback from merchants.
           </p>
-        </section>
+        </FadeUp>
       </Container>
       <CtaSection />
     </>

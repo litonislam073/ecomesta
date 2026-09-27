@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import type { Crumb, Faq } from '@/lib/marketing/seo';
 import { registerUrl } from '@/lib/marketing/site';
+import { AccordionItem } from '../animations/accordion-item';
+import { FadeUp } from '../animations/fade';
 import { ButtonLink, Container } from './ui';
 
 export function JsonLd({ data }: { data: Record<string, unknown> | Record<string, unknown>[] }) {
@@ -67,18 +69,24 @@ export function FaqList({ faqs, headingLevel = 3 }: { faqs: Faq[]; headingLevel?
   return (
     <div className="divide-y divide-[var(--color-border)] rounded-xl border border-[var(--color-border)] bg-white">
       {faqs.map((faq) => (
-        <details key={faq.question} className="group px-5 py-1 [&_summary::-webkit-details-marker]:hidden">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-md py-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]">
-            <Heading className="text-base font-semibold text-[var(--color-ink)]">{faq.question}</Heading>
-            <span
-              aria-hidden="true"
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] text-[var(--color-accent)] transition-transform group-open:rotate-45"
-            >
-              +
-            </span>
-          </summary>
+        <AccordionItem
+          key={faq.question}
+          className="group px-5 py-1 [&_summary::-webkit-details-marker]:hidden"
+          summaryClassName="flex cursor-pointer list-none items-center justify-between gap-4 rounded-md py-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
+          summary={
+            <>
+              <Heading className="text-base font-semibold text-[var(--color-ink)]">{faq.question}</Heading>
+              <span
+                aria-hidden="true"
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] text-[var(--color-accent)] transition-transform duration-200 group-open:rotate-45 group-data-[closing]:!rotate-0 motion-reduce:transition-none"
+              >
+                +
+              </span>
+            </>
+          }
+        >
           <p className="pb-5 leading-relaxed text-[var(--color-muted)]">{faq.answer}</p>
-        </details>
+        </AccordionItem>
       ))}
     </div>
   );
@@ -99,14 +107,17 @@ export function LinkCard({
   return (
     <Link
       href={href}
-      className="group flex h-full flex-col rounded-xl border border-[var(--color-border)] bg-white p-5 transition hover:-translate-y-0.5 hover:border-[var(--color-accent)] hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+      className="em-hover-lift group flex h-full flex-col rounded-xl border border-[var(--color-border)] bg-white p-5 hover:border-[var(--color-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
     >
       <Heading className="font-semibold text-[var(--color-ink)] group-hover:text-[var(--color-accent)]">
         {title}
       </Heading>
       <p className="mt-2 text-sm leading-relaxed text-[var(--color-muted)]">{description}</p>
       <span aria-hidden="true" className="mt-auto pt-4 text-sm font-semibold text-[var(--color-accent)]">
-        Learn more →
+        Learn more{' '}
+        <span className="inline-block transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none">
+          →
+        </span>
       </span>
     </Link>
   );
@@ -125,13 +136,13 @@ export function CtaSection({
         <div className="relative overflow-hidden rounded-2xl bg-[#10231e] px-6 py-12 text-center sm:px-12">
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 opacity-60"
+            className="em-drift pointer-events-none absolute inset-0 opacity-60"
             style={{
               background:
                 'radial-gradient(circle at 15% 20%, rgba(52,168,140,0.35), transparent 45%), radial-gradient(circle at 85% 90%, rgba(212,160,90,0.25), transparent 40%)',
             }}
           />
-          <div className="relative">
+          <FadeUp className="relative">
             <h2 id="cta-heading" className="font-display text-3xl tracking-tight text-white sm:text-4xl">
               {title}
             </h2>
@@ -144,7 +155,7 @@ export function CtaSection({
                 Explore Features
               </ButtonLink>
             </div>
-          </div>
+          </FadeUp>
         </div>
       </Container>
     </section>
@@ -168,14 +179,20 @@ export function PageHero({
     <section className="border-b border-[var(--color-border)] bg-gradient-to-b from-[#eef5f2] to-[#fbfaf7]">
       <Container className="py-12 sm:py-16">
         {crumbs ? <Breadcrumbs crumbs={crumbs} /> : null}
-        <p className="mt-6 text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-accent)]">
+        <FadeUp on="load" as="p" distance={12} className="mt-6 text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-accent)]">
           {eyebrow}
-        </p>
-        <h1 className="mt-3 max-w-3xl font-display text-4xl leading-[1.1] tracking-tight sm:text-5xl">
+        </FadeUp>
+        <FadeUp on="load" as="h1" delay={0.04} className="mt-3 max-w-3xl font-display text-4xl leading-[1.1] tracking-tight sm:text-5xl">
           {title}
-        </h1>
-        <p className="mt-5 max-w-2xl text-lg leading-relaxed text-[var(--color-muted)]">{intro}</p>
-        {children}
+        </FadeUp>
+        <FadeUp on="load" as="p" delay={0.1} className="mt-5 max-w-2xl text-lg leading-relaxed text-[var(--color-muted)]">
+          {intro}
+        </FadeUp>
+        {children ? (
+          <FadeUp on="load" delay={0.16}>
+            {children}
+          </FadeUp>
+        ) : null}
       </Container>
     </section>
   );

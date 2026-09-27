@@ -52,7 +52,7 @@ export function SectionHeader({
 }: {
   eyebrow?: string;
   title: string;
-  description?: string;
+  description?: ReactNode;
   id?: string;
   align?: 'left' | 'center';
 }) {

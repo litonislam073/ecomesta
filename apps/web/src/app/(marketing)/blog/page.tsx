@@ -1,5 +1,8 @@
 import Link from 'next/link';
 import { CtaSection, JsonLd, PageHero } from '@/components/marketing/blocks';
+import { FadeUp } from '@/components/animations/fade';
+import { StaggerContainer } from '@/components/animations/stagger';
+import { StaggerItem } from '@/components/animations/stagger-item';
 import { Container } from '@/components/marketing/ui';
 import {
   BLOG_CATEGORIES,
@@ -36,10 +39,10 @@ export default function BlogPage() {
           <h2 id="latest-posts" className="font-display text-2xl tracking-tight">
             Latest articles
           </h2>
-          <ul className="mt-6 grid gap-5 md:grid-cols-3">
+          <StaggerContainer as="ul" className="mt-6 grid gap-5 md:grid-cols-3">
             {BLOG_POSTS.map((post) => (
-              <li key={post.slug}>
-                <article className="flex h-full flex-col rounded-xl border border-[var(--color-border)] bg-white p-6">
+              <StaggerItem as="li" key={post.slug}>
+                <article className="em-hover-lift flex h-full flex-col rounded-xl border border-[var(--color-border)] bg-white p-6">
                   <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-accent)]">
                     {blogCategoryName(post.category)}
                   </p>
@@ -54,11 +57,11 @@ export default function BlogPage() {
                     {post.readingMinutes} min read
                   </p>
                 </article>
-              </li>
+              </StaggerItem>
             ))}
-          </ul>
+          </StaggerContainer>
         </section>
-        <section aria-labelledby="topics" className="mt-14">
+        <FadeUp as="section" aria-labelledby="topics" className="mt-14">
           <h2 id="topics" className="font-display text-2xl tracking-tight">
             Topics we cover
           </h2>
@@ -72,7 +75,7 @@ export default function BlogPage() {
               </li>
             ))}
           </ul>
-        </section>
+        </FadeUp>
       </Container>
       <CtaSection />
     </>

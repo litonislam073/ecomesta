@@ -37,7 +37,7 @@ export function Icon({ name, className = 'h-5 w-5' }: { name: IconName; classNam
 
 export function IconBadge({ name }: { name: IconName }) {
   return (
-    <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[#e3f0ec] text-[var(--color-accent)]">
+    <span className="em-hover-icon inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[#e3f0ec] text-[var(--color-accent)]">
       <Icon name={name} />
     </span>
   );

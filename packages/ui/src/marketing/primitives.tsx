@@ -5,7 +5,7 @@ export const MARKETING_FOCUS =
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]';
 
 const BUTTON_STYLES = {
-  primary: `bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] border-transparent shadow-sm`,
+  primary: `bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] border-transparent shadow-sm hover:shadow-md`,
   secondary: `bg-white text-[var(--color-ink)] border-[var(--color-border)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]`,
 } as const;
 
@@ -25,7 +25,7 @@ export function ButtonLink({
   cta?: string;
   className?: string;
 }) {
-  const classes = `inline-flex items-center justify-center rounded-lg border font-semibold transition-colors ${
+  const classes = `inline-flex items-center justify-center rounded-lg border font-semibold transition-[color,background-color,border-color,box-shadow,transform] duration-150 ease-out hover:-translate-y-px hover:scale-[1.01] active:translate-y-0 active:scale-[0.98] motion-reduce:hover:transform-none motion-reduce:active:transform-none ${
     size === 'sm' ? 'px-4 py-2 text-sm' : 'px-5 py-3 text-base'
   } ${BUTTON_STYLES[variant]} ${MARKETING_FOCUS} ${className}`;
 

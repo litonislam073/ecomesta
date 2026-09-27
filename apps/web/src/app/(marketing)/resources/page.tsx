@@ -1,4 +1,7 @@
 import { CtaSection, JsonLd, LinkCard, PageHero } from '@/components/marketing/blocks';
+import { FadeUp } from '@/components/animations/fade';
+import { StaggerContainer } from '@/components/animations/stagger';
+import { StaggerItem } from '@/components/animations/stagger-item';
 import { Container, SectionHeader } from '@/components/marketing/ui';
 import { BLOG_POSTS } from '@/lib/marketing/content/blog';
 import { breadcrumbJsonLd, buildMetadata } from '@/lib/marketing/seo';
@@ -60,39 +63,45 @@ export default function ResourcesPage() {
       />
       <section aria-labelledby="setup-guides" className="py-14">
         <Container>
-          <SectionHeader id="setup-guides" title="Setup guides" />
-          <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <FadeUp>
+            <SectionHeader id="setup-guides" title="Setup guides" />
+          </FadeUp>
+          <StaggerContainer as="ul" className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {SETUP_GUIDES.map((guide) => (
-              <li key={guide.href}>
+              <StaggerItem as="li" key={guide.href}>
                 <LinkCard href={guide.href} title={guide.title} description={guide.description} />
-              </li>
+              </StaggerItem>
             ))}
-          </ul>
+          </StaggerContainer>
         </Container>
       </section>
       <section aria-labelledby="from-the-blog" className="border-t border-[var(--color-border)] bg-white py-14">
         <Container>
-          <SectionHeader id="from-the-blog" title="From the blog" />
-          <ul className="mt-6 grid gap-4 md:grid-cols-3">
+          <FadeUp>
+            <SectionHeader id="from-the-blog" title="From the blog" />
+          </FadeUp>
+          <StaggerContainer as="ul" className="mt-6 grid gap-4 md:grid-cols-3">
             {BLOG_POSTS.map((post) => (
-              <li key={post.slug}>
+              <StaggerItem as="li" key={post.slug}>
                 <LinkCard href={`/blog/${post.slug}`} title={post.title} description={post.description} />
-              </li>
+              </StaggerItem>
             ))}
-          </ul>
+          </StaggerContainer>
         </Container>
       </section>
       <section aria-labelledby="more-help" className="py-14">
         <Container>
-          <SectionHeader id="more-help" title="More help" />
-          <ul className="mt-6 grid gap-4 sm:grid-cols-2">
-            <li>
+          <FadeUp>
+            <SectionHeader id="more-help" title="More help" />
+          </FadeUp>
+          <StaggerContainer as="ul" className="mt-6 grid gap-4 sm:grid-cols-2">
+            <StaggerItem as="li">
               <LinkCard href="/faq" title="Frequently asked questions" description="Payments, delivery, checkout and more." />
-            </li>
-            <li>
+            </StaggerItem>
+            <StaggerItem as="li">
               <LinkCard href="/contact" title="Contact" description="Questions about plans or getting started." />
-            </li>
-          </ul>
+            </StaggerItem>
+          </StaggerContainer>
         </Container>
       </section>
       <CtaSection />

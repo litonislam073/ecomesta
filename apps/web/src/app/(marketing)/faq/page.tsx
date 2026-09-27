@@ -1,4 +1,5 @@
 import { CtaSection, FaqList, JsonLd, PageHero } from '@/components/marketing/blocks';
+import { FadeUp } from '@/components/animations/fade';
 import { Container } from '@/components/marketing/ui';
 import { ALL_FAQS, FAQ_GROUPS } from '@/lib/marketing/content/faq';
 import { breadcrumbJsonLd, buildMetadata, faqJsonLd } from '@/lib/marketing/seo';
@@ -27,14 +28,14 @@ export default function FaqPage() {
       />
       <Container className="max-w-3xl space-y-12 py-14">
         {FAQ_GROUPS.map((group) => (
-          <section key={group.heading} aria-labelledby={`faq-${group.heading}`}>
+          <FadeUp as="section" key={group.heading} aria-labelledby={`faq-${group.heading}`}>
             <h2 id={`faq-${group.heading}`} className="font-display text-2xl tracking-tight">
               {group.heading}
             </h2>
             <div className="mt-5">
               <FaqList faqs={group.items} />
             </div>
-          </section>
+          </FadeUp>
         ))}
       </Container>
       <CtaSection />
