@@ -6,8 +6,8 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
-import { parseCorsOrigins } from '@ecomesta/utils';
 import { AppModule } from './app.module';
+import { configureCors } from './common/cors/cors.config';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { trustProxySetting } from './common/utils/request-host.util';
 import { REFRESH_COOKIE_NAME } from './modules/auth/types/auth.types';
@@ -43,19 +43,9 @@ async function bootstrap(): Promise<void> {
     defaultVersion: '1',
   });
 
-  const configuredOrigins = parseCorsOrigins(configService.get<string>('CORS_ORIGINS'));
-  const appOrigins = [
-    configService.get<string>('WEB_URL'),
-    configService.get<string>('MERCHANT_URL'),
-    configService.get<string>('ADMIN_URL'),
-  ].filter((origin): origin is string => Boolean(origin));
-
-  const corsOrigins = Array.from(new Set([...configuredOrigins, ...appOrigins]));
-
-  app.enableCors({
-    origin: corsOrigins.length > 0 ? corsOrigins : false,
-    credentials: true,
-  });
+  // Platform apps: strict allow-list with credentials. Storefront hosts: only
+  // their own public store routes, verified against the DB (see cors.config.ts).
+  configureCors(app);
 
   app.useGlobalPipes(
     new ValidationPipe({

@@ -516,7 +516,8 @@ Migration compatibility rules (Prisma has no down migrations here):
 | Store subdomain shows 404 page | Store slug not active, or DNS `*` record missing |
 | Custom domain: TLS error | No certificate / server block yet (§10) |
 | Custom domain: Ecomesta 404 page | Domain not ACTIVE in Ecomesta, or still cached (resolution is cached up to 60 s per web instance) |
-| Browser CORS error | Origin not one of `WEB_URL`/`MERCHANT_URL`/`ADMIN_URL`/`CORS_ORIGINS`; rebuild after changing `NEXT_PUBLIC_*` |
+| Browser CORS error (platform apps) | Origin not one of `WEB_URL`/`MERCHANT_URL`/`ADMIN_URL`/`CORS_ORIGINS`; rebuild after changing `NEXT_PUBLIC_*` |
+| Browser CORS error (storefront) | Store hosts are allowed only on `/api/v1/public/stores/<their own slug>/*`, without credentials, and only while the host resolves to an ACTIVE store (`{slug}.<root>` or an ACTIVE custom domain). Suspended stores, PENDING domains, unknown subdomains and other stores' slugs get no `Access-Control-Allow-Origin`. Unresolved hosts are cached for 60 s. See `apps/api/src/common/cors/` |
 | Logged out on every refresh | Refresh cookie needs HTTPS (`Secure`); check the API is reached via `https://api.<root>` |
 | Many `429` on login/checkout | Per-IP limits; check nginx passes the real client IP (`X-Forwarded-For`) |
 | Wrong architecture (`exec format error`) | Image built on a different CPU architecture; build on the VPS |
