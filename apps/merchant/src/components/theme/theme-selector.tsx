@@ -7,12 +7,14 @@ import { Card } from '@/components/ui/card';
 export function ThemeSelector({
   themes,
   selectedThemeId,
+  liveThemeId = null,
   onSelect,
   disabled,
   busyThemeId,
 }: {
   themes: ThemeListItem[];
   selectedThemeId: string | null;
+  liveThemeId?: string | null;
   onSelect: (themeId: string) => void;
   disabled?: boolean;
   busyThemeId?: string | null;
@@ -20,7 +22,7 @@ export function ThemeSelector({
   return (
     <Card
       title="Theme"
-      description="Switching themes keeps any draft you already saved for that theme."
+      description="Selecting a theme only changes your draft. Visitors keep seeing the live theme until you publish."
     >
       {themes.length === 0 ? (
         <p className="text-sm text-[var(--color-muted)]">
@@ -30,6 +32,7 @@ export function ThemeSelector({
         <ul className="grid gap-3 sm:grid-cols-2">
           {themes.map((theme) => {
             const selected = theme.id === selectedThemeId;
+            const live = theme.id === liveThemeId;
             return (
               <li
                 key={theme.id}
@@ -46,11 +49,18 @@ export function ThemeSelector({
                       v{theme.version} · {theme.slug}
                     </p>
                   </div>
-                  {selected ? (
-                    <span className="rounded-full bg-[var(--color-accent)] px-2 py-0.5 text-[10px] uppercase tracking-wide text-white">
-                      Selected
-                    </span>
-                  ) : null}
+                  <div className="flex flex-wrap justify-end gap-1">
+                    {live ? (
+                      <span className="rounded-full border border-[var(--color-accent)] px-2 py-0.5 text-[10px] uppercase tracking-wide text-[var(--color-accent)]">
+                        Live
+                      </span>
+                    ) : null}
+                    {selected ? (
+                      <span className="rounded-full bg-[var(--color-accent)] px-2 py-0.5 text-[10px] uppercase tracking-wide text-white">
+                        Editing
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
                 {theme.description ? (
                   <p className="mt-2 text-sm text-[var(--color-muted)]">
@@ -64,7 +74,7 @@ export function ThemeSelector({
                     disabled={busyThemeId === theme.id}
                     onClick={() => onSelect(theme.id)}
                   >
-                    {busyThemeId === theme.id ? 'Applying…' : `Use ${theme.name}`}
+                    {busyThemeId === theme.id ? 'Selecting…' : `Edit ${theme.name}`}
                   </Button>
                 ) : null}
               </li>

@@ -1283,14 +1283,25 @@ export interface ThemeSummary {
 
 export interface ThemeListItem extends ThemeSummary {
   description: string | null;
+  /** The merchant's selected (draft) theme. */
   selected: boolean;
+  /** The theme the public storefront currently shows. */
+  live: boolean;
 }
 
-/** Merchant-facing store theme: draft plus last published snapshot. */
+/**
+ * Merchant-facing store theme: the selected (draft) theme plus its last
+ * published snapshot. Only publishing changes the live storefront.
+ */
 export interface StoreTheme {
   id: string;
   theme: ThemeSummary;
+  /** Selected as the merchant's draft theme. */
   isActive: boolean;
+  /** This selected theme is what the public storefront shows. */
+  isLive: boolean;
+  /** The theme the public storefront shows, or null before the first publish. */
+  liveTheme: (ThemeSummary & { publishedAt: string | null }) | null;
   configuration: StoreThemeConfig;
   publishedConfiguration: StoreThemeConfig | null;
   publishedAt: string | null;

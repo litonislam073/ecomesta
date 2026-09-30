@@ -14,6 +14,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { StoreDomainResolver } from '../domains/store-domain.resolver';
+import { LIVE_STORE_THEME_ORDER, liveStoreThemeWhere } from '../themes/theme-live';
 import {
   UpdateStoreSettingsDto,
   languageForLocale,
@@ -180,8 +181,10 @@ export class StoreSettingsService {
           where: { storeId },
           select: { hostname: true, type: true, status: true, isPrimary: true },
         }),
+        // Live theme, not the merchant's unpublished selection.
         this.prisma.storeTheme.findFirst({
-          where: { storeId, isActive: true },
+          where: liveStoreThemeWhere(storeId),
+          orderBy: LIVE_STORE_THEME_ORDER,
           select: {
             publishedAt: true,
             publishedConfiguration: true,

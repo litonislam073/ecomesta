@@ -121,7 +121,7 @@ function ThemeContent() {
         `/stores/${selectedStoreId}/theme`,
         { themeId },
       );
-      pushToast('Theme selected', 'success');
+      pushToast('Theme selected as draft. Publish to make it live.', 'success');
       await load();
     } catch (err) {
       pushToast(humanApiError(err, 'Could not switch theme'), 'error');
@@ -210,17 +210,26 @@ function ThemeContent() {
 
       {!loading && !error && storeTheme ? (
         <>
-          <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--color-muted)]">
+          <div
+            className="flex flex-wrap items-center gap-3 text-sm text-[var(--color-muted)]"
+            data-testid="theme-status"
+          >
             <span>
-              Active theme:{' '}
+              Editing:{' '}
               <span className="font-medium text-[var(--color-ink)]">
                 {storeTheme.theme.name}
               </span>
             </span>
             <span>
-              {storeTheme.publishedAt
-                ? `Published ${new Date(storeTheme.publishedAt).toLocaleString()}`
-                : 'Never published'}
+              Live on storefront:{' '}
+              <span className="font-medium text-[var(--color-ink)]">
+                {storeTheme.liveTheme
+                  ? storeTheme.liveTheme.name
+                  : 'Nothing published yet'}
+              </span>
+              {storeTheme.liveTheme?.publishedAt
+                ? ` · published ${new Date(storeTheme.liveTheme.publishedAt).toLocaleString()}`
+                : null}
             </span>
             {storeTheme.hasUnpublishedChanges || dirty ? (
               <span className="rounded-full border border-[var(--color-border)] px-2 py-0.5 text-xs text-[var(--color-ink)]">
@@ -234,6 +243,7 @@ function ThemeContent() {
               <ThemeSelector
                 themes={themes}
                 selectedThemeId={storeTheme.theme.id}
+                liveThemeId={storeTheme.liveTheme?.id ?? null}
                 disabled={disabled}
                 busyThemeId={switchingThemeId}
                 onSelect={(themeId) => void selectTheme(themeId)}
@@ -306,7 +316,7 @@ function ThemeContent() {
         description={
           pending === 'reset'
             ? 'Unsaved and saved draft changes are replaced with the theme defaults. The published storefront is untouched until you publish again.'
-            : 'The saved draft becomes the live storefront configuration. Save the draft first if you have unsaved edits.'
+            : `${storeTheme?.theme.name ?? 'This theme'} and its saved draft become the live storefront. Save the draft first if you have unsaved edits.`
         }
         confirmLabel={pending === 'reset' ? 'Reset draft' : 'Publish theme'}
         onConfirm={() => void runPending()}

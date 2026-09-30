@@ -7,6 +7,7 @@ import {
   publishedThemeCacheKey,
 } from './theme-cache';
 import { asStoreThemeConfig } from './theme-config.normalizer';
+import { LIVE_STORE_THEME_ORDER, liveStoreThemeWhere } from './theme-live';
 import { DEFAULT_THEME_SLUG, StoreThemeConfig } from './theme-config.types';
 
 export interface PublicStoreThemePayload {
@@ -37,15 +38,16 @@ export class PublicThemesService {
   }
 
   /**
-   * Public callers only ever see the last published snapshot — the draft
-   * configuration never leaves the authenticated merchant surface.
+   * Public callers only ever see the live theme: the most recently published
+   * snapshot. The merchant's selected theme and draft configuration never
+   * leave the authenticated merchant surface until they are published.
    */
   private async loadPublishedTheme(
     storeId: string,
   ): Promise<PublicStoreThemePayload> {
     const storeTheme = await this.prisma.storeTheme.findFirst({
-      where: { storeId, isActive: true },
-      orderBy: { updatedAt: 'desc' },
+      where: liveStoreThemeWhere(storeId),
+      orderBy: LIVE_STORE_THEME_ORDER,
       select: {
         publishedConfiguration: true,
         publishedAt: true,
@@ -53,6 +55,9 @@ export class PublicThemesService {
       },
     });
 
+    // Nothing published yet: the default theme with an empty configuration,
+    // which the storefront renders with its packaged defaults. An unpublished
+    // selection is never used here.
     if (!storeTheme) {
       const fallback = await this.prisma.theme.findFirst({
         where: { slug: DEFAULT_THEME_SLUG },

@@ -13,6 +13,11 @@ import { AuthorizationService } from '../authorization/authorization.service';
 import { UpdateStoreThemeDto } from './dto/store-theme.dto';
 import { publishedThemeCacheKey } from './theme-cache';
 import {
+  LIVE_STORE_THEME_ORDER,
+  liveStoreThemeWhere,
+  nextPublishedAt,
+} from './theme-live';
+import {
   asStoreThemeConfig,
   mergeThemeConfiguration,
   normalizeThemeConfiguration,
@@ -26,6 +31,7 @@ import {
 } from './theme-config.types';
 
 type StoreThemeWithTheme = StoreTheme & { theme: Theme };
+type LiveStoreTheme = { id: string; publishedAt: Date | null; theme: Theme };
 
 @Injectable()
 export class ThemesService {
@@ -39,14 +45,15 @@ export class ThemesService {
   async getStoreTheme(userId: string, storeId: string) {
     await this.authorization.assertStoreAccess(userId, storeId);
     const storeTheme = await this.requireActiveStoreTheme(storeId);
-    return { success: true as const, data: this.toStoreThemeDto(storeTheme) };
+    const live = await this.findLiveStoreTheme(storeId);
+    return { success: true as const, data: this.toStoreThemeDto(storeTheme, live) };
   }
 
   async listThemes(userId: string, storeId: string) {
     await this.authorization.assertStoreAccess(userId, storeId);
     await this.ensureBuiltInThemes();
 
-    const [themes, selected] = await Promise.all([
+    const [themes, selected, live] = await Promise.all([
       this.prisma.theme.findMany({
         where: { active: true },
         orderBy: [{ name: 'asc' }],
@@ -55,6 +62,7 @@ export class ThemesService {
         where: { storeId, isActive: true },
         select: { themeId: true },
       }),
+      this.findLiveStoreTheme(storeId),
     ]);
 
     return {
@@ -64,6 +72,7 @@ export class ThemesService {
           ...this.toThemeDto(theme),
           description: theme.description,
           selected: theme.id === selected?.themeId,
+          live: theme.id === live?.theme.id,
         })),
         meta: { total: themes.length },
       },
@@ -76,7 +85,10 @@ export class ThemesService {
     const storeTheme = await this.requireActiveStoreTheme(storeId);
     return {
       success: true as const,
-      data: { configuration: this.draftOf(storeTheme) },
+      data: {
+        theme: this.toThemeDto(storeTheme.theme),
+        configuration: this.draftOf(storeTheme),
+      },
     };
   }
 
@@ -100,6 +112,8 @@ export class ThemesService {
     let storeTheme = await this.requireActiveStoreTheme(storeId);
     let switchedTheme = false;
 
+    // Selecting and saving only touch the merchant's draft. The live theme and
+    // the public cache are left alone until publish().
     if (dto.themeId && dto.themeId !== storeTheme.themeId) {
       storeTheme = await this.selectTheme(storeId, dto.themeId);
       switchedTheme = true;
@@ -146,7 +160,8 @@ export class ThemesService {
       });
     }
 
-    return { success: true as const, data: this.toStoreThemeDto(storeTheme) };
+    const live = await this.findLiveStoreTheme(storeId);
+    return { success: true as const, data: this.toStoreThemeDto(storeTheme, live) };
   }
 
   async publish(userId: string, storeId: string, req?: Request) {
@@ -158,31 +173,29 @@ export class ThemesService {
     const current = await this.requireActiveStoreTheme(storeId);
     const draft = this.draftOf(current);
 
-    const storeTheme = await this.prisma.storeTheme.update({
-      where: { id: current.id },
-      data: {
-        configuration: draft as Prisma.InputJsonValue,
-        publishedConfiguration: draft as Prisma.InputJsonValue,
-        publishedAt: new Date(),
-      },
-      include: { theme: true },
-    });
-
-    // Keep the store record in sync so non-theme surfaces (emails, admin) match.
-    const branding = draft.branding ?? {};
-    const storeUpdate: Prisma.StoreUpdateInput = {};
-    if (branding.logoUrl) {
-      storeUpdate.logoUrl = branding.logoUrl;
-    }
-    if (branding.faviconUrl) {
-      storeUpdate.faviconUrl = branding.faviconUrl;
-    }
-    if (Object.keys(storeUpdate).length > 0) {
-      await this.prisma.store.update({
-        where: { id: storeId },
-        data: storeUpdate,
+    // One transaction: the selected theme becomes live (latest publishedAt)
+    // together with the store branding sync, or nothing changes and the
+    // previously live theme keeps serving.
+    const storeTheme = await this.prisma.$transaction(async (tx) => {
+      const previousLive = await tx.storeTheme.findFirst({
+        where: liveStoreThemeWhere(storeId),
+        orderBy: LIVE_STORE_THEME_ORDER,
+        select: { publishedAt: true },
       });
-    }
+
+      const published = await tx.storeTheme.update({
+        where: { id: current.id },
+        data: {
+          configuration: draft as Prisma.InputJsonValue,
+          publishedConfiguration: draft as Prisma.InputJsonValue,
+          publishedAt: nextPublishedAt(new Date(), previousLive?.publishedAt),
+        },
+        include: { theme: true },
+      });
+
+      await this.syncPublishedBranding(tx, storeId, draft);
+      return published;
+    });
 
     await this.invalidatePublishedCache(storeId);
 
@@ -200,7 +213,10 @@ export class ThemesService {
       req,
     });
 
-    return { success: true as const, data: this.toStoreThemeDto(storeTheme) };
+    return {
+      success: true as const,
+      data: this.toStoreThemeDto(storeTheme, storeTheme),
+    };
   }
 
   async reset(userId: string, storeId: string, req?: Request) {
@@ -229,7 +245,8 @@ export class ThemesService {
       req,
     });
 
-    return { success: true as const, data: this.toStoreThemeDto(storeTheme) };
+    const live = await this.findLiveStoreTheme(storeId);
+    return { success: true as const, data: this.toStoreThemeDto(storeTheme, live) };
   }
 
   // ---------------------------------------------------------------------------
@@ -266,7 +283,41 @@ export class ThemesService {
     return this.selectTheme(storeId, theme.id);
   }
 
-  /** Activates `themeId` for the store, keeping any previously saved draft. */
+  /** The theme visitors currently see, or null before the first publish. */
+  private findLiveStoreTheme(storeId: string): Promise<LiveStoreTheme | null> {
+    return this.prisma.storeTheme.findFirst({
+      where: liveStoreThemeWhere(storeId),
+      orderBy: LIVE_STORE_THEME_ORDER,
+      select: { id: true, publishedAt: true, theme: true },
+    });
+  }
+
+  /** Keeps the store record in sync so non-theme surfaces (emails, admin) match. */
+  async syncPublishedBranding(
+    tx: Prisma.TransactionClient,
+    storeId: string,
+    config: StoreThemeConfig,
+  ): Promise<void> {
+    const branding = config.branding ?? {};
+    const storeUpdate: Prisma.StoreUpdateInput = {};
+    if (branding.logoUrl) {
+      storeUpdate.logoUrl = branding.logoUrl;
+    }
+    if (branding.faviconUrl) {
+      storeUpdate.faviconUrl = branding.faviconUrl;
+    }
+    if (Object.keys(storeUpdate).length > 0) {
+      await tx.store.update({
+        where: { id: storeId },
+        data: storeUpdate,
+      });
+    }
+  }
+
+  /**
+   * Selects `themeId` as the merchant's draft theme, keeping any previously
+   * saved draft. Does not change the live storefront.
+   */
   private async selectTheme(
     storeId: string,
     themeId: string,
@@ -364,22 +415,36 @@ export class ThemesService {
     };
   }
 
-  private toStoreThemeDto(storeTheme: StoreThemeWithTheme) {
+  private toStoreThemeDto(
+    storeTheme: StoreThemeWithTheme,
+    live: LiveStoreTheme | null,
+  ) {
     const draft = this.draftOf(storeTheme);
     const published =
       storeTheme.publishedConfiguration === null
         ? null
         : asStoreThemeConfig(storeTheme.publishedConfiguration);
+    const isLive = live?.id === storeTheme.id;
 
     return {
       id: storeTheme.id,
       theme: this.toThemeDto(storeTheme.theme),
       isActive: storeTheme.isActive,
+      isLive,
+      liveTheme: live
+        ? {
+            ...this.toThemeDto(live.theme),
+            publishedAt: live.publishedAt?.toISOString() ?? null,
+          }
+        : null,
       configuration: draft,
       publishedConfiguration: published,
       publishedAt: storeTheme.publishedAt?.toISOString() ?? null,
+      // A selected theme that is not live always needs a publish.
       hasUnpublishedChanges:
-        published === null || !themeConfigurationsEqual(draft, published),
+        !isLive ||
+        published === null ||
+        !themeConfigurationsEqual(draft, published),
       updatedAt: storeTheme.updatedAt.toISOString(),
     };
   }

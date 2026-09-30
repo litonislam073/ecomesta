@@ -8,6 +8,7 @@ import {
 import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { LIVE_STORE_THEME_ORDER } from '../themes/theme-live';
 import {
   ListAdminStoresQueryDto,
   UpdateStoreStatusDto,
@@ -112,9 +113,10 @@ export class AdminStoresService {
           },
           orderBy: { createdAt: 'asc' },
         },
+        // Live theme, not the merchant's unpublished selection.
         storeThemes: {
-          where: { isActive: true },
-          orderBy: { updatedAt: 'desc' },
+          where: { publishedAt: { not: null } },
+          orderBy: LIVE_STORE_THEME_ORDER,
           take: 1,
           select: {
             publishedAt: true,

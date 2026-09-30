@@ -71,6 +71,8 @@ const storeTheme: StoreTheme = {
     previewImageUrl: null,
   },
   isActive: true,
+  isLive: false,
+  liveTheme: null,
   configuration: {
     branding: {
       brandName: 'Alpha Goods',
@@ -119,6 +121,7 @@ const themes: ThemeListItem[] = [
     previewImageUrl: null,
     description: 'Balanced storefront layout.',
     selected: true,
+    live: false,
   },
   {
     id: 'theme-minimal',
@@ -128,6 +131,7 @@ const themes: ThemeListItem[] = [
     previewImageUrl: null,
     description: 'Typography-led layout.',
     selected: false,
+    live: false,
   },
 ];
 
@@ -176,7 +180,9 @@ describe('Theme customizer', () => {
     expect(preview).toHaveTextContent('Free shipping over $50');
     expect(preview).toHaveTextContent('Shop the new arrivals');
     expect(preview).toHaveTextContent('Built with Ecomesta');
-    expect(screen.getByText(/never published/i)).toBeInTheDocument();
+    expect(screen.getByTestId('theme-status')).toHaveTextContent(
+      'Live on storefront: Nothing published yet',
+    );
   });
 
   it('saves the draft with a sanitized configuration patch', async () => {
@@ -255,19 +261,65 @@ describe('Theme customizer', () => {
     );
   });
 
-  it('switches the selected theme', async () => {
+  it('selects another theme as a draft only', async () => {
     mockLoad();
     api.patch.mockResolvedValue({ success: true, data: storeTheme });
     const user = userEvent.setup();
     render(<ThemePage />);
 
-    await user.click(await screen.findByRole('button', { name: 'Use Minimal' }));
+    await user.click(await screen.findByRole('button', { name: 'Edit Minimal' }));
     await waitFor(() =>
       expect(api.patch).toHaveBeenCalledWith('/stores/store-1/theme', {
         themeId: 'theme-minimal',
       }),
     );
-    expect(pushToast).toHaveBeenCalledWith('Theme selected', 'success');
+    expect(api.post).not.toHaveBeenCalled();
+    expect(pushToast).toHaveBeenCalledWith(
+      'Theme selected as draft. Publish to make it live.',
+      'success',
+    );
+  });
+
+  it('shows the live theme separately from the theme being edited', async () => {
+    const editingMinimal: StoreTheme = {
+      ...storeTheme,
+      id: 'st-2',
+      theme: { ...storeTheme.theme, id: 'theme-minimal', name: 'Minimal', slug: 'minimal' },
+      isLive: false,
+      liveTheme: {
+        ...storeTheme.theme,
+        publishedAt: '2026-02-01T00:00:00.000Z',
+      },
+      hasUnpublishedChanges: true,
+    };
+    api.get.mockImplementation((path: string) => {
+      if (path.endsWith('/themes')) {
+        return Promise.resolve({
+          success: true,
+          data: {
+            items: [
+              { ...themes[0], selected: false, live: true },
+              { ...themes[1], selected: true, live: false },
+            ],
+            meta: { total: 2 },
+          },
+        });
+      }
+      return Promise.resolve({ success: true, data: editingMinimal });
+    });
+    render(<ThemePage />);
+
+    const status = await screen.findByTestId('theme-status');
+    expect(status).toHaveTextContent('Editing: Minimal');
+    expect(status).toHaveTextContent('Live on storefront: Default');
+    expect(status).toHaveTextContent('Unpublished changes');
+
+    const defaultCard = screen.getByText('Balanced storefront layout.').closest('li')!;
+    expect(defaultCard).toHaveTextContent('Live');
+    expect(defaultCard).not.toHaveTextContent('Editing');
+    const minimalCard = screen.getByText('Typography-led layout.').closest('li')!;
+    expect(minimalCard).toHaveTextContent('Editing');
+    expect(minimalCard).not.toHaveTextContent(/\bLive\b/);
   });
 
   it('is read-only for staff without manage access', async () => {
@@ -280,7 +332,7 @@ describe('Theme customizer', () => {
       screen.queryByRole('button', { name: 'Save draft' }),
     ).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Publish' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /use minimal/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /edit minimal/i })).not.toBeInTheDocument();
     expect(screen.getByText(/read-only access/i)).toBeInTheDocument();
   });
 
