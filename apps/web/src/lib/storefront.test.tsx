@@ -4,16 +4,16 @@ import userEvent from '@testing-library/user-event';
 import { ProductCard } from '@/components/product-card';
 import NotFound from '@/app/not-found';
 import { CartProvider, useCart } from '@/lib/cart';
-import { readStoreSlugFromSearch } from '@/lib/store-resolver';
+import { readStoreQuery } from '@/lib/domain-routing';
 
 vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams('store=alpha'),
 }));
 
 describe('store resolution helpers', () => {
-  it('reads store slug from query', () => {
-    expect(readStoreSlugFromSearch({ store: 'Demo-Store' })).toBe('demo-store');
-    expect(readStoreSlugFromSearch({})).toBeNull();
+  it('normalizes the ?store= slug the middleware reads', () => {
+    expect(readStoreQuery(' Demo-Store ')).toBe('demo-store');
+    expect(readStoreQuery(null)).toBeNull();
   });
 });
 

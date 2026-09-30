@@ -56,14 +56,11 @@ describe('store resolution from the request host', () => {
     });
   });
 
-  it('falls back to the middleware cookies on client navigations', () => {
+  it('does not read store cookies itself (the middleware decides, SF-05)', () => {
     cookieBag.set('ecomesta.storeSlug', 'Alpha');
     cookieBag.set('ecomesta.canonicalHost', 'Shop.Example.com');
 
-    expect(readHostResolution()).toEqual({
-      storeSlug: 'alpha',
-      canonicalHostname: 'shop.example.com',
-    });
+    expect(readHostResolution()).toBeNull();
   });
 
   it('ignores a store cookie with no canonical host (a ?store= override)', () => {
@@ -83,17 +80,16 @@ describe('store resolution from the request host', () => {
     await expect(resolveStoreSlug({ store: 'Beta' })).resolves.toBe('alpha');
   });
 
-  it('still lets ?store= work without a hostname resolution', async () => {
-    await expect(resolveStoreSlug({ store: 'Beta' })).resolves.toBe('beta');
+  it('uses a local ?store= selection the middleware forwarded (no canonical host)', async () => {
+    headerBag.set('x-ecomesta-store-slug', 'Beta');
+    await expect(resolveStoreSlug()).resolves.toBe('beta');
+    expect(readHostResolution()).toBeNull();
   });
 
-  it('keeps the env default and plain cookie fallbacks without a host', async () => {
+  it('ignores ?store=, the env default and cookies without a forwarded store (SF-05)', async () => {
     process.env.NEXT_PUBLIC_DEFAULT_STORE_SLUG = 'Demo';
-    await expect(resolveStoreSlug()).resolves.toBe('demo');
-
-    delete process.env.NEXT_PUBLIC_DEFAULT_STORE_SLUG;
     cookieBag.set('ecomesta.storeSlug', 'gamma');
-    await expect(resolveStoreSlug()).resolves.toBe('gamma');
+    await expect(resolveStoreSlug({ store: 'Beta' })).resolves.toBeNull();
   });
 
   it('returns null when nothing identifies a store', async () => {
@@ -147,7 +143,7 @@ describe('canonical metadata helpers', () => {
     expect(publicGet).toHaveBeenCalledWith('/public/stores/alpha', { fresh: true });
   });
 
-  it('throws a user-facing error when no store can be resolved', async () => {
-    await expect(requirePublicStore({})).rejects.toThrow(/could not be resolved/i);
+  it('answers 404 (notFound) when no store can be resolved', async () => {
+    await expect(requirePublicStore({})).rejects.toMatchObject({ digest: 'NEXT_NOT_FOUND' });
   });
 });

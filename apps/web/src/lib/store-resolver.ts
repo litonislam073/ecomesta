@@ -1,4 +1,5 @@
-import { cookies, headers } from 'next/headers';
+import { headers } from 'next/headers';
+import { notFound } from 'next/navigation';
 import type { PublicStore } from '@ecomesta/types';
 import {
   CANONICAL_HOST_COOKIE,
@@ -11,78 +12,49 @@ import {
 } from '@/lib/domain-routing';
 import { publicGet, PublicApiError } from '@/lib/public-api';
 
-export function readStoreSlugFromSearch(
-  searchParams: Record<string, string | string[] | undefined>,
-): string | null {
-  const raw = searchParams.store;
-  const value = Array.isArray(raw) ? raw[0] : raw;
-  return value?.trim() ? value.trim().toLowerCase() : null;
-}
-
 function clean(value: string | null | undefined): string | null {
   const trimmed = value?.trim().toLowerCase();
   return trimmed || null;
 }
 
 /**
- * What the middleware learned from the inbound Host header. Request headers
- * describe *this* request; the cookies are the client-navigation fallback.
+ * The store context the middleware decided for this request (SF-05). The
+ * middleware drops any client-sent copy of these headers and applies the
+ * routing rules: hostname first, `?store=` / cookie / env default only on
+ * local and preview hosts. Pages must not read `?store=` themselves.
  */
-export function readHostResolution(): HostResolution | null {
-  let storeSlug: string | null = null;
-  let canonicalHostname: string | null = null;
-
+function readStoreHeaders(): { storeSlug: string | null; canonicalHostname: string | null } {
   try {
     const bag = headers();
-    storeSlug = clean(bag.get(STORE_SLUG_HEADER));
-    canonicalHostname = clean(bag.get(CANONICAL_HOST_HEADER));
+    return {
+      storeSlug: clean(bag.get(STORE_SLUG_HEADER)),
+      canonicalHostname: clean(bag.get(CANONICAL_HOST_HEADER)),
+    };
   } catch {
     // Not in a request scope (e.g. static generation).
+    return { storeSlug: null, canonicalHostname: null };
   }
-
-  if (!storeSlug || !canonicalHostname) {
-    try {
-      const jar = cookies();
-      storeSlug = storeSlug ?? clean(jar.get(STORE_SLUG_COOKIE)?.value);
-      canonicalHostname =
-        canonicalHostname ?? clean(jar.get(CANONICAL_HOST_COOKIE)?.value);
-    } catch {
-      // Same as above.
-    }
-  }
-
-  // A canonical host is only ever set by hostname resolution, so its presence
-  // is what separates a real custom-domain hit from a `?store=` cookie.
-  return storeSlug && canonicalHostname
-    ? { storeSlug, canonicalHostname }
-    : null;
 }
 
+/**
+ * The store and canonical host when this request's hostname resolved to a
+ * storefront; null for local/preview `?store=` selections, which have no
+ * canonical host.
+ */
+export function readHostResolution(): HostResolution | null {
+  const { storeSlug, canonicalHostname } = readStoreHeaders();
+  return storeSlug && canonicalHostname ? { storeSlug, canonicalHostname } : null;
+}
+
+/**
+ * Store serving this request, or null when there is none (marketing site, or
+ * a store route that must 404). `searchParams` is accepted for existing call
+ * sites but deliberately ignored: see readStoreHeaders.
+ */
 export async function resolveStoreSlug(
-  searchParams?: Record<string, string | string[] | undefined>,
+  _searchParams?: Record<string, string | string[] | undefined>,
 ): Promise<string | null> {
-  // Hostname resolution outranks `?store=` when the middleware attached a
-  // canonical host (custom / platform domain hit). Conflicting query overrides
-  // are stripped at the edge; remaining `?store=` is only for preview hosts.
-  const fromHost = readHostResolution();
-  if (fromHost) {
-    return fromHost.storeSlug;
-  }
-
-  const fromQuery = searchParams ? readStoreSlugFromSearch(searchParams) : null;
-  if (fromQuery) {
-    return fromQuery;
-  }
-
-  const fromEnv = clean(process.env.NEXT_PUBLIC_DEFAULT_STORE_SLUG);
-  if (fromEnv) {
-    return fromEnv;
-  }
-  try {
-    return clean(cookies().get(STORE_SLUG_COOKIE)?.value);
-  } catch {
-    return null;
-  }
+  return readStoreHeaders().storeSlug;
 }
 
 /** Primary hostname for the store serving this request, when known. */
@@ -142,13 +114,18 @@ export async function requirePublicStore(
 }> {
   const storeSlug = await resolveStoreSlug(searchParams);
   if (!storeSlug) {
-    throw new PublicApiError(
-      404,
-      'STORE_REQUIRED',
-      'This storefront could not be resolved. Open your store’s custom domain or platform subdomain.',
-    );
+    notFound();
   }
-  const store = await fetchPublicStore(storeSlug);
+  let store: PublicStore;
+  try {
+    store = await fetchPublicStore(storeSlug);
+  } catch (err) {
+    // A store that does not exist is a real 404, never a 200 error page.
+    if (err instanceof PublicApiError && err.status === 404) {
+      notFound();
+    }
+    throw err;
+  }
   return {
     store,
     storeSlug,

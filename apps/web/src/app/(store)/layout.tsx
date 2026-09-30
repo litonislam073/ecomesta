@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { StorefrontProviders } from '@/components/storefront-providers';
 import {
@@ -37,15 +38,12 @@ export async function generateMetadata(): Promise<Metadata> {
  * lives at `app/page.tsx` and does not use this layout.
  */
 export default async function StoreLayout({ children }: { children: ReactNode }) {
+  // No store for this host (e.g. the platform apex): a real 404, not a 200 page.
+  const storeSlug = await resolveStoreSlug();
+  if (!storeSlug) {
+    notFound();
+  }
   try {
-    const storeSlug = await resolveStoreSlug();
-    if (!storeSlug) {
-      throw new PublicApiError(
-        404,
-        'STORE_REQUIRED',
-        'This storefront URL needs a store. On a custom domain or platform subdomain the store is selected automatically.',
-      );
-    }
     const [store, theme] = await Promise.all([
       fetchPublicStore(storeSlug),
       fetchPublicTheme(storeSlug),
@@ -58,6 +56,9 @@ export default async function StoreLayout({ children }: { children: ReactNode })
   } catch (err) {
     if (isStoreUnavailableError(err)) {
       return <StoreUnavailable />;
+    }
+    if (err instanceof PublicApiError && err.status === 404) {
+      notFound();
     }
     const message =
       err instanceof PublicApiError

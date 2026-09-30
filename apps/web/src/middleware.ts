@@ -27,23 +27,42 @@ const COOKIE_OPTIONS = {
 } as const;
 
 /**
+ * Request headers forwarded to the render. The store headers are the only
+ * store context pages trust, so whatever the client sent is dropped and only
+ * this middleware's decision is set.
+ */
+function forwardedHeaders(
+  request: NextRequest,
+  store?: { slug: string; canonicalHostname: string | null },
+) {
+  const headers = new Headers(request.headers);
+  headers.delete(STORE_SLUG_HEADER);
+  headers.delete(CANONICAL_HOST_HEADER);
+  if (store) {
+    headers.set(STORE_SLUG_HEADER, store.slug);
+    if (store.canonicalHostname) {
+      headers.set(CANONICAL_HOST_HEADER, store.canonicalHostname);
+    }
+  }
+  return headers;
+}
+
+/** Continue without a store (marketing site, or a store route that will 404). */
+function withoutStore(request: NextRequest) {
+  return NextResponse.next({ request: { headers: forwardedHeaders(request) } });
+}
+
+/**
  * Produces a response that carries the resolved store both as request headers
- * (read during this render) and as cookies (so client navigations and the
- * `?store=` fallback keep working).
+ * (read during this render) and as cookies (the local-development and
+ * API-outage fallbacks below).
  */
 function withStore(
   request: NextRequest,
   storeSlug: string,
   canonicalHostname: string | null,
 ) {
-  const headers = new Headers(request.headers);
-  headers.set(STORE_SLUG_HEADER, storeSlug);
-  if (canonicalHostname) {
-    headers.set(CANONICAL_HOST_HEADER, canonicalHostname);
-  } else {
-    headers.delete(CANONICAL_HOST_HEADER);
-  }
-
+  const headers = forwardedHeaders(request, { slug: storeSlug, canonicalHostname });
   const response = NextResponse.next({ request: { headers } });
   response.cookies.set(STORE_SLUG_COOKIE, storeSlug, COOKIE_OPTIONS);
   if (canonicalHostname) {
@@ -108,7 +127,22 @@ function rewriteToPage(request: NextRequest, pathname: string) {
   url.pathname = pathname;
   url.search = '';
   url.protocol = 'http:';
-  return NextResponse.rewrite(url);
+  return NextResponse.rewrite(url, { request: { headers: forwardedHeaders(request) } });
+}
+
+/**
+ * Local development only: a store route keeps the store picked earlier with
+ * `?store=` (cookie) or NEXT_PUBLIC_DEFAULT_STORE_SLUG. `/` stays the
+ * marketing site.
+ */
+function localDevelopmentStore(request: NextRequest): string | null {
+  if (request.nextUrl.pathname === '/') {
+    return null;
+  }
+  return (
+    readStoreQuery(request.cookies.get(STORE_SLUG_COOKIE)?.value) ??
+    readStoreQuery(process.env.NEXT_PUBLIC_DEFAULT_STORE_SLUG)
+  );
 }
 
 export async function middleware(request: NextRequest) {
@@ -129,7 +163,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (shouldSkipPath(pathname)) {
-    return NextResponse.next();
+    return withoutStore(request);
   }
 
   if (isMarketingPath(pathname) && !isPlatformMarketingHost(hostname)) {
@@ -144,9 +178,8 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!hostname || isLoopbackHost(hostname)) {
-    // Local development without `?store=`: keep whatever cookie is already set
-    // and let the storefront layout explain how to pick a store.
-    return NextResponse.next();
+    const devStore = localDevelopmentStore(request);
+    return devStore ? withStore(request, devStore, null) : withoutStore(request);
   }
 
   const result = await resolveHostname(hostname);
@@ -169,21 +202,19 @@ export async function middleware(request: NextRequest) {
   }
   if (result.status === 'unavailable') {
     // API down: never honor `?store=` on production-style hosts (fail closed).
-    // Preview/loopback hosts may still use `?store=` via allowsStoreQueryOverride above.
-    // Pages fall back to `searchParams.store` when no host resolution is
-    // attached, so the parameter has to be removed before the page sees it.
-    if (searchParams.has('store')) {
-      const url = request.nextUrl.clone();
-      url.searchParams.delete('store');
-      url.protocol = 'http:';
-      return NextResponse.rewrite(url);
-    }
-    return NextResponse.next();
+    // A store host keeps serving the store it resolved to before, from the
+    // host-scoped cookies this middleware set on that earlier visit.
+    const slug = readStoreQuery(request.cookies.get(STORE_SLUG_COOKIE)?.value);
+    const canonical = readStoreQuery(request.cookies.get(CANONICAL_HOST_COOKIE)?.value);
+    return slug && canonical && !isPlatformMarketingHost(hostname)
+      ? withStore(request, slug, canonical)
+      : withoutStore(request);
   }
 
-  // Platform apex / www → SaaS homepage (not store-not-found).
+  // Platform apex / www → SaaS homepage (not store-not-found). `?store=` is
+  // ignored here: store routes on the apex have no store and answer 404.
   if (isPlatformMarketingHost(hostname)) {
-    const response = NextResponse.next();
+    const response = withoutStore(request);
     response.cookies.delete(STORE_SLUG_COOKIE);
     response.cookies.delete(CANONICAL_HOST_COOKIE);
     return response;

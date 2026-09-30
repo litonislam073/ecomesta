@@ -4,19 +4,15 @@ import {
   StorefrontHome,
   storefrontHomeMetadata,
 } from '@/components/storefront-home';
-import {
-  readHostResolution,
-  readStoreSlugFromSearch,
-} from '@/lib/store-resolver';
+import { resolveStoreSlug } from '@/lib/store-resolver';
 
-function hasStorefrontContext(
-  searchParams: Record<string, string | string[] | undefined>,
-): boolean {
-  // Platform marketing home must not depend on NEXT_PUBLIC_DEFAULT_STORE_SLUG.
-  if (readHostResolution()) {
-    return true;
-  }
-  return Boolean(readStoreSlugFromSearch(searchParams));
+/**
+ * A store serves `/` only when the middleware attached one: a resolved store
+ * host, or a local/preview `?store=`. On the platform apex `?store=` is
+ * ignored, so the marketing home never turns into a merchant storefront.
+ */
+async function hasStorefrontContext(): Promise<boolean> {
+  return Boolean(await resolveStoreSlug());
 }
 
 export async function generateMetadata({
@@ -24,7 +20,7 @@ export async function generateMetadata({
 }: {
   searchParams: Record<string, string | string[] | undefined>;
 }): Promise<Metadata> {
-  if (hasStorefrontContext(searchParams)) {
+  if (await hasStorefrontContext()) {
     return storefrontHomeMetadata(searchParams);
   }
   return PLATFORM_HOME_METADATA;
@@ -39,7 +35,7 @@ export default async function RootPage({
 }: {
   searchParams: Record<string, string | string[] | undefined>;
 }) {
-  if (hasStorefrontContext(searchParams)) {
+  if (await hasStorefrontContext()) {
     return <StorefrontHome searchParams={searchParams} />;
   }
   return <PlatformHome />;

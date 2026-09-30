@@ -431,27 +431,22 @@ describe('middleware', () => {
       ),
     );
 
+    // SF-05: pages only trust the forwarded store header, so the query is inert.
     expect(response.cookies.get('ecomesta.storeSlug')).toBeUndefined();
     expect(overriddenRequestHeader(response, 'x-ecomesta-store-slug')).toBeNull();
-    const rewrite = new URL(response.headers.get('x-middleware-rewrite')!);
-    expect(rewrite.pathname).toBe('/products');
-    expect(rewrite.searchParams.has('store')).toBe(false);
+    expect(response.headers.get('x-middleware-rewrite')).toBeNull();
   });
 
-  it('keeps other query params when stripping ?store= during an outage', async () => {
+  it('keeps serving the store this host resolved to before during an outage', async () => {
     vi.mocked(fetch).mockRejectedValue(new Error('network down'));
+    const req = request('https://shop.example.com/products?store=beta', 'shop.example.com');
+    req.cookies.set('ecomesta.storeSlug', 'alpha');
+    req.cookies.set('ecomesta.canonicalHost', 'shop.example.com');
 
-    const response = await middleware(
-      request(
-        'https://shop.example.com/search?q=shoes&store=beta&page=2',
-        'shop.example.com',
-      ),
-    );
+    const response = await middleware(req);
 
-    const rewrite = new URL(response.headers.get('x-middleware-rewrite')!);
-    expect(rewrite.protocol).toBe('http:');
-    expect(rewrite.pathname).toBe('/search');
-    expect(rewrite.search).toBe('?q=shoes&page=2');
+    expect(overriddenRequestHeader(response, 'x-ecomesta-store-slug')).toBe('alpha');
+    expect(overriddenRequestHeader(response, 'x-ecomesta-canonical-host')).toBe('shop.example.com');
   });
 
   it('does not honor ?store= on an unknown production host', async () => {
