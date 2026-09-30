@@ -32,6 +32,17 @@ import { PaymentProviderRegistry } from './providers/payment-provider.registry';
  * Initiate/retry take a row lock on the order (and latest payment) so a
  * concurrent webhook that marks PAID cannot be overwritten back to PENDING.
  */
+/** Provider outcomes meaning money was (or may be) taken from the customer. */
+const CAPTURE_STATUSES: PaymentStatus[] = [
+  PaymentStatus.PAID,
+  PaymentStatus.AUTHORIZED,
+  PaymentStatus.PARTIALLY_PAID,
+];
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 @Injectable()
 export class PaymentOrchestrationService {
   constructor(
@@ -321,7 +332,7 @@ export class PaymentOrchestrationService {
       }
     }
 
-    await this.applyVerifiedStatus({
+    const applied = await this.applyVerifiedStatus({
       paymentId: payment.id,
       storeId: payment.storeId,
       orderId: payment.orderId,
@@ -336,7 +347,12 @@ export class PaymentOrchestrationService {
 
     return {
       success: true as const,
-      data: { replayed: false, eventId: event.eventId, status: event.status },
+      data: {
+        replayed: false,
+        eventId: event.eventId,
+        status: applied.status,
+        ...(applied.lateCapture ? { lateCapture: true } : {}),
+      },
     };
   }
 
@@ -719,38 +735,117 @@ export class PaymentOrchestrationService {
       );
     }
 
-    await this.prisma.$transaction(async (tx) => {
-      const locked = await tx.$queryRaw<
-        { id: string; status: PaymentStatus; order_id: string }[]
+    const markProcessed = (tx: Prisma.TransactionClient, paymentId: string) =>
+      tx.paymentWebhookEvent.update({
+        where: {
+          provider_eventId: {
+            provider: params.provider,
+            eventId: params.eventId,
+          },
+        },
+        data: {
+          processedAt: new Date(),
+          paymentId,
+          storeId: params.storeId,
+        },
+      });
+
+    // Lock order, then payment: the same order as order cancellation and
+    // payment attempts, so a cancel and a verified success are serialised and
+    // the one that commits second sees the other's result.
+    const outcome = await this.prisma.$transaction(async (tx) => {
+      const lockedOrders = await tx.$queryRaw<
+        { id: string; status: OrderStatus; order_number: string; currency: string }[]
       >`
-        SELECT id, status, order_id
+        SELECT id, status, order_number, currency
+        FROM orders
+        WHERE id = ${params.orderId}::uuid AND store_id = ${params.storeId}::uuid
+        FOR UPDATE
+      `;
+      const order = lockedOrders[0];
+      if (!order) {
+        throw new NotFoundException('Order not found for payment');
+      }
+
+      const locked = await tx.$queryRaw<
+        {
+          id: string;
+          status: PaymentStatus;
+          order_id: string;
+          metadata: Prisma.JsonValue | null;
+          amount: Prisma.Decimal;
+          currency: string;
+        }[]
+      >`
+        SELECT id, status, order_id, metadata, amount, currency
         FROM payments
         WHERE id = ${params.paymentId}::uuid AND store_id = ${params.storeId}::uuid
         FOR UPDATE
       `;
       const row = locked[0];
-      if (!row) {
+      if (!row || row.order_id !== order.id) {
         throw new NotFoundException('Payment not found');
       }
 
+      if (order.status === OrderStatus.CANCELLED) {
+        // SF-01: a cancelled order never becomes paid. A verified capture that
+        // arrives after cancellation is kept as evidence on the payment for a
+        // manual refund; the order and payment are not marked PAID.
+        if (CAPTURE_STATUSES.includes(params.toStatus)) {
+          const metadata = isJsonObject(row.metadata) ? row.metadata : {};
+          const already = isJsonObject(metadata.lateCapture);
+          if (!already) {
+            await tx.payment.update({
+              where: { id: row.id },
+              data: {
+                ...(params.providerPaymentId
+                  ? { providerPaymentId: params.providerPaymentId }
+                  : {}),
+                // A cancelled order's attempt is closed as CANCELLED; the
+                // capture itself is recorded below, not as a PAID status.
+                ...(row.status === PaymentStatus.CANCELLED
+                  ? {}
+                  : { status: PaymentStatus.CANCELLED }),
+                metadata: {
+                  ...metadata,
+                  lateCapture: {
+                    reportedStatus: params.toStatus,
+                    eventId: params.eventId,
+                    eventType: params.eventType,
+                    providerPaymentId: params.providerPaymentId,
+                    amount: (params.webhookAmount ?? row.amount).toFixed(2),
+                    currency: row.currency,
+                    receivedAt: new Date().toISOString(),
+                    orderStatus: OrderStatus.CANCELLED,
+                    requiresManualRefund: true,
+                  },
+                } as Prisma.InputJsonValue,
+              },
+            });
+          }
+          await markProcessed(tx, row.id);
+          return {
+            kind: 'late_capture' as const,
+            firstReport: !already,
+            orderNumber: order.order_number,
+            currency: row.currency,
+            amount: (params.webhookAmount ?? row.amount).toFixed(2),
+            paymentStatus: PaymentStatus.CANCELLED,
+          };
+        }
+        // Other provider outcomes change nothing on a cancelled order.
+        await markProcessed(tx, row.id);
+        return { kind: 'ignored' as const, paymentStatus: row.status };
+      }
+
       if (row.status === params.toStatus) {
-        await tx.paymentWebhookEvent.update({
-          where: {
-            provider_eventId: {
-              provider: params.provider,
-              eventId: params.eventId,
-            },
-          },
-          data: { processedAt: new Date() },
-        });
-        return;
+        await markProcessed(tx, row.id);
+        return { kind: 'unchanged' as const, paymentStatus: row.status };
       }
 
       // Allow FAILED→PAID? No — must go FAILED→PENDING via retry (new attempt).
       // Same attempt: only valid transitions.
-      if (row.status !== params.toStatus) {
-        assertPaymentRecordStatusTransition(row.status, params.toStatus);
-      }
+      assertPaymentRecordStatusTransition(row.status, params.toStatus);
 
       await tx.payment.update({
         where: { id: row.id },
@@ -763,29 +858,47 @@ export class PaymentOrchestrationService {
       });
 
       await tx.order.update({
-        where: { id: params.orderId },
+        where: { id: order.id },
         data: { paymentStatus: params.toStatus },
       });
 
-      await tx.paymentWebhookEvent.update({
-        where: {
-          provider_eventId: {
-            provider: params.provider,
-            eventId: params.eventId,
-          },
-        },
-        data: {
-          processedAt: new Date(),
-          paymentId: row.id,
-          storeId: params.storeId,
-        },
-      });
+      await markProcessed(tx, row.id);
+      return { kind: 'applied' as const, paymentStatus: params.toStatus };
     });
 
     const store = await this.prisma.store.findUnique({
       where: { id: params.storeId },
       select: { tenantId: true },
     });
+
+    if (outcome.kind === 'late_capture') {
+      if (outcome.firstReport) {
+        await this.audit.log({
+          action: 'PAYMENT_LATE_CAPTURE_REFUND_REQUIRED',
+          entityType: 'Payment',
+          entityId: params.paymentId,
+          tenantId: store?.tenantId,
+          storeId: params.storeId,
+          metadata: {
+            orderId: params.orderId,
+            orderNumber: outcome.orderNumber,
+            orderStatus: OrderStatus.CANCELLED,
+            reportedStatus: params.toStatus,
+            amount: outcome.amount,
+            currency: outcome.currency,
+            provider: params.provider,
+            providerPaymentId: params.providerPaymentId,
+            eventId: params.eventId,
+            eventType: params.eventType,
+            requiresManualRefund: true,
+          },
+        });
+      }
+      return { status: outcome.paymentStatus, lateCapture: true };
+    }
+    if (outcome.kind === 'ignored') {
+      return { status: outcome.paymentStatus, lateCapture: false };
+    }
 
     const action =
       params.toStatus === PaymentStatus.PAID
@@ -813,6 +926,7 @@ export class PaymentOrchestrationService {
         provider: params.provider,
       },
     });
+    return { status: outcome.paymentStatus, lateCapture: false };
   }
 
   private async loadPayableOrder(

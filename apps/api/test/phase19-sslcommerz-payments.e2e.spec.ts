@@ -677,4 +677,63 @@ describe('Phase 19 SSLCommerz payments (e2e)', () => {
     expect(initiated.body.data.redirectUrl).toBeTruthy();
     expect(httpMock.postForm).not.toHaveBeenCalled();
   });
+
+  it('SF-01: an SSLCommerz IPN validated after merchant cancellation is recorded, never PAID', async () => {
+    const email = `ssl.late.${suffix}@example.com`;
+    httpMock.postForm.mockResolvedValueOnce({
+      status: 200,
+      body: {
+        status: 'SUCCESS',
+        sessionkey: `sess_late_${suffix}`,
+        GatewayPageURL: `https://sandbox.sslcommerz.com/gwprocess/v4/gw.php?Q=PAY&SESSIONKEY=sess_late_${suffix}`,
+      },
+    });
+    const checkout = await request(app.getHttpServer())
+      .post(`/api/v1/public/stores/${storeSlug}/checkout`)
+      .set('Idempotency-Key', `p19-late-${suffix}`)
+      .send({
+        items: [{ productId, quantity: 1 }],
+        customer: { name: 'Late Guest', email, phone: '01712345678' },
+        shippingAddress: { name: 'Late Guest', phone: '01712345678', addressLine1: '1 Banani', city: 'Dhaka', country: 'BD', email },
+        billingSameAsShipping: true,
+        shippingMethodId,
+        paymentProvider: 'SSL_COMMERZ',
+        paymentMethod: 'CARD',
+      })
+      .expect(201);
+    const initiated = await request(app.getHttpServer())
+      .post(`/api/v1/public/stores/${storeSlug}/payments/create`)
+      .send({ publicReference: checkout.body.data.publicReference, provider: 'SSL_COMMERZ', email })
+      .expect(201);
+    const internalReference = initiated.body.data.internalReference as string;
+    const order = await prisma.order.findFirstOrThrow({
+      where: { storeId, publicReference: checkout.body.data.publicReference },
+    });
+
+    await request(app.getHttpServer())
+      .patch(`/api/v1/stores/${storeId}/orders/${order.id}/status`)
+      .set('Authorization', `Bearer ${manager.token}`)
+      .send({ status: 'CANCELLED' })
+      .expect(200);
+
+    const valId = `val_late_${suffix}`;
+    httpMock.getJson.mockResolvedValueOnce({
+      status: 200,
+      body: { status: 'VALID', tran_id: internalReference, val_id: valId, amount: '25.50', currency_amount: '25.50', sessionkey: `sess_late_${suffix}` },
+    });
+    const late = await request(app.getHttpServer())
+      .post('/api/v1/public/payment-webhooks/SSL_COMMERZ')
+      .set('Content-Type', 'application/x-www-form-urlencoded')
+      .send([`tran_id=${encodeURIComponent(internalReference)}`, `val_id=${valId}`, 'status=VALID', 'amount=25.50', 'currency_amount=25.50', 'currency=USD', `sessionkey=sess_late_${suffix}`].join('&'))
+      .expect(201);
+    expect(late.body.data.lateCapture).toBe(true);
+
+    const after = await prisma.order.findUniqueOrThrow({ where: { id: order.id }, include: { payments: true } });
+    expect([after.status, after.paymentStatus]).toEqual(['CANCELLED', 'CANCELLED']);
+    expect(after.payments.map((p) => p.status)).toEqual(['CANCELLED']);
+    expect((after.payments[0]?.metadata as { lateCapture?: { providerPaymentId?: string } }).lateCapture).toBeTruthy();
+    expect(
+      await prisma.auditLog.count({ where: { storeId, action: 'PAYMENT_LATE_CAPTURE_REFUND_REQUIRED', entityId: after.payments[0]!.id } }),
+    ).toBe(1);
+  });
 });

@@ -145,6 +145,27 @@ export class PaymentsService {
     const store = await this.requireStore(storeId);
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      // Lock order, then payment (same order as cancellation and webhooks) so
+      // a concurrent cancel cannot slip between the check and the write.
+      const target = await tx.payment.findFirst({
+        where: { id: paymentId, storeId },
+        select: { orderId: true },
+      });
+      if (!target) {
+        throw new NotFoundException('Payment not found');
+      }
+      const orders = await tx.$queryRaw<
+        { id: string; status: OrderStatus; order_number: string }[]
+      >`
+        SELECT id, status, order_number
+        FROM orders
+        WHERE id = ${target.orderId}::uuid AND store_id = ${storeId}::uuid
+        FOR UPDATE
+      `;
+      const lockedOrder = orders[0];
+      if (!lockedOrder) {
+        throw new NotFoundException('Order not found for payment');
+      }
       const locked = await tx.$queryRaw<
         {
           id: string;
@@ -165,13 +186,11 @@ export class PaymentsService {
 
       assertPaymentRecordStatusTransition(row.status, dto.status);
 
-      const order = await tx.order.findFirst({
-        where: { id: row.order_id, storeId },
-        select: { id: true, status: true, orderNumber: true },
-      });
-      if (!order) {
-        throw new NotFoundException('Order not found for payment');
-      }
+      const order = {
+        id: lockedOrder.id,
+        status: lockedOrder.status,
+        orderNumber: lockedOrder.order_number,
+      };
       if (order.status === OrderStatus.CANCELLED) {
         throw new UnprocessableEntityException(
           'Cannot update payment on a cancelled order',

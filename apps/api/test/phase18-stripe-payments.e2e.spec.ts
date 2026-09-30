@@ -664,4 +664,71 @@ describe('Phase 18 Stripe payments (e2e)', () => {
 
     expect(ok.body.data.status).toBe('PAID');
   });
+
+  it('SF-01: a Stripe payment completing after merchant cancellation is recorded, never PAID', async () => {
+    const email = `stripe.late.${suffix}@example.com`;
+    stripeMock.sessionsCreate.mockResolvedValueOnce({
+      id: `cs_late_${suffix}`,
+      url: `https://checkout.stripe.test/pay/cs_late_${suffix}`,
+    });
+    const checkout = await request(app.getHttpServer())
+      .post(`/api/v1/public/stores/${storeSlug}/checkout`)
+      .set('Idempotency-Key', `p18-late-${suffix}`)
+      .send({
+        items: [{ productId, quantity: 1 }],
+        customer: { name: 'Late Guest', email },
+        shippingAddress: { name: 'Late Guest', addressLine1: '3 Main', city: 'Austin', country: 'US', email },
+        billingSameAsShipping: true,
+        shippingMethodId,
+        paymentProvider: 'STRIPE',
+        paymentMethod: 'CARD',
+      })
+      .expect(201);
+    const initiated = await request(app.getHttpServer())
+      .post(`/api/v1/public/stores/${storeSlug}/payments/create`)
+      .send({ publicReference: checkout.body.data.publicReference, provider: 'STRIPE', email })
+      .expect(201);
+    const internalReference = initiated.body.data.internalReference as string;
+    const order = await prisma.order.findFirstOrThrow({
+      where: { storeId, publicReference: checkout.body.data.publicReference },
+    });
+
+    await request(app.getHttpServer())
+      .patch(`/api/v1/stores/${storeId}/orders/${order.id}/status`)
+      .set('Authorization', `Bearer ${manager.token}`)
+      .send({ status: 'CANCELLED' })
+      .expect(200);
+
+    const event = {
+      id: `evt_late_${suffix}`,
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          id: `cs_late_${suffix}`,
+          payment_status: 'paid',
+          amount_total: 2550,
+          client_reference_id: internalReference,
+          metadata: { ecomestaInternalReference: internalReference },
+        },
+      },
+    };
+    stripeMock.constructEvent.mockReturnValueOnce(event);
+    const late = await request(app.getHttpServer())
+      .post('/api/v1/public/payment-webhooks/STRIPE')
+      .set('Content-Type', 'application/json')
+      .set('stripe-signature', 't=1,v1=valid')
+      .send(JSON.stringify(event))
+      .expect(201);
+    expect(late.body.data.lateCapture).toBe(true);
+    expect(late.body.data.status).toBe('CANCELLED');
+
+    const after = await prisma.order.findUniqueOrThrow({ where: { id: order.id }, include: { payments: true } });
+    expect([after.status, after.paymentStatus]).toEqual(['CANCELLED', 'CANCELLED']);
+    expect(after.payments.map((p) => p.status)).toEqual(['CANCELLED']);
+    expect((after.payments[0]?.metadata as { lateCapture?: { requiresManualRefund?: boolean } }).lateCapture?.requiresManualRefund).toBe(true);
+    const audit = await prisma.auditLog.findFirst({
+      where: { storeId, entityId: after.payments[0]!.id, action: 'PAYMENT_LATE_CAPTURE_REFUND_REQUIRED' },
+    });
+    expect(audit).not.toBeNull();
+  });
 });

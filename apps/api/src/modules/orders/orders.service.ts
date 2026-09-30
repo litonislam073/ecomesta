@@ -54,6 +54,19 @@ type LockedInventory = {
   reserved_quantity: number;
 };
 
+/** Order payment states where the customer's money is taken or held. */
+const MONEY_HELD_PAYMENT_STATUSES: PaymentStatus[] = [
+  PaymentStatus.PAID,
+  PaymentStatus.PARTIALLY_PAID,
+  PaymentStatus.AUTHORIZED,
+];
+
+/** Refund states a cancelled order keeps as its payment status. */
+const MONEY_RETURNED_PAYMENT_STATUSES: PaymentStatus[] = [
+  PaymentStatus.REFUNDED,
+  PaymentStatus.PARTIALLY_REFUNDED,
+];
+
 @Injectable()
 export class OrdersService {
   constructor(
@@ -637,6 +650,37 @@ export class OrdersService {
     locked: NonNullable<Awaited<ReturnType<OrdersService['lockOrderRow']>>>,
     reason?: string | null,
   ) {
+    // SF-01: an order holding captured or authorised money is never cancelled
+    // into CANCELLED/PAID. The merchant records the refund (or voids the
+    // authorisation) first; there is no automated refund.
+    if (MONEY_HELD_PAYMENT_STATUSES.includes(locked.payment_status)) {
+      throw new UnprocessableEntityException(
+        'This order has a captured payment. Record the refund (or void the authorisation) before cancelling it.',
+      );
+    }
+    const payments = await tx.$queryRaw<{ id: string; status: PaymentStatus }[]>`
+      SELECT id, status
+      FROM payments
+      WHERE order_id = ${locked.id}::uuid AND store_id = ${storeId}::uuid
+      FOR UPDATE
+    `;
+    if (payments.some((payment) => MONEY_HELD_PAYMENT_STATUSES.includes(payment.status))) {
+      throw new UnprocessableEntityException(
+        'This order has a captured payment. Record the refund (or void the authorisation) before cancelling it.',
+      );
+    }
+    // Close open attempts so payment rows agree with the cancelled order; a
+    // provider success that still arrives is handled as a late capture.
+    const open = payments
+      .filter((payment) => payment.status === PaymentStatus.PENDING)
+      .map((payment) => payment.id);
+    if (open.length > 0) {
+      await tx.payment.updateMany({
+        where: { id: { in: open }, storeId },
+        data: { status: PaymentStatus.CANCELLED },
+      });
+    }
+
     await this.restockOrderInventory(tx, storeId, locked.id, locked.order_number);
     return tx.order.update({
       where: { id: locked.id },
@@ -644,7 +688,7 @@ export class OrdersService {
         status: OrderStatus.CANCELLED,
         fulfillmentStatus: FulfillmentStatus.CANCELLED,
         paymentStatus:
-          locked.payment_status === PaymentStatus.PAID
+          MONEY_RETURNED_PAYMENT_STATUSES.includes(locked.payment_status)
             ? locked.payment_status
             : PaymentStatus.CANCELLED,
         cancelReason: reason?.trim() ? reason.trim().slice(0, 500) : null,
