@@ -30,10 +30,13 @@ const COLOR_FIELDS: Array<[keyof Branding, string]> = [
 
 export function BrandingSection({
   value,
+  saved,
   onChange,
   disabled,
 }: {
   value: Branding;
+  /** Last saved branding, for color validation. */
+  saved?: Branding;
   onChange: (patch: Branding) => void;
   disabled?: boolean;
 }) {
@@ -74,6 +77,7 @@ export function BrandingSection({
             key={key}
             label={label}
             value={value[key] as string | undefined}
+            saved={saved?.[key] as string | undefined}
             disabled={disabled}
             onChange={(next) => onChange({ ...value, [key]: next })}
           />

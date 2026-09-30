@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   StoreTheme,
   StoreThemeConfig,
@@ -17,7 +17,13 @@ import { HomepageSection } from '@/components/theme/homepage-section';
 import { SeoSection } from '@/components/theme/seo-section';
 import { ThemePreview } from '@/components/theme/theme-preview';
 import { ThemeSelector } from '@/components/theme/theme-selector';
-import { sanitizeThemeConfig } from '@/components/theme/theme-utils';
+import {
+  changedThemeConfig,
+  invalidThemeColors,
+  isThemeDraftDirty,
+  sanitizeThemeConfig,
+} from '@/components/theme/theme-utils';
+import { useUnsavedChangesGuard } from '@/components/theme/use-unsaved-changes-guard';
 import { TypographySection } from '@/components/theme/typography-section';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -41,7 +47,6 @@ function ThemeContent() {
   const [draft, setDraft] = useState<StoreThemeConfig>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [pending, setPending] = useState<PendingAction>(null);
   const [busy, setBusy] = useState(false);
@@ -49,12 +54,22 @@ function ThemeContent() {
   // Remounts the sections that keep raw text buffers when a fresh config lands.
   const [formKey, setFormKey] = useState(0);
 
+  // `storeTheme.configuration` is the last server-saved draft (the baseline);
+  // `draft` is what the editor shows. Unsaved = the two differ.
   const applyStoreTheme = useCallback((next: StoreTheme) => {
     setStoreTheme(next);
     setDraft(next.configuration ?? {});
-    setDirty(false);
     setFormKey((value) => value + 1);
   }, []);
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+
+  const dirty =
+    canWrite &&
+    !loading &&
+    storeTheme !== null &&
+    isThemeDraftDirty(draft, storeTheme.configuration ?? {});
+  const { prompt, askDiscard } = useUnsavedChangesGuard(dirty);
 
   const load = useCallback(async () => {
     if (!selectedStoreId) {
@@ -93,21 +108,46 @@ function ThemeContent() {
     value: StoreThemeConfig[K],
   ) {
     setDraft((current) => ({ ...current, [key]: value }));
-    setDirty(true);
   }
 
-  async function saveDraft() {
-    if (!selectedStoreId) return;
+  /** Saves the changed fields; resolves true only if the server accepted them. */
+  async function saveDraft(): Promise<boolean> {
+    if (!selectedStoreId) return false;
+    // Never report a save while an entered color would be lost (TE-05): the
+    // fields show what is wrong and the merchant's text stays on screen.
+    const invalidColors = invalidThemeColors(draft, storeTheme?.configuration ?? {});
+    if (invalidColors.length > 0) {
+      pushToast(
+        `Not saved. Fix the invalid color${invalidColors.length > 1 ? 's' : ''}: ${invalidColors.join(', ')}.`,
+        'error',
+      );
+      return false;
+    }
+    const sent = draft;
     setSaving(true);
     try {
       const result = await api.patch<{ success: true; data: StoreTheme }>(
         `/stores/${selectedStoreId}/theme`,
-        { configuration: sanitizeThemeConfig(draft) },
+        {
+          configuration: changedThemeConfig(
+            sanitizeThemeConfig(draft),
+            storeTheme?.configuration ?? {},
+          ),
+        },
       );
-      applyStoreTheme(result.data);
+      if (draftRef.current === sent) {
+        // The server's merged draft (it may include another tab's edits).
+        applyStoreTheme(result.data);
+      } else {
+        // Edited while saving: new baseline, but keep what is on screen.
+        setStoreTheme(result.data);
+      }
       pushToast('Draft saved', 'success');
+      return true;
     } catch (err) {
+      // Keep the merchant's edits; they stay unsaved and can be retried.
       pushToast(humanApiError(err, 'Could not save the draft'), 'error');
+      return false;
     } finally {
       setSaving(false);
     }
@@ -115,6 +155,8 @@ function ThemeContent() {
 
   async function selectTheme(themeId: string) {
     if (!selectedStoreId) return;
+    // Switching loads the other theme's draft, which would drop unsaved edits.
+    if (dirty && !(await askDiscard('switch'))) return;
     setSwitchingThemeId(themeId);
     try {
       await api.patch<{ success: true; data: StoreTheme }>(
@@ -134,6 +176,12 @@ function ThemeContent() {
     if (!selectedStoreId || !pending) return;
     setBusy(true);
     try {
+      // Publish what is on screen: unsaved edits are saved first, and nothing
+      // is published if that save fails.
+      if (pending === 'publish' && dirty && !(await saveDraft())) {
+        setPending(null);
+        return;
+      }
       const result = await api.post<{ success: true; data: StoreTheme }>(
         `/stores/${selectedStoreId}/theme/${pending}`,
       );
@@ -169,6 +217,8 @@ function ThemeContent() {
   }
 
   const disabled = !canWrite;
+  // While another theme's draft is loading, edits would be replaced by it.
+  const fieldsDisabled = disabled || switchingThemeId !== null;
 
   return (
     <div className="space-y-6">
@@ -186,8 +236,10 @@ function ThemeContent() {
             <Button variant="secondary" disabled={saving} onClick={() => void saveDraft()}>
               {saving ? 'Saving…' : 'Save draft'}
             </Button>
-            <Button onClick={() => setPending('publish')}>Publish</Button>
-            <Button variant="danger" onClick={() => setPending('reset')}>
+            <Button disabled={saving} onClick={() => setPending('publish')}>
+              Publish
+            </Button>
+            <Button variant="danger" disabled={saving} onClick={() => setPending('reset')}>
               Reset
             </Button>
           </div>
@@ -231,7 +283,15 @@ function ThemeContent() {
                 ? ` · published ${new Date(storeTheme.liveTheme.publishedAt).toLocaleString()}`
                 : null}
             </span>
-            {storeTheme.hasUnpublishedChanges || dirty ? (
+            {dirty ? (
+              <span
+                data-testid="unsaved-indicator"
+                className="rounded-full border border-[var(--color-danger)] px-2 py-0.5 text-xs font-medium text-[var(--color-danger)]"
+              >
+                Unsaved changes
+              </span>
+            ) : null}
+            {storeTheme.hasUnpublishedChanges ? (
               <span className="rounded-full border border-[var(--color-border)] px-2 py-0.5 text-xs text-[var(--color-ink)]">
                 Unpublished changes
               </span>
@@ -244,46 +304,48 @@ function ThemeContent() {
                 themes={themes}
                 selectedThemeId={storeTheme.theme.id}
                 liveThemeId={storeTheme.liveTheme?.id ?? null}
-                disabled={disabled}
+                disabled={disabled || saving}
                 busyThemeId={switchingThemeId}
                 onSelect={(themeId) => void selectTheme(themeId)}
               />
               <BrandingSection
                 value={draft.branding ?? {}}
-                disabled={disabled}
+                saved={storeTheme.configuration?.branding}
+                disabled={fieldsDisabled}
                 onChange={(value) => updateSection('branding', value)}
               />
               <TypographySection
                 value={draft.typography ?? {}}
-                disabled={disabled}
+                disabled={fieldsDisabled}
                 onChange={(value) => updateSection('typography', value)}
               />
               <AnnouncementSection
                 value={draft.announcement ?? {}}
-                disabled={disabled}
+                saved={storeTheme.configuration?.announcement}
+                disabled={fieldsDisabled}
                 onChange={(value) => updateSection('announcement', value)}
               />
               <HeaderSection
                 key={`header-${formKey}`}
                 value={draft.header ?? {}}
-                disabled={disabled}
+                disabled={fieldsDisabled}
                 onChange={(value) => updateSection('header', value)}
               />
               <HeroSection
                 value={draft.hero ?? {}}
-                disabled={disabled}
+                disabled={fieldsDisabled}
                 onChange={(value) => updateSection('hero', value)}
               />
               <HomepageSection
                 key={`homepage-${formKey}`}
                 value={draft.homepage ?? {}}
-                disabled={disabled}
+                disabled={fieldsDisabled}
                 onChange={(value) => updateSection('homepage', value)}
               />
               <FooterSection
                 key={`footer-${formKey}`}
                 value={draft.footer ?? {}}
-                disabled={disabled}
+                disabled={fieldsDisabled}
                 onChange={(value) => updateSection('footer', value)}
               />
               <SeoSection />
@@ -313,14 +375,35 @@ function ThemeContent() {
             ? 'Reset the draft to theme defaults?'
             : 'Publish this theme to the storefront?'
         }
+        safeDefault={pending === 'reset'}
         description={
           pending === 'reset'
             ? 'Unsaved and saved draft changes are replaced with the theme defaults. The published storefront is untouched until you publish again.'
-            : `${storeTheme?.theme.name ?? 'This theme'} and its saved draft become the live storefront. Save the draft first if you have unsaved edits.`
+            : dirty
+              ? `Your unsaved changes are saved first, then ${storeTheme?.theme.name ?? 'this theme'} and its draft become the live storefront.`
+              : `${storeTheme?.theme.name ?? 'This theme'} and its saved draft become the live storefront.`
         }
-        confirmLabel={pending === 'reset' ? 'Reset draft' : 'Publish theme'}
+        confirmLabel={
+          pending === 'reset' ? 'Reset draft' : dirty ? 'Save and publish' : 'Publish theme'
+        }
         onConfirm={() => void runPending()}
         onCancel={() => setPending(null)}
+      />
+
+      <ConfirmDialog
+        open={prompt !== null}
+        danger
+        safeDefault
+        title="Discard unsaved theme changes?"
+        description={
+          prompt?.reason === 'switch'
+            ? 'Your theme changes have not been saved. Switching themes discards them. The live storefront is not affected.'
+            : 'Your theme changes have not been saved. Leaving this page discards them.'
+        }
+        cancelLabel={prompt?.reason === 'switch' ? 'Keep editing' : 'Stay on page'}
+        confirmLabel="Discard changes"
+        onConfirm={() => prompt?.confirm()}
+        onCancel={() => prompt?.cancel()}
       />
     </div>
   );

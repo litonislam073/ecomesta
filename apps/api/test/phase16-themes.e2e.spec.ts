@@ -230,6 +230,14 @@ describe('Phase 16 storefront theming (e2e)', () => {
         },
       },
       { footer: { socialLinks: [{ network: 'myspace', url: '/x' }] } },
+      // TE-01: menu and social URLs typed in the editor stay server-validated.
+      ...['javascript:alert(1)', 'data:text/plain,x', 'ftp://example.com/x', 'not a url', '//evil.example.com', ''].flatMap(
+        (href) => [
+          { header: { menuItems: [{ label: 'Item', href }] } },
+          { footer: { menuItems: [{ label: 'Item', href }] } },
+          { footer: { socialLinks: [{ network: 'facebook', url: href }] } },
+        ],
+      ),
       { homepage: { featuredProducts: ['not-a-uuid'] } },
       { homepage: { sections: [{ type: 'unsupported_section' }] } },
       { typography: { baseFontSize: 99 } },

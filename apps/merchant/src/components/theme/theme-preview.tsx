@@ -2,7 +2,7 @@
 
 import type { CSSProperties } from 'react';
 import type { StoreThemeConfig } from '@ecomesta/types';
-import { themeCssVariables } from '@/components/theme/theme-utils';
+import { themeCssVariables, validColor } from '@/components/theme/theme-utils';
 
 /**
  * Simplified in-app mock of the storefront chrome. It renders from the draft
@@ -52,8 +52,8 @@ export function ThemePreview({
         <div
           className="px-3 py-2 text-center text-xs"
           style={{
-            background: announcement.backgroundColor ?? 'var(--theme-secondary)',
-            color: announcement.textColor ?? '#ffffff',
+            background: validColor(announcement.backgroundColor, 'var(--theme-secondary)'),
+            color: validColor(announcement.textColor, '#ffffff'),
           }}
         >
           {announcement.text?.trim() || 'Announcement text'}

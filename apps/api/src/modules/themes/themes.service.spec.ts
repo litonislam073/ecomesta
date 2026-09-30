@@ -63,13 +63,15 @@ describe('ThemesService draft/publish separation', () => {
 
   function build() {
     const tx = {
+      $queryRaw: jest.fn().mockResolvedValue([{ id: 'store-1' }]),
+      theme: { findFirst: jest.fn().mockResolvedValue(themeB) },
       storeTheme: {
-        findFirst: jest.fn().mockResolvedValue({ publishedAt: liveA.publishedAt }),
+        findFirst: jest.fn(),
         update: jest.fn(),
         updateMany: jest.fn(),
         upsert: jest.fn().mockResolvedValue({ ...draftB, isActive: true }),
       },
-      store: { update: jest.fn() },
+      store: { update: jest.fn(), findUnique: jest.fn() },
     };
     const prisma = {
       store: {
@@ -101,10 +103,22 @@ describe('ThemesService draft/publish separation', () => {
     return { service, prisma, tx, del, audit };
   }
 
+  /** The store theme lock must be the first statement of the transaction. */
+  function expectLockedFirst(tx: ReturnType<typeof build>['tx']) {
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(1);
+    const [sqlParts, storeId] = tx.$queryRaw.mock.calls[0] as [TemplateStringsArray, string];
+    expect(sqlParts.join('?')).toMatch(/FROM stores WHERE id = \?::uuid FOR NO KEY UPDATE/);
+    expect(storeId).toBe('store-1');
+    const [lockAt] = tx.$queryRaw.mock.invocationCallOrder;
+    const [firstReadAt] = tx.storeTheme.findFirst.mock.invocationCallOrder;
+    expect(lockAt).toBeLessThan(firstReadAt ?? Number.POSITIVE_INFINITY);
+  }
+
   it('selecting a theme never publishes or clears the public cache', async () => {
     const { service, prisma, tx, del } = build();
-    // requireActiveStoreTheme → live A; findLiveStoreTheme → A
-    prisma.storeTheme.findFirst.mockResolvedValueOnce(liveA).mockResolvedValueOnce(liveA);
+    // Inside the lock: active row is A. After commit: live theme is A.
+    tx.storeTheme.findFirst.mockResolvedValueOnce(liveA);
+    prisma.storeTheme.findFirst.mockResolvedValueOnce(liveA);
 
     const res = await service.updateStoreTheme('user-1', 'store-1', { themeId: themeB.id });
 
@@ -117,28 +131,51 @@ describe('ThemesService draft/publish separation', () => {
     expect(res.data.isLive).toBe(false);
     expect(res.data.liveTheme?.slug).toBe('default');
     expect(res.data.hasUnpublishedChanges).toBe(true);
+    expectLockedFirst(tx);
   });
 
-  it('saving a draft writes only the draft configuration', async () => {
-    const { service, prisma, del } = build();
-    prisma.storeTheme.findFirst.mockResolvedValueOnce(draftB).mockResolvedValueOnce(liveA);
-    prisma.storeTheme.update.mockResolvedValue(draftB);
+  it('saving a draft merges into the draft read under the lock and writes only the draft', async () => {
+    const { service, prisma, tx, del } = build();
+    const latest = { ...draftB, configuration: { hero: { headline: 'Old', subheadline: 'Keep' }, announcement: { text: 'Committed by another save' } } };
+    tx.storeTheme.findFirst.mockResolvedValueOnce(latest);
+    tx.storeTheme.update.mockImplementation(async ({ data }) => ({ ...latest, configuration: data.configuration }));
+    prisma.storeTheme.findFirst.mockResolvedValueOnce(liveA);
 
     await service.updateStoreTheme('user-1', 'store-1', {
       configuration: { hero: { headline: 'Draft' } },
     });
 
-    const data = prisma.storeTheme.update.mock.calls[0][0].data;
+    expectLockedFirst(tx);
+    const data = tx.storeTheme.update.mock.calls[0][0].data;
     expect(Object.keys(data)).toEqual(['configuration']);
+    expect(data.configuration).toEqual({
+      hero: { headline: 'Draft', subheadline: 'Keep' },
+      announcement: { text: 'Committed by another save' },
+    });
+    expect(prisma.storeTheme.update).not.toHaveBeenCalled();
     expect(del).not.toHaveBeenCalled();
+  });
+
+  it('rejects an invalid patch before opening the transaction', async () => {
+    const { service, prisma } = build();
+    await expect(
+      service.updateStoreTheme('user-1', 'store-1', {
+        configuration: { branding: { primaryColor: 'nope' } },
+      }),
+    ).rejects.toThrow(/hex color/);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('publishes inside one transaction, then invalidates only that store', async () => {
     const { service, prisma, tx, del, audit } = build();
-    prisma.storeTheme.findFirst.mockResolvedValueOnce(draftB);
+    // Under the lock: the active draft, then the currently live row.
+    tx.storeTheme.findFirst
+      .mockResolvedValueOnce(draftB)
+      .mockResolvedValueOnce({ id: liveA.id, publishedAt: liveA.publishedAt, publishedConfiguration: liveA.publishedConfiguration });
     tx.storeTheme.update.mockResolvedValue({ ...draftB, publishedAt: new Date() });
 
     const res = await service.publish('user-1', 'store-1');
+    expectLockedFirst(tx);
 
     const data = tx.storeTheme.update.mock.calls[0][0].data;
     expect(data.publishedAt.getTime()).toBeGreaterThan(liveA.publishedAt.getTime());
@@ -150,9 +187,7 @@ describe('ThemesService draft/publish separation', () => {
   });
 
   it('a failed publish neither invalidates the cache nor audits', async () => {
-    const { service, prisma, tx, del, audit } = build();
-    prisma.storeTheme.findFirst.mockResolvedValueOnce(draftB);
-    tx.storeTheme.update.mockResolvedValue(draftB);
+    const { service, prisma, del, audit } = build();
     prisma.$transaction.mockRejectedValueOnce(new Error('db down'));
 
     await expect(service.publish('user-1', 'store-1')).rejects.toThrow('db down');

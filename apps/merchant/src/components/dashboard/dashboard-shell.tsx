@@ -10,6 +10,7 @@ import { SidebarNav } from '@/components/dashboard/sidebar-nav';
 import { StoreSelector } from '@/components/dashboard/store-selector';
 import { ViewStoreLink } from '@/components/dashboard/view-store-link';
 import { LoadingState } from '@/components/ui/loading-state';
+import { confirmLeave } from '@/lib/leave-guard';
 import { useAuth } from '@/lib/auth-context';
 import { SubscriptionProvider, useSubscription } from '@/lib/subscription-context';
 
@@ -67,6 +68,18 @@ function DashboardFrame({ children }: { children: ReactNode }) {
     setMobileOpen(false);
   }, [pathname]);
 
+  // The mobile navigation panel closes on Escape and hands focus back to Menu.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setMobileOpen(false);
+      document.getElementById('mobile-menu-button')?.focus();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [mobileOpen]);
+
   if (loading) {
     return (
       <div className="mx-auto max-w-5xl p-8">
@@ -100,11 +113,14 @@ function DashboardFrame({ children }: { children: ReactNode }) {
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-20 border-b border-[var(--color-border)] bg-[var(--color-surface)]/95 backdrop-blur">
-            <div className="flex items-center justify-between gap-3 px-4 py-3 md:px-6">
-              <div className="flex items-center gap-3">
+            {/* Wraps onto a second row when it does not fit; both groups may
+                shrink so nothing forces the page wider than the viewport. */}
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 md:px-6">
+              <div className="flex min-w-0 flex-auto items-center gap-2 sm:gap-3">
                 <Button
+                  id="mobile-menu-button"
                   variant="secondary"
-                  className="lg:hidden"
+                  className="shrink-0 lg:hidden"
                   aria-expanded={mobileOpen}
                   aria-controls="mobile-sidebar"
                   onClick={() => setMobileOpen((open) => !open)}
@@ -114,23 +130,32 @@ function DashboardFrame({ children }: { children: ReactNode }) {
                 <StoreSelector />
                 <ViewStoreLink />
               </div>
-              <div className="flex items-center gap-3">
+              <div className="ml-auto flex min-w-0 items-center gap-3">
                 <button
                   type="button"
-                  className="hidden rounded-md border border-[var(--color-border)] px-3 py-2 text-sm text-[var(--color-muted)] sm:inline-flex"
+                  className="hidden shrink-0 rounded-md border border-[var(--color-border)] px-3 py-2 text-sm text-[var(--color-muted)] sm:inline-flex"
                   aria-label="Notifications (coming soon)"
                   title="Notifications coming soon"
                 >
                   Alerts
                 </button>
-                <div className="text-right">
-                  <p className="text-sm font-medium">{displayName}</p>
-                  <p className="text-xs text-[var(--color-muted)]">{user.email}</p>
+                <div className="min-w-0 max-w-[14rem] text-right lg:max-w-[12rem] xl:max-w-[14rem]">
+                  <p className="truncate text-sm font-medium" title={displayName}>
+                    {displayName}
+                  </p>
+                  <p className="truncate text-xs text-[var(--color-muted)]" title={user.email}>
+                    {user.email}
+                  </p>
                 </div>
                 <Button
                   variant="ghost"
+                  className="shrink-0"
                   onClick={() => {
-                    void logout().then(() => router.replace('/login'));
+                    void confirmLeave().then(async (ok) => {
+                      if (!ok) return;
+                      await logout();
+                      router.replace('/login');
+                    });
                   }}
                 >
                   Log out

@@ -12,10 +12,13 @@ type Announcement = NonNullable<StoreThemeConfig['announcement']>;
 
 export function AnnouncementSection({
   value,
+  saved,
   onChange,
   disabled,
 }: {
   value: Announcement;
+  /** Last saved announcement, for color validation. */
+  saved?: Announcement;
   onChange: (patch: Announcement) => void;
   disabled?: boolean;
 }) {
@@ -51,6 +54,7 @@ export function AnnouncementSection({
           <ColorField
             label="Background color"
             value={value.backgroundColor}
+            saved={saved?.backgroundColor}
             disabled={disabled}
             onChange={(backgroundColor) =>
               onChange({ ...value, backgroundColor })
@@ -59,6 +63,7 @@ export function AnnouncementSection({
           <ColorField
             label="Text color"
             value={value.textColor}
+            saved={saved?.textColor}
             disabled={disabled}
             onChange={(textColor) => onChange({ ...value, textColor })}
           />

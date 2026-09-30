@@ -1,6 +1,7 @@
 'use client';
 
 import { Select } from '@/components/ui/select';
+import { confirmLeave } from '@/lib/leave-guard';
 import { useStoreContext } from '@/lib/store-context';
 
 export function StoreSelector() {
@@ -28,11 +29,20 @@ export function StoreSelector() {
   }
 
   return (
-    <label className="flex min-w-[12rem] flex-col gap-1">
+    // Fills the header on narrow screens (the native select truncates long
+    // store names); from `sm` up the same 12rem it always had.
+    <label className="flex min-w-0 flex-1 flex-col gap-1 sm:w-48 sm:flex-none">
       <span className="sr-only">Selected store</span>
       <Select
         value={selectedStoreId ?? ''}
-        onChange={(event) => setSelectedStoreId(event.target.value)}
+        onChange={(event) => {
+          const next = event.target.value;
+          // A page with unsaved edits (Theme editor) may ask first; the select
+          // stays controlled, so cancelling keeps the current store.
+          void confirmLeave().then((ok) => {
+            if (ok) setSelectedStoreId(next);
+          });
+        }}
         aria-label="Selected store"
       >
         {stores.map((store) => (

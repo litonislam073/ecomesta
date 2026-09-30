@@ -1,9 +1,9 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { HEX_COLOR_PATTERN } from '@/components/theme/theme-utils';
+import { HEX_COLOR_PATTERN, colorFieldError } from '@/components/theme/theme-utils';
 
 export function FieldLabel({
   label,
@@ -200,22 +200,32 @@ export function ToggleField({
 }
 
 /**
- * Hex text entry plus a native swatch. Invalid drafts are flagged here and
- * dropped from the payload by `sanitizeThemeConfig` rather than failing a save.
+ * Hex text entry plus a native swatch. An invalid value stays on screen,
+ * marked `aria-invalid` with its message linked, and the page refuses to save
+ * until it is fixed (TE-05). `saved` is the last saved value of this field.
  */
 export function ColorField({
   label,
   value,
+  saved,
   onChange,
   disabled,
 }: {
   label: string;
   value: string | undefined;
+  saved?: string;
   onChange: (value: string) => void;
   disabled?: boolean;
 }) {
+  const errorId = useId();
   const current = value ?? '';
-  const valid = current === '' || HEX_COLOR_PATTERN.test(current);
+  const error = colorFieldError(value, saved);
+  const trimmed = current.trim();
+  const swatch = HEX_COLOR_PATTERN.test(trimmed)
+    ? trimmed.length === 4
+      ? `#${trimmed[1]}${trimmed[1]}${trimmed[2]}${trimmed[2]}${trimmed[3]}${trimmed[3]}`.toLowerCase()
+      : trimmed.toLowerCase()
+    : '#000000';
   return (
     <div className="space-y-1 text-sm">
       <label className="space-y-1">
@@ -225,27 +235,55 @@ export function ColorField({
             value={current}
             placeholder="#0f172a"
             disabled={disabled}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? errorId : undefined}
+            className={error ? 'border-[var(--color-danger)]' : ''}
             onChange={(event) => onChange(event.target.value)}
           />
           <input
             type="color"
             aria-label={`${label} swatch`}
             className="h-9 w-10 shrink-0 cursor-pointer rounded border border-[var(--color-border)] bg-[var(--color-surface)]"
-            value={HEX_COLOR_PATTERN.test(current) ? current : '#000000'}
+            value={swatch}
             disabled={disabled}
             onChange={(event) => onChange(event.target.value)}
           />
         </div>
       </label>
-      {!valid ? (
-        <p className="text-xs text-[var(--color-danger)]">
-          Use a hex color such as #fff or #1a2b3c. This value will not be saved.
+      {error ? (
+        <p id={errorId} className="text-xs text-[var(--color-danger)]">
+          <span className="font-medium">Invalid color:</span> {error} Fix it to save.
         </p>
       ) : null}
     </div>
   );
 }
 
+type MenuItem = { label: string; href: string };
+
+function formatMenuItems(items: MenuItem[]): string {
+  return items.map((item) => `${item.label} | ${item.href}`).join('\n');
+}
+
+function parseMenuItems(raw: string): MenuItem[] {
+  return raw
+    .split('\n')
+    .map((line) => {
+      const [itemLabel, href] = line.split('|');
+      return {
+        label: (itemLabel ?? '').trim(),
+        href: (href ?? '').trim(),
+      };
+    })
+    .filter((item) => item.label !== '' || item.href !== '');
+}
+
+/**
+ * The textarea keeps the merchant's raw text and only the parsed items flow up,
+ * so parsing never rewrites what is being typed (caret, spaces and newlines
+ * stay put). The theme page remounts sections with a fresh `key` whenever a
+ * new configuration loads, which re-seeds this buffer from `items`.
+ */
 export function MenuItemsField({
   label,
   items,
@@ -254,11 +292,12 @@ export function MenuItemsField({
   hint,
 }: {
   label: string;
-  items: Array<{ label: string; href: string }>;
-  onChange: (items: Array<{ label: string; href: string }>) => void;
+  items: MenuItem[];
+  onChange: (items: MenuItem[]) => void;
   disabled?: boolean;
   hint?: string;
 }) {
+  const [raw, setRaw] = useState(() => formatMenuItems(items));
   return (
     <TextAreaField
       label={label}
@@ -268,19 +307,10 @@ export function MenuItemsField({
       }
       rows={4}
       disabled={disabled}
-      value={items.map((item) => `${item.label} | ${item.href}`).join('\n')}
-      onChange={(raw) => {
-        const parsed = raw
-          .split('\n')
-          .map((line) => {
-            const [itemLabel, href] = line.split('|');
-            return {
-              label: (itemLabel ?? '').trim(),
-              href: (href ?? '').trim(),
-            };
-          })
-          .filter((item) => item.label !== '' || item.href !== '');
-        onChange(parsed);
+      value={raw}
+      onChange={(next) => {
+        setRaw(next);
+        onChange(parseMenuItems(next));
       }}
     />
   );

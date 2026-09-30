@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import type {
   StoreThemeConfig,
   ThemeSocialLink,
@@ -52,6 +53,11 @@ export function FooterSection({
   onChange: (patch: Footer) => void;
   disabled?: boolean;
 }) {
+  // Raw text stays as typed; incomplete lines are only dropped from the parsed
+  // links, never from the textarea. Remounted (via `key`) when a new config loads.
+  const [socialText, setSocialText] = useState(() =>
+    (value.socialLinks ?? []).map((link) => `${link.network} | ${link.url}`).join('\n'),
+  );
   return (
     <Card title="Footer" description="Footer copy, links, and social profiles.">
       <div className="grid gap-4 md:grid-cols-2">
@@ -91,13 +97,12 @@ export function FooterSection({
             label="Social links"
             hint={`One per line as "network | https://…". Networks: ${SOCIAL_NETWORKS.join(', ')}.`}
             rows={4}
-            value={(value.socialLinks ?? [])
-              .map((link) => `${link.network} | ${link.url}`)
-              .join('\n')}
+            value={socialText}
             disabled={disabled}
-            onChange={(raw) =>
-              onChange({ ...value, socialLinks: parseSocialLinks(raw) })
-            }
+            onChange={(raw) => {
+              setSocialText(raw);
+              onChange({ ...value, socialLinks: parseSocialLinks(raw) });
+            }}
           />
         </div>
       </div>

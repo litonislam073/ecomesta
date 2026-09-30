@@ -3,6 +3,7 @@ import type {
   StoreThemeConfig,
   ThemeBorderRadius,
 } from '@ecomesta/types';
+import { isThemeFontFamily, type ThemeFontFamily } from '@ecomesta/utils';
 import { publicGet } from '@/lib/public-api';
 
 export const EMPTY_PUBLIC_THEME: PublicStoreTheme = {
@@ -17,7 +18,7 @@ const HEX_COLOR_PATTERN = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
  * Whitelisted families only. A stored font name never reaches a CSS
  * declaration verbatim, so a hostile config cannot inject style rules.
  */
-const FONT_STACKS: Record<string, string> = {
+const FONT_STACKS: Record<ThemeFontFamily, string> = {
   Inter: "'Inter', system-ui, sans-serif",
   'Work Sans': "'Work Sans', system-ui, sans-serif",
   'IBM Plex Sans': "'IBM Plex Sans', system-ui, sans-serif",
@@ -39,7 +40,7 @@ export function fontStack(name: string | undefined, fallback: string): string {
   if (!name) {
     return fallback;
   }
-  return FONT_STACKS[name] ?? fallback;
+  return isThemeFontFamily(name) ? FONT_STACKS[name] : fallback;
 }
 
 export function radiusValue(radius: ThemeBorderRadius | undefined): string | null {

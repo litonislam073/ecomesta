@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { THEME_FONT_FAMILIES } from '@ecomesta/utils';
 import {
   ArrayMaxSize,
   IsArray,
@@ -128,16 +129,14 @@ export class ThemeBrandingDto {
 }
 
 export class ThemeTypographyDto {
-  @ApiPropertyOptional({ maxLength: THEME_LIMITS.fontName })
+  @ApiPropertyOptional({ enum: THEME_FONT_FAMILIES })
   @IsOptional()
-  @IsString()
-  @MaxLength(THEME_LIMITS.fontName)
+  @IsIn(THEME_FONT_FAMILIES)
   headingFont?: string;
 
-  @ApiPropertyOptional({ maxLength: THEME_LIMITS.fontName })
+  @ApiPropertyOptional({ enum: THEME_FONT_FAMILIES })
   @IsOptional()
-  @IsString()
-  @MaxLength(THEME_LIMITS.fontName)
+  @IsIn(THEME_FONT_FAMILIES)
   bodyFont?: string;
 
   @ApiPropertyOptional({

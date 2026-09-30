@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { THEME_FONT_FAMILIES } from '@ecomesta/utils';
 import {
   StoreThemeConfig,
   THEME_BORDER_RADII,
@@ -86,6 +87,26 @@ function url(value: unknown, path: string): string {
   return parsed.toString();
 }
 
+/**
+ * Optional URL fields that a merchant may remove. An empty (or whitespace-only)
+ * value is kept as `''` in the normalized patch, which `mergeThemeConfiguration`
+ * turns into "delete this key". Stored configurations never keep `''` here.
+ * Everything else still goes through the full `url()` validation.
+ */
+export const OPTIONAL_URL_FIELDS = {
+  branding: ['logoUrl', 'faviconUrl'],
+  announcement: ['href'],
+  hero: ['ctaHref', 'imageUrl'],
+  seo: ['ogImageUrl'],
+} as const satisfies Partial<Record<keyof StoreThemeConfig, readonly string[]>>;
+
+function optionalUrl(value: unknown, path: string): string {
+  if (typeof value === 'string' && value.trim() === '') {
+    return '';
+  }
+  return url(value, path);
+}
+
 function bool(value: unknown, path: string): boolean {
   if (typeof value !== 'boolean') {
     fail(path, 'must be a boolean');
@@ -164,8 +185,8 @@ function normalizeBranding(input: Record<string, unknown>): ThemeBrandingConfig 
     [
       ['brandName', (v, p) => text(v, p, THEME_LIMITS.brandName)],
       ['tagline', (v, p) => text(v, p, THEME_LIMITS.tagline)],
-      ['logoUrl', url],
-      ['faviconUrl', url],
+      ['logoUrl', optionalUrl],
+      ['faviconUrl', optionalUrl],
       ['primaryColor', color],
       ['secondaryColor', color],
       ['accentColor', color],
@@ -181,13 +202,20 @@ function normalizeBranding(input: Record<string, unknown>): ThemeBrandingConfig 
 
 function normalizeTypography(
   input: Record<string, unknown>,
+  options: NormalizeOptions,
 ): ThemeTypographyConfig {
+  // Requests must name a whitelisted family exactly (TE-06). Configurations
+  // already stored are only read back, never re-validated, so a value saved
+  // before the whitelist was enforced cannot lock a store out of its editor.
+  const font = options.stored
+    ? (v: unknown, p: string) => text(v, p, THEME_LIMITS.fontName)
+    : (v: unknown, p: string) => oneOf(v, p, THEME_FONT_FAMILIES);
   return pick<ThemeTypographyConfig>(
     input,
     {},
     [
-      ['headingFont', (v, p) => text(v, p, THEME_LIMITS.fontName)],
-      ['bodyFont', (v, p) => text(v, p, THEME_LIMITS.fontName)],
+      ['headingFont', font],
+      ['bodyFont', font],
       [
         'baseFontSize',
         (v, p) =>
@@ -213,7 +241,7 @@ function normalizeAnnouncement(
     [
       ['enabled', bool],
       ['text', (v, p) => text(v, p, THEME_LIMITS.announcementText)],
-      ['href', url],
+      ['href', optionalUrl],
       ['backgroundColor', color],
       ['textColor', color],
     ],
@@ -257,8 +285,8 @@ function normalizeHero(input: Record<string, unknown>): ThemeHeroConfig {
       ['headline', (v, p) => text(v, p, THEME_LIMITS.title)],
       ['subheadline', (v, p) => text(v, p, THEME_LIMITS.description)],
       ['ctaLabel', (v, p) => text(v, p, THEME_LIMITS.label)],
-      ['ctaHref', url],
-      ['imageUrl', url],
+      ['ctaHref', optionalUrl],
+      ['imageUrl', optionalUrl],
       ['alignment', (v, p) => oneOf(v, p, THEME_HERO_ALIGNMENTS)],
       ['overlayOpacity', (v, p) => num(v, p, 0, 1)],
     ],
@@ -362,10 +390,18 @@ function normalizeSeo(input: Record<string, unknown>): ThemeSeoConfig {
       ['title', (v, p) => text(v, p, THEME_LIMITS.title)],
       ['description', (v, p) => text(v, p, THEME_LIMITS.description)],
       ['keywords', normalizeKeywords],
-      ['ogImageUrl', url],
+      ['ogImageUrl', optionalUrl],
     ],
     'seo',
   );
+}
+
+export interface NormalizeOptions {
+  /**
+   * The input is a configuration already stored by the API (draft, theme
+   * defaults), not a request. Font names are then read back as saved.
+   */
+  stored?: boolean;
 }
 
 /**
@@ -374,7 +410,10 @@ function normalizeSeo(input: Record<string, unknown>): ThemeSeoConfig {
  * Unknown keys are dropped; known keys with unusable values raise 400 so a
  * merchant never silently publishes a broken storefront.
  */
-export function normalizeThemeConfiguration(input: unknown): StoreThemeConfig {
+export function normalizeThemeConfiguration(
+  input: unknown,
+  options: NormalizeOptions = {},
+): StoreThemeConfig {
   if (input === undefined || input === null) {
     return {};
   }
@@ -389,7 +428,7 @@ export function normalizeThemeConfiguration(input: unknown): StoreThemeConfig {
   }
   const typography = section(input, 'typography');
   if (typography) {
-    output.typography = normalizeTypography(typography);
+    output.typography = normalizeTypography(typography, options);
   }
   const announcement = section(input, 'announcement');
   if (announcement) {
@@ -419,7 +458,10 @@ export function normalizeThemeConfiguration(input: unknown): StoreThemeConfig {
   return output;
 }
 
-/** Section-wise merge: scalars overwrite, arrays are replaced wholesale. */
+/**
+ * Section-wise merge: scalars overwrite, arrays are replaced wholesale, and an
+ * optional URL patched to `''` is removed from its section (siblings stay).
+ */
 export function mergeThemeConfiguration(
   base: StoreThemeConfig,
   patch: StoreThemeConfig,
@@ -427,11 +469,22 @@ export function mergeThemeConfiguration(
   const merged: Record<string, unknown> = structuredCloneConfig({ ...base });
   for (const [key, value] of Object.entries(patch)) {
     const current = merged[key];
-    if (isPlainObject(current) && isPlainObject(value)) {
-      merged[key] = { ...current, ...value };
-      continue;
+    const next =
+      isPlainObject(current) && isPlainObject(value)
+        ? { ...current, ...value }
+        : isPlainObject(value)
+          ? { ...value }
+          : value;
+    const clearable: readonly string[] =
+      OPTIONAL_URL_FIELDS[key as keyof typeof OPTIONAL_URL_FIELDS] ?? [];
+    if (isPlainObject(next)) {
+      for (const field of clearable) {
+        if (next[field] === '') {
+          delete next[field];
+        }
+      }
     }
-    merged[key] = value;
+    merged[key] = next;
   }
   return merged as StoreThemeConfig;
 }

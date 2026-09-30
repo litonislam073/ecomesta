@@ -109,25 +109,38 @@ export class ThemesService {
     }
 
     const store = await this.requireStore(storeId);
-    let storeTheme = await this.requireActiveStoreTheme(storeId);
-    let switchedTheme = false;
+    // Validate before taking the lock so a bad payload never touches the draft.
+    const patch =
+      dto.configuration === undefined
+        ? undefined
+        : normalizeThemeConfiguration(dto.configuration);
 
     // Selecting and saving only touch the merchant's draft. The live theme and
-    // the public cache are left alone until publish().
-    if (dto.themeId && dto.themeId !== storeTheme.themeId) {
-      storeTheme = await this.selectTheme(storeId, dto.themeId);
-      switchedTheme = true;
-    }
+    // the public cache are left alone until publish(). The merge runs against
+    // the latest committed draft under the store's theme lock, so concurrent
+    // saves of different fields cannot overwrite each other.
+    const { storeTheme, switchedTheme } = await this.prisma.$transaction(
+      async (tx) => {
+        await this.lockStoreThemes(tx, storeId);
+        let current = await this.requireActiveStoreTheme(storeId, tx);
+        let switched = false;
 
-    if (dto.configuration !== undefined) {
-      const patch = normalizeThemeConfiguration(dto.configuration);
-      const merged = mergeThemeConfiguration(this.draftOf(storeTheme), patch);
-      storeTheme = await this.prisma.storeTheme.update({
-        where: { id: storeTheme.id },
-        data: { configuration: merged as Prisma.InputJsonValue },
-        include: { theme: true },
-      });
-    }
+        if (dto.themeId && dto.themeId !== current.themeId) {
+          current = await this.selectTheme(tx, storeId, dto.themeId);
+          switched = true;
+        }
+
+        if (patch !== undefined) {
+          const merged = mergeThemeConfiguration(this.draftOf(current), patch);
+          current = await tx.storeTheme.update({
+            where: { id: current.id },
+            data: { configuration: merged as Prisma.InputJsonValue },
+            include: { theme: true },
+          });
+        }
+        return { storeTheme: current, switchedTheme: switched };
+      },
+    );
 
     if (switchedTheme) {
       await this.audit.log({
@@ -152,9 +165,7 @@ export class ThemesService {
         storeId,
         metadata: {
           themeSlug: storeTheme.theme.slug,
-          sections: Object.keys(
-            normalizeThemeConfiguration(dto.configuration),
-          ),
+          sections: Object.keys(patch ?? {}),
         },
         req,
       });
@@ -170,17 +181,20 @@ export class ThemesService {
     ]);
 
     const store = await this.requireStore(storeId);
-    const current = await this.requireActiveStoreTheme(storeId);
-    const draft = this.draftOf(current);
 
     // One transaction: the selected theme becomes live (latest publishedAt)
     // together with the store branding sync, or nothing changes and the
-    // previously live theme keeps serving.
+    // previously live theme keeps serving. The draft is read under the store's
+    // theme lock so a concurrent save is never overwritten by a stale copy.
     const storeTheme = await this.prisma.$transaction(async (tx) => {
+      await this.lockStoreThemes(tx, storeId);
+      const current = await this.requireActiveStoreTheme(storeId, tx);
+      const draft = this.draftOf(current);
+
       const previousLive = await tx.storeTheme.findFirst({
         where: liveStoreThemeWhere(storeId),
         orderBy: LIVE_STORE_THEME_ORDER,
-        select: { publishedAt: true },
+        select: { id: true, publishedAt: true, publishedConfiguration: true },
       });
 
       const published = await tx.storeTheme.update({
@@ -193,7 +207,15 @@ export class ThemesService {
         include: { theme: true },
       });
 
-      await this.syncPublishedBranding(tx, storeId, draft);
+      await this.syncPublishedBranding(
+        tx,
+        storeId,
+        draft,
+        // Only a republish of the same theme can remove a value from it.
+        previousLive?.id === current.id
+          ? asStoreThemeConfig(previousLive.publishedConfiguration)
+          : {},
+      );
       return published;
     });
 
@@ -225,13 +247,16 @@ export class ThemesService {
     ]);
 
     const store = await this.requireStore(storeId);
-    const current = await this.requireActiveStoreTheme(storeId);
-    const defaults = this.themeDefaults(current.theme);
-
-    const storeTheme = await this.prisma.storeTheme.update({
-      where: { id: current.id },
-      data: { configuration: defaults as Prisma.InputJsonValue },
-      include: { theme: true },
+    const storeTheme = await this.prisma.$transaction(async (tx) => {
+      await this.lockStoreThemes(tx, storeId);
+      const current = await this.requireActiveStoreTheme(storeId, tx);
+      return tx.storeTheme.update({
+        where: { id: current.id },
+        data: {
+          configuration: this.themeDefaults(current.theme) as Prisma.InputJsonValue,
+        },
+        include: { theme: true },
+      });
     });
 
     await this.audit.log({
@@ -255,8 +280,11 @@ export class ThemesService {
    * Every store renders through a theme, so the first read materialises one
    * from the `default` theme instead of returning an empty payload.
    */
-  async requireActiveStoreTheme(storeId: string): Promise<StoreThemeWithTheme> {
-    const existing = await this.prisma.storeTheme.findFirst({
+  async requireActiveStoreTheme(
+    storeId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<StoreThemeWithTheme> {
+    const existing = await (tx ?? this.prisma).storeTheme.findFirst({
       where: { storeId, isActive: true },
       include: { theme: true },
       orderBy: { updatedAt: 'desc' },
@@ -280,7 +308,25 @@ export class ThemesService {
       );
     }
 
-    return this.selectTheme(storeId, theme.id);
+    return tx
+      ? this.selectTheme(tx, storeId, theme.id)
+      : this.prisma.$transaction((inner) =>
+          this.selectTheme(inner, storeId, theme.id),
+        );
+  }
+
+  /**
+   * Serialises every theme write of one store (select, draft save, reset,
+   * publish) for the rest of the transaction, so a read → merge → write never
+   * works from a stale draft. Locks the parent store row: the theme state spans
+   * several store_themes rows (the selection moves between them). NO KEY UPDATE
+   * does not block inserts that reference the store (orders, products).
+   */
+  private async lockStoreThemes(
+    tx: Prisma.TransactionClient,
+    storeId: string,
+  ): Promise<void> {
+    await tx.$queryRaw`SELECT id FROM stores WHERE id = ${storeId}::uuid FOR NO KEY UPDATE`;
   }
 
   /** The theme visitors currently see, or null before the first publish. */
@@ -292,13 +338,21 @@ export class ThemesService {
     });
   }
 
-  /** Keeps the store record in sync so non-theme surfaces (emails, admin) match. */
+  /**
+   * Keeps the store record in sync so non-theme surfaces (emails, admin) match.
+   * The storefront falls back to the store's logo/favicon, so a logo or favicon
+   * the merchant removed from this theme (present in `previouslyPublished`,
+   * absent now) is also cleared on the store, but only while the store still
+   * holds the value the previous publish copied there.
+   */
   async syncPublishedBranding(
     tx: Prisma.TransactionClient,
     storeId: string,
     config: StoreThemeConfig,
+    previouslyPublished: StoreThemeConfig = {},
   ): Promise<void> {
     const branding = config.branding ?? {};
+    const previous = previouslyPublished.branding ?? {};
     const storeUpdate: Prisma.StoreUpdateInput = {};
     if (branding.logoUrl) {
       storeUpdate.logoUrl = branding.logoUrl;
@@ -306,6 +360,22 @@ export class ThemesService {
     if (branding.faviconUrl) {
       storeUpdate.faviconUrl = branding.faviconUrl;
     }
+
+    const removedLogo = !branding.logoUrl && previous.logoUrl;
+    const removedFavicon = !branding.faviconUrl && previous.faviconUrl;
+    if (removedLogo || removedFavicon) {
+      const store = await tx.store.findUnique({
+        where: { id: storeId },
+        select: { logoUrl: true, faviconUrl: true },
+      });
+      if (removedLogo && store?.logoUrl === previous.logoUrl) {
+        storeUpdate.logoUrl = null;
+      }
+      if (removedFavicon && store?.faviconUrl === previous.faviconUrl) {
+        storeUpdate.faviconUrl = null;
+      }
+    }
+
     if (Object.keys(storeUpdate).length > 0) {
       await tx.store.update({
         where: { id: storeId },
@@ -319,10 +389,11 @@ export class ThemesService {
    * saved draft. Does not change the live storefront.
    */
   private async selectTheme(
+    tx: Prisma.TransactionClient,
     storeId: string,
     themeId: string,
   ): Promise<StoreThemeWithTheme> {
-    const theme = await this.prisma.theme.findFirst({
+    const theme = await tx.theme.findFirst({
       where: { id: themeId, active: true },
     });
     if (!theme) {
@@ -331,23 +402,21 @@ export class ThemesService {
 
     // `store_themes_one_active_uidx` allows a single active row per store, so
     // the previous selection has to be stood down before the new one is armed.
-    return this.prisma.$transaction(async (tx) => {
-      await tx.storeTheme.updateMany({
-        where: { storeId, isActive: true, themeId: { not: theme.id } },
-        data: { isActive: false },
-      });
+    await tx.storeTheme.updateMany({
+      where: { storeId, isActive: true, themeId: { not: theme.id } },
+      data: { isActive: false },
+    });
 
-      return tx.storeTheme.upsert({
-        where: { storeId_themeId: { storeId, themeId: theme.id } },
-        update: { isActive: true },
-        create: {
-          storeId,
-          themeId: theme.id,
-          isActive: true,
-          configuration: this.themeDefaults(theme) as Prisma.InputJsonValue,
-        },
-        include: { theme: true },
-      });
+    return tx.storeTheme.upsert({
+      where: { storeId_themeId: { storeId, themeId: theme.id } },
+      update: { isActive: true },
+      create: {
+        storeId,
+        themeId: theme.id,
+        isActive: true,
+        configuration: this.themeDefaults(theme) as Prisma.InputJsonValue,
+      },
+      include: { theme: true },
     });
   }
 
@@ -371,17 +440,19 @@ export class ThemesService {
   }
 
   private themeDefaults(theme: Theme): StoreThemeConfig {
-    const stored = normalizeThemeConfiguration(theme.configuration ?? {});
+    const stored = normalizeThemeConfiguration(theme.configuration ?? {}, { stored: true });
     if (Object.keys(stored).length > 0) {
       return stored;
     }
-    return normalizeThemeConfiguration(builtInThemeConfiguration(theme.slug));
+    return normalizeThemeConfiguration(builtInThemeConfiguration(theme.slug), {
+      stored: true,
+    });
   }
 
   private draftOf(storeTheme: StoreThemeWithTheme): StoreThemeConfig {
     const draft = asStoreThemeConfig(storeTheme.configuration);
     if (Object.keys(draft).length > 0) {
-      return normalizeThemeConfiguration(draft);
+      return normalizeThemeConfiguration(draft, { stored: true });
     }
     return this.themeDefaults(storeTheme.theme);
   }
