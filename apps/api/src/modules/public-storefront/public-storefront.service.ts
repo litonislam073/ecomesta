@@ -434,6 +434,17 @@ export class PublicStorefrontService {
             null,
           );
 
+    // A product with variants is sold at its variants' prices; `basePrice`
+    // is often a placeholder such as 0. Cards show the range of the variants
+    // that can be bought right now (null when none can).
+    let variantPriceMin: Prisma.Decimal | null = null;
+    let variantPriceMax: Prisma.Decimal | null = null;
+    product.variants.forEach((v, index) => {
+      if (!variants[index]!.available) return;
+      if (!variantPriceMin || v.price.lt(variantPriceMin)) variantPriceMin = v.price;
+      if (!variantPriceMax || v.price.gt(variantPriceMax)) variantPriceMax = v.price;
+    });
+
     return {
       id: product.id,
       name: product.name,
@@ -456,6 +467,8 @@ export class PublicStorefrontService {
           slug: c.category.slug,
         })),
       hasVariants: variants.length > 0,
+      variantPriceMin: moneyToString(variantPriceMin),
+      variantPriceMax: moneyToString(variantPriceMax),
     };
   }
 

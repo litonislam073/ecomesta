@@ -743,6 +743,13 @@ export interface PublicProductCard {
   images: PublicProductImage[];
   categories: { id: string; name: string; slug: string }[];
   hasVariants: boolean;
+  /**
+   * Lowest / highest price among variants that can be bought now; null for
+   * simple products or when no variant is available. For products with
+   * variants, cards show these instead of `price` (often a placeholder).
+   */
+  variantPriceMin?: string | null;
+  variantPriceMax?: string | null;
 }
 
 export interface PublicProductVariant {

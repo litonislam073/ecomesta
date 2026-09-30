@@ -3,6 +3,24 @@ import type { PublicProductCard } from '@ecomesta/types';
 import { ProductCardAction } from '@/components/product-card-action';
 import { formatMoney } from '@/lib/money';
 
+/**
+ * Price line for a card. A product with variants is sold at its variants'
+ * prices (its own price is often a placeholder such as 0), so it shows the
+ * available variants' price, or "From" the lowest when they differ, and no
+ * price when none can be bought.
+ */
+export function productCardPrice(product: PublicProductCard): string | null {
+  if (!product.hasVariants) {
+    return formatMoney(product.price, product.currency);
+  }
+  const min = product.variantPriceMin;
+  if (!min) {
+    return null;
+  }
+  const amount = formatMoney(min, product.currency);
+  return product.variantPriceMax && product.variantPriceMax !== min ? `From ${amount}` : amount;
+}
+
 export function ProductCard({
   product,
   storeSlug,
@@ -12,6 +30,7 @@ export function ProductCard({
 }) {
   const href = `/products/${product.slug}?store=${encodeURIComponent(storeSlug)}`;
   const image = product.images[0];
+  const price = productCardPrice(product);
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
@@ -40,11 +59,9 @@ export function ProductCard({
             {product.shortDescription}
           </p>
         ) : null}
-        <div className="mt-auto flex items-baseline gap-2">
-          <span className="text-lg font-semibold">
-            {formatMoney(product.price, product.currency)}
-          </span>
-          {product.compareAtPrice ? (
+        <div className="mt-auto flex flex-wrap items-baseline gap-x-2">
+          {price ? <span className="text-lg font-semibold">{price}</span> : null}
+          {product.compareAtPrice && !product.hasVariants ? (
             <span className="text-sm text-[var(--color-muted)] line-through">
               {formatMoney(product.compareAtPrice, product.currency)}
             </span>
