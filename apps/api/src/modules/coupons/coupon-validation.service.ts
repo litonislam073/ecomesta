@@ -4,7 +4,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { CouponType, Prisma, type Coupon } from '@prisma/client';
+import { CouponType, OrderStatus, Prisma, type Coupon } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   calculateCouponDiscount,
@@ -136,9 +136,14 @@ export class CouponValidationService {
     storeId: string,
     identity?: CouponCustomerIdentity,
   ): Promise<number> {
+    // SF-02: redemptions on cancelled orders were released and do not count.
     if (identity?.customerId) {
       return client.couponUsage.count({
-        where: { couponId, customerId: identity.customerId },
+        where: {
+          couponId,
+          customerId: identity.customerId,
+          order: { status: { not: OrderStatus.CANCELLED } },
+        },
       });
     }
     const email = identity?.email?.trim().toLowerCase();
@@ -150,6 +155,7 @@ export class CouponValidationService {
         couponId,
         order: {
           storeId,
+          status: { not: OrderStatus.CANCELLED },
           addresses: {
             some: {
               email: { equals: email, mode: 'insensitive' },

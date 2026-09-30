@@ -421,6 +421,7 @@ export class OrdersService {
         metadata: { orderNumber: updated.orderNumber },
         req,
       });
+      await this.logCouponRelease(updated, store.tenantId, storeId, 'merchant', req, userId);
     }
 
     return { success: true as const, data: await this.toDetailDto(updated) };
@@ -493,6 +494,7 @@ export class OrdersService {
       metadata: { orderNumber: updated.orderNumber, source: 'customer' },
       req,
     });
+    await this.logCouponRelease(updated, store.tenantId, storeId, 'customer', req);
 
     return updated;
   }
@@ -681,6 +683,9 @@ export class OrdersService {
       });
     }
 
+    // SF-02: the cancelled order stops counting toward its coupon's limits.
+    // Coupon rows are locked before inventory rows, the same order as checkout.
+    await this.releaseCouponUsage(tx, storeId, locked.id);
     await this.restockOrderInventory(tx, storeId, locked.id, locked.order_number);
     return tx.order.update({
       where: { id: locked.id },
@@ -695,6 +700,57 @@ export class OrdersService {
       },
       include: this.detailInclude(),
     });
+  }
+
+  private async logCouponRelease(
+    order: { id: string; orderNumber: string; couponCode: string | null },
+    tenantId: string,
+    storeId: string,
+    source: 'merchant' | 'customer',
+    req?: Request,
+    userId?: string,
+  ) {
+    if (!order.couponCode) return;
+    await this.audit.log({
+      action: 'COUPON_USAGE_RELEASED',
+      entityType: 'Order',
+      entityId: order.id,
+      userId,
+      tenantId,
+      storeId,
+      metadata: { orderNumber: order.orderNumber, couponCode: order.couponCode, source },
+      req,
+    });
+  }
+
+  /**
+   * Gives back the coupon redemption held by an order being cancelled. Runs
+   * exactly once per order: it is only reached from cancelLockedOrder, under
+   * the order row lock, and a cancelled order cannot be cancelled again. The
+   * CouponUsage row stays as history; limit checks ignore cancelled orders.
+   */
+  private async releaseCouponUsage(
+    tx: Prisma.TransactionClient,
+    storeId: string,
+    orderId: string,
+  ): Promise<void> {
+    const usages = await tx.couponUsage.findMany({
+      where: { orderId, coupon: { storeId } },
+      select: { couponId: true },
+      orderBy: { couponId: 'asc' },
+    });
+    for (const usage of usages) {
+      await tx.$queryRaw`
+        SELECT id FROM coupons
+        WHERE id = ${usage.couponId}::uuid AND store_id = ${storeId}::uuid
+        FOR UPDATE
+      `;
+      await tx.$executeRaw`
+        UPDATE coupons
+        SET usage_count = usage_count - 1, updated_at = now()
+        WHERE id = ${usage.couponId}::uuid AND store_id = ${storeId}::uuid AND usage_count > 0
+      `;
+    }
   }
 
   private async restockOrderInventory(
