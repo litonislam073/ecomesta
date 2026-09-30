@@ -44,7 +44,8 @@ case "$MODE" in
     BASE_URL="${DATABASE_URL:-}"
     BASE_URL="${BASE_URL%%\?*}"
     if [[ -n "$RESTORE_DB" ]]; then
-      psql ${BASE_URL:+"$BASE_URL"} -v ON_ERROR_STOP=1 -q -c "CREATE DATABASE \"$RESTORE_DB\""
+      # `-d` (not a positional URL) so options are parsed on every platform.
+      psql ${BASE_URL:+-d "$BASE_URL"} -v ON_ERROR_STOP=1 -q -c "CREATE DATABASE \"$RESTORE_DB\""
       if [[ -n "$BASE_URL" ]]; then
         TARGET_URL="${BASE_URL%/*}/$RESTORE_DB"
       else
@@ -55,7 +56,7 @@ case "$MODE" in
       TARGET_URL="$BASE_URL"
     fi
     echo "Restoring $DUMP_FILE into ${RESTORE_DB:-the configured database}" >&2
-    gunzip -c "$DUMP_FILE" | psql ${TARGET_URL:+"$TARGET_URL"} -v ON_ERROR_STOP=1 -q >/dev/null
+    gunzip -c "$DUMP_FILE" | psql ${TARGET_URL:+-d "$TARGET_URL"} -v ON_ERROR_STOP=1 -q >/dev/null
     ;;
   compose)
     DC=(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE")

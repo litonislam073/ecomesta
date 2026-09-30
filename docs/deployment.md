@@ -430,17 +430,51 @@ leaves a partial file, and prunes dumps older than `BACKUP_RETENTION_DAYS`
 (default 14; only files matching its own name pattern). In compose mode it runs
 `pg_dump` inside the Postgres container — no database port needed.
 
-Nightly cron (as the deploy user):
+It also refuses to start with less than `BACKUP_MIN_FREE_MB` (default 1024)
+or 3× the previous dump free, and retention never deletes the newest
+`BACKUP_KEEP_MIN` (default 3) dumps, so a run of failed backups cannot age out
+the last good ones.
 
-```cron
-15 2 * * * cd /opt/ecomesta && BACKUP_MODE=compose BACKUP_RETENTION_DAYS=14 ./scripts/backup-postgres.sh >> /var/log/ecomesta-backup.log 2>&1
+**Scheduled backups** use `scripts/backup-scheduled.sh` (lock against overlap,
+log to `/var/log/ecomesta-backup.log`, off-host copy, status file). Install once
+as root; settings and credentials stay in a root-only file, never in cron:
+
+```bash
+install -d -m 700 /etc/ecomesta
+install -m 600 infrastructure/backup/backup.env.example /etc/ecomesta/backup.env   # then edit
+install -m 644 infrastructure/backup/ecomesta-backup.cron /etc/cron.d/ecomesta-backup
+install -m 644 infrastructure/backup/ecomesta-backup.logrotate /etc/logrotate.d/ecomesta-backup
+/opt/ecomesta/scripts/backup-scheduled.sh; echo "exit=$?"; cat /opt/ecomesta/backups/last-run.status
 ```
 
+Exit codes: `0` local backup OK (off-host OK or not configured), `1` local
+backup failed, `2` off-host copy failed, `75` another run holds the lock.
+`last-run.status` records `local_status`, `offhost_status`
+(`ok` / `failed` / `not_configured`) and the dump path.
+
 **Off-host copy is required** — a backup on the same disk does not survive
-losing the VPS. The script prints the dump path as its last line, so chain it
-into whatever storage you use (e.g. `rclone copy`, `aws s3 cp`, `scp` to
-another server), with encryption at rest and restricted credentials. Keep the
-`PAYMENT_SECRETS_ENCRYPTION_KEY` separately from the dumps.
+losing the VPS. Set `BACKUP_OFFHOST_METHOD` in `/etc/ecomesta/backup.env`:
+`rsync` (SSH to a server you control) or `restic` (S3-compatible, B2, SFTP …;
+encrypted, with its own retention). Both tools are already on the current
+VPS. **Until a destination is configured, every run logs
+`OFF-HOST NOT CONFIGURED` and `offhost_status=not_configured` — the backup is
+then NOT disaster-proof.** Keep the `PAYMENT_SECRETS_ENCRYPTION_KEY` and the
+restic password separately from the dumps.
+
+Exact requirements and switch-on steps for both methods:
+[runbooks/qa-006-offhost-backups.md](runbooks/qa-006-offhost-backups.md).
+
+**Restore verification** — a dump is only trusted after it restores:
+
+```bash
+cd /opt/ecomesta && BACKUP_MODE=compose scripts/verify-backup-restore.sh   # newest dump
+```
+
+It restores into a throw-away `ecomesta_restore_check_<stamp>` database,
+checks that every migration in `apps/api/prisma/migrations` is recorded as
+finished and that the core tables exist, prints row counts, and drops the
+throw-away database. The cron file runs it weekly. Script regression tests:
+`DATABASE_URL=<disposable db> scripts/tests/backup-scripts.test.sh`.
 
 | Target | Value with the cron above | How to improve |
 | --- | --- | --- |
@@ -583,12 +617,59 @@ curl -s https://api.<root>/api/v1/health                            # through Cl
 `docker compose run` reads stdin; pass `-T` and `</dev/null` when running it
 from a script or an SSH heredoc, or it consumes the rest of the script.
 
-OpenLiteSpeed example (`/usr/local/lsws/conf/vhosts/<root>/vhost.conf`): a
-`proxy` extprocessor to `127.0.0.1:8480`, `context /` using it, `vhssl` with
-the Cloudflare Origin Certificate, `accessControl { allow <Cloudflare ranges>, 127.0.0.1; deny ALL }`,
-and a `map <root> <root>, www.<root>, api.<root>, merchant.<root>, admin.<root>, *.<root>`
-line in the SSL listeners. Back up `httpd_config.conf` first and apply with
-`/usr/local/lsws/bin/lswsctrl restart` (graceful).
+### OpenLiteSpeed vhost (origin lock-down and HTTP → HTTPS)
+
+Step-by-step operator procedure with expected output and rollback:
+[runbooks/qa-002-005-ols-origin-lockdown.md](runbooks/qa-002-005-ols-origin-lockdown.md).
+
+> **⛔ Do not install this vhost on the current host.** On 2026-09-29 it
+> returned 403 to all Cloudflare traffic: OLS 1.9 applies `accessControl` to
+> the visitor IP from Cloudflare's header, not to the Cloudflare peer. It was
+> rolled back. QA-002/QA-005 need a different design.
+
+The vhost is generated, never hand-edited:
+`infrastructure/openlitespeed/ecomesta-vhost.conf.template` →
+`scripts/ols-apply-ecomesta-vhost.sh` → `/usr/local/lsws/conf/vhosts/<root>/vhost.conf`.
+The script downloads Cloudflare's published ranges
+(`https://api.cloudflare.com/client/v4/ips`), validates them, writes
+`accessControl { allow <Cloudflare IPv4 + IPv6 ranges>; deny ALL }`, keeps the
+previous file as `vhost.conf.<stamp>.bak`, and restarts OLS gracefully. It
+refuses to install an `allow ALL` vhost.
+
+```bash
+sudo /opt/ecomesta/scripts/ols-apply-ecomesta-vhost.sh --check   # show the diff only
+sudo /opt/ecomesta/scripts/ols-apply-ecomesta-vhost.sh           # install + graceful restart
+```
+
+Re-run it when Cloudflare publishes new ranges (monthly is enough). **Never
+set the Ecomesta vhost back to `allow ALL`**: the Ecomesta nginx trusts
+`CF-Connecting-IP`, so an open origin lets anyone forge their IP and bypass
+every IP rate limit (QA-002). OLS must not enable `useIpInProxyHeader`
+globally either, or `accessControl` would judge the forged header instead of
+the Cloudflare peer.
+
+`httpd_config.conf` needs two one-time entries (back it up first):
+
+- the SSL listeners (IPv4 and IPv6):
+  `map <root> <root>, www.<root>, api.<root>, merchant.<root>, admin.<root>, *.<root>`
+- the plain-HTTP `Default` listener (`*:80`): `map <root> <root>, www.<root>`.
+  With Cloudflare SSL "Full (strict)", an `http://` visitor reaches the origin on
+  port 80; the vhost's rewrite answers 301 to `https://` with the same path and
+  query (QA-005). Enabling Cloudflare **Always Use HTTPS** as well is
+  recommended; the origin redirect keeps working without it.
+
+Verification after every change:
+
+```bash
+# Through Cloudflare: normal responses, HTTP redirects to HTTPS
+curl -sI https://<root>/ | head -1                               # 200
+curl -sI "http://<root>/pricing?x=1" | grep -iE '^(HTTP|location)'   # 301 → https://<root>/pricing?x=1
+curl -sI "http://www.<root>/faq?y=2" | grep -iE '^(HTTP|location)'   # 301 → https://www.<root>/faq?y=2
+curl -s https://api.<root>/api/v1/health                          # {"success":true,...}
+# Direct to the origin, bypassing Cloudflare: refused
+curl -sk -o /dev/null -w '%{http_code}\n' --resolve api.<root>:443:<vps-ip> \
+  -H 'CF-Connecting-IP: 203.0.113.50' https://api.<root>/api/v1/health   # 403
+```
 
 Custom merchant domains are not covered by this layout yet: each one needs its
 own host web server entry and certificate.

@@ -21,8 +21,16 @@ CONFIRM=yes ./scripts/restore-postgres.sh backups/ecomesta-postgres-….sql.gz
 ```
 
 On the VPS use `BACKUP_MODE=compose` (runs inside the Postgres container).
-`BACKUP_RETENTION_DAYS` (default 14) prunes old dumps. Cron, off-host copies,
-RPO/RTO and the disaster-recovery procedure are in `docs/deployment.md` §12–§13.
+`BACKUP_RETENTION_DAYS` (default 14) prunes old dumps but always keeps the
+newest `BACKUP_KEEP_MIN` (default 3); `BACKUP_MIN_FREE_MB` stops a run before it
+can fill the disk.
+
+Scheduled runs go through `scripts/backup-scheduled.sh` (lock, log, off-host
+copy via rsync or restic, status file) configured by `/etc/ecomesta/backup.env`
+(template: `infrastructure/backup/backup.env.example`).
+`scripts/verify-backup-restore.sh` proves a dump restores. Installation, the
+off-host setup, RPO/RTO and the disaster-recovery procedure are in
+`docs/deployment.md` §12–§13.
 
 Both scripts refuse to embed credentials; supply them via environment or a secrets manager.
 

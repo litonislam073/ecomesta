@@ -1,0 +1,9 @@
+# Install as /etc/logrotate.d/ecomesta-backup
+/var/log/ecomesta-backup.log {
+    weekly
+    rotate 8
+    compress
+    missingok
+    notifempty
+    create 0600 root root
+}

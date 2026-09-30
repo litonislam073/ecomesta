@@ -1,0 +1,8 @@
+# Ecomesta Postgres backup — install as /etc/cron.d/ecomesta-backup (root, 0644).
+# Settings and any credentials live in /etc/ecomesta/backup.env, never here.
+# Times are in the host's local time zone (the current VPS runs on CEST).
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+17 3 * * * root /opt/ecomesta/scripts/backup-scheduled.sh >/dev/null 2>&1
+# Weekly restore drill into a throw-away database (dropped afterwards).
+47 4 * * 0 root cd /opt/ecomesta && BACKUP_MODE=compose BACKUP_DIR=/opt/ecomesta/backups scripts/verify-backup-restore.sh >>/var/log/ecomesta-backup.log 2>&1
