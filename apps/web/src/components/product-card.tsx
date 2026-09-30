@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { PublicProductCard } from '@ecomesta/types';
+import { ProductCardAction } from '@/components/product-card-action';
 import { formatMoney } from '@/lib/money';
 
 export function ProductCard({
@@ -52,6 +53,7 @@ export function ProductCard({
         <p className="text-xs text-[var(--color-muted)]">
           {product.available ? 'In stock' : 'Unavailable'}
         </p>
+        <ProductCardAction product={product} href={href} />
       </div>
     </article>
   );

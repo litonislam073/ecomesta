@@ -17,6 +17,15 @@ describe('store resolution helpers', () => {
   });
 });
 
+/** Product cards always render inside the storefront cart provider. */
+function WithCart({ children }: { children: React.ReactNode }) {
+  return (
+    <CartProvider storeId="s1" storeSlug="alpha" currency="BDT">
+      {children}
+    </CartProvider>
+  );
+}
+
 describe('homepage / listing product card', () => {
   it('renders product name, price, and availability', () => {
     render(
@@ -38,6 +47,7 @@ describe('homepage / listing product card', () => {
           hasVariants: false,
         }}
       />,
+      { wrapper: WithCart },
     );
 
     expect(screen.getByRole('heading', { name: 'Ceramic Mug' })).toBeInTheDocument();
@@ -69,6 +79,7 @@ describe('homepage / listing product card', () => {
           hasVariants: false,
         }}
       />,
+      { wrapper: WithCart },
     );
     expect(screen.getByText(/unavailable/i)).toBeInTheDocument();
   });
@@ -134,6 +145,7 @@ describe('category product listing link shape', () => {
           hasVariants: false,
         }}
       />,
+      { wrapper: WithCart },
     );
     expect(screen.getByRole('img', { name: 'Lamp' })).toBeInTheDocument();
     expect(screen.getAllByRole('link')[0]).toHaveAttribute(
