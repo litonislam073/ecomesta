@@ -3,7 +3,11 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  PayloadTooLargeException,
+  UnsupportedMediaTypeException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { randomUUID } from 'node:crypto';
 import {
   Prisma,
   ProductStatus,
@@ -29,6 +33,21 @@ import {
   UpdateProductDto,
   UpdateVariantDto,
 } from './dto/product.dto';
+import {
+  PRODUCT_IMAGE_MAX_BYTES,
+  PRODUCT_IMAGE_RETIRE_GRACE_SECONDS,
+  PRODUCT_IMAGE_TYPES,
+  detectImageType,
+  safeImageFilename,
+  uploadedMediaId,
+} from './product-image.util';
+
+/** The parts of a multer memory-storage file the image upload uses. */
+export type UploadedImageFile = {
+  buffer: Buffer;
+  size: number;
+  originalname?: string;
+};
 
 type ProductWithCategories = Product & {
   categories: { categoryId: string; category: { id: string; name: string; slug: string } }[];
@@ -41,6 +60,7 @@ export class ProductsService {
     private readonly prisma: PrismaService,
     private readonly authorization: AuthorizationService,
     private readonly audit: AuditService,
+    private readonly config: ConfigService,
   ) {}
 
   async create(
@@ -345,6 +365,183 @@ export class ProductsService {
     });
 
     return { success: true as const, data: this.toProductDto(product) };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Product image (SF-04)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Stores an uploaded image in `media` and points the product at it. The new
+   * row, the product update and removal of the replaced upload commit together,
+   * so the product never references a missing image and nothing is orphaned.
+   */
+  async setImage(
+    userId: string,
+    storeId: string,
+    productId: string,
+    file: UploadedImageFile | undefined,
+    req?: Request,
+  ) {
+    await this.authorization.assertStoreRole(userId, storeId, [
+      StoreRole.STORE_MANAGER,
+    ]);
+    const store = await this.requireStore(storeId);
+    await this.requireProductInStore(storeId, productId);
+
+    if (!file?.buffer?.length) {
+      throw new BadRequestException('Choose an image file to upload');
+    }
+    if (file.size > PRODUCT_IMAGE_MAX_BYTES) {
+      throw new PayloadTooLargeException('Image must be 1.5 MB or smaller');
+    }
+    const mimeType = detectImageType(file.buffer);
+    if (!mimeType) {
+      throw new UnsupportedMediaTypeException('Image must be a JPEG, PNG or WebP file');
+    }
+    const ext = PRODUCT_IMAGE_TYPES[mimeType];
+    const mediaId = randomUUID();
+    const imageUrl = `${this.apiBaseUrl()}/api/v1/public/media/${mediaId}`;
+
+    const { product, replacedMediaId } = await this.prisma.$transaction(async (tx) => {
+      // Serialize concurrent uploads for this product so each replaced upload is removed.
+      await tx.$queryRaw`SELECT id FROM products WHERE id = ${productId}::uuid FOR UPDATE`;
+      const current = await tx.product.findFirstOrThrow({
+        where: { id: productId, storeId },
+        select: { imageUrl: true },
+      });
+      await tx.media.create({
+        data: {
+          id: mediaId,
+          storeId,
+          uploadedByUserId: userId,
+          url: imageUrl,
+          key: `products/${productId}/${mediaId}.${ext}`,
+          filename: safeImageFilename(file.originalname, ext),
+          mimeType,
+          size: file.buffer.length,
+          data: new Uint8Array(file.buffer),
+        },
+        select: { id: true },
+      });
+      const updated = await tx.product.update({
+        where: { id: productId },
+        data: { imageUrl },
+        include: {
+          categories: {
+            include: { category: { select: { id: true, name: true, slug: true } } },
+          },
+        },
+      });
+      const previous = uploadedMediaId(current.imageUrl);
+      await this.retireProductImage(tx, storeId, previous);
+      return { product: updated, replacedMediaId: previous };
+    });
+
+    await this.audit.log({
+      action: 'PRODUCT_IMAGE_UPDATED',
+      entityType: 'Product',
+      entityId: productId,
+      userId,
+      tenantId: store.tenantId,
+      storeId,
+      metadata: { mediaId, mimeType, size: file.buffer.length, replacedMediaId },
+      req,
+    });
+
+    return { success: true as const, data: this.toProductDto(product) };
+  }
+
+  async removeImage(
+    userId: string,
+    storeId: string,
+    productId: string,
+    req?: Request,
+  ) {
+    await this.authorization.assertStoreRole(userId, storeId, [
+      StoreRole.STORE_MANAGER,
+    ]);
+    const store = await this.requireStore(storeId);
+    await this.requireProductInStore(storeId, productId);
+
+    const { product, removedMediaId } = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM products WHERE id = ${productId}::uuid FOR UPDATE`;
+      const current = await tx.product.findFirstOrThrow({
+        where: { id: productId, storeId },
+        select: { imageUrl: true },
+      });
+      const updated = await tx.product.update({
+        where: { id: productId },
+        data: { imageUrl: null },
+        include: {
+          categories: {
+            include: { category: { select: { id: true, name: true, slug: true } } },
+          },
+        },
+      });
+      const previous = uploadedMediaId(current.imageUrl);
+      await this.retireProductImage(tx, storeId, previous);
+      return { product: updated, removedMediaId: previous };
+    });
+
+    await this.audit.log({
+      action: 'PRODUCT_IMAGE_REMOVED',
+      entityType: 'Product',
+      entityId: productId,
+      userId,
+      tenantId: store.tenantId,
+      storeId,
+      metadata: { removedMediaId },
+      req,
+    });
+
+    return { success: true as const, data: this.toProductDto(product) };
+  }
+
+  /** Public bytes for an uploaded image; unknown ids are a plain 404. */
+  async getMediaFile(mediaId: string) {
+    const media = await this.prisma.media.findFirst({
+      where: { id: mediaId, data: { not: null } },
+      select: { mimeType: true, data: true },
+    });
+    if (!media?.data) {
+      throw new NotFoundException('Image not found');
+    }
+    return { mimeType: media.mimeType, data: Buffer.from(media.data) };
+  }
+
+  /**
+   * A replaced or removed upload stays servable for a grace period, because
+   * storefront pages cache product data briefly and may still reference it.
+   * Its `updatedAt` marks when it stopped being used; uploads unreferenced for
+   * longer than the grace period are purged for the whole store here.
+   * Prisma stores UTC in `timestamp without time zone`, hence the explicit UTC.
+   */
+  private async retireProductImage(
+    tx: Prisma.TransactionClient,
+    storeId: string,
+    mediaId: string | null,
+  ) {
+    if (mediaId) {
+      await tx.media.updateMany({
+        where: { id: mediaId, storeId },
+        data: { updatedAt: new Date() },
+      });
+    }
+    await tx.$executeRaw`
+      DELETE FROM media m
+      WHERE m.store_id = ${storeId}::uuid
+        AND m.key LIKE 'products/%'
+        AND m.updated_at < (now() AT TIME ZONE 'UTC') - make_interval(secs => ${PRODUCT_IMAGE_RETIRE_GRACE_SECONDS})
+        AND NOT EXISTS (
+          SELECT 1 FROM products p
+          WHERE p.store_id = m.store_id AND p.image_url = m.url
+        )
+    `;
+  }
+
+  private apiBaseUrl(): string {
+    return this.config.get<string>('API_URL')!.replace(/\/+$/, '').replace(/\/api\/v1$/, '');
   }
 
   // ---------------------------------------------------------------------------

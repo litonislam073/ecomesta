@@ -9,6 +9,10 @@ import {
   ProductForm,
   type ProductFormValues,
 } from '@/components/catalog/product-form';
+import {
+  PendingProductImage,
+  uploadProductImage,
+} from '@/components/catalog/product-image-field';
 import { StoreScoped } from '@/components/catalog/store-scoped';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
@@ -47,6 +51,7 @@ function NewProductContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   const loadCategories = useCallback(async () => {
     if (!selectedStoreId) {
@@ -82,6 +87,14 @@ function NewProductContent() {
         toCreateBody(values),
       );
       pushToast('Product created.', 'success');
+      if (imageFile) {
+        try {
+          await uploadProductImage(selectedStoreId, result.data.id, imageFile);
+        } catch (err) {
+          // The product exists; the image can be retried from its edit page.
+          pushToast(humanApiError(err, 'The image could not be uploaded. Try again from the product page.'), 'error');
+        }
+      }
       router.push(`/dashboard/products/${result.data.id}`);
     } catch (err) {
       pushToast(humanApiError(err, 'Could not create product'), 'error');
@@ -129,6 +142,9 @@ function NewProductContent() {
       {loading ? <LoadingState label="Loading form" /> : null}
       {!loading && error ? (
         <ErrorState message={error} onRetry={() => void loadCategories()} />
+      ) : null}
+      {!loading && !error ? (
+        <PendingProductImage file={imageFile} onChange={setImageFile} disabled={busy} />
       ) : null}
       {!loading && !error ? (
         <ProductForm

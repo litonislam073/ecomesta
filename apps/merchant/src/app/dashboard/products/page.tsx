@@ -5,6 +5,7 @@ import { FormEvent, useCallback, useEffect, useState } from 'react';
 import type { Category, OffsetPageMeta, Product, ProductStatus } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
 import { DemoCatalogCta } from '@/components/catalog/demo-catalog-cta';
+import { productImageSrc } from '@/components/catalog/product-image-field';
 import { SampleBadge } from '@/components/catalog/sample-badge';
 import { StatusBadge } from '@/components/catalog/status-badge';
 import { StoreScoped } from '@/components/catalog/store-scoped';
@@ -257,16 +258,31 @@ function ProductsContent() {
                   className="border-b border-[var(--color-border)] last:border-b-0"
                 >
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <Link
-                        className="font-medium text-[var(--color-accent)] hover:underline"
-                        href={`/dashboard/products/${product.id}`}
-                      >
-                        {product.name}
-                      </Link>
-                      {product.isDemo ? <SampleBadge /> : null}
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 shrink-0 overflow-hidden rounded border border-[var(--color-border)] bg-[#f3f7f5]">
+                        {productImageSrc(product.imageUrl) ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={productImageSrc(product.imageUrl)!}
+                            alt=""
+                            loading="lazy"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : null}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            className="font-medium text-[var(--color-accent)] hover:underline"
+                            href={`/dashboard/products/${product.id}`}
+                          >
+                            {product.name}
+                          </Link>
+                          {product.isDemo ? <SampleBadge /> : null}
+                        </div>
+                        <p className="text-xs text-[var(--color-muted)]">{product.productType}</p>
+                      </div>
                     </div>
-                    <p className="text-xs text-[var(--color-muted)]">{product.productType}</p>
                   </td>
                   <td className="px-4 py-3">{product.sku ?? '—'}</td>
                   <td className="px-4 py-3">

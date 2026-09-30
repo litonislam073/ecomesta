@@ -78,8 +78,11 @@ export async function apiRequest<T>(
     headers.Authorization = `Bearer ${token}`;
   }
 
-  let body: string | undefined;
-  if (options.body !== undefined) {
+  let body: string | FormData | undefined;
+  if (options.body instanceof FormData) {
+    // The browser sets the multipart Content-Type (with boundary) itself.
+    body = options.body;
+  } else if (options.body !== undefined) {
     headers['Content-Type'] = 'application/json';
     body = JSON.stringify(options.body);
   }
@@ -148,4 +151,6 @@ export const api = {
     apiRequest<T>(path, { method: 'PATCH', body, ...init }),
   delete: <T>(path: string, init?: { token?: string | null }) =>
     apiRequest<T>(path, { method: 'DELETE', ...init }),
+  upload: <T>(path: string, form: FormData, init?: { token?: string | null }) =>
+    apiRequest<T>(path, { method: 'POST', body: form, ...init }),
 };

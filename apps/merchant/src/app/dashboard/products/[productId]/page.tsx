@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type {
   Category,
   OffsetPageMeta,
@@ -15,6 +15,7 @@ import {
   productToFormValues,
   type ProductFormValues,
 } from '@/components/catalog/product-form';
+import { ProductImageField } from '@/components/catalog/product-image-field';
 import { StatusBadge } from '@/components/catalog/status-badge';
 import { StoreScoped } from '@/components/catalog/store-scoped';
 import {
@@ -73,6 +74,13 @@ function ProductDetailContent() {
   const { pushToast } = useToast();
 
   const [product, setProduct] = useState<ProductDetail | null>(null);
+  // Kept apart from `product` so an image change does not reset the form below.
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  // ProductForm resets its fields whenever `initial` changes identity.
+  const formInitial = useMemo(
+    () => (product ? productToFormValues(product) : undefined),
+    [product],
+  );
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -102,6 +110,7 @@ function ProductDetailContent() {
         }>(`/stores/${selectedStoreId}/categories?limit=100`),
       ]);
       setProduct(productRes.data);
+      setImageUrl(productRes.data.imageUrl ?? null);
       setCategories(categoriesRes.data.items);
     } catch (err) {
       if (err instanceof ApiError && err.status === 404) {
@@ -251,10 +260,17 @@ function ProductDetailContent() {
 
       {!loading && !error && product ? (
         <>
+          <ProductImageField
+            storeId={selectedStoreId}
+            product={{ id: product.id, name: product.name, imageUrl }}
+            canWrite={canWrite}
+            onChange={(updated) => setImageUrl(updated.imageUrl ?? null)}
+          />
+
           {canWrite ? (
             <ProductForm
               key={product.updatedAt}
-              initial={productToFormValues(product)}
+              initial={formInitial}
               categories={categories}
               busy={busy}
               submitLabel="Save changes"

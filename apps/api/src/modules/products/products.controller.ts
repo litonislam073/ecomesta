@@ -3,15 +3,24 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
   Query,
   Req,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AccessTokenGuard } from '../auth/guards/access-token.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -23,7 +32,8 @@ import {
   UpdateProductDto,
   UpdateVariantDto,
 } from './dto/product.dto';
-import { ProductsService } from './products.service';
+import { PRODUCT_IMAGE_MAX_BYTES } from './product-image.util';
+import { ProductsService, type UploadedImageFile } from './products.service';
 
 @ApiTags('products')
 @ApiBearerAuth()
@@ -92,6 +102,38 @@ export class ProductsController {
     @Req() req: Request,
   ) {
     return this.productsService.archive(user.userId, storeId, productId, req);
+  }
+
+  @Post(':productId/image')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Upload or replace the product image (multipart field "file"; JPEG, PNG or WebP, ≤ 1.5 MB)',
+  })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: PRODUCT_IMAGE_MAX_BYTES, files: 1, fields: 0 },
+    }),
+  )
+  setImage(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Param('productId', ParseUUIDPipe) productId: string,
+    @UploadedFile() file: UploadedImageFile | undefined,
+    @Req() req: Request,
+  ) {
+    return this.productsService.setImage(user.userId, storeId, productId, file, req);
+  }
+
+  @Delete(':productId/image')
+  @ApiOperation({ summary: 'Remove the product image' })
+  removeImage(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Param('productId', ParseUUIDPipe) productId: string,
+    @Req() req: Request,
+  ) {
+    return this.productsService.removeImage(user.userId, storeId, productId, req);
   }
 
   @Post(':productId/variants')
