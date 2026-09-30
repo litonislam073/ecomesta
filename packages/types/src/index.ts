@@ -368,6 +368,36 @@ export interface ShippingQuoteResponse {
   methods: PublicShippingMethod[];
 }
 
+export interface PublicCheckoutQuoteLine {
+  productId: string;
+  variantId: string | null;
+  productName: string;
+  variantName: string | null;
+  quantity: number;
+  /** Current catalog price (never the cart's stored snapshot). */
+  unitPrice: string;
+  lineTotal: string;
+}
+
+/** Server-priced checkout summary from POST /public/stores/:slug/checkout/quote. */
+export interface PublicCheckoutQuote {
+  currency: string;
+  lines: PublicCheckoutQuoteLine[];
+  subtotal: string;
+  /** Applied coupon; null when none was sent or it no longer applies. */
+  couponCode: string | null;
+  /** Why the requested coupon does not apply, when it does not. */
+  couponError: string | null;
+  discountTotal: string;
+  zone: { id: string; name: string; priority: number } | null;
+  shippingMethods: PublicShippingMethod[];
+  shippingMethodId: string | null;
+  shippingTotal: string;
+  taxTotal: string;
+  /** Send back as `expectedTotal` when placing the order. */
+  total: string;
+}
+
 export interface PaymentListItem {
   id: string;
   storeId: string;

@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { PublicOrderConfirmationDetail, PublicStore } from '@ecomesta/types';
 import { CartProvider } from '@/lib/cart';
+import { quoteFor } from '@/lib/checkout-quote.fixture';
 import {
   resolveStoreSeo,
   storeLang,
@@ -341,7 +342,9 @@ describe('checkout settings', () => {
       }
       return { success: true, data: [] };
     });
-    postMock.mockResolvedValue({ success: true, data: { methods: [] } });
+    postMock.mockImplementation(async (path: string, body?: unknown) =>
+      String(path).endsWith('/checkout/quote') ? quoteFor(body) : { success: true, data: {} },
+    );
   });
 
   it('requires a phone number and hides order notes when configured', async () => {

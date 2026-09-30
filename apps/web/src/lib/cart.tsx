@@ -46,8 +46,12 @@ type CartContextValue = {
   removeItem: (key: string) => void;
   clear: () => void;
   setCouponCode: (code: string | null) => void;
+  /** Replace stored snapshot prices with server-quoted ones (SF-03). */
+  syncPrices: (lines: PricedLine[]) => void;
   lineKey: (line: Pick<CartLine, 'productId' | 'variantId'>) => string;
 };
+
+type PricedLine = Pick<CartLine, 'productId' | 'variantId' | 'unitPrice'>;
 
 const CartContext = createContext<CartContextValue | null>(null);
 
@@ -177,6 +181,20 @@ export function CartProvider({
     }));
   }, []);
 
+  const syncPrices = useCallback((priced: PricedLine[]) => {
+    const current = new Map(priced.map((l) => [lineKey(l), l.unitPrice]));
+    setState((prev) => {
+      let changed = false;
+      const lines = prev.lines.map((l) => {
+        const unitPrice = current.get(lineKey(l));
+        if (unitPrice === undefined || unitPrice === l.unitPrice) return l;
+        changed = true;
+        return { ...l, unitPrice };
+      });
+      return changed ? { ...prev, lines } : prev;
+    });
+  }, []);
+
   const itemCount = useMemo(
     () => state.lines.reduce((sum, l) => sum + l.quantity, 0),
     [state.lines],
@@ -205,6 +223,7 @@ export function CartProvider({
     removeItem,
     clear,
     setCouponCode,
+    syncPrices,
     lineKey,
   };
 

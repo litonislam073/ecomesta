@@ -18,6 +18,7 @@ import { ShippingService } from '../shipping/shipping.service';
 import {
   CancelPublicOrderDto,
   PublicCheckoutDto,
+  PublicCheckoutQuoteDto,
   PublicOrderLookupQueryDto,
 } from './dto/public-checkout.dto';
 import {
@@ -136,6 +137,20 @@ export class PublicStorefrontController {
   ) {
     const store = await this.publicStorefront.requireActiveStore(storeSlug);
     return this.shippingQuote.quote(store.id, dto);
+  }
+
+  @Post('checkout/quote')
+  @HttpCode(200)
+  @ApiOperation({
+    summary:
+      'Server-priced checkout summary for the current cart (display only; creates nothing)',
+  })
+  quoteCheckout(
+    @Param('storeSlug') storeSlug: string,
+    @Body() dto: PublicCheckoutQuoteDto,
+    @Req() req: Request,
+  ) {
+    return this.publicCheckout.quote(storeSlug, dto, req);
   }
 
   @Post('checkout')

@@ -1,4 +1,5 @@
 import {
+  ArrayMaxSize,
   ArrayMinSize,
   IsArray,
   IsBoolean,
@@ -34,6 +35,8 @@ export const PUBLIC_CHECKOUT_METHODS = [
   PaymentMethod.OTHER,
   PaymentMethod.CARD,
 ] as const;
+
+const MONEY_PATTERN = /^\d{1,10}(\.\d{1,2})?$/;
 
 export class PublicCheckoutItemDto {
   @ApiProperty()
@@ -212,6 +215,59 @@ export class PublicCheckoutDto {
   @IsString()
   @MaxLength(64)
   couponCode?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Grand total from POST /checkout/quote that the customer confirmed. Never used as a price; when it differs from the server total the order is refused with 409 CHECKOUT_TOTAL_CHANGED.',
+    example: '1260.00',
+  })
+  @IsOptional()
+  @IsString()
+  @Matches(MONEY_PATTERN, { message: 'expectedTotal must be an amount with up to 2 decimals' })
+  expectedTotal?: string;
+}
+
+/** Cart + checkout inputs for a display-only, server-priced checkout summary. */
+export class PublicCheckoutQuoteDto {
+  @ApiProperty({ type: [PublicCheckoutItemDto] })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(100)
+  @ValidateNested({ each: true })
+  @Type(() => PublicCheckoutItemDto)
+  items!: PublicCheckoutItemDto[];
+
+  @ApiPropertyOptional({ description: 'Bangladesh division UUID' })
+  @IsOptional()
+  @IsUUID()
+  divisionId?: string;
+
+  @ApiPropertyOptional({ description: 'Bangladesh district UUID' })
+  @IsOptional()
+  @IsUUID()
+  districtId?: string;
+
+  @ApiPropertyOptional({ description: 'Bangladesh upazila UUID' })
+  @IsOptional()
+  @IsUUID()
+  upazilaId?: string;
+
+  @ApiPropertyOptional({ description: 'Selected shipping method; defaults to the first available' })
+  @IsOptional()
+  @IsUUID()
+  shippingMethodId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  couponCode?: string;
+
+  @ApiPropertyOptional({ description: 'Checkout email, for per-customer coupon limits' })
+  @IsOptional()
+  @IsEmail()
+  @MaxLength(255)
+  email?: string;
 }
 
 export class CancelPublicOrderDto {

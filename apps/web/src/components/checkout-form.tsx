@@ -8,15 +8,22 @@ import type {
   PublicCheckoutConfirmation,
   PublicCheckoutPaymentMethod,
   PublicCheckoutPaymentProvider,
+  PublicCheckoutQuote,
   PublicPaymentInitiation,
   PublicPaymentProvidersResponse,
   PublicShippingMethod,
-  ShippingQuoteResponse,
 } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
-import { useCart } from '@/lib/cart';
-import { addMoney, formatMoney, multiplyMoney } from '@/lib/money';
+import { lineKey, useCart } from '@/lib/cart';
+import { formatMoney } from '@/lib/money';
 import { publicGet, publicPost, PublicApiError } from '@/lib/public-api';
+
+const QUOTE_DEBOUNCE_MS = 250;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function samePrice(a: string, b: string) {
+  return Number(a).toFixed(2) === Number(b).toFixed(2);
+}
 
 type AddressForm = {
   name: string;
@@ -76,11 +83,11 @@ export function CheckoutForm({
   const {
     lines,
     currency,
-    subtotal,
     storeSlug,
     clear,
     couponCode,
     setCouponCode,
+    syncPrices,
   } = useCart();
 
   const [contactName, setContactName] = useState('');
@@ -107,8 +114,13 @@ export function CheckoutForm({
   >([]);
   const [note, setNote] = useState('');
   const [couponDraft, setCouponDraft] = useState(couponCode ?? '');
-  const [couponDiscount, setCouponDiscount] = useState<string | null>(null);
   const [couponMessage, setCouponMessage] = useState<string | null>(null);
+  // SF-03: every amount shown in the summary comes from the server quote.
+  const [quote, setQuote] = useState<PublicCheckoutQuote | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [quoteNonce, setQuoteNonce] = useState(0);
+  const [priceNotices, setPriceNotices] = useState<string[]>([]);
   const [couponBusy, setCouponBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -207,95 +219,104 @@ export function CheckoutForm({
     };
   }, [storeSlug, shipping.districtId]);
 
+  // Only identifiers and quantities go to the server; the cart's stored prices
+  // never do. Price-only cart updates (syncPrices) do not change this key.
+  const itemsKey = JSON.stringify(
+    lines.map((line) => [line.productId, line.variantId, line.quantity]),
+  );
+  // Per-customer coupon limits need the email, but only once it is complete.
+  const quoteEmail =
+    couponCode && EMAIL_PATTERN.test(email.trim()) ? email.trim() : '';
+
   useEffect(() => {
+    if (!storeSlug || itemsKey === '[]') return;
     let cancelled = false;
-    async function loadQuote() {
-      if (!storeSlug || lines.length === 0) return;
-      // Prefer quoting once a division is chosen; fall back to store-wide methods.
-      setShippingLoadError(null);
+    setQuoteLoading(true);
+    const timer = window.setTimeout(async () => {
+      const items = (JSON.parse(itemsKey) as [string, string | null, number][]).map(
+        ([productId, variantId, quantity]) => ({ productId, variantId, quantity }),
+      );
       try {
-        if (shipping.divisionId || shipping.districtId || shipping.upazilaId) {
-          const result = await publicPost<{
-            success: true;
-            data: ShippingQuoteResponse;
-          }>(`/public/stores/${encodeURIComponent(storeSlug)}/shipping/quote`, {
-            divisionId: shipping.divisionId || undefined,
-            districtId: shipping.districtId || undefined,
-            upazilaId: shipping.upazilaId || undefined,
-            items: lines.map((line) => ({
-              productId: line.productId,
-              variantId: line.variantId,
-              quantity: line.quantity,
-            })),
-            couponCode: couponCode || undefined,
+        const result = await publicPost<{
+          success: true;
+          data: PublicCheckoutQuote;
+        }>(`/public/stores/${encodeURIComponent(storeSlug)}/checkout/quote`, {
+          items,
+          divisionId: shipping.divisionId || undefined,
+          districtId: shipping.districtId || undefined,
+          upazilaId: shipping.upazilaId || undefined,
+          shippingMethodId: shippingMethodId || undefined,
+          couponCode: couponCode || undefined,
+          email: quoteEmail || undefined,
+        });
+        if (cancelled) return;
+        const data = result.data;
+        setQuote(data);
+        setQuoteError(null);
+        setShippingLoadError(null);
+        setShippingMethods(data.shippingMethods);
+        setQuoteZoneName(data.zone?.name ?? null);
+        setShippingMethodId(data.shippingMethodId ?? '');
+        setPriceNotices((prev) => {
+          const changed = data.lines.flatMap((quoted) => {
+            const stored = lines.find((l) => lineKey(l) === lineKey(quoted));
+            if (!stored || samePrice(stored.unitPrice, quoted.unitPrice)) return [];
+            const label = quoted.variantName
+              ? `${quoted.productName} · ${quoted.variantName}`
+              : quoted.productName;
+            return [
+              `${label}: price changed from ${formatMoney(stored.unitPrice, data.currency)} to ${formatMoney(quoted.unitPrice, data.currency)}.`,
+            ];
           });
-          if (cancelled) return;
-          const methods = result.data.methods.map((m) => ({
-            ...m,
-            price: m.amount ?? m.price,
-          }));
-          setShippingMethods(methods);
-          setQuoteZoneName(result.data.zone?.name ?? null);
-          setShippingMethodId((prev) =>
-            prev && methods.some((m) => m.id === prev)
-              ? prev
-              : (methods[0]?.id ?? ''),
-          );
-        } else {
-          const result = await publicGet<{
-            success: true;
-            data: PublicShippingMethod[];
-          }>(
-            `/public/stores/${encodeURIComponent(storeSlug)}/shipping-methods`,
-          );
-          if (cancelled) return;
-          setShippingMethods(result.data);
-          setQuoteZoneName(null);
-          setShippingMethodId((prev) =>
-            prev && result.data.some((m) => m.id === prev)
-              ? prev
-              : (result.data[0]?.id ?? ''),
-          );
+          return changed.length > 0 ? changed : prev;
+        });
+        syncPrices(data.lines);
+        if (couponCode && data.couponError) {
+          setCouponCode(null);
+          setCouponDraft('');
+          setCouponMessage(`Coupon ${couponCode} was removed: ${data.couponError}`);
         }
       } catch (err) {
         if (cancelled) return;
-        setShippingMethods([]);
-        setShippingMethodId('');
-        setQuoteZoneName(null);
-        setShippingLoadError(
+        setQuote(null);
+        setQuoteError(
           err instanceof PublicApiError
             ? err.message
-            : 'Could not load shipping options.',
+            : 'Could not calculate your order total. Please try again.',
         );
+      } finally {
+        if (!cancelled) setQuoteLoading(false);
       }
-    }
-    void loadQuote();
+    }, QUOTE_DEBOUNCE_MS);
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
+    // `lines` is read only to word the price-change notice; itemsKey tracks the cart.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     storeSlug,
+    itemsKey,
     shipping.divisionId,
     shipping.districtId,
     shipping.upazilaId,
-    lines,
+    shippingMethodId,
     couponCode,
+    quoteEmail,
+    quoteNonce,
   ]);
 
   const selectedShipping = useMemo(
     () => shippingMethods.find((m) => m.id === shippingMethodId) ?? null,
     [shippingMethods, shippingMethodId],
   );
-  const shippingPreview =
-    selectedShipping?.amount ?? selectedShipping?.price ?? '0.00';
-  const discountPreview = couponDiscount ?? '0.00';
-  const merchandiseAfterDiscount = useMemo(() => {
-    const sub = Number(subtotal);
-    const disc = Number(discountPreview);
-    return (Math.max(0, sub - disc)).toFixed(2);
-  }, [subtotal, discountPreview]);
-  const totalPreview = addMoney(merchandiseAfterDiscount, shippingPreview);
   const codAllowedForMethod = selectedShipping?.codAllowed !== false;
+  // The order may only be placed against a finished quote for the current selection.
+  const quoteReady =
+    quote !== null &&
+    !quoteLoading &&
+    !quoteError &&
+    (quote.shippingMethodId ?? '') === shippingMethodId;
 
   useEffect(() => {
     if (!codAllowedForMethod && paymentProvider === 'COD') {
@@ -332,13 +353,12 @@ export function CheckoutForm({
           quantity: line.quantity,
         })),
       });
+      // The discount shown comes from the checkout quote this triggers.
       setCouponCode(result.data.code);
       setCouponDraft(result.data.code);
-      setCouponDiscount(result.data.discount);
       setCouponMessage(`Coupon ${result.data.code} applied.`);
     } catch (err) {
       setCouponCode(null);
-      setCouponDiscount(null);
       setCouponMessage(
         err instanceof PublicApiError
           ? err.message
@@ -352,7 +372,6 @@ export function CheckoutForm({
   function removeCoupon() {
     setCouponCode(null);
     setCouponDraft('');
-    setCouponDiscount(null);
     setCouponMessage(null);
   }
 
@@ -404,6 +423,10 @@ export function CheckoutForm({
     }
     if (!shippingMethodId) {
       setError('Please select a shipping method.');
+      return;
+    }
+    if (!quote || !quoteReady) {
+      setError('Your order total is still being calculated. Please wait a moment.');
       return;
     }
     if (paymentProvider === 'COD' && selectedShipping?.codAllowed === false) {
@@ -473,6 +496,8 @@ export function CheckoutForm({
         paymentMethod,
         customerNote: allowOrderNotes ? note.trim() || undefined : undefined,
         couponCode: couponCode || undefined,
+        // Not a price: the server refuses the order if its total differs.
+        expectedTotal: quote.total,
       };
 
       const result = await publicPost<{
@@ -518,6 +543,10 @@ export function CheckoutForm({
           ? err.message
           : 'Could not place your order. Please review your cart and try again.';
       setError(message);
+      if (err instanceof PublicApiError && err.code === 'CHECKOUT_TOTAL_CHANGED') {
+        // No order was created; show the current total before the customer retries.
+        setQuoteNonce((value) => value + 1);
+      }
       // Keep the same idempotency key so retries do not create duplicates.
     } finally {
       setSubmitting(false);
@@ -852,7 +881,7 @@ export function CheckoutForm({
           </div>
           {couponMessage ? (
             <p
-              className={`text-sm ${couponDiscount ? 'text-[var(--color-muted)]' : 'text-red-700'}`}
+              className={`text-sm ${couponCode ? 'text-[var(--color-muted)]' : 'text-red-700'}`}
               role="status"
             >
               {couponMessage}
@@ -1000,47 +1029,80 @@ export function CheckoutForm({
       <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
           <h2 className="text-lg font-semibold">Order summary</h2>
-          <ul className="mt-4 space-y-3">
-            {lines.map((line) => (
-              <li key={`${line.productId}:${line.variantId ?? 'base'}`} className="text-sm">
-                <div className="flex justify-between gap-3">
-                  <span>
-                    {line.productName}
-                    {line.variantName ? ` · ${line.variantName}` : ''} × {line.quantity}
-                  </span>
-                  <span className="shrink-0 font-medium">
-                    {formatMoney(multiplyMoney(line.unitPrice, line.quantity), currency)}
-                  </span>
+          {priceNotices.length > 0 ? (
+            <div
+              className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+              role="status"
+            >
+              <p className="font-medium">Prices in your cart have been updated.</p>
+              <ul className="mt-1 list-disc pl-5">
+                {priceNotices.map((notice) => (
+                  <li key={notice}>{notice}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {quoteError ? (
+            <div className="mt-3 text-sm text-[var(--color-danger)]" role="alert">
+              <p>{quoteError}</p>
+              <Link
+                href={`/cart?store=${encodeURIComponent(storeSlug)}`}
+                className="mt-1 inline-block text-[var(--color-accent)] hover:underline"
+              >
+                Review your cart
+              </Link>
+            </div>
+          ) : null}
+          {quote ? (
+            <>
+              <ul className="mt-4 space-y-3" aria-busy={quoteLoading}>
+                {quote.lines.map((line) => (
+                  <li key={lineKey(line)} className="text-sm">
+                    <div className="flex justify-between gap-3">
+                      <span>
+                        {line.productName}
+                        {line.variantName ? ` · ${line.variantName}` : ''} × {line.quantity}
+                      </span>
+                      <span className="shrink-0 font-medium">
+                        {formatMoney(line.lineTotal, quote.currency)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-[var(--color-muted)]">
+                      {formatMoney(line.unitPrice, quote.currency)} each
+                    </p>
+                  </li>
+                ))}
+              </ul>
+              <dl className="mt-4 space-y-2 border-t border-[var(--color-border)] pt-4 text-sm">
+                <div className="flex justify-between">
+                  <dt>Subtotal</dt>
+                  <dd>{formatMoney(quote.subtotal, quote.currency)}</dd>
                 </div>
-                <p className="text-xs text-[var(--color-muted)]">
-                  Display estimate — final price is calculated on the server.
-                </p>
-              </li>
-            ))}
-          </ul>
-          <dl className="mt-4 space-y-2 border-t border-[var(--color-border)] pt-4 text-sm">
-            <div className="flex justify-between">
-              <dt>Subtotal (estimate)</dt>
-              <dd>{formatMoney(subtotal, currency)}</dd>
-            </div>
-            {couponCode && couponDiscount ? (
-              <div className="flex justify-between text-[var(--color-muted)]">
-                <dt>Discount ({couponCode})</dt>
-                <dd>−{formatMoney(couponDiscount, currency)}</dd>
-              </div>
-            ) : null}
-            <div className="flex justify-between">
-              <dt>Shipping</dt>
-              <dd>{formatMoney(shippingPreview, currency)}</dd>
-            </div>
-            <div className="flex justify-between text-base font-semibold">
-              <dt>Total (estimate)</dt>
-              <dd>{formatMoney(totalPreview, currency)}</dd>
-            </div>
-          </dl>
+                {quote.couponCode ? (
+                  <div className="flex justify-between text-[var(--color-muted)]">
+                    <dt>Discount ({quote.couponCode})</dt>
+                    <dd>−{formatMoney(quote.discountTotal, quote.currency)}</dd>
+                  </div>
+                ) : null}
+                <div className="flex justify-between">
+                  <dt>Shipping</dt>
+                  <dd>{formatMoney(quote.shippingTotal, quote.currency)}</dd>
+                </div>
+                <div className="flex justify-between text-base font-semibold">
+                  <dt>Total</dt>
+                  <dd>{formatMoney(quote.total, quote.currency)}</dd>
+                </div>
+              </dl>
+            </>
+          ) : !quoteError ? (
+            <p className="mt-4 text-sm text-[var(--color-muted)]" role="status">
+              Calculating current prices…
+            </p>
+          ) : null}
           <p className="mt-3 text-xs text-[var(--color-muted)]">
-            Server recalculates product prices, shipping, and stock when you place the
-            order. Display totals are estimates only.
+            {quoteLoading && quote
+              ? 'Updating totals…'
+              : 'Prices, shipping and discounts shown are the current store prices.'}
           </p>
 
           {error ? (

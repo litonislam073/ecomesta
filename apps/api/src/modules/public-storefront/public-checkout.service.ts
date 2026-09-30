@@ -4,25 +4,37 @@ import {
   HttpStatus,
   Injectable,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
-import { CustomerAddressType } from '@prisma/client';
+import { CustomerAddressType, Prisma } from '@prisma/client';
 import type { Request } from 'express';
-import { moneyToString } from '../../common/utils/catalog.util';
+import { moneyToString, parseMoney } from '../../common/utils/catalog.util';
 import { RedisRateLimitService } from '../../common/rate-limit/redis-rate-limit.service';
 import { clientIp } from '../../common/utils/request-host.util';
+import { PrismaService } from '../../prisma/prisma.service';
+import { CouponValidationService } from '../coupons/coupon-validation.service';
 import { OrdersService } from '../orders/orders.service';
 import { OrderTimelineService } from '../orders/order-timeline.service';
 import type { OrderAddressInputDto } from '../orders/dto/order.dto';
 import { customerCancellationBlock } from '../orders/customer-cancellation';
+import { BangladeshLocationsService } from '../shipping/bangladesh-locations.service';
+import { ShippingCalculationService } from '../shipping/shipping-calculation.service';
+import {
+  ShippingQuoteService,
+  type PricedCartLine,
+} from '../shipping/shipping-quote.service';
 import {
   CancelPublicOrderDto,
   PublicCheckoutDto,
+  PublicCheckoutQuoteDto,
   PublicOrderLookupQueryDto,
 } from './dto/public-checkout.dto';
 import { PublicStorefrontService } from './public-storefront.service';
 
 const CHECKOUT_LIMIT = 30;
 const CHECKOUT_WINDOW_SECONDS = 60;
+const QUOTE_LIMIT = 120;
+const QUOTE_WINDOW_SECONDS = 60;
 const LOOKUP_LIMIT = 60;
 const LOOKUP_WINDOW_SECONDS = 60;
 const CANCEL_LIMIT = 10;
@@ -35,6 +47,11 @@ export class PublicCheckoutService {
     private readonly orders: OrdersService,
     private readonly timeline: OrderTimelineService,
     private readonly rateLimit: RedisRateLimitService,
+    private readonly prisma: PrismaService,
+    private readonly shippingQuote: ShippingQuoteService,
+    private readonly shippingCalc: ShippingCalculationService,
+    private readonly coupons: CouponValidationService,
+    private readonly locations: BangladeshLocationsService,
   ) {}
 
   async checkout(storeSlug: string, dto: PublicCheckoutDto, req: Request) {
@@ -86,6 +103,9 @@ export class PublicCheckoutService {
         paymentMethod: dto.paymentMethod,
         idempotencyKey,
         couponCode: dto.couponCode ?? null,
+        expectedTotal: dto.expectedTotal
+          ? parseMoney(dto.expectedTotal, 'expectedTotal')
+          : null,
       },
       req,
     );
@@ -95,6 +115,143 @@ export class PublicCheckoutService {
       data: this.toConfirmationDto(order),
       meta: { replayed },
     };
+  }
+
+  /**
+   * SF-03: display-only checkout summary priced from the live catalog, coupon
+   * rules and shipping setup — the same services checkout uses. Read-only: no
+   * order, inventory, coupon usage or payment is written. Checkout still
+   * re-prices everything and refuses a total that differs from this quote.
+   */
+  async quote(storeSlug: string, dto: PublicCheckoutQuoteDto, req: Request) {
+    const store = await this.storefront.requireActiveStore(storeSlug);
+    await this.assertRateLimit(
+      `checkout-quote:${store.id}`,
+      req,
+      QUOTE_LIMIT,
+      QUOTE_WINDOW_SECONDS,
+    );
+
+    const items = dto.items.map((item) => ({
+      productId: item.productId,
+      variantId: item.variantId ?? null,
+      quantity: item.quantity,
+    }));
+    const priced = await this.shippingQuote.computeCartSubtotal(store.id, items);
+    await this.assertStockAvailable(store.id, priced.lines);
+
+    let discount = new Prisma.Decimal(0);
+    let couponCode: string | null = null;
+    let couponError: string | null = null;
+    if (dto.couponCode?.trim()) {
+      try {
+        const applied = await this.coupons.validateForStore({
+          storeId: store.id,
+          code: dto.couponCode,
+          subtotal: priced.subtotal,
+          identity: { email: dto.email?.trim().toLowerCase() || null },
+        });
+        discount = applied.discount;
+        couponCode = applied.code;
+      } catch (err) {
+        // An invalid/expired coupon must not hide the rest of the summary.
+        if (!(err instanceof HttpException) || err.getStatus() >= 500) {
+          throw err;
+        }
+        couponError = err.message;
+      }
+    }
+    const subtotalAfterDiscount = priced.subtotal.sub(discount);
+
+    // Same location normalization as checkout, so zones resolve identically.
+    const location = await this.locations.resolveSnapshotNames({
+      divisionId: dto.divisionId,
+      districtId: dto.districtId,
+      upazilaId: dto.upazilaId,
+    });
+    const shipping = await this.shippingCalc.quote({
+      storeId: store.id,
+      location: {
+        divisionId: location.divisionId,
+        districtId: location.districtId,
+        upazilaId: location.upazilaId,
+      },
+      items,
+      orderSubtotalAfterDiscount: subtotalAfterDiscount,
+    });
+    const selected =
+      shipping.methods.find((m) => m.id === dto.shippingMethodId) ??
+      shipping.methods[0] ??
+      null;
+    const shippingTotal = new Prisma.Decimal(selected?.amount ?? 0);
+    const taxTotal = new Prisma.Decimal(0);
+
+    return {
+      success: true as const,
+      data: {
+        currency: store.currency,
+        lines: priced.lines.map((line) => ({
+          productId: line.productId,
+          variantId: line.variantId,
+          productName: line.productName,
+          variantName: line.variantName,
+          quantity: line.quantity,
+          unitPrice: moneyToString(line.unitPrice)!,
+          lineTotal: moneyToString(line.lineTotal)!,
+        })),
+        subtotal: moneyToString(priced.subtotal)!,
+        couponCode,
+        couponError,
+        discountTotal: moneyToString(discount)!,
+        zone: shipping.zone,
+        shippingMethods: shipping.methods,
+        shippingMethodId: selected?.id ?? null,
+        shippingTotal: moneyToString(shippingTotal)!,
+        taxTotal: moneyToString(taxTotal)!,
+        total: moneyToString(
+          subtotalAfterDiscount.add(shippingTotal).add(taxTotal),
+        )!,
+      },
+    };
+  }
+
+  /**
+   * Unlocked stock check for the quote, mirroring placement: lines are merged
+   * per product/variant, a missing inventory row means zero, backorders pass.
+   * Placement re-checks under row locks.
+   */
+  private async assertStockAvailable(storeId: string, lines: PricedCartLine[]) {
+    const needs = new Map<string, { line: PricedCartLine; quantity: number }>();
+    for (const line of lines) {
+      if (!line.trackInventory || line.allowBackorder) continue;
+      const key = `${line.productId}:${line.variantId ?? 'null'}`;
+      const existing = needs.get(key);
+      if (existing) {
+        existing.quantity += line.quantity;
+      } else {
+        needs.set(key, { line, quantity: line.quantity });
+      }
+    }
+
+    for (const { line, quantity } of needs.values()) {
+      const row = await this.prisma.inventoryItem.findFirst({
+        where: { storeId, productId: line.productId, variantId: line.variantId },
+        select: { quantity: true, reservedQuantity: true },
+      });
+      const available = Math.max(
+        0,
+        (row?.quantity ?? 0) - (row?.reservedQuantity ?? 0),
+      );
+      if (available < quantity) {
+        const label = line.variantName
+          ? `${line.productName} / ${line.variantName}`
+          : line.productName;
+        throw new UnprocessableEntityException({
+          message: `Insufficient stock for ${label}. Available: ${available}, requested: ${quantity}`,
+          error: 'INSUFFICIENT_STOCK',
+        });
+      }
+    }
   }
 
   async getOrder(

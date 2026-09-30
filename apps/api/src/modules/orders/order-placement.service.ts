@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
   UnprocessableEntityException,
@@ -56,7 +57,14 @@ export type PlaceOrderParams = {
   requireActiveCatalog: boolean;
   idempotencyKey?: string | null;
   generatePublicReference: boolean;
+  /**
+   * Grand total the customer was shown (public checkout quote). When set and
+   * the server total differs, placement is refused before anything is written.
+   */
+  expectedGrandTotal?: Prisma.Decimal | null;
 };
+
+export const CHECKOUT_TOTAL_CHANGED = 'CHECKOUT_TOTAL_CHANGED';
 
 type LockedInventory = {
   id: string;
@@ -391,6 +399,18 @@ export class OrderPlacementService {
           throw new BadRequestException(
             'grandTotal cannot be negative; reduce discountTotal',
           );
+        }
+        // SF-03: never charge a total the customer did not see. Throwing here
+        // rolls back the order sequence; no inventory, coupon or payment is touched.
+        if (
+          params.expectedGrandTotal &&
+          !grandTotal.equals(params.expectedGrandTotal)
+        ) {
+          throw new ConflictException({
+            message:
+              'Prices or shipping changed since you reviewed your order. Please check the updated total and place your order again.',
+            error: CHECKOUT_TOTAL_CHANGED,
+          });
         }
 
         const inventoryKeys = prepared

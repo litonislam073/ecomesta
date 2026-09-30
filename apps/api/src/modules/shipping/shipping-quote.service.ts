@@ -83,7 +83,8 @@ export class ShippingQuoteService {
   }
 
   /**
-   * Shared cart pricing for checkout free-threshold + quote.
+   * Shared cart pricing for checkout free-threshold + quote. Prices always come
+   * from the live catalog; `lines` carries them for checkout display (SF-03).
    */
   async computeCartSubtotal(
     storeId: string,
@@ -92,8 +93,9 @@ export class ShippingQuoteService {
       variantId?: string | null;
       quantity: number;
     }[],
-  ): Promise<{ subtotal: Prisma.Decimal }> {
+  ): Promise<{ subtotal: Prisma.Decimal; lines: PricedCartLine[] }> {
     let subtotal = new Prisma.Decimal(0);
+    const lines: PricedCartLine[] = [];
 
     for (const line of items) {
       const product = await this.prisma.product.findFirst({
@@ -103,6 +105,8 @@ export class ShippingQuoteService {
           name: true,
           basePrice: true,
           status: true,
+          trackInventory: true,
+          allowBackorder: true,
           _count: { select: { variants: true } },
         },
       });
@@ -118,6 +122,7 @@ export class ShippingQuoteService {
       }
 
       let unitPrice = product.basePrice;
+      let variantName: string | null = null;
       if (product._count.variants > 0) {
         if (!line.variantId) {
           throw new BadRequestException(
@@ -130,7 +135,7 @@ export class ShippingQuoteService {
             productId: product.id,
             storeId,
           },
-          select: { price: true, status: true },
+          select: { name: true, price: true, status: true },
         });
         if (!variant) {
           throw new NotFoundException(
@@ -143,11 +148,41 @@ export class ShippingQuoteService {
           );
         }
         unitPrice = variant.price;
+        variantName = variant.name;
+      } else if (line.variantId) {
+        // The cart still points at a variant the merchant has since removed.
+        throw new UnprocessableEntityException(
+          `The selected option for "${product.name}" is no longer available`,
+        );
       }
 
-      subtotal = subtotal.add(unitPrice.mul(line.quantity));
+      const lineTotal = unitPrice.mul(line.quantity);
+      subtotal = subtotal.add(lineTotal);
+      lines.push({
+        productId: product.id,
+        variantId: line.variantId ?? null,
+        productName: product.name,
+        variantName,
+        quantity: line.quantity,
+        unitPrice,
+        lineTotal,
+        trackInventory: product.trackInventory,
+        allowBackorder: product.allowBackorder,
+      });
     }
 
-    return { subtotal };
+    return { subtotal, lines };
   }
 }
+
+export type PricedCartLine = {
+  productId: string;
+  variantId: string | null;
+  productName: string;
+  variantName: string | null;
+  quantity: number;
+  unitPrice: Prisma.Decimal;
+  lineTotal: Prisma.Decimal;
+  trackInventory: boolean;
+  allowBackorder: boolean;
+};

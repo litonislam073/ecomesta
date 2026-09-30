@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CartProvider, useCart } from '@/lib/cart';
+import { quoteFor } from '@/lib/checkout-quote.fixture';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -147,16 +148,21 @@ describe('Checkout coupon apply UI', () => {
   });
 
   it('applies a coupon via validate and stores the normalized code', async () => {
-    postMock.mockResolvedValue({
-      success: true,
-      data: {
-        valid: true,
-        code: 'SUMMER10',
-        discount: '2.00',
-        subtotal: '20.00',
-        finalSubtotal: '18.00',
-        currency: 'USD',
-      },
+    postMock.mockImplementation(async (path: string, body?: unknown) => {
+      if (String(path).endsWith('/checkout/quote')) {
+        return quoteFor(body, { discount: '2.00', currency: 'USD' });
+      }
+      return {
+        success: true,
+        data: {
+          valid: true,
+          code: 'SUMMER10',
+          discount: '2.00',
+          subtotal: '20.00',
+          finalSubtotal: '18.00',
+          currency: 'USD',
+        },
+      };
     });
 
     const { CheckoutForm } = await import('@/components/checkout-form');
@@ -171,10 +177,12 @@ describe('Checkout coupon apply UI', () => {
     await user.type(screen.getByLabelText(/coupon code/i), 'summer10');
     await user.click(screen.getByRole('button', { name: /^apply$/i }));
 
+    const validateCall = () =>
+      postMock.mock.calls.find((c) => String(c[0]).includes('/coupons/validate'));
     await waitFor(() => {
-      expect(postMock).toHaveBeenCalled();
+      expect(validateCall()).toBeTruthy();
     });
-    const [path, body] = postMock.mock.calls[0]!;
+    const [path, body] = validateCall()!;
     expect(String(path)).toContain('/public/stores/alpha/coupons/validate');
     expect(body.code).toBe('SUMMER10');
 
@@ -184,5 +192,13 @@ describe('Checkout coupon apply UI', () => {
       expect(parsed?.couponCode).toBe('SUMMER10');
     });
     expect(screen.getByRole('button', { name: /remove/i })).toBeInTheDocument();
+
+    // SF-03: the discount shown comes from the server quote for the coupon.
+    await waitFor(() => {
+      const discountRow = screen.getByText(/^Discount \(SUMMER10\)$/).closest('div');
+      expect(discountRow?.textContent).toMatch(/2\.00/);
+    });
+    const quoted = postMock.mock.calls.filter((c) => String(c[0]).endsWith('/checkout/quote'));
+    expect(quoted.at(-1)![1].couponCode).toBe('SUMMER10');
   });
 });
