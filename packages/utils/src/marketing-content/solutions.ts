@@ -1,4 +1,4 @@
-import type { ContentPage } from './types';
+import type { ContentPage } from './types.js';
 
 export const SOLUTION_PAGES: ContentPage[] = [
   {

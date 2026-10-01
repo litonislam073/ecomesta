@@ -1,4 +1,4 @@
-import type { ContentPage } from './types';
+import type { ContentPage } from './types.js';
 
 export const FEATURE_PAGES: ContentPage[] = [
   {
@@ -42,7 +42,7 @@ export const FEATURE_PAGES: ContentPage[] = [
           'Product search, category filters and sorting',
           'A cart and a guest checkout — customers do not need to create an account',
           'Division, district and upazila address selection with delivery charges calculated for their location',
-          'An order tracking page where customers check their order with their order reference and email',
+          'An order tracking page where customers check their order with their order reference and the phone number or email used at checkout',
         ],
       },
       {
@@ -674,7 +674,7 @@ export const FEATURE_PAGES: ContentPage[] = [
     name: 'Order Tracking',
     title: 'Order Tracking Page for Your Customers | Ecomesta',
     description:
-      'Give customers a self-service order tracking page: they enter their order reference and email to see order status, payment status, shipment progress and tracking number.',
+      'A self-service tracking page: customers enter their order reference and checkout phone or email to see order and payment status, shipment progress and tracking number.',
     eyebrow: 'Order tracking',
     h1: 'Let customers check their own order status',
     intro:

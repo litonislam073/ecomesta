@@ -9,6 +9,17 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./marketing-content": {
+      "types": "./dist/marketing-content/index.d.ts",
+      "default": "./dist/marketing-content/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "marketing-content": [
+        "./dist/marketing-content/index.d.ts"
+      ]
     }
   },
   "scripts": {

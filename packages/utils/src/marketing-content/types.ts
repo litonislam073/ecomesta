@@ -1,4 +1,8 @@
-import type { Faq } from '@/lib/marketing/seo';
+/** A question and answer shown on FAQ sections (and used by the AI support agent). */
+export interface Faq {
+  question: string;
+  answer: string;
+}
 
 export interface ContentSection {
   heading: string;
