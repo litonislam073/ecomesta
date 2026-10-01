@@ -6,6 +6,7 @@ import { EmailDispatcher } from './email-dispatcher.service';
 import { EmailConfigService } from './email.config';
 import {
   EMAIL_EVENTS,
+  type AiSupportHandoffParams,
   type BillingPaymentParams,
   type OutboxEmail,
   type PasswordChangedParams,
@@ -140,6 +141,14 @@ export class EmailService implements OnModuleDestroy {
       { event, params },
       { ...target, storeId: null, idempotencyKey: `${event}:${params.paymentId}` },
       tx,
+    );
+  }
+
+  /** Queues a website visitor's request for a person to the support inbox (no user account involved). */
+  sendAiSupportHandoff(params: AiSupportHandoffParams) {
+    return this.sendTemplate(
+      { event: EMAIL_EVENTS.AI_SUPPORT_HANDOFF, params },
+      { userId: null, tenantId: null, storeId: null, idempotencyKey: `${EMAIL_EVENTS.AI_SUPPORT_HANDOFF}:${params.reference}` },
     );
   }
 

@@ -1018,6 +1018,33 @@ export interface MerchantBillingPayment {
 }
 
 /** A submitted payment as the Super Admin reviews it. */
+/** A website support chat, as listed for Super Admins. */
+export interface AdminSupportConversationSummary {
+  id: string;
+  visitorName: string;
+  visitorPhone: string;
+  visitorEmail: string | null;
+  messageCount: number;
+  /** The visitor's first message, shortened for the list. */
+  firstMessage: string | null;
+  handoffReference: string | null;
+  lastMessageAt: string | null;
+  createdAt: string;
+}
+
+export interface AdminSupportMessage {
+  id: string;
+  role: 'USER' | 'ASSISTANT';
+  content: string;
+  handoffReason: string | null;
+  createdAt: string;
+}
+
+export interface AdminSupportConversation extends AdminSupportConversationSummary {
+  userAgent: string | null;
+  messages: AdminSupportMessage[];
+}
+
 export interface AdminBillingPayment extends MerchantBillingPayment {
   payToNumber: string;
   tenant: { id: string; name: string; slug: string };

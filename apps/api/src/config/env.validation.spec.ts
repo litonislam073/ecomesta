@@ -188,4 +188,22 @@ describe('validateEnv production gates', () => {
       expect(message).not.toContain(smtp.SMTP_USER);
     });
   });
+
+  describe('AI_SUPPORT_RETENTION_DAYS', () => {
+    it('is optional, and an empty value means the default', () => {
+      expect(validateEnv(base).AI_SUPPORT_RETENTION_DAYS).toBeUndefined();
+      expect(validateEnv({ ...base, AI_SUPPORT_RETENTION_DAYS: '' }).AI_SUPPORT_RETENTION_DAYS).toBeUndefined();
+    });
+
+    it('accepts whole days from 1 to 3650', () => {
+      expect(validateEnv({ ...base, AI_SUPPORT_RETENTION_DAYS: '30' }).AI_SUPPORT_RETENTION_DAYS).toBe(30);
+      expect(validateEnv({ ...base, AI_SUPPORT_RETENTION_DAYS: '3650' }).AI_SUPPORT_RETENTION_DAYS).toBe(3650);
+    });
+
+    it('rejects zero, fractions, text and more than ten years', () => {
+      for (const value of ['0', '-5', '1.5', 'abc', '3651']) {
+        expect(messageFor({ AI_SUPPORT_RETENTION_DAYS: value })).toMatch(/AI_SUPPORT_RETENTION_DAYS/);
+      }
+    });
+  });
 });

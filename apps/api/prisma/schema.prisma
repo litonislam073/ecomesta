@@ -1228,6 +1228,56 @@ model BillingPayment {
 }
 
 // ---------------------------------------------------------------------------
+// Website support chat
+// ---------------------------------------------------------------------------
+
+enum AiSupportMessageRole {
+  USER
+  ASSISTANT
+}
+
+/// A chat a website visitor started with the Ecomesta support assistant. The
+/// visitor gives their name and phone (email optional) before the first
+/// message; Super Admins can read the conversation in the admin dashboard.
+model AiSupportConversation {
+  id               String    @id @default(uuid()) @db.Uuid
+  visitorName      String    @map("visitor_name")
+  /// Digits only, with an optional leading "+".
+  visitorPhone     String    @map("visitor_phone")
+  visitorEmail     String?   @map("visitor_email") @db.Citext
+  /// SHA-256 of the secret the visitor's browser holds; only it may add messages.
+  tokenHash        String    @map("token_hash")
+  userAgent        String?   @map("user_agent")
+  messageCount     Int       @default(0) @map("message_count")
+  lastMessageAt    DateTime? @map("last_message_at")
+  /// Reference of the latest "talk to a person" request sent from this chat.
+  handoffReference String?   @map("handoff_reference")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  messages AiSupportMessage[]
+
+  @@index([createdAt])
+  @@index([visitorPhone])
+  @@map("ai_support_conversations")
+}
+
+model AiSupportMessage {
+  id             String               @id @default(uuid()) @db.Uuid
+  conversationId String               @map("conversation_id") @db.Uuid
+  role           AiSupportMessageRole
+  content        String
+  /// Set on an assistant reply that offered the visitor a person.
+  handoffReason  String?              @map("handoff_reason")
+  createdAt      DateTime             @default(now()) @map("created_at")
+
+  conversation AiSupportConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("ai_support_messages")
+}
+
+// ---------------------------------------------------------------------------
 // Audit & notifications
 // ---------------------------------------------------------------------------
 

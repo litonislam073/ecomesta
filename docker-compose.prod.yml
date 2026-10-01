@@ -57,6 +57,12 @@ x-api-env: &api-env
   SMTP_SECURE: ${SMTP_SECURE:-}
   APP_PUBLIC_URL: ${APP_PUBLIC_URL:-}
   SUPPORT_EMAIL: ${SUPPORT_EMAIL:-}
+  # Website AI support agent; empty key = assistant unavailable (human support offered).
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  OPENAI_MODEL: ${OPENAI_MODEL:-}
+  AI_SUPPORT_DAILY_REQUEST_LIMIT: ${AI_SUPPORT_DAILY_REQUEST_LIMIT:-}
+  # Days support chats are kept after their last message; empty = 365.
+  AI_SUPPORT_RETENTION_DAYS: ${AI_SUPPORT_RETENTION_DAYS:-}
   # Inbox for manual subscription payments; empty = ecomestabd@gmail.com.
   BILLING_NOTIFICATION_EMAIL: ${BILLING_NOTIFICATION_EMAIL:-}
   # Unset = "Continue with Google" hidden. Public client ID, no secret.

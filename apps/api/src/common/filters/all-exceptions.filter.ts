@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import { PublicServiceUnavailableException } from './public-service-unavailable.exception';
 
 interface ErrorBody {
   success: false;
@@ -56,6 +57,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
           code = HttpStatus[status] ?? code;
         }
       }
+    } else if (exception instanceof PublicServiceUnavailableException) {
+      // Written for end users on purpose; still logged for developers.
+      message = exception.publicMessage;
+      code = exception.publicCode;
+      this.logger.warn({ path: request.url, method: request.method, status, code }, 'Service unavailable');
     } else {
       // Never leak exception.message (or HttpException 500 payloads) to clients.
       message = 'Internal server error';

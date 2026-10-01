@@ -184,6 +184,31 @@ export class EnvironmentVariables {
   @IsString()
   EMAIL_DISPATCH_INTERVAL_MS?: string;
 
+  /** OpenAI key for the website AI support agent. Unset = the agent politely points visitors to human support. */
+  @IsOptional()
+  @IsString()
+  OPENAI_API_KEY?: string;
+
+  /** Chat model for the AI support agent (default gpt-4o-mini). */
+  @IsOptional()
+  @IsString()
+  OPENAI_MODEL?: string;
+
+  /** Cap on AI support chat requests per day across all visitors (cost guard). */
+  @IsOptional()
+  @IsString()
+  AI_SUPPORT_DAILY_REQUEST_LIMIT?: string;
+
+  /**
+   * Days a website support chat is kept after its last message (default 365).
+   * Older chats are hidden at once and deleted by the cleanup that runs every 6 hours.
+   */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(3650)
+  AI_SUPPORT_RETENTION_DAYS?: number;
+
   /** Inbox told about new manual subscription payments. Defaults to ecomestabd@gmail.com. */
   @IsOptional()
   @IsEmail()
@@ -213,6 +238,10 @@ const EMPTY_MEANS_UNSET = [
   'EMAIL_DISPATCH_INTERVAL_MS',
   'GOOGLE_CLIENT_ID',
   'BILLING_NOTIFICATION_EMAIL',
+  'OPENAI_API_KEY',
+  'OPENAI_MODEL',
+  'AI_SUPPORT_DAILY_REQUEST_LIMIT',
+  'AI_SUPPORT_RETENTION_DAYS',
 ];
 
 export function validateEnv(rawConfig: Record<string, unknown>): EnvironmentVariables {

@@ -4,6 +4,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { AllExceptionsFilter } from './all-exceptions.filter';
+import { PublicServiceUnavailableException } from './public-service-unavailable.exception';
 
 function mockHost(response: {
   status: jest.Mock;
@@ -79,6 +80,35 @@ describe('AllExceptionsFilter', () => {
         code: 'INTERNAL_SERVER_ERROR',
         message: 'Internal server error',
       },
+    });
+  });
+
+  it('shows the user-facing message of a PublicServiceUnavailableException', () => {
+    const filter = new AllExceptionsFilter();
+    const json = jest.fn();
+    const status = jest.fn().mockReturnValue({ json });
+    filter.catch(
+      new PublicServiceUnavailableException('Please try again in a moment.', 'AI_UNAVAILABLE'),
+      mockHost({ status, json }),
+    );
+    expect(status).toHaveBeenCalledWith(503);
+    expect(json).toHaveBeenCalledWith({
+      success: false,
+      error: { code: 'AI_UNAVAILABLE', message: 'Please try again in a moment.' },
+    });
+  });
+
+  it('still redacts other 503 payloads', () => {
+    const filter = new AllExceptionsFilter();
+    const json = jest.fn();
+    const status = jest.fn().mockReturnValue({ json });
+    filter.catch(
+      new HttpException({ message: 'redis down at 10.0.0.5', error: 'X' }, HttpStatus.SERVICE_UNAVAILABLE),
+      mockHost({ status, json }),
+    );
+    expect(json).toHaveBeenCalledWith({
+      success: false,
+      error: { code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error' },
     });
   });
 });

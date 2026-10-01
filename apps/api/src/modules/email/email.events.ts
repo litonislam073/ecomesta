@@ -11,6 +11,8 @@ export const EMAIL_EVENTS = {
   BILLING_PAYMENT_SUBMITTED: 'BILLING_PAYMENT_SUBMITTED',
   BILLING_PAYMENT_APPROVED: 'BILLING_PAYMENT_APPROVED',
   BILLING_PAYMENT_REJECTED: 'BILLING_PAYMENT_REJECTED',
+  // A website visitor asked the AI support agent for a person.
+  AI_SUPPORT_HANDOFF: 'AI_SUPPORT_HANDOFF',
   // Billing lifecycle — reserved, not sent yet.
   TRIAL_STARTED: 'TRIAL_STARTED',
   TRIAL_ENDING: 'TRIAL_ENDING',
@@ -68,6 +70,23 @@ export interface BillingPaymentParams {
   rejectionReason?: string | null;
 }
 
+/** A website visitor's request for human help, raised from the AI support chat. */
+export interface AiSupportHandoffParams {
+  reference: string;
+  name: string;
+  /** Always given by new requests; absent on ones queued before phone was required. */
+  phone?: string | null;
+  /** Optional: when missing, the team calls or messages the phone number instead. */
+  email: string | null;
+  message: string;
+  /** What the AI agent understood the visitor needs. */
+  reason: string | null;
+  language: string;
+  submittedAt: string;
+  /** Recent chat turns for context (already trimmed). */
+  transcript: { role: 'user' | 'assistant'; content: string }[];
+}
+
 /**
  * Template data persisted in the outbox. Everything here must be safe to keep
  * in the database until delivery: no passwords, tokens or token-bearing URLs.
@@ -79,4 +98,5 @@ export type OutboxEmail =
   | { event: typeof EMAIL_EVENTS.SUPPORT_REQUEST; params: SupportRequestParams }
   | { event: typeof EMAIL_EVENTS.BILLING_PAYMENT_SUBMITTED; params: BillingPaymentParams }
   | { event: typeof EMAIL_EVENTS.BILLING_PAYMENT_APPROVED; params: BillingPaymentParams }
-  | { event: typeof EMAIL_EVENTS.BILLING_PAYMENT_REJECTED; params: BillingPaymentParams };
+  | { event: typeof EMAIL_EVENTS.BILLING_PAYMENT_REJECTED; params: BillingPaymentParams }
+  | { event: typeof EMAIL_EVENTS.AI_SUPPORT_HANDOFF; params: AiSupportHandoffParams };

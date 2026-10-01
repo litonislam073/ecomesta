@@ -31,7 +31,10 @@ export const ADMIN_NAV: NavSection[] = [
   },
   {
     title: 'Platform',
-    items: [{ href: '/dashboard/email', label: 'Email' }],
+    items: [
+      { href: '/dashboard/support-chats', label: 'Support chats' },
+      { href: '/dashboard/email', label: 'Email' },
+    ],
   },
   {
     title: 'Compliance',

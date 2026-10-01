@@ -8,12 +8,14 @@ import {
   isInternalServiceRequest,
   trustProxyEnabled,
 } from './common/utils/request-host.util';
+import { redactRequestForLog } from './common/utils/log-redaction.util';
 import { validateEnv } from './config/env.validation';
 import { HealthModule } from './health/health.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AuthorizationModule } from './modules/authorization/authorization.module';
+import { AiSupportModule } from './modules/ai-support/ai-support.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { CustomersModule } from './modules/customers/customers.module';
@@ -59,12 +61,15 @@ import { RedisModule } from './redis/redis.module';
               }
             : undefined,
         autoLogging: true,
+        // Search terms are visitor and customer details (names, phones, emails).
+        serializers: { req: redactRequestForLog },
         redact: [
           'req.headers.authorization',
           'req.headers.cookie',
           'req.body.password',
           'req.body.refreshToken',
           'req.body.token',
+          'req.body.conversationToken',
           'res.headers["set-cookie"]',
         ],
       },
@@ -90,6 +95,7 @@ import { RedisModule } from './redis/redis.module';
     EmailModule,
     AuthorizationModule,
     BillingModule,
+    AiSupportModule,
     HealthModule,
     AuthModule,
     TenantsModule,

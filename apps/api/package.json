@@ -20,7 +20,8 @@
     "prisma:format": "prisma format",
     "prisma:seed": "dotenv -e ../../.env -- ts-node --transpile-only prisma/seed.ts",
     "qa:cleanup-local": "dotenv -e ../../.env -- ts-node --transpile-only scripts/cleanup-local-qa-data.ts",
-    "qa:subscription-clock": "dotenv -e ../../.env -- ts-node --transpile-only scripts/qa-subscription-clock.ts"
+    "qa:subscription-clock": "dotenv -e ../../.env -- ts-node --transpile-only scripts/qa-subscription-clock.ts",
+    "ai-support:retention": "dotenv -e ../../.env -- ts-node --transpile-only src/cli/ai-support-retention.ts"
   },
   "prisma": {
     "seed": "dotenv -e ../../.env -- ts-node --transpile-only prisma/seed.ts"

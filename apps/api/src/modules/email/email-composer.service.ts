@@ -6,6 +6,7 @@ import { AuthTokenService } from '../auth-tokens/auth-token.service';
 import { EmailConfigService } from './email.config';
 import {
   EMAIL_EVENTS,
+  type AiSupportHandoffParams,
   type BillingPaymentParams,
   type MerchantWelcomeParams,
   type OutboxEmail,
@@ -17,6 +18,7 @@ import type { EmailMessage } from './providers/email-provider';
 import { EmailSendError } from './providers/email-provider';
 import type { EmailBrand } from './templates/layout';
 import {
+  aiSupportHandoffEmail,
   billingPaymentApprovedEmail,
   billingPaymentRejectedEmail,
   billingPaymentSubmittedEmail,
@@ -105,6 +107,14 @@ export class EmailComposer {
 
     if (email.event === EMAIL_EVENTS.SUPPORT_REQUEST) {
       return this.composeSupport(email.params, row, brand);
+    }
+    if (email.event === EMAIL_EVENTS.AI_SUPPORT_HANDOFF) {
+      const supportEmail = this.config.supportEmail();
+      if (!supportEmail) throw new EmailSendError('configuration', true);
+      const params = email.params as AiSupportHandoffParams;
+      const composed = this.toMessage(email.event, supportEmail, aiSupportHandoffEmail(params, brand));
+      if (params.email) composed.message.replyTo = params.email;
+      return composed;
     }
     if (email.event === EMAIL_EVENTS.BILLING_PAYMENT_SUBMITTED) {
       return this.composeBillingPaymentSubmitted(email.params, row, brand);

@@ -1,4 +1,5 @@
 import type {
+  AiSupportHandoffParams,
   BillingPaymentParams,
   MerchantWelcomeParams,
   PasswordChangedParams,
@@ -293,6 +294,39 @@ export function billingPaymentRejectedEmail(
       details: paymentDetails(params),
       cta: { label: 'Go to plan & billing', url: billingUrl },
       outro: [supportSentence(brand)],
+    },
+    brand,
+  );
+}
+
+/** To the support inbox: a visitor asked the website AI agent for a person. Replies go to the visitor. */
+export function aiSupportHandoffEmail(params: AiSupportHandoffParams, brand: EmailBrand): RenderedEmail {
+  const transcript = params.transcript.map(
+    (turn) => `${turn.role === 'user' ? 'Visitor' : 'AI agent'}: ${turn.content}`,
+  );
+  return renderEmail(
+    {
+      subject: `[Website chat] ${params.name}: ${params.reason ?? 'Support request'} (#${params.reference})`,
+      preheader: `${params.name} asked for help from the website chat.`,
+      heading: 'Support request from the website chat',
+      intro: [
+        `${params.name} (${[params.phone, params.email].filter(Boolean).join(', ')}) asked the Ecomesta AI assistant for a person. ${
+          params.email
+            ? 'Reply to this email to answer them directly.'
+            : `They gave no email, so please call or message them on ${params.phone ?? 'the number below'}.`
+        }`,
+      ],
+      details: [
+        { label: 'Reference', value: params.reference },
+        { label: 'Name', value: params.name },
+        ...(params.phone ? [{ label: 'Phone', value: params.phone }] : []),
+        { label: 'Email', value: params.email ?? 'Not given' },
+        ...(params.reason ? [{ label: 'Topic', value: params.reason }] : []),
+        { label: 'Language', value: params.language },
+        { label: 'Submitted', value: formatDateTime(params.submittedAt) },
+      ],
+      outro: [params.message, ...(transcript.length ? ['Recent conversation:', ...transcript] : [])],
+      notice: 'The visitor is not signed in; confirm their identity before discussing any account.',
     },
     brand,
   );
