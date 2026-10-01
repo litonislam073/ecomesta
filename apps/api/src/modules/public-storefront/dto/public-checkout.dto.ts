@@ -139,10 +139,11 @@ export class PublicCheckoutCustomerDto {
   @MaxLength(200)
   name!: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional({ description: 'Optional; the phone number is the required contact' })
+  @IsOptional()
   @IsEmail()
   @MaxLength(255)
-  email!: string;
+  email?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

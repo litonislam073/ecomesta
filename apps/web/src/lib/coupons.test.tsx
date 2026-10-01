@@ -173,7 +173,7 @@ describe('Checkout coupon apply UI', () => {
       </CartProvider>,
     );
 
-    expect(await screen.findByRole('heading', { name: /^coupon$/i })).toBeInTheDocument();
+    expect(await screen.findByLabelText(/coupon code/i)).toBeInTheDocument();
     await user.type(screen.getByLabelText(/coupon code/i), 'summer10');
     await user.click(screen.getByRole('button', { name: /^apply$/i }));
 

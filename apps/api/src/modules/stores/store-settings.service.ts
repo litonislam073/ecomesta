@@ -373,7 +373,7 @@ export class StoreSettingsService {
       /** Behaviour the platform enforces for every store today. */
       fixed: {
         guestCheckout: true,
-        requireEmail: true,
+        requireEmail: false,
         requireShippingAddress: true,
         currencyEditable: false,
         timezoneEditable: false,

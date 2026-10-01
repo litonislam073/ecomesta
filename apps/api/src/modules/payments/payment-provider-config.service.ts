@@ -13,6 +13,7 @@ import type { Request } from 'express';
 import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PlanEntitlementsService } from '../billing/plan-entitlements.service';
 import { PaymentSecretsCryptoService } from './crypto/payment-secrets-crypto.service';
 import {
   ONLINE_PAYMENT_PROVIDERS,
@@ -35,7 +36,16 @@ export class PaymentProviderConfigService {
     private readonly registry: PaymentProviderRegistry,
     private readonly stripeProvider: StripePaymentProvider,
     private readonly sslCommerzProvider: SslCommerzPaymentProvider,
+    private readonly entitlements: PlanEntitlementsService,
   ) {}
+
+  /** Turning on SSLCommerz or Stripe needs a plan that includes it; turning off never does. */
+  private async assertPlanAllowsEnabling(storeId: string, provider: PaymentProvider, enabled?: boolean) {
+    const feature = PlanEntitlementsService.featureForProvider(provider);
+    if (enabled === true && feature) {
+      await this.entitlements.assertFeature(storeId, feature);
+    }
+  }
 
   async list(userId: string, storeId: string) {
     await this.authorization.assertStoreAccess(userId, storeId);
@@ -80,6 +90,7 @@ export class PaymentProviderConfigService {
     ]);
     const store = await this.requireStore(storeId);
     this.assertConfigurable(dto.provider);
+    await this.assertPlanAllowsEnabling(storeId, dto.provider, dto.enabled);
 
     if (dto.secrets) {
       this.assertSecretsShape(dto.provider, dto.secrets);
@@ -149,6 +160,7 @@ export class PaymentProviderConfigService {
     ]);
     const store = await this.requireStore(storeId);
     this.assertConfigurable(provider);
+    await this.assertPlanAllowsEnabling(storeId, provider, dto.enabled);
 
     const existing = await this.prisma.paymentProviderConfig.findUnique({
       where: { storeId_provider: { storeId, provider } },

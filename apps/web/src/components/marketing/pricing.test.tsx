@@ -32,6 +32,7 @@ function plan(slug: string, name: string, monthly: number, highlighted = false):
     currency: 'BDT',
     monthlyPrice: monthly,
     trialMonths: 2,
+    limits: null,
     prices: cycles.map(([billingCycle, months, discountPercent]) => {
       const amount = billingCyclePrice(monthly, billingCycle);
       return { billingCycle, amount, months, discountPercent, effectiveMonthly: amount / months };

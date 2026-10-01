@@ -15,6 +15,7 @@ import { AccountRecoveryService } from './account-recovery.service';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { EmailTokenDto, ForgotPasswordDto, ResetPasswordDto } from './dto/account-recovery.dto';
+import { GoogleAuthDto } from './dto/google-auth.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -49,6 +50,23 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     return this.authService.login(dto, req, res);
+  }
+
+  @Get('providers')
+  @ApiOperation({ summary: 'List enabled third-party sign-in providers and their public client IDs' })
+  providers() {
+    return this.authService.authProviders();
+  }
+
+  @Post('google')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Sign in or register with a Google Identity Services ID token' })
+  async google(
+    @Body() dto: GoogleAuthDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    return this.authService.googleSignIn(dto, req, res);
   }
 
   @Post('refresh')

@@ -76,7 +76,7 @@ describe('SF-02 coupon usage release on cancellation (e2e)', () => {
       .set('Idempotency-Key', `sf02-${n}-${suffix}`)
       .send({
         items: [{ productId: opts.productId ?? s.productId, quantity: opts.quantity ?? 1 }],
-        customer: { name: 'SF02 Buyer', email },
+        customer: { name: 'SF02 Buyer', email, phone: '01711000000' },
         shippingAddress: { name: 'SF02 Buyer', addressLine1: '1 Main', city: 'Dhaka', country: 'BD', email },
         billingSameAsShipping: true,
         shippingMethodId: opts.methodId ?? s.methodId,

@@ -9,6 +9,7 @@ import { AppModule } from '../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
+import { jpegImage, pngImage, webpImage } from './support/image-fixtures';
 
 /**
  * SF-04: merchants upload, replace and remove a product image. Images are kept
@@ -31,17 +32,9 @@ describe('SF-04 merchant product images (e2e)', () => {
   const MEDIA_URL = /^http:\/\/localhost:3001\/api\/v1\/public\/media\/([0-9a-f-]{36})$/;
 
   // Real headers followed by filler; the server checks content, not the name.
-  const png = Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    Buffer.from(`png-body-${suffix}`),
-  ]);
-  const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.from(`jpeg-body-${suffix}`)]);
-  const webp = Buffer.concat([
-    Buffer.from('RIFF'),
-    Buffer.from([0x20, 0, 0, 0]),
-    Buffer.from('WEBPVP8 '),
-    Buffer.from(`webp-body-${suffix}`),
-  ]);
+  const png = pngImage(800, 800, `png-body-${suffix}`);
+  const jpeg = jpegImage(1200, 900, `jpeg-body-${suffix}`);
+  const webp = webpImage(640, 480, `webp-body-${suffix}`);
 
   const upload = (s: Store, productId: string, file: Buffer, filename = 'photo.png', storeId = s.id) =>
     http()
@@ -151,7 +144,7 @@ describe('SF-04 merchant product images (e2e)', () => {
     expect(served.headers['cache-control']).toBe('public, max-age=31536000, immutable');
   });
 
-  it('B — replaces the image; the storefront gets the new one and the old upload is retired', async () => {
+  it('B — replaces the image; the storefront gets the new one and the old upload stays in the gallery', async () => {
     const p = await product(A, 'Replace Panjabi');
     const first = mediaIdOf((await upload(A, p.id, png).expect(200)).body.data.imageUrl)!;
     const second = await upload(A, p.id, jpeg, 'new.jpg').expect(200);
@@ -160,7 +153,7 @@ describe('SF-04 merchant product images (e2e)', () => {
     expect(secondId).not.toBe(first);
     expect((await prisma.media.findUniqueOrThrow({ where: { id: secondId } })).mimeType).toBe('image/jpeg');
     await http().get(`/api/v1/public/media/${secondId}`).expect(200);
-    // Still served during the grace period for briefly cached storefront pages.
+    // The replaced upload is kept in the media gallery for reuse.
     await http().get(`/api/v1/public/media/${first}`).expect(200);
     expect((await storefrontProduct(A, p.slug)).body.data.images[0].url).toBe(second.body.data.imageUrl);
 
@@ -173,7 +166,7 @@ describe('SF-04 merchant product images (e2e)', () => {
     expect(await prisma.media.count({ where: { storeId: A.id } })).toBe(mediaBefore + 1);
   });
 
-  it('B — concurrent uploads settle on one image; the rest are retired and purged after the grace period', async () => {
+  it('B — concurrent uploads settle on one image; every upload is kept in the gallery', async () => {
     const p = await product(A, 'Race Lungi');
     const results = await Promise.all([png, jpeg, webp, png].map((f) => upload(A, p.id, f)));
     expect(results.map((r) => r.status)).toEqual([200, 200, 200, 200]);
@@ -181,50 +174,38 @@ describe('SF-04 merchant product images (e2e)', () => {
     const rows = await prisma.media.findMany({ where: { key: { startsWith: `products/${p.id}/` } }, select: { id: true } });
     expect(rows).toHaveLength(4);
     expect(rows.map((r) => r.id)).toContain(current);
-
-    // Age the retired uploads past the grace period; the next image change in the store purges them.
-    await prisma.media.updateMany({
-      where: { key: { startsWith: `products/${p.id}/` }, id: { not: current } },
-      data: { updatedAt: new Date(Date.now() - 11 * 60_000) },
-    });
-    await upload(A, A.productId, png).expect(200);
-    const left = await prisma.media.findMany({ where: { key: { startsWith: `products/${p.id}/` } }, select: { id: true } });
-    expect(left.map((r) => r.id)).toEqual([current]);
-    await http().get(`/api/v1/public/media/${current}`).expect(200);
+    for (const row of rows) await http().get(`/api/v1/public/media/${row.id}`).expect(200);
   });
 
-  it('C — purging never touches images in use or another store’s uploads', async () => {
-    const bInUse = mediaIdOf((await upload(B, B.productId, png).expect(200)).body.data.imageUrl)!;
-    const bOld = await product(B, 'B Retired');
-    const bRetired = mediaIdOf((await upload(B, bOld.id, png).expect(200)).body.data.imageUrl)!;
+  it('C — image changes never delete gallery images, in this store or another', async () => {
+    const bOld = await product(B, 'B Replaced');
+    const bFirst = mediaIdOf((await upload(B, bOld.id, png).expect(200)).body.data.imageUrl)!;
     await removeImage(B, bOld.id).expect(200);
-    const aInUse = await product(A, 'A In Use');
-    const aCurrent = mediaIdOf((await upload(A, aInUse.id, png).expect(200)).body.data.imageUrl)!;
+    const aOld = await product(A, 'A Replaced');
+    const aFirst = mediaIdOf((await upload(A, aOld.id, png).expect(200)).body.data.imageUrl)!;
     const old = new Date(Date.now() - 60 * 60_000);
-    await prisma.media.updateMany({ where: { id: { in: [bInUse, bRetired, aCurrent] } }, data: { updatedAt: old } });
+    await prisma.media.updateMany({ where: { id: { in: [bFirst, aFirst] } }, data: { updatedAt: old } });
 
-    await upload(A, A.productId, jpeg).expect(200); // purge runs for store A only
-    expect(await prisma.media.findUnique({ where: { id: aCurrent } })).not.toBeNull();
-    expect(await prisma.media.findUnique({ where: { id: bRetired } })).not.toBeNull();
-
-    await upload(B, B.productId, jpeg).expect(200); // store B: bRetired and the replaced bInUse go
-    expect(await prisma.media.findUnique({ where: { id: bRetired } })).toBeNull();
+    await upload(A, aOld.id, jpeg).expect(200);
+    await upload(B, B.productId, jpeg).expect(200);
+    expect(await prisma.media.findUnique({ where: { id: aFirst } })).not.toBeNull();
+    expect(await prisma.media.findUnique({ where: { id: bFirst } })).not.toBeNull();
   });
 
-  it('C — removes the image from the product, storage and storefront', async () => {
+  it('C — removes the image from the product and storefront; the gallery keeps it until deleted there', async () => {
     const p = await product(A, 'Remove Shawl');
     const mediaId = mediaIdOf((await upload(A, p.id, png).expect(200)).body.data.imageUrl)!;
 
     const removed = await removeImage(A, p.id).expect(200);
     expect(removed.body.data.imageUrl).toBeNull();
     expect((await storefrontProduct(A, p.slug)).body.data.images).toEqual([]);
+    expect((await http().get(`/api/v1/stores/${A.id}/products/${p.id}`).set(auth(A))).body.data.imageUrl).toBeNull();
+    await http().get(`/api/v1/public/media/${mediaId}`).expect(200);
 
-    // Retired, then purged once the grace period has passed.
-    await prisma.media.update({ where: { id: mediaId }, data: { updatedAt: new Date(Date.now() - 11 * 60_000) } });
-    await removeImage(A, p.id).expect(200);
+    // Deleting from the gallery removes the file for good.
+    await http().delete(`/api/v1/stores/${A.id}/media/${mediaId}`).set(auth(A)).expect(200);
     expect(await prisma.media.findUnique({ where: { id: mediaId } })).toBeNull();
     await http().get(`/api/v1/public/media/${mediaId}`).expect(404);
-    expect((await http().get(`/api/v1/stores/${A.id}/products/${p.id}`).set(auth(A))).body.data.imageUrl).toBeNull();
 
     // Removing again is harmless.
     expect((await removeImage(A, p.id).expect(200)).body.data.imageUrl).toBeNull();

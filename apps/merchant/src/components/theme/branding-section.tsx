@@ -1,6 +1,7 @@
 'use client';
 
 import type { StoreThemeConfig, ThemeBorderRadius } from '@ecomesta/types';
+import { ImageField } from '@/components/media/image-field';
 import { Card } from '@/components/ui/card';
 import {
   ColorField,
@@ -29,11 +30,14 @@ const COLOR_FIELDS: Array<[keyof Branding, string]> = [
 ];
 
 export function BrandingSection({
+  storeId,
   value,
   saved,
   onChange,
   disabled,
 }: {
+  /** Store whose gallery uploads go to; null while no store is selected. */
+  storeId: string | null;
   value: Branding;
   /** Last saved branding, for color validation. */
   saved?: Branding;
@@ -58,16 +62,18 @@ export function BrandingSection({
           disabled={disabled}
           onChange={(tagline) => onChange({ ...value, tagline })}
         />
-        <TextField
-          label="Logo URL"
-          hint="https URL or a path starting with /"
+        <ImageField
+          label="Logo"
+          purpose="logo"
+          storeId={storeId}
           value={value.logoUrl ?? ''}
           disabled={disabled}
           onChange={(logoUrl) => onChange({ ...value, logoUrl })}
         />
-        <TextField
-          label="Favicon URL"
-          hint="https URL or a path starting with /"
+        <ImageField
+          label="Favicon"
+          purpose="favicon"
+          storeId={storeId}
           value={value.faviconUrl ?? ''}
           disabled={disabled}
           onChange={(faviconUrl) => onChange({ ...value, faviconUrl })}

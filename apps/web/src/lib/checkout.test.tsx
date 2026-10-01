@@ -1,5 +1,5 @@
-import { describe, expect, it, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, beforeEach, vi } from 'vitest';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { PublicShippingMethod } from '@ecomesta/types';
 import { CartProvider } from '@/lib/cart';
@@ -128,17 +128,36 @@ function mockCheckoutApis(
 const isCheckoutCall = (call: unknown[]) => String(call[0]).endsWith('/checkout');
 const isQuoteCall = (call: unknown[]) => String(call[0]).endsWith('/checkout/quote');
 
+/**
+ * Waits until the summary shows a finished quote: a Total row, and neither the
+ * first-load "Calculating…" nor the "Updating totals…" state. ("current store
+ * prices" alone is not enough — it is also shown while the first quote loads.)
+ */
+async function waitForSettledQuote() {
+  await waitFor(() => {
+    expect(screen.queryByText(/calculating current prices/i)).toBeNull();
+    expect(screen.queryByText(/updating totals/i)).toBeNull();
+    expect(screen.getByText(/^Total$/, { selector: 'dt' })).toBeInTheDocument();
+  });
+}
+
 async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
+  await fillFormFields(user);
+  // Let the quote for the chosen location settle before submitting.
+  await waitForSettledQuote();
+}
+
+/** Fills every required field without waiting for the quote (which may fail). */
+async function fillFormFields(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/^full name$/i), 'Ada Lovelace');
-  await user.type(screen.getByLabelText(/^email$/i), 'ada@example.com');
-  await user.selectOptions(screen.getByLabelText(/^division$/i), 'div-1');
+  await user.type(screen.getByLabelText(/^phone$/i), '01711000000');
+  await user.type(screen.getByLabelText(/^email/i), 'ada@example.com');
+  await screen.findByRole('option', { name: 'Dhaka' });
   await waitFor(() => expect(screen.getByLabelText(/^district$/i)).not.toBeDisabled());
   await user.selectOptions(screen.getByLabelText(/^district$/i), 'dist-1');
   await waitFor(() => expect(screen.getByLabelText(/upazila/i)).not.toBeDisabled());
   await user.selectOptions(screen.getByLabelText(/upazila/i), 'upa-1');
-  await user.type(screen.getByLabelText(/^address line$/i), '123 Main');
-  // Let the quote for the chosen location settle before submitting.
-  await screen.findByText(/current store prices/i);
+  await user.type(screen.getByLabelText(/^full address$/i), '123 Main');
 }
 
 const confirmation = {
@@ -193,10 +212,10 @@ describe('CheckoutForm', () => {
       </CartProvider>,
     );
 
-    expect(await screen.findByRole('heading', { name: /shipping method/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /delivery method/i })).toBeInTheDocument();
     expect(await screen.findByText(/Free Shipping/i)).toBeInTheDocument();
 
-    await user.selectOptions(screen.getByLabelText(/^division$/i), 'div-1');
+    await screen.findByRole('option', { name: 'Dhaka' });
     await waitFor(() => {
       expect(screen.getByLabelText(/^district$/i)).not.toBeDisabled();
     });
@@ -249,7 +268,7 @@ describe('CheckoutForm', () => {
     expect(screen.getByLabelText(/same as shipping/i)).toBeChecked();
 
     await user.click(screen.getByRole('button', { name: /place order/i }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(/name and email/i);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/enter your name/i);
   });
 
   it('submits checkout with location IDs, shippingMethodId, and idempotency key', async () => {
@@ -306,14 +325,15 @@ describe('CheckoutForm', () => {
 
     await screen.findByText(/Free Shipping/i);
     await user.type(screen.getByLabelText(/^full name$/i), 'Ada Lovelace');
-    await user.type(screen.getByLabelText(/^email$/i), 'ada@example.com');
-    await user.selectOptions(screen.getByLabelText(/^division$/i), 'div-1');
+    await user.type(screen.getByLabelText(/^phone$/i), '01711000000');
+    await user.type(screen.getByLabelText(/^email/i), 'ada@example.com');
+    await screen.findByRole('option', { name: 'Dhaka' });
     await waitFor(() => expect(screen.getByLabelText(/^district$/i)).not.toBeDisabled());
     await user.selectOptions(screen.getByLabelText(/^district$/i), 'dist-1');
     await waitFor(() => expect(screen.getByLabelText(/upazila/i)).not.toBeDisabled());
     await user.selectOptions(screen.getByLabelText(/upazila/i), 'upa-1');
-    await user.type(screen.getByLabelText(/^address line$/i), '123 Main');
-    await screen.findByText(/current store prices/i);
+    await user.type(screen.getByLabelText(/^full address$/i), '123 Main');
+    await waitForSettledQuote();
 
     await user.click(screen.getByRole('button', { name: /place order/i }));
 
@@ -330,6 +350,214 @@ describe('CheckoutForm', () => {
     expect(init.idempotencyKey).toBeTruthy();
     expect(body).not.toHaveProperty('grandTotal');
     expect(body.expectedTotal).toBe('20.00');
+  });
+});
+
+describe('CheckoutForm — phone required, email optional', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    postMock.mockReset();
+    getMock.mockReset();
+    pushMock.mockReset();
+    mockCheckoutApis();
+  });
+
+  async function fillWithoutEmail(user: ReturnType<typeof userEvent.setup>, phone: string) {
+    await user.type(screen.getByLabelText(/^full name$/i), 'Ada Lovelace');
+    if (phone) await user.type(screen.getByLabelText(/^phone$/i), phone);
+    await screen.findByRole('option', { name: 'Dhaka' });
+    await user.selectOptions(screen.getByLabelText(/^district$/i), 'dist-1');
+    await waitFor(() => expect(screen.getByLabelText(/upazila/i)).not.toBeDisabled());
+    await user.selectOptions(screen.getByLabelText(/upazila/i), 'upa-1');
+    await user.type(screen.getByLabelText(/^full address$/i), '123 Main');
+    await user.click(await screen.findByRole('radio', { name: /Free Shipping/i }));
+    await waitForSettledQuote();
+  }
+
+  it('places an order without an email and confirms it by phone', async () => {
+    seedCart();
+    mockCheckoutApis();
+    const base = postMock.getMockImplementation()!;
+    postMock.mockImplementation(async (path: string, body?: unknown) => {
+      if (String(path).endsWith('/checkout')) {
+        return { success: true, data: { publicReference: 'ref-phone-only' } };
+      }
+      return base(path, body);
+    });
+    const { CheckoutForm } = await import('@/components/checkout-form');
+    const user = userEvent.setup();
+    render(
+      <CartProvider storeId="s1" storeSlug="alpha" currency="BDT">
+        <CheckoutForm />
+      </CartProvider>,
+    );
+    await fillWithoutEmail(user, '01711-000000');
+    await user.click(screen.getByRole('button', { name: /place order/i }));
+
+    await waitFor(() => expect(postMock.mock.calls.find(isCheckoutCall)).toBeTruthy());
+    const body = postMock.mock.calls.find(isCheckoutCall)![1] as {
+      customer: { email?: string; phone?: string };
+      shippingAddress: { email?: string; phone?: string };
+    };
+    expect(body.customer.email).toBeUndefined();
+    expect(body.customer.phone).toBe('01711-000000');
+    expect(body.shippingAddress.phone).toBe('01711-000000');
+    expect(body.shippingAddress.email).toBeUndefined();
+    expect(pushMock).toHaveBeenCalledWith(
+      '/order-confirmation/ref-phone-only?store=alpha&phone=01711-000000',
+    );
+  });
+
+  it('refuses to place an order without a phone number', async () => {
+    seedCart();
+    const { CheckoutForm } = await import('@/components/checkout-form');
+    const user = userEvent.setup();
+    render(
+      <CartProvider storeId="s1" storeSlug="alpha" currency="BDT">
+        <CheckoutForm />
+      </CartProvider>,
+    );
+    await fillWithoutEmail(user, '');
+    await user.click(screen.getByRole('button', { name: /place order/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/phone number is required/i);
+    expect(postMock.mock.calls.find(isCheckoutCall)).toBeUndefined();
+  });
+
+  it('rejects a phone number that is too short and a malformed optional email', async () => {
+    seedCart();
+    const { CheckoutForm } = await import('@/components/checkout-form');
+    const user = userEvent.setup();
+    render(
+      <CartProvider storeId="s1" storeSlug="alpha" currency="BDT">
+        <CheckoutForm />
+      </CartProvider>,
+    );
+    await fillWithoutEmail(user, '123');
+    await user.click(screen.getByRole('button', { name: /place order/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/valid phone number/i);
+
+    await user.clear(screen.getByLabelText(/^phone$/i));
+    await user.type(screen.getByLabelText(/^phone$/i), '01711000000');
+    await user.type(screen.getByLabelText(/^email/i), 'not-an-email');
+    await user.click(screen.getByRole('button', { name: /place order/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/valid email address, or leave it empty/i);
+    expect(postMock.mock.calls.find(isCheckoutCall)).toBeUndefined();
+  });
+});
+
+describe('CheckoutForm — quote lifecycle', () => {
+  const freeOnly: PublicShippingMethod[] = [
+    { id: 'ship-free', name: 'Free Shipping', type: 'FREE', price: '0.00', amount: '0.00', description: null, codAllowed: true },
+  ];
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    postMock.mockReset();
+    getMock.mockReset();
+    pushMock.mockReset();
+    mockCheckoutApis(freeOnly);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** Runs the 250 ms quote debounce (and anything it schedules) deterministically. */
+  async function flushTimers(ms: number) {
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(ms);
+    });
+  }
+
+  it('does not quote again just to adopt the shipping method the server already priced', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    seedCart();
+    const { CheckoutForm } = await import('@/components/checkout-form');
+    render(
+      <CartProvider storeId="s1" storeSlug="alpha" currency="BDT">
+        <CheckoutForm />
+      </CartProvider>,
+    );
+
+    await flushTimers(300);
+    await waitForSettledQuote();
+    // The first quote had no shipping method; the server priced its default.
+    const quotes = postMock.mock.calls.filter(isQuoteCall);
+    expect(quotes).toHaveLength(1);
+    expect((quotes[0]![1] as { shippingMethodId?: string }).shippingMethodId).toBeUndefined();
+    expect(screen.getByRole('radio', { name: /Free Shipping/i })).toBeChecked();
+
+    // Adopting 'ship-free' must not reopen a "still calculating" window.
+    await flushTimers(1_000);
+    expect(postMock.mock.calls.filter(isQuoteCall)).toHaveLength(1);
+    expect(screen.queryByText(/updating totals/i)).toBeNull();
+  });
+
+  it('never stays on "Calculating…" when the quote request does not answer', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    seedCart();
+    let answer = false;
+    postMock.mockImplementation(
+      (path: string, body: unknown, init?: { signal?: AbortSignal }) => {
+        if (!String(path).endsWith('/checkout/quote')) {
+          return Promise.reject(new Error(`Unexpected POST ${path}`));
+        }
+        if (answer) return Promise.resolve(quoteFor(body, { methods: freeOnly }));
+        // A request the server never answers: it only ends when aborted.
+        return new Promise((_, reject) => {
+          init?.signal?.addEventListener('abort', () =>
+            reject(new DOMException('The operation was aborted.', 'AbortError')),
+          );
+        });
+      },
+    );
+    const { CheckoutForm } = await import('@/components/checkout-form');
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(
+      <CartProvider storeId="s1" storeSlug="alpha" currency="BDT">
+        <CheckoutForm />
+      </CartProvider>,
+    );
+
+    await flushTimers(300);
+    expect(screen.getByText(/calculating current prices/i)).toBeInTheDocument();
+
+    // After the 15 s request deadline the customer gets an error and a retry.
+    await flushTimers(15_000);
+    expect(await screen.findByText(/taking too long/i)).toBeInTheDocument();
+    expect(screen.queryByText(/calculating current prices/i)).toBeNull();
+
+    answer = true;
+    await user.click(screen.getByRole('button', { name: /try again/i }));
+    await flushTimers(300);
+    await waitForSettledQuote();
+    expect(summaryRow(/^Total$/)).toMatch(/20\.00/);
+    expect(screen.queryByText(/taking too long/i)).toBeNull();
+  });
+
+  it('lets the customer retry after the quote request fails', async () => {
+    seedCart();
+    let fail = true;
+    postMock.mockImplementation(async (path: string, body?: unknown) => {
+      if (String(path).endsWith('/checkout/quote')) {
+        if (fail) throw new TypeError('Failed to fetch');
+        return quoteFor(body, { methods: freeOnly });
+      }
+      throw new Error(`Unexpected POST ${path}`);
+    });
+    const { CheckoutForm } = await import('@/components/checkout-form');
+    const user = userEvent.setup();
+    render(
+      <CartProvider storeId="s1" storeSlug="alpha" currency="BDT">
+        <CheckoutForm />
+      </CartProvider>,
+    );
+
+    expect(await screen.findByText(/could not calculate your order total/i)).toBeInTheDocument();
+    fail = false;
+    await user.click(screen.getByRole('button', { name: /try again/i }));
+    await waitForSettledQuote();
+    expect(summaryRow(/^Total$/)).toMatch(/20\.00/);
   });
 });
 
@@ -435,10 +663,7 @@ describe('CheckoutForm — SF-03 server pricing', () => {
       </CartProvider>,
     );
     await fillRequiredFields(user);
-    await waitFor(() => {
-      expect(summaryRow(/^Total$/)).toMatch(/20\.00/);
-      expect(screen.getByText(/current store prices/i)).toBeInTheDocument();
-    });
+    expect(summaryRow(/^Total$/)).toMatch(/20\.00/);
 
     // The merchant raises the price after the summary was loaded.
     price = '15.00';
@@ -481,8 +706,13 @@ describe('CheckoutForm — SF-03 server pricing', () => {
     expect(screen.getByRole('link', { name: /review your cart/i })).toHaveAttribute('href', '/cart?store=alpha');
     expect(screen.queryByText(/^Total$/)).toBeNull();
 
-    await fillRequiredFields(user);
+    await fillFormFields(user);
+    // The quote for the chosen location fails the same way; wait for it to finish.
+    await waitFor(() => expect(screen.getByRole('button', { name: /try again/i })).toBeEnabled());
+    expect(screen.getByText(/not available for purchase/i)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /place order/i }));
+    // No quote means no delivery options, so the order is refused before it is sent.
+    expect(await screen.findByText(/please select a shipping method/i)).toBeInTheDocument();
     expect(postMock.mock.calls.find(isCheckoutCall)).toBeUndefined();
   });
 

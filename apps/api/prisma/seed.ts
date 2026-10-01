@@ -13,6 +13,7 @@ import {
 import { hash } from '@node-rs/argon2';
 import { DEFAULT_TRIAL_MONTHS, billingCyclePrice } from '@ecomesta/utils';
 import { BUILT_IN_THEMES } from '../src/modules/themes/theme-config.types';
+import { DEFAULT_PLANS } from '../src/modules/billing/plan-defaults';
 import { seedBangladeshLocations } from './seed-bangladesh-locations';
 
 const prisma = new PrismaClient();
@@ -59,20 +60,8 @@ async function main(): Promise<void> {
     },
   });
 
-  // BDT reference prices; 6-month and yearly prices are derived from monthlyPrice.
-  const planFeatures = [
-    'Online store on your own Ecomesta web address',
-    'Products, variants, categories and inventory',
-    'Orders, customers and shipments in one dashboard',
-    'Cash on Delivery, SSLCommerz and Stripe checkout',
-    'Bangladesh delivery zones and coupons',
-    'Storefront themes and custom domain',
-  ];
-  const plans = [
-    { slug: 'starter', name: 'Starter', monthlyPrice: 499, tagline: 'For new online businesses', highlighted: false, sortOrder: 1 },
-    { slug: 'growth', name: 'Growth', monthlyPrice: 999, tagline: 'For growing online businesses', highlighted: true, sortOrder: 2 },
-    { slug: 'business', name: 'Business', monthlyPrice: 1999, tagline: 'For established online businesses', highlighted: false, sortOrder: 3 },
-  ];
+  // BDT prices; 6-month and yearly prices are derived from monthlyPrice.
+  const plans = DEFAULT_PLANS;
   let plan: { id: string; slug: string } | null = null;
   for (const item of plans) {
     const data = {
@@ -86,8 +75,9 @@ async function main(): Promise<void> {
         tagline: item.tagline,
         highlighted: item.highlighted,
         sortOrder: item.sortOrder,
-        features: planFeatures,
-      },
+        features: item.features,
+        limits: item.limits,
+      } as unknown as Prisma.InputJsonValue,
     };
     const saved = await prisma.subscriptionPlan.upsert({
       where: { slug: item.slug },

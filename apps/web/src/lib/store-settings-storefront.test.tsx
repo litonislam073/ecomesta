@@ -347,13 +347,13 @@ describe('checkout settings', () => {
     );
   });
 
-  it('requires a phone number and hides order notes when configured', async () => {
+  it('requires a phone number and hides order notes when configured off', async () => {
     seedCart();
     const { CheckoutForm } = await import('@/components/checkout-form');
     const user = userEvent.setup();
     render(
       <CartProvider storeId="s1" storeSlug="alpha" currency="BDT">
-        <CheckoutForm requirePhone allowOrderNotes={false} />
+        <CheckoutForm allowOrderNotes={false} />
       </CartProvider>,
     );
     await screen.findByRole('heading', { name: /order summary/i });
@@ -362,17 +362,14 @@ describe('checkout settings', () => {
     expect(screen.queryByLabelText(/order note/i)).toBeNull();
 
     await user.type(screen.getByLabelText(/full name/i), 'Ada');
-    await user.type(screen.getByLabelText(/^email$/i), 'ada@example.com');
+    await user.type(screen.getByLabelText(/^email/i), 'ada@example.com');
     await user.click(screen.getByRole('button', { name: /place order/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/phone number is required/i);
-    expect(postMock).not.toHaveBeenCalledWith(
-      expect.stringContaining('/checkout'),
-      expect.anything(),
-      expect.anything(),
-    );
+    // No order request (price quotes to /checkout/quote are expected and fine).
+    expect(postMock.mock.calls.filter(([path]) => String(path).endsWith('/checkout'))).toEqual([]);
   });
 
-  it('keeps phone optional and notes visible by default', async () => {
+  it('always requires the phone, keeps email optional and shows notes by default', async () => {
     seedCart();
     const { CheckoutForm } = await import('@/components/checkout-form');
     render(
@@ -381,7 +378,8 @@ describe('checkout settings', () => {
       </CartProvider>,
     );
     await screen.findByRole('heading', { name: /order summary/i });
-    expect(screen.getByLabelText(/phone \(optional\)/i)).not.toBeRequired();
+    expect(screen.getByLabelText(/^phone$/i)).toBeRequired();
+    expect(screen.getByLabelText(/email \(optional\)/i)).not.toBeRequired();
     expect(screen.getByLabelText(/order note/i)).toBeInTheDocument();
   });
 });
@@ -431,7 +429,7 @@ describe('customer order cancellation', () => {
     const { OrderTrackingView } = await import('@/components/order-tracking-view');
     const user = userEvent.setup();
     render(
-      <OrderTrackingView storeSlug="alpha" initial={cancellableOrder} email="ada@example.com" />,
+      <OrderTrackingView storeSlug="alpha" initial={cancellableOrder} contact={{ email: 'ada@example.com' }} />,
     );
 
     await user.click(screen.getByRole('button', { name: 'Cancel order' }));
@@ -456,7 +454,7 @@ describe('customer order cancellation', () => {
     const { OrderTrackingView } = await import('@/components/order-tracking-view');
     const user = userEvent.setup();
     render(
-      <OrderTrackingView storeSlug="alpha" initial={cancellableOrder} email="ada@example.com" />,
+      <OrderTrackingView storeSlug="alpha" initial={cancellableOrder} contact={{ email: 'ada@example.com' }} />,
     );
     await user.click(screen.getByRole('button', { name: 'Cancel order' }));
     await user.click(screen.getByRole('button', { name: /yes, cancel order/i }));
@@ -469,7 +467,7 @@ describe('customer order cancellation', () => {
       <OrderTrackingView
         storeSlug="alpha"
         initial={{ ...cancellableOrder, canCancel: false }}
-        email="ada@example.com"
+        contact={{ email: 'ada@example.com' }}
       />,
     );
     expect(screen.queryByRole('button', { name: 'Cancel order' })).toBeNull();

@@ -2,6 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EMAIL_PROVIDER_MODES, type EmailProviderMode } from '../../config/env.validation';
 
+/** Ecomesta's inbox for manual subscription payments; override with BILLING_NOTIFICATION_EMAIL. */
+export const DEFAULT_BILLING_NOTIFICATION_EMAIL = 'ecomestabd@gmail.com';
+
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
 const DNS_LABEL = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
 
@@ -64,6 +67,16 @@ export class EmailConfigService {
 
   supportEmail(): string | null {
     return this.value('SUPPORT_EMAIL') ?? null;
+  }
+
+  /** Where new manual subscription payments are reported for review. */
+  billingNotificationEmail(): string {
+    return this.value('BILLING_NOTIFICATION_EMAIL') ?? DEFAULT_BILLING_NOTIFICATION_EMAIL;
+  }
+
+  /** Super Admin console, linked from payment review emails. */
+  adminUrl(): string {
+    return trimSlash(this.value('ADMIN_URL') ?? 'http://localhost:3003');
   }
 
   appPublicUrl(): string {

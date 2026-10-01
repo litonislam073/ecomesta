@@ -33,18 +33,24 @@ const FAQS: Faq[] = [
     answer: `Your plan price applies from the end of the trial. You get a ${PAYMENT_GRACE_DAYS}-day grace period to pay, and your store keeps working during that time. If payment is not made by the end of the grace period, the store is paused until the payment is completed — your products, orders and settings are kept.`,
   },
   {
+    question: 'How do I pay?',
+    answer:
+      'From Plan & billing in your dashboard: send the plan price with bKash, Nagad, Rocket or Upay to the Ecomesta number shown there, then enter your number and the transaction ID. Our team confirms each payment, usually within a few hours, and emails you as soon as your plan is active.',
+  },
+  {
     question: 'How do the 6-month and yearly options work?',
     answer:
       'You pay for 6 or 12 months at once after the trial and save 10% or 25% compared with paying monthly.',
   },
   {
     question: 'Can I change my plan later?',
-    answer: 'Yes. You can switch plan or billing period from Plan & billing in your dashboard during the trial.',
+    answer:
+      'Yes. During the free trial you can switch to a cheaper plan or another billing period at any time. Upgrading, and any change after the trial, takes effect as soon as the payment for the new plan is confirmed.',
   },
   {
     question: 'Are payment gateway fees included?',
     answer:
-      'Payment gateways such as SSLCommerz and Stripe charge their own fees under your agreement with them. Those fees are separate from Ecomesta.',
+      'Online payments with SSLCommerz are included from the Growth plan, and Stripe on the Business plan. The gateways charge their own fees under your agreement with them; those fees are separate from Ecomesta.',
   },
 ];
 

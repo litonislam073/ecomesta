@@ -226,6 +226,15 @@ describe('Phase 20 Bangladesh shipping zones (e2e)', () => {
       true,
     );
 
+    // Without a division, every district is listed with its division (checkout district picker).
+    const allDists = await request(app.getHttpServer())
+      .get(`/api/v1/public/stores/${storeSlug}/locations/districts`)
+      .expect(200);
+    expect(allDists.body.data).toHaveLength(64);
+    expect(allDists.body.data).toContainEqual(
+      expect.objectContaining({ id: dhakaDistrictId, divisionId: dhakaDivisionId }),
+    );
+
     const ups = await request(app.getHttpServer())
       .get(
         `/api/v1/public/stores/${storeSlug}/locations/upazilas?districtId=${dhakaDistrictId}`,
@@ -428,6 +437,7 @@ describe('Phase 20 Bangladesh shipping zones (e2e)', () => {
         customer: {
           name: 'Buyer',
           email: `buyer.${suffix}@example.com`,
+          phone: '01711000000',
         },
         shippingAddress: {
           name: 'Buyer',

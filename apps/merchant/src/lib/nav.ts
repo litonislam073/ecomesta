@@ -57,6 +57,7 @@ export const DASHBOARD_NAV: NavSection[] = [
     title: 'Store',
     items: [
       { href: '/dashboard/theme', label: 'Theme', ready: true },
+      { href: '/dashboard/gallery', label: 'Gallery', ready: true },
       { href: '/dashboard/domains', label: 'Domains', ready: true },
       { href: '/dashboard/shipping', label: 'Shipping', ready: true },
       { href: '/dashboard/stores', label: 'Stores', ready: true },

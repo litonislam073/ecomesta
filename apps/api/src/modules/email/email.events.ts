@@ -7,6 +7,10 @@ export const EMAIL_EVENTS = {
   PASSWORD_CHANGED: 'PASSWORD_CHANGED',
   SECURITY_NOTIFICATION: 'SECURITY_NOTIFICATION',
   SUPPORT_REQUEST: 'SUPPORT_REQUEST',
+  // Manual subscription payments (bKash / Nagad / Rocket / Upay).
+  BILLING_PAYMENT_SUBMITTED: 'BILLING_PAYMENT_SUBMITTED',
+  BILLING_PAYMENT_APPROVED: 'BILLING_PAYMENT_APPROVED',
+  BILLING_PAYMENT_REJECTED: 'BILLING_PAYMENT_REJECTED',
   // Billing lifecycle — reserved, not sent yet.
   TRIAL_STARTED: 'TRIAL_STARTED',
   TRIAL_ENDING: 'TRIAL_ENDING',
@@ -46,6 +50,24 @@ export interface SupportRequestParams {
   storeName: string | null;
 }
 
+/** A manual subscription payment, as shown in billing emails. */
+export interface BillingPaymentParams {
+  paymentId: string;
+  businessName: string;
+  planName: string;
+  billingCycle: string;
+  amount: number;
+  method: string;
+  payToNumber: string;
+  senderNumber: string;
+  transactionId: string;
+  submittedAt: string;
+  /** Approval: the date the paid plan runs until. */
+  paidThrough?: string | null;
+  /** Rejection: why the payment could not be confirmed. */
+  rejectionReason?: string | null;
+}
+
 /**
  * Template data persisted in the outbox. Everything here must be safe to keep
  * in the database until delivery: no passwords, tokens or token-bearing URLs.
@@ -54,4 +76,7 @@ export type OutboxEmail =
   | { event: typeof EMAIL_EVENTS.MERCHANT_WELCOME; params: MerchantWelcomeParams }
   | { event: typeof EMAIL_EVENTS.STORE_CREATED; params: StoreCreatedParams }
   | { event: typeof EMAIL_EVENTS.PASSWORD_CHANGED; params: PasswordChangedParams }
-  | { event: typeof EMAIL_EVENTS.SUPPORT_REQUEST; params: SupportRequestParams };
+  | { event: typeof EMAIL_EVENTS.SUPPORT_REQUEST; params: SupportRequestParams }
+  | { event: typeof EMAIL_EVENTS.BILLING_PAYMENT_SUBMITTED; params: BillingPaymentParams }
+  | { event: typeof EMAIL_EVENTS.BILLING_PAYMENT_APPROVED; params: BillingPaymentParams }
+  | { event: typeof EMAIL_EVENTS.BILLING_PAYMENT_REJECTED; params: BillingPaymentParams };

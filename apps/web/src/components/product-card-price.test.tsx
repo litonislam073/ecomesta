@@ -8,6 +8,7 @@ import { CartProvider, useCart } from '@/lib/cart';
 /** Regression: cards for products with variants showed the placeholder base price (BDT 0.00). */
 
 vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
   useSearchParams: () => new URLSearchParams('store=alpha'),
 }));
 

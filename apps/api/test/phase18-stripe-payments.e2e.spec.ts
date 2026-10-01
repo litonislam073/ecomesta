@@ -269,6 +269,7 @@ describe('Phase 18 Stripe payments (e2e)', () => {
         customer: {
           name: 'COD Guest',
           email: `cod.guest.${suffix}@example.com`,
+          phone: '01711000000',
         },
         shippingAddress: {
           name: 'COD Guest',
@@ -301,6 +302,7 @@ describe('Phase 18 Stripe payments (e2e)', () => {
         customer: {
           name: 'Stripe Guest',
           email: `stripe.guest.${suffix}@example.com`,
+          phone: '01711000000',
         },
         shippingAddress: {
           name: 'Stripe Guest',
@@ -469,6 +471,7 @@ describe('Phase 18 Stripe payments (e2e)', () => {
         customer: {
           name: 'Fail Guest',
           email: `fail.guest.${suffix}@example.com`,
+          phone: '01711000000',
         },
         shippingAddress: {
           name: 'Fail Guest',
@@ -564,6 +567,7 @@ describe('Phase 18 Stripe payments (e2e)', () => {
         customer: {
           name: 'Test Guest',
           email: `test.guest.${suffix}@example.com`,
+          phone: '01711000000',
         },
         shippingAddress: {
           name: 'Test Guest',
@@ -606,6 +610,7 @@ describe('Phase 18 Stripe payments (e2e)', () => {
         customer: {
           name: 'PI Guest',
           email: `pi.guest.${suffix}@example.com`,
+          phone: '01711000000',
         },
         shippingAddress: {
           name: 'PI Guest',
@@ -676,7 +681,7 @@ describe('Phase 18 Stripe payments (e2e)', () => {
       .set('Idempotency-Key', `p18-late-${suffix}`)
       .send({
         items: [{ productId, quantity: 1 }],
-        customer: { name: 'Late Guest', email },
+        customer: { name: 'Late Guest', email, phone: '01711000000' },
         shippingAddress: { name: 'Late Guest', addressLine1: '3 Main', city: 'Austin', country: 'US', email },
         billingSameAsShipping: true,
         shippingMethodId,

@@ -16,10 +16,23 @@ import type {
 import { Button } from '@ecomesta/ui';
 import { lineKey, useCart } from '@/lib/cart';
 import { formatMoney } from '@/lib/money';
+import { contactProof, contactQuery } from '@/lib/order-contact';
 import { publicGet, publicPost, PublicApiError } from '@/lib/public-api';
 
 const QUOTE_DEBOUNCE_MS = 250;
+/**
+ * A quote that has not answered by now is abandoned and shown as an error with
+ * a retry, so the summary can never stay on "Calculating…" (e.g. a request to
+ * an API that is restarting and never responds).
+ */
+const QUOTE_TIMEOUT_MS = 15_000;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** 6–15 digits once spaces, dashes and brackets are removed (e.g. 01711-000000, +8801711000000). */
+function isValidPhone(value: string) {
+  const digits = value.replace(/[\s\-().]/g, '');
+  return /^\+?\d{6,15}$/.test(digits);
+}
 
 function samePrice(a: string, b: string) {
   return Number(a).toFixed(2) === Number(b).toFixed(2);
@@ -69,13 +82,169 @@ function Field({
 }
 
 const inputClass =
-  'w-full rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]';
+  'w-full rounded-lg border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm placeholder:text-[var(--color-muted)] disabled:cursor-not-allowed disabled:bg-[var(--color-bg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-[var(--color-accent)]';
+
+type IconName = 'cash' | 'bank' | 'store' | 'card' | 'wallet' | 'truck';
+
+const ICON_PATHS: Record<IconName, React.ReactNode> = {
+  cash: (
+    <>
+      <rect x="2.5" y="6" width="19" height="12" rx="2" />
+      <circle cx="12" cy="12" r="2.5" />
+      <path d="M6 9.5v.01M18 14.5v.01" strokeLinecap="round" />
+    </>
+  ),
+  bank: (
+    <path
+      d="M3 9.5 12 4l9 5.5M5 10v7M9.5 10v7M14.5 10v7M19 10v7M3 20h18"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  ),
+  store: (
+    <path
+      d="M4 9h16l-1-4H5L4 9Zm0 0v10h16V9M9 19v-5h6v5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  ),
+  card: (
+    <>
+      <rect x="2.5" y="5" width="19" height="14" rx="2" />
+      <path d="M2.5 10h19M6.5 15h4" strokeLinecap="round" />
+    </>
+  ),
+  wallet: (
+    <>
+      <rect x="6" y="2.5" width="12" height="19" rx="2.5" />
+      <path d="M10.5 18.5h3" strokeLinecap="round" />
+    </>
+  ),
+  truck: (
+    <path
+      d="M2.5 6h11v10h-11zM13.5 9.5h4l3 3.5V16h-7M6.5 18.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm11 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"
+      strokeLinejoin="round"
+    />
+  ),
+};
+
+function OptionIcon({ name }: { name: IconName }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      className="h-5 w-5"
+      aria-hidden="true"
+    >
+      {ICON_PATHS[name]}
+    </svg>
+  );
+}
+
+/** A selectable tile used for shipping and payment choices; the radio stays accessible. */
+function OptionTile({
+  name,
+  checked,
+  disabled = false,
+  onSelect,
+  icon,
+  title,
+  description,
+  aside,
+  badges,
+}: {
+  name: string;
+  checked: boolean;
+  disabled?: boolean;
+  onSelect: () => void;
+  icon: IconName;
+  title: string;
+  description?: React.ReactNode;
+  aside?: React.ReactNode;
+  badges?: string[];
+}) {
+  return (
+    <label
+      className={`relative flex items-start gap-3 rounded-xl border p-4 transition-colors ${
+        disabled
+          ? 'cursor-not-allowed border-[var(--color-border)] opacity-55'
+          : checked
+            ? 'cursor-pointer border-[var(--color-accent)] bg-[color-mix(in_srgb,var(--color-accent)_7%,transparent)] ring-1 ring-[var(--color-accent)]'
+            : 'cursor-pointer border-[var(--color-border)] hover:border-[color-mix(in_srgb,var(--color-accent)_45%,var(--color-border))]'
+      }`}
+    >
+      <input
+        type="radio"
+        name={name}
+        className="sr-only"
+        checked={checked}
+        disabled={disabled}
+        onChange={onSelect}
+      />
+      <span
+        aria-hidden="true"
+        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+          checked ? 'border-[var(--color-accent)]' : 'border-[var(--color-border)]'
+        }`}
+      >
+        {checked ? <span className="h-2.5 w-2.5 rounded-full bg-[var(--color-accent)]" /> : null}
+      </span>
+      <span
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+          checked
+            ? 'bg-[var(--color-accent)] text-white'
+            : 'bg-[var(--color-bg)] text-[var(--color-ink)]'
+        }`}
+      >
+        <OptionIcon name={icon} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-start justify-between gap-3">
+          <span className="font-medium text-[var(--color-ink)]">{title}</span>
+          {aside ? <span className="shrink-0 text-sm font-semibold">{aside}</span> : null}
+        </span>
+        {description ? (
+          <span className="mt-0.5 block text-sm text-[var(--color-muted)]">{description}</span>
+        ) : null}
+        {badges?.length ? (
+          <span className="mt-2 flex flex-wrap gap-1.5">
+            {badges.map((badge) => (
+              <span
+                key={badge}
+                className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-0.5 text-xs font-medium text-[var(--color-muted)]"
+              >
+                {badge}
+              </span>
+            ))}
+          </span>
+        ) : null}
+      </span>
+    </label>
+  );
+}
+
+function StepHeading({ step, title, hint }: { step: number; title: string; hint?: string }) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent)] text-sm font-semibold text-white">
+        {step}
+      </span>
+      <div>
+        <h2 className="text-lg font-semibold leading-7">{title}</h2>
+        {hint ? <p className="text-sm text-[var(--color-muted)]">{hint}</p> : null}
+      </div>
+    </div>
+  );
+}
+
+const sectionClass =
+  'space-y-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-6';
 
 export function CheckoutForm({
-  requirePhone = false,
   allowOrderNotes = true,
 }: {
-  requirePhone?: boolean;
   allowOrderNotes?: boolean;
 } = {}) {
   const router = useRouter();
@@ -141,7 +310,7 @@ export function CheckoutForm({
       if (!storeSlug) return;
       setShippingLoadError(null);
       try {
-        const [providersResult, divisionsResult] = await Promise.all([
+        const [providersResult, divisionsResult, districtsResult] = await Promise.all([
           publicGet<{
             success: true;
             data: PublicPaymentProvidersResponse;
@@ -150,14 +319,21 @@ export function CheckoutForm({
             success: true;
             data: BdLocationItem[];
           }>(`/public/stores/${encodeURIComponent(storeSlug)}/locations/divisions`),
+          // Every district at once: the customer picks a district, never a division.
+          publicGet<{
+            success: true;
+            data: BdLocationItem[];
+          }>(`/public/stores/${encodeURIComponent(storeSlug)}/locations/districts`),
         ]);
         if (cancelled) return;
         setOnlineProviders(providersResult.data.online ?? []);
         setDivisions(divisionsResult.data);
+        setDistricts(districtsResult.data);
       } catch (err) {
         if (cancelled) return;
         setOnlineProviders([]);
         setDivisions([]);
+        setDistricts([]);
         setShippingLoadError(
           err instanceof PublicApiError
             ? err.message
@@ -170,30 +346,6 @@ export function CheckoutForm({
       cancelled = true;
     };
   }, [storeSlug]);
-
-  useEffect(() => {
-    if (!storeSlug || !shipping.divisionId) {
-      setDistricts([]);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const result = await publicGet<{
-          success: true;
-          data: BdLocationItem[];
-        }>(
-          `/public/stores/${encodeURIComponent(storeSlug)}/locations/districts?divisionId=${shipping.divisionId}`,
-        );
-        if (!cancelled) setDistricts(result.data);
-      } catch {
-        if (!cancelled) setDistricts([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [storeSlug, shipping.divisionId]);
 
   useEffect(() => {
     if (!storeSlug || !shipping.districtId) {
@@ -228,29 +380,67 @@ export function CheckoutForm({
   const quoteEmail =
     couponCode && EMAIL_PATTERN.test(email.trim()) ? email.trim() : '';
 
+  // Everything a quote depends on. The quote answers for exactly these inputs.
+  const quoteInputs = (methodId: string) =>
+    JSON.stringify([
+      storeSlug,
+      itemsKey,
+      shipping.divisionId,
+      shipping.districtId,
+      shipping.upazilaId,
+      methodId,
+      couponCode,
+      quoteEmail,
+      quoteNonce,
+    ]);
+  // Inputs the current quote already answers, with the shipping method the
+  // server actually priced (its default when none was chosen yet).
+  const quotedInputsRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (!storeSlug || itemsKey === '[]') return;
+    if (!storeSlug || itemsKey === '[]') {
+      setQuoteLoading(false);
+      return;
+    }
+    // Adopting the server's default shipping method changes `shippingMethodId`,
+    // but the quote we hold was already priced with that method: asking again
+    // would only reopen a "still calculating" window for no reason.
+    if (quotedInputsRef.current === quoteInputs(shippingMethodId)) {
+      return;
+    }
     let cancelled = false;
+    let timedOut = false;
+    const controller = new AbortController();
     setQuoteLoading(true);
+    let deadline: number | undefined;
     const timer = window.setTimeout(async () => {
       const items = (JSON.parse(itemsKey) as [string, string | null, number][]).map(
         ([productId, variantId, quantity]) => ({ productId, variantId, quantity }),
       );
+      deadline = window.setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, QUOTE_TIMEOUT_MS);
       try {
         const result = await publicPost<{
           success: true;
           data: PublicCheckoutQuote;
-        }>(`/public/stores/${encodeURIComponent(storeSlug)}/checkout/quote`, {
-          items,
-          divisionId: shipping.divisionId || undefined,
-          districtId: shipping.districtId || undefined,
-          upazilaId: shipping.upazilaId || undefined,
-          shippingMethodId: shippingMethodId || undefined,
-          couponCode: couponCode || undefined,
-          email: quoteEmail || undefined,
-        });
+        }>(
+          `/public/stores/${encodeURIComponent(storeSlug)}/checkout/quote`,
+          {
+            items,
+            divisionId: shipping.divisionId || undefined,
+            districtId: shipping.districtId || undefined,
+            upazilaId: shipping.upazilaId || undefined,
+            shippingMethodId: shippingMethodId || undefined,
+            couponCode: couponCode || undefined,
+            email: quoteEmail || undefined,
+          },
+          { signal: controller.signal },
+        );
         if (cancelled) return;
         const data = result.data;
+        quotedInputsRef.current = quoteInputs(data.shippingMethodId ?? '');
         setQuote(data);
         setQuoteError(null);
         setShippingLoadError(null);
@@ -278,19 +468,25 @@ export function CheckoutForm({
         }
       } catch (err) {
         if (cancelled) return;
+        quotedInputsRef.current = null;
         setQuote(null);
         setQuoteError(
-          err instanceof PublicApiError
-            ? err.message
-            : 'Could not calculate your order total. Please try again.',
+          timedOut
+            ? 'Calculating your total is taking too long. Check your connection and try again.'
+            : err instanceof PublicApiError
+              ? err.message
+              : 'Could not calculate your order total. Please try again.',
         );
       } finally {
+        window.clearTimeout(deadline);
         if (!cancelled) setQuoteLoading(false);
       }
     }, QUOTE_DEBOUNCE_MS);
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
+      window.clearTimeout(deadline);
+      controller.abort();
     };
     // `lines` is read only to word the price-change notice; itemsKey tracks the cart.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -405,20 +601,28 @@ export function CheckoutForm({
     if (submitting) return;
     setError(null);
 
-    if (!contactName.trim() || !email.trim()) {
-      setError('Name and email are required.');
+    if (!contactName.trim()) {
+      setError('Please enter your name.');
       return;
     }
-    if (requirePhone && !phone.trim() && !shipping.phone.trim()) {
+    if (!phone.trim()) {
       setError('A phone number is required to place this order.');
       return;
     }
+    if (!isValidPhone(phone)) {
+      setError('Enter a valid phone number, for example 01711000000.');
+      return;
+    }
+    if (email.trim() && !EMAIL_PATTERN.test(email.trim())) {
+      setError('Enter a valid email address, or leave it empty.');
+      return;
+    }
     if (!shipping.addressLine1.trim() || !shipping.country.trim()) {
-      setError('Complete the required shipping address fields.');
+      setError('Enter your full delivery address.');
       return;
     }
     if (!shipping.divisionId || !shipping.districtId || !shipping.upazilaId) {
-      setError('Select division, district, and upazila for delivery.');
+      setError('Select your district and thana / upazila for delivery.');
       return;
     }
     if (!shippingMethodId) {
@@ -451,13 +655,13 @@ export function CheckoutForm({
         })),
         customer: {
           name: contactName.trim(),
-          email: email.trim(),
+          email: email.trim() || undefined,
           phone: phone.trim() || undefined,
         },
         shippingAddress: {
           name: shipping.name.trim() || contactName.trim(),
           phone: shipping.phone.trim() || phone.trim() || undefined,
-          email: email.trim(),
+          email: email.trim() || undefined,
           addressLine1: shipping.addressLine1.trim(),
           addressLine2: shipping.addressLine2.trim() || undefined,
           city:
@@ -480,7 +684,7 @@ export function CheckoutForm({
           : {
               name: billing.name.trim() || contactName.trim(),
               phone: billing.phone.trim() || phone.trim() || undefined,
-              email: email.trim(),
+              email: email.trim() || undefined,
               addressLine1: billing.addressLine1.trim(),
               addressLine2: billing.addressLine2.trim() || undefined,
               city: billing.city.trim() || 'N/A',
@@ -518,7 +722,7 @@ export function CheckoutForm({
         }>(`/public/stores/${encodeURIComponent(storeSlug)}/payments/create`, {
           publicReference: result.data.publicReference,
           provider: paymentProvider,
-          email: email.trim(),
+          ...contactProof({ email, phone }),
         });
         clear();
         idempotencyKeyRef.current = null;
@@ -527,7 +731,7 @@ export function CheckoutForm({
           return;
         }
         router.push(
-          `/payment/success?store=${encodeURIComponent(storeSlug)}&order=${encodeURIComponent(result.data.publicReference)}&ref=${encodeURIComponent(initiated.data.internalReference)}&email=${encodeURIComponent(email.trim())}`,
+          `/payment/success?store=${encodeURIComponent(storeSlug)}&order=${encodeURIComponent(result.data.publicReference)}&ref=${encodeURIComponent(initiated.data.internalReference)}&${contactQuery({ email, phone })}`,
         );
         return;
       }
@@ -535,7 +739,7 @@ export function CheckoutForm({
       clear();
       idempotencyKeyRef.current = null;
       router.push(
-        `/order-confirmation/${encodeURIComponent(result.data.publicReference)}?store=${encodeURIComponent(storeSlug)}&email=${encodeURIComponent(email.trim())}`,
+        `/order-confirmation/${encodeURIComponent(result.data.publicReference)}?store=${encodeURIComponent(storeSlug)}&${contactQuery({ email, phone })}`,
       );
     } catch (err) {
       const message =
@@ -553,103 +757,70 @@ export function CheckoutForm({
     }
   }
 
+  const imageByLine = new Map(lines.map((line) => [lineKey(line), line.imageUrl]));
+  const hasOnline = (provider: string) => onlineProviders.some((p) => p.provider === provider);
+
   return (
     <form
       id={formId}
       onSubmit={onSubmit}
-      className="grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.9fr)]"
+      className="grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(300px,0.9fr)]"
       noValidate
     >
-      <div className="space-y-8">
-        <section className="space-y-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-          <h2 className="text-lg font-semibold">Contact</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
+      <div className="space-y-6">
+        <section className={sectionClass}>
+          <StepHeading step={1} title="Delivery details" hint="Where should we send your order?" />
+          <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Full name">
               <input
                 className={inputClass}
                 value={contactName}
                 onChange={(e) => setContactName(e.target.value)}
                 autoComplete="name"
+                placeholder="Your name"
                 required
                 aria-required
               />
             </Field>
-            <Field label="Email">
-              <input
-                type="email"
-                className={inputClass}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-                required
-              />
-            </Field>
-            <Field label={requirePhone ? 'Phone' : 'Phone (optional)'}>
+            <Field label="Phone">
               <input
                 type="tel"
+                inputMode="tel"
                 className={inputClass}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 autoComplete="tel"
-                required={requirePhone}
-                aria-required={requirePhone || undefined}
-              />
-            </Field>
-          </div>
-        </section>
-
-        <section className="space-y-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-          <h2 className="text-lg font-semibold">Shipping address</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Recipient name">
-              <input
-                className={inputClass}
-                value={shipping.name}
-                onChange={(e) => updateShipping('name', e.target.value)}
-                placeholder="Defaults to contact name"
-              />
-            </Field>
-            <Field label="Phone">
-              <input
-                className={inputClass}
-                value={shipping.phone}
-                onChange={(e) => updateShipping('phone', e.target.value)}
-              />
-            </Field>
-            <Field label="Division">
-              <select
-                className={inputClass}
-                value={shipping.divisionId}
-                onChange={(e) =>
-                  setShipping((prev) => ({
-                    ...prev,
-                    divisionId: e.target.value,
-                    districtId: '',
-                    upazilaId: '',
-                  }))
-                }
+                placeholder="01XXXXXXXXX"
                 required
-              >
-                <option value="">Select division…</option>
-                {divisions.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
+                aria-required
+              />
             </Field>
+            <div className="sm:col-span-2">
+              <Field label="Email (optional)">
+                <input
+                  type="email"
+                  inputMode="email"
+                  className={inputClass}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  placeholder="you@example.com — for order updates"
+                />
+              </Field>
+            </div>
             <Field label="District">
               <select
                 className={inputClass}
                 value={shipping.districtId}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const district = districts.find((d) => d.id === e.target.value);
                   setShipping((prev) => ({
                     ...prev,
                     districtId: e.target.value,
+                    divisionId: district?.divisionId ?? '',
                     upazilaId: '',
-                  }))
-                }
-                disabled={!shipping.divisionId}
+                  }));
+                }}
                 required
               >
                 <option value="">Select district…</option>
@@ -660,7 +831,7 @@ export function CheckoutForm({
                 ))}
               </select>
             </Field>
-            <Field label="Upazila / Thana">
+            <Field label="Thana / Upazila">
               <select
                 className={inputClass}
                 value={shipping.upazilaId}
@@ -668,7 +839,9 @@ export function CheckoutForm({
                 disabled={!shipping.districtId}
                 required
               >
-                <option value="">Select upazila…</option>
+                <option value="">
+                  {shipping.districtId ? 'Select thana…' : 'Select district first'}
+                </option>
                 {upazilas.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.name}
@@ -676,146 +849,97 @@ export function CheckoutForm({
                 ))}
               </select>
             </Field>
-            <Field label="Area / landmark (optional)">
-              <input
-                className={inputClass}
-                value={shipping.addressLine2}
-                onChange={(e) => updateShipping('addressLine2', e.target.value)}
-              />
-            </Field>
             <div className="sm:col-span-2">
-              <Field label="Address line">
-                <input
-                  className={inputClass}
+              <Field label="Full address">
+                <textarea
+                  className={`${inputClass} min-h-[76px] resize-y`}
                   value={shipping.addressLine1}
                   onChange={(e) => updateShipping('addressLine1', e.target.value)}
                   required
-                  autoComplete="address-line1"
+                  autoComplete="street-address"
+                  placeholder="House, road, area, nearby landmark"
+                  maxLength={200}
                 />
               </Field>
             </div>
-            <Field label="Postal code">
-              <input
-                className={inputClass}
-                value={shipping.postalCode}
-                onChange={(e) => updateShipping('postalCode', e.target.value)}
-                autoComplete="postal-code"
-              />
-            </Field>
-            <Field label="Country">
-              <input
-                className={inputClass}
-                value={shipping.country}
-                onChange={(e) =>
-                  updateShipping('country', e.target.value.toUpperCase())
-                }
-                maxLength={2}
-                required
-                autoComplete="country"
-              />
-            </Field>
           </div>
-        </section>
 
-        <section className="space-y-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold">Billing address</h2>
+          <div className="space-y-4 border-t border-[var(--color-border)] pt-4">
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
+                className="h-4 w-4 accent-[var(--color-accent)]"
                 checked={billingSame}
                 onChange={(e) => setBillingSame(e.target.checked)}
               />
-              Same as shipping
+              Billing address same as shipping
             </label>
-          </div>
-          {!billingSame ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Name">
-                <input
-                  className={inputClass}
-                  value={billing.name}
-                  onChange={(e) => updateBilling('name', e.target.value)}
-                />
-              </Field>
-              <Field label="Phone">
-                <input
-                  className={inputClass}
-                  value={billing.phone}
-                  onChange={(e) => updateBilling('phone', e.target.value)}
-                />
-              </Field>
-              <div className="sm:col-span-2">
-                <Field label="Address line 1">
+            {!billingSame ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Billing name">
                   <input
                     className={inputClass}
-                    value={billing.addressLine1}
-                    onChange={(e) => updateBilling('addressLine1', e.target.value)}
-                    required
+                    value={billing.name}
+                    onChange={(e) => updateBilling('name', e.target.value)}
+                    placeholder="Defaults to your name"
                   />
                 </Field>
+                <Field label="Billing city">
+                  <input
+                    className={inputClass}
+                    value={billing.city}
+                    onChange={(e) => updateBilling('city', e.target.value)}
+                  />
+                </Field>
+                <div className="sm:col-span-2">
+                  <Field label="Billing address">
+                    <input
+                      className={inputClass}
+                      value={billing.addressLine1}
+                      onChange={(e) => updateBilling('addressLine1', e.target.value)}
+                      required
+                    />
+                  </Field>
+                </div>
               </div>
-              <Field label="City">
-                <input
-                  className={inputClass}
-                  value={billing.city}
-                  onChange={(e) => updateBilling('city', e.target.value)}
-                  required
+            ) : null}
+            {allowOrderNotes ? (
+              <Field label="Order note (optional)">
+                <textarea
+                  className={`${inputClass} min-h-16 resize-y`}
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  maxLength={2000}
+                  placeholder="Anything the seller should know?"
                 />
               </Field>
-              <Field label="Country (ISO-2)">
-                <input
-                  className={inputClass}
-                  value={billing.country}
-                  onChange={(e) => updateBilling('country', e.target.value.toUpperCase())}
-                  maxLength={2}
-                  required
-                />
-              </Field>
-              <Field label="State">
-                <input
-                  className={inputClass}
-                  value={billing.state}
-                  onChange={(e) => updateBilling('state', e.target.value)}
-                />
-              </Field>
-              <Field label="Postal code">
-                <input
-                  className={inputClass}
-                  value={billing.postalCode}
-                  onChange={(e) => updateBilling('postalCode', e.target.value)}
-                />
-              </Field>
-            </div>
-          ) : (
-            <p className="text-sm text-[var(--color-muted)]">
-              Billing will match the shipping address.
-            </p>
-          )}
+            ) : null}
+          </div>
         </section>
 
-        <section className="space-y-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-          <h2 className="text-lg font-semibold">Shipping method</h2>
-          {quoteZoneName ? (
-            <p className="text-sm text-[var(--color-muted)]">
-              Delivery zone: {quoteZoneName}
-            </p>
-          ) : (
-            <p className="text-sm text-[var(--color-muted)]">
-              Select division, district, and upazila to see zone rates.
-            </p>
-          )}
+        <section className={sectionClass}>
+          <StepHeading
+            step={2}
+            title="Delivery method"
+            hint={
+              quoteZoneName
+                ? `Delivery zone: ${quoteZoneName}`
+                : shipping.upazilaId
+                  ? undefined
+                  : 'Choose your district and thana to see delivery charges.'
+            }
+          />
           {shippingLoadError ? (
-            <p className="text-sm text-red-700" role="alert">
+            <p className="text-sm text-[var(--color-danger)]" role="alert">
               {shippingLoadError}
             </p>
           ) : null}
           {shippingMethods.length === 0 && !shippingLoadError ? (
-            <p className="text-sm text-[var(--color-muted)]">
-              No shipping methods are available for this location yet.
+            <p className="rounded-xl border border-dashed border-[var(--color-border)] px-4 py-5 text-center text-sm text-[var(--color-muted)]">
+              No delivery options are available for this location yet.
             </p>
           ) : (
-            <fieldset className="space-y-2">
+            <fieldset className="grid gap-3">
               <legend className="sr-only">Shipping method</legend>
               {shippingMethods.map((method) => {
                 const amount = method.amount ?? method.price;
@@ -823,211 +947,118 @@ export function CheckoutForm({
                   method.freeShippingApplied ||
                   method.type === 'FREE' ||
                   amount === '0.00';
+                const details = [
+                  method.estimatedDelivery,
+                  method.description,
+                  method.freeShippingApplied ? 'Free shipping applied' : null,
+                  method.codAllowed === false ? 'COD not available' : null,
+                ].filter(Boolean);
                 return (
-                  <label key={method.id} className="flex items-start gap-2 text-sm">
-                    <input
-                      type="radio"
-                      name="shipping-method"
-                      checked={shippingMethodId === method.id}
-                      onChange={() => setShippingMethodId(method.id)}
-                    />
-                    <span>
-                      <span className="font-medium">{method.name}</span>
-                      <span className="block text-[var(--color-muted)]">
-                        {free
-                          ? method.freeShippingApplied
-                            ? 'Free shipping applied'
-                            : 'Free'
-                          : formatMoney(amount, currency)}
-                        {method.estimatedDelivery
-                          ? ` · ${method.estimatedDelivery}`
-                          : ''}
-                        {method.description ? ` — ${method.description}` : ''}
-                        {method.codAllowed === false ? ' · COD not available' : ''}
-                      </span>
-                    </span>
-                  </label>
+                  <OptionTile
+                    key={method.id}
+                    name="shipping-method"
+                    checked={shippingMethodId === method.id}
+                    onSelect={() => setShippingMethodId(method.id)}
+                    icon="truck"
+                    title={method.name}
+                    description={details.length ? details.join(' · ') : undefined}
+                    aside={free ? 'Free' : formatMoney(amount, currency)}
+                  />
                 );
               })}
             </fieldset>
           )}
         </section>
 
-        <section className="space-y-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-          <h2 className="text-lg font-semibold">Coupon</h2>
-          <div className="flex flex-wrap gap-2">
-            <input
-              className={`${inputClass} max-w-xs`}
-              value={couponDraft}
-              onChange={(e) => setCouponDraft(e.target.value.toUpperCase())}
-              placeholder="SUMMER10"
-              aria-label="Coupon code"
-              disabled={!!couponCode}
-            />
-            {couponCode ? (
-              <Button type="button" variant="secondary" onClick={removeCoupon}>
-                Remove
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={couponBusy}
-                onClick={() => void applyCoupon()}
-              >
-                {couponBusy ? 'Checking…' : 'Apply'}
-              </Button>
-            )}
-          </div>
-          {couponMessage ? (
-            <p
-              className={`text-sm ${couponCode ? 'text-[var(--color-muted)]' : 'text-red-700'}`}
-              role="status"
-            >
-              {couponMessage}
-            </p>
-          ) : null}
-        </section>
-
-        <section className="space-y-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-          <h2 className="text-lg font-semibold">Payment</h2>
-          <p className="text-sm text-[var(--color-muted)]">
-            Choose offline payment, or an enabled online provider when configured.
-          </p>
-          <fieldset className="space-y-2">
+        <section className={sectionClass}>
+          <StepHeading step={3} title="Payment" hint="All transactions are secure." />
+          <fieldset className="grid gap-3">
             <legend className="sr-only">Payment method</legend>
-            <label
-              className={`flex items-start gap-2 text-sm ${!codAllowedForMethod ? 'opacity-50' : ''}`}
-            >
-              <input
-                type="radio"
+            <OptionTile
+              name="pay"
+              checked={paymentProvider === 'COD' && paymentMethod === 'CASH'}
+              disabled={!codAllowedForMethod}
+              onSelect={() => {
+                setPaymentProvider('COD');
+                setPaymentMethod('CASH');
+              }}
+              icon="cash"
+              title="Cash on delivery"
+              description={
+                codAllowedForMethod
+                  ? 'Pay in cash when your order arrives.'
+                  : 'Not available for the selected delivery method.'
+              }
+            />
+            {hasOnline('SSL_COMMERZ') ? (
+              <OptionTile
                 name="pay"
-                checked={paymentProvider === 'COD' && paymentMethod === 'CASH'}
-                disabled={!codAllowedForMethod}
-                onChange={() => {
-                  setPaymentProvider('COD');
-                  setPaymentMethod('CASH');
+                checked={paymentProvider === 'SSL_COMMERZ'}
+                onSelect={() => {
+                  setPaymentProvider('SSL_COMMERZ');
+                  setPaymentMethod('CARD');
                 }}
+                icon="wallet"
+                title="Pay online"
+                description="Mobile banking, cards or net banking via SSLCommerz."
+                badges={['bKash', 'Nagad', 'Rocket', 'Visa', 'Mastercard']}
               />
-              <span>
-                <span className="font-medium">Cash on delivery</span>
-                <span className="block text-[var(--color-muted)]">
-                  {codAllowedForMethod
-                    ? 'Pay when your order arrives (COD / CASH).'
-                    : 'Not available for the selected shipping method.'}
-                </span>
-              </span>
-            </label>
-            <label className="flex items-start gap-2 text-sm">
-              <input
-                type="radio"
+            ) : null}
+            {hasOnline('STRIPE') ? (
+              <OptionTile
                 name="pay"
-                checked={
-                  paymentProvider === 'OTHER' && paymentMethod === 'BANK_TRANSFER'
-                }
-                onChange={() => {
-                  setPaymentProvider('OTHER');
-                  setPaymentMethod('BANK_TRANSFER');
+                checked={paymentProvider === 'STRIPE'}
+                onSelect={() => {
+                  setPaymentProvider('STRIPE');
+                  setPaymentMethod('CARD');
                 }}
+                icon="card"
+                title="Pay with card"
+                description="Secure card payment with Stripe."
+                badges={['Visa', 'Mastercard', 'Amex']}
               />
-              <span>
-                <span className="font-medium">Bank transfer</span>
-                <span className="block text-[var(--color-muted)]">
-                  Manual offline transfer (OTHER / BANK_TRANSFER).
-                </span>
-              </span>
-            </label>
-            <label className="flex items-start gap-2 text-sm">
-              <input
-                type="radio"
+            ) : null}
+            {hasOnline('TEST') ? (
+              <OptionTile
                 name="pay"
-                checked={paymentProvider === 'OTHER' && paymentMethod === 'OTHER'}
-                onChange={() => {
-                  setPaymentProvider('OTHER');
-                  setPaymentMethod('OTHER');
+                checked={paymentProvider === 'TEST'}
+                onSelect={() => {
+                  setPaymentProvider('TEST');
+                  setPaymentMethod('CARD');
                 }}
+                icon="card"
+                title="Online test payment"
+                description="Simulated payment for testing. No money is charged."
               />
-              <span>
-                <span className="font-medium">Other offline payment</span>
-                <span className="block text-[var(--color-muted)]">
-                  Arrange payment directly with the store.
-                </span>
-              </span>
-            </label>
-            {onlineProviders.some((p) => p.provider === 'TEST') ? (
-              <label className="flex items-start gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="pay"
-                  checked={paymentProvider === 'TEST'}
-                  onChange={() => {
-                    setPaymentProvider('TEST');
-                    setPaymentMethod('CARD');
-                  }}
-                />
-                <span>
-                  <span className="font-medium">Online test payment</span>
-                  <span className="block text-[var(--color-muted)]">
-                    Simulated gateway (TEST). Paid only after verified webhook.
-                  </span>
-                </span>
-              </label>
             ) : null}
-            {onlineProviders.some((p) => p.provider === 'STRIPE') ? (
-              <label className="flex items-start gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="pay"
-                  checked={paymentProvider === 'STRIPE'}
-                  onChange={() => {
-                    setPaymentProvider('STRIPE');
-                    setPaymentMethod('CARD');
-                  }}
-                />
-                <span>
-                  <span className="font-medium">Pay with card (Stripe)</span>
-                  <span className="block text-[var(--color-muted)]">
-                    Secure Stripe Checkout. Paid only after verified webhook.
-                  </span>
-                </span>
-              </label>
-            ) : null}
-            {onlineProviders.some((p) => p.provider === 'SSL_COMMERZ') ? (
-              <label className="flex items-start gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="pay"
-                  checked={paymentProvider === 'SSL_COMMERZ'}
-                  onChange={() => {
-                    setPaymentProvider('SSL_COMMERZ');
-                    setPaymentMethod('CARD');
-                  }}
-                />
-                <span>
-                  <span className="font-medium">Online payment (SSLCommerz)</span>
-                  <span className="block text-[var(--color-muted)]">
-                    Bangladesh hosted checkout. Paid only after verified IPN +
-                    Order Validation API.
-                  </span>
-                </span>
-              </label>
-            ) : null}
+            <OptionTile
+              name="pay"
+              checked={paymentProvider === 'OTHER' && paymentMethod === 'BANK_TRANSFER'}
+              onSelect={() => {
+                setPaymentProvider('OTHER');
+                setPaymentMethod('BANK_TRANSFER');
+              }}
+              icon="bank"
+              title="Bank transfer"
+              description="Transfer to the store’s bank account; the store confirms your payment."
+            />
+            <OptionTile
+              name="pay"
+              checked={paymentProvider === 'OTHER' && paymentMethod === 'OTHER'}
+              onSelect={() => {
+                setPaymentProvider('OTHER');
+                setPaymentMethod('OTHER');
+              }}
+              icon="store"
+              title="Other payment"
+              description="Arrange payment directly with the store."
+            />
           </fieldset>
-          {allowOrderNotes ? (
-            <Field label="Order note (optional)">
-              <textarea
-                className={`${inputClass} min-h-20`}
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                maxLength={2000}
-              />
-            </Field>
-          ) : null}
         </section>
       </div>
 
       <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
-        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-6">
           <h2 className="text-lg font-semibold">Order summary</h2>
           {priceNotices.length > 0 ? (
             <div
@@ -1045,37 +1076,97 @@ export function CheckoutForm({
           {quoteError ? (
             <div className="mt-3 text-sm text-[var(--color-danger)]" role="alert">
               <p>{quoteError}</p>
-              <Link
-                href={`/cart?store=${encodeURIComponent(storeSlug)}`}
-                className="mt-1 inline-block text-[var(--color-accent)] hover:underline"
-              >
-                Review your cart
-              </Link>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={quoteLoading}
+                  onClick={() => setQuoteNonce((value) => value + 1)}
+                >
+                  {quoteLoading ? 'Retrying…' : 'Try again'}
+                </Button>
+                <Link
+                  href={`/cart?store=${encodeURIComponent(storeSlug)}`}
+                  className="text-[var(--color-accent)] hover:underline"
+                >
+                  Review your cart
+                </Link>
+              </div>
             </div>
           ) : null}
           {quote ? (
             <>
               <ul className="mt-4 space-y-3" aria-busy={quoteLoading}>
-                {quote.lines.map((line) => (
-                  <li key={lineKey(line)} className="text-sm">
-                    <div className="flex justify-between gap-3">
-                      <span>
-                        {line.productName}
-                        {line.variantName ? ` · ${line.variantName}` : ''} × {line.quantity}
+                {quote.lines.map((line) => {
+                  const imageUrl = imageByLine.get(lineKey(line));
+                  return (
+                    <li key={lineKey(line)} className="flex gap-3 text-sm">
+                      <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)]">
+                        {imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+                        ) : null}
+                        <span className="absolute -right-0 -top-0 flex h-5 min-w-5 items-center justify-center rounded-bl-lg bg-[var(--color-ink)] px-1 text-[11px] font-semibold text-white">
+                          {line.quantity}
+                        </span>
                       </span>
-                      <span className="shrink-0 font-medium">
-                        {formatMoney(line.lineTotal, quote.currency)}
+                      <span className="min-w-0 flex-1">
+                        <span className="flex justify-between gap-3">
+                          <span>
+                            {line.productName}
+                            {line.variantName ? ` · ${line.variantName}` : ''} × {line.quantity}
+                          </span>
+                          <span className="shrink-0 font-medium">
+                            {formatMoney(line.lineTotal, quote.currency)}
+                          </span>
+                        </span>
+                        <span className="block text-xs text-[var(--color-muted)]">
+                          {formatMoney(line.unitPrice, quote.currency)} each
+                        </span>
                       </span>
-                    </div>
-                    <p className="text-xs text-[var(--color-muted)]">
-                      {formatMoney(line.unitPrice, quote.currency)} each
-                    </p>
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
               </ul>
+
+              <div className="mt-4 border-t border-[var(--color-border)] pt-4">
+                <div className="flex gap-2">
+                  <input
+                    className={inputClass}
+                    value={couponDraft}
+                    onChange={(e) => setCouponDraft(e.target.value.toUpperCase())}
+                    placeholder="Coupon code"
+                    aria-label="Coupon code"
+                    disabled={!!couponCode}
+                  />
+                  {couponCode ? (
+                    <Button type="button" variant="secondary" onClick={removeCoupon}>
+                      Remove
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={couponBusy}
+                      onClick={() => void applyCoupon()}
+                    >
+                      {couponBusy ? 'Checking…' : 'Apply'}
+                    </Button>
+                  )}
+                </div>
+                {couponMessage ? (
+                  <p
+                    className={`mt-2 text-sm ${couponCode ? 'text-[var(--color-muted)]' : 'text-red-700'}`}
+                    role="status"
+                  >
+                    {couponMessage}
+                  </p>
+                ) : null}
+              </div>
+
               <dl className="mt-4 space-y-2 border-t border-[var(--color-border)] pt-4 text-sm">
                 <div className="flex justify-between">
-                  <dt>Subtotal</dt>
+                  <dt className="text-[var(--color-muted)]">Subtotal</dt>
                   <dd>{formatMoney(quote.subtotal, quote.currency)}</dd>
                 </div>
                 {quote.couponCode ? (
@@ -1085,12 +1176,12 @@ export function CheckoutForm({
                   </div>
                 ) : null}
                 <div className="flex justify-between">
-                  <dt>Shipping</dt>
+                  <dt className="text-[var(--color-muted)]">Shipping</dt>
                   <dd>{formatMoney(quote.shippingTotal, quote.currency)}</dd>
                 </div>
-                <div className="flex justify-between text-base font-semibold">
+                <div className="flex items-baseline justify-between border-t border-[var(--color-border)] pt-3 text-base font-semibold">
                   <dt>Total</dt>
-                  <dd>{formatMoney(quote.total, quote.currency)}</dd>
+                  <dd className="text-xl">{formatMoney(quote.total, quote.currency)}</dd>
                 </div>
               </dl>
             </>
@@ -1106,14 +1197,17 @@ export function CheckoutForm({
           </p>
 
           {error ? (
-            <p className="mt-4 text-sm text-[var(--color-danger)]" role="alert">
+            <p
+              className="mt-4 rounded-lg border border-[color-mix(in_srgb,var(--color-danger)_35%,transparent)] bg-[color-mix(in_srgb,var(--color-danger)_8%,transparent)] px-3 py-2 text-sm text-[var(--color-danger)]"
+              role="alert"
+            >
               {error}
             </p>
           ) : null}
 
           <Button
             type="submit"
-            className="mt-4 w-full"
+            className="mt-4 w-full py-3 text-base"
             disabled={submitting}
             aria-busy={submitting}
           >

@@ -350,3 +350,9 @@ export class UpdateVariantDto {
   @IsIn(Object.values(ProductStatus))
   status?: ProductStatus;
 }
+
+export class SetProductImageFromGalleryDto {
+  @ApiProperty({ description: 'Id of an image in this store’s media gallery' })
+  @IsUUID()
+  mediaId!: string;
+}

@@ -5,13 +5,15 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import type { PublicOrderConfirmationDetail } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
 import { OrderTrackingView } from '@/components/order-tracking-view';
+import { contactQuery, type OrderContact } from '@/lib/order-contact';
 import { publicGet, PublicApiError } from '@/lib/public-api';
 
 export function TrackOrderForm({ storeSlug }: { storeSlug: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [reference, setReference] = useState(searchParams.get('ref') ?? '');
-  const [email, setEmail] = useState('');
+  const [contactInput, setContactInput] = useState('');
+  const [contact, setContact] = useState<OrderContact | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [order, setOrder] = useState<PublicOrderConfirmationDetail | null>(null);
@@ -22,13 +24,17 @@ export function TrackOrderForm({ storeSlug }: { storeSlug: string }) {
     setOrder(null);
 
     const ref = reference.trim();
-    const mail = email.trim().toLowerCase();
+    const value = contactInput.trim();
     if (!ref || ref.length < 16) {
       setError('Enter the full order reference from your confirmation.');
       return;
     }
-    if (!mail || !mail.includes('@')) {
-      setError('Enter the email used at checkout.');
+    // One field: anything with an @ is the checkout email, otherwise the phone.
+    const lookup: OrderContact = value.includes('@')
+      ? { email: value.toLowerCase() }
+      : { phone: value };
+    if (!value || (!lookup.email && value.replace(/\D/g, '').length < 6)) {
+      setError('Enter the phone number or email used at checkout.');
       return;
     }
 
@@ -38,8 +44,9 @@ export function TrackOrderForm({ storeSlug }: { storeSlug: string }) {
         success: true;
         data: PublicOrderConfirmationDetail;
       }>(
-        `/public/stores/${encodeURIComponent(storeSlug)}/orders/${encodeURIComponent(ref)}?email=${encodeURIComponent(mail)}`,
+        `/public/stores/${encodeURIComponent(storeSlug)}/orders/${encodeURIComponent(ref)}?${contactQuery(lookup)}`,
       );
+      setContact(lookup);
       setOrder(result.data);
       router.replace(
         `/track-order?store=${encodeURIComponent(storeSlug)}&ref=${encodeURIComponent(ref)}`,
@@ -47,8 +54,8 @@ export function TrackOrderForm({ storeSlug }: { storeSlug: string }) {
       );
     } catch (err) {
       if (err instanceof PublicApiError && (err.status === 404 || err.status === 400)) {
-        // Same message whether reference or email is wrong — no enumeration.
-        setError('We could not find an order with that reference and email.');
+        // Same message whether reference or contact is wrong — no enumeration.
+        setError('We could not find an order with that reference and phone number or email.');
       } else {
         setError('Unable to look up this order right now. Try again shortly.');
       }
@@ -64,8 +71,8 @@ export function TrackOrderForm({ storeSlug }: { storeSlug: string }) {
           Track your order
         </h1>
         <p className="mt-3 text-[var(--color-muted)]">
-          Enter the order reference from your confirmation and the email used at
-          checkout. No account required.
+          Enter the order reference from your confirmation and the phone number or
+          email used at checkout. No account required.
         </p>
       </div>
 
@@ -85,13 +92,14 @@ export function TrackOrderForm({ storeSlug }: { storeSlug: string }) {
           />
         </label>
         <label className="block space-y-1 text-sm">
-          <span>Email</span>
+          <span>Phone or email</span>
           <input
-            type="email"
             className="w-full rounded-md border border-[var(--color-border)] bg-white px-3 py-2"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            aria-label="Checkout email"
+            value={contactInput}
+            onChange={(e) => setContactInput(e.target.value)}
+            placeholder="01XXXXXXXXX or you@example.com"
+            autoComplete="tel"
+            aria-label="Checkout phone or email"
           />
         </label>
         {error ? (
@@ -108,7 +116,7 @@ export function TrackOrderForm({ storeSlug }: { storeSlug: string }) {
         <OrderTrackingView
           storeSlug={storeSlug}
           initial={order}
-          email={email.trim().toLowerCase()}
+          contact={contact}
         />
       ) : null}
     </div>

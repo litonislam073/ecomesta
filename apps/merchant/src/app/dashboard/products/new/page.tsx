@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import type { Category, OffsetPageMeta, Product } from '@ecomesta/types';
+import type { Category, MediaItem, OffsetPageMeta, Product } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
 import {
   ProductForm,
@@ -11,6 +11,7 @@ import {
 } from '@/components/catalog/product-form';
 import {
   PendingProductImage,
+  setProductImageFromGallery,
   uploadProductImage,
 } from '@/components/catalog/product-image-field';
 import { StoreScoped } from '@/components/catalog/store-scoped';
@@ -52,6 +53,7 @@ function NewProductContent() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [galleryImage, setGalleryImage] = useState<MediaItem | null>(null);
 
   const loadCategories = useCallback(async () => {
     if (!selectedStoreId) {
@@ -93,6 +95,12 @@ function NewProductContent() {
         } catch (err) {
           // The product exists; the image can be retried from its edit page.
           pushToast(humanApiError(err, 'The image could not be uploaded. Try again from the product page.'), 'error');
+        }
+      } else if (galleryImage) {
+        try {
+          await setProductImageFromGallery(selectedStoreId, result.data.id, galleryImage.id);
+        } catch (err) {
+          pushToast(humanApiError(err, 'The image could not be set. Try again from the product page.'), 'error');
         }
       }
       router.push(`/dashboard/products/${result.data.id}`);
@@ -144,7 +152,14 @@ function NewProductContent() {
         <ErrorState message={error} onRetry={() => void loadCategories()} />
       ) : null}
       {!loading && !error ? (
-        <PendingProductImage file={imageFile} onChange={setImageFile} disabled={busy} />
+        <PendingProductImage
+          file={imageFile}
+          onChange={setImageFile}
+          disabled={busy}
+          storeId={selectedStoreId}
+          galleryItem={galleryImage}
+          onGalleryChange={setGalleryImage}
+        />
       ) : null}
       {!loading && !error ? (
         <ProductForm

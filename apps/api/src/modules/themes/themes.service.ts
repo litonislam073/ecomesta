@@ -7,6 +7,7 @@ import {
 import { Prisma, StoreRole, type StoreTheme, type Theme } from '@prisma/client';
 import type { Request } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PlanEntitlementsService } from '../billing/plan-entitlements.service';
 import { RedisService } from '../../redis/redis.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
@@ -40,6 +41,7 @@ export class ThemesService {
     private readonly authorization: AuthorizationService,
     private readonly audit: AuditService,
     private readonly redis: RedisService,
+    private readonly entitlements: PlanEntitlementsService,
   ) {}
 
   async getStoreTheme(userId: string, storeId: string) {
@@ -109,6 +111,16 @@ export class ThemesService {
     }
 
     const store = await this.requireStore(storeId);
+    if (dto.themeId) {
+      // Only the default theme is included in every plan.
+      const target = await this.prisma.theme.findUnique({
+        where: { id: dto.themeId },
+        select: { slug: true },
+      });
+      if (target && target.slug !== DEFAULT_THEME_SLUG) {
+        await this.entitlements.assertFeature(storeId, 'allThemes');
+      }
+    }
     // Validate before taking the lock so a bad payload never touches the draft.
     const patch =
       dto.configuration === undefined

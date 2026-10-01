@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import Link from 'next/link';
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type {
   InventoryItem,
   OffsetPageMeta,
@@ -13,8 +13,8 @@ import { InventoryAdjustmentForm } from '@/components/catalog/inventory-adjustme
 import { StoreScoped } from '@/components/catalog/store-scoped';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { EmptyState } from '@/components/ui/empty-state';
+import { FilterBar, FilterField } from '@/components/ui/filter-bar';
 import { ErrorState } from '@/components/ui/error-state';
-import { Input } from '@/components/ui/input';
 import { LoadingState } from '@/components/ui/loading-state';
 import { Pagination } from '@/components/ui/pagination';
 import { Select } from '@/components/ui/select';
@@ -164,6 +164,8 @@ function InventoryContent() {
     );
   }
 
+  const filtersActive = Boolean(query || stockStatus || productId);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -187,55 +189,76 @@ function InventoryContent() {
         ) : null}
       </div>
 
-      <form
-        className="flex flex-wrap gap-2"
-        onSubmit={(event: FormEvent) => {
-          event.preventDefault();
+      <FilterBar
+        onSubmit={() => {
           setPage(1);
           setQuery(search.trim());
         }}
+        search={{
+          value: search,
+          onChange: setSearch,
+          onClear: () => {
+            setSearch('');
+            setPage(1);
+            setQuery('');
+          },
+          placeholder: 'Search by product, variant or SKU…',
+          label: 'Search inventory',
+        }}
+        summary={
+          meta
+            ? `${meta.total} ${meta.total === 1 ? 'stock item' : 'stock items'}${
+                filtersActive ? (meta.total === 1 ? ' matches your filters' : ' match your filters') : ''
+              }`
+            : undefined
+        }
+        onReset={
+          filtersActive
+            ? () => {
+                setSearch('');
+                setQuery('');
+                setStockStatus('');
+                setProductId('');
+                setPage(1);
+              }
+            : undefined
+        }
       >
-        <Input
-          className="max-w-xs"
-          placeholder="Search product, variant, or SKU"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          aria-label="Search inventory"
-        />
-        <Select
-          className="w-auto"
-          value={stockStatus}
-          onChange={(e) => {
-            setPage(1);
-            setStockStatus(e.target.value);
-          }}
-          aria-label="Stock status filter"
-        >
-          <option value="">All stock</option>
-          <option value="low">Low stock</option>
-          <option value="out">Out of stock</option>
-          <option value="in_stock">In stock</option>
-        </Select>
-        <Select
-          className="w-auto"
-          value={productId}
-          onChange={(e) => {
-            setPage(1);
-            setProductId(e.target.value);
-          }}
-          aria-label="Product filter"
-        >
-          <option value="">All products</option>
-          {products.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </Select>
-        <Button type="submit" variant="secondary">
-          Search
-        </Button>
-      </form>
+        <FilterField label="Stock status">
+          <Select
+            className="h-10"
+            value={stockStatus}
+            onChange={(e) => {
+              setPage(1);
+              setStockStatus(e.target.value);
+            }}
+            aria-label="Stock status filter"
+          >
+            <option value="">All stock</option>
+            <option value="in_stock">In stock</option>
+            <option value="low">Low stock</option>
+            <option value="out">Out of stock</option>
+          </Select>
+        </FilterField>
+        <FilterField label="Product">
+          <Select
+            className="h-10"
+            value={productId}
+            onChange={(e) => {
+              setPage(1);
+              setProductId(e.target.value);
+            }}
+            aria-label="Product filter"
+          >
+            <option value="">All products</option>
+            {products.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </Select>
+        </FilterField>
+      </FilterBar>
 
       {showAdjust ? (
         <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4">

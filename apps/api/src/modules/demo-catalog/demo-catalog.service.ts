@@ -13,6 +13,7 @@ import type { Request } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
+import { PlanEntitlementsService } from '../billing/plan-entitlements.service';
 import {
   DEMO_CATEGORIES,
   DEMO_PRODUCTS,
@@ -27,6 +28,7 @@ export class DemoCatalogService {
     private readonly prisma: PrismaService,
     private readonly authorization: AuthorizationService,
     private readonly audit: AuditService,
+    private readonly entitlements: PlanEntitlementsService,
   ) {}
 
   async status(userId: string, storeId: string) {
@@ -77,6 +79,7 @@ export class DemoCatalogService {
           );
         }
 
+        await this.entitlements.assertProductCapacity(tx, storeId, DEMO_PRODUCTS.length);
         return this.createCatalog(tx, storeId, userId);
       },
       { timeout: 20_000 },

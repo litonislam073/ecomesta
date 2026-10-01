@@ -48,7 +48,7 @@ describe('SF-01 paid-after-cancel payment race (e2e)', () => {
       .set('Idempotency-Key', `sf01-${n}-${suffix}`)
       .send({
         items: [{ productId, quantity: 1 }],
-        customer: { name: 'SF01 Buyer', email },
+        customer: { name: 'SF01 Buyer', email, phone: '01711000000' },
         shippingAddress: { name: 'SF01 Buyer', addressLine1: '1 Main', city: 'Dhaka', country: 'BD', email },
         billingSameAsShipping: true,
         shippingMethodId,

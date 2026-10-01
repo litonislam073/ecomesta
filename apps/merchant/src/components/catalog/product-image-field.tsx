@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
-import type { Product } from '@ecomesta/types';
+import type { MediaItem, Product } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
+import { MediaPickerDialog } from '@/components/media/media-picker-dialog';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { api } from '@/lib/api-client';
 import { humanApiError } from '@/lib/catalog-utils';
@@ -40,6 +41,14 @@ export function uploadProductImage(storeId: string, productId: string, file: Fil
   );
 }
 
+/** Uses an image already in the store's media gallery as the product image. */
+export function setProductImageFromGallery(storeId: string, productId: string, mediaId: string) {
+  return api.post<{ success: true; data: Product }>(
+    `/stores/${storeId}/products/${productId}/image/from-gallery`,
+    { mediaId },
+  );
+}
+
 function ImagePreview({ src, alt }: { src: string | null; alt: string }) {
   return (
     <div className="flex aspect-square w-32 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[var(--color-border)] bg-[#f3f7f5] sm:w-40">
@@ -73,7 +82,23 @@ export function ProductImageField({
   const [busy, setBusy] = useState<'upload' | 'remove' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const src = productImageSrc(product.imageUrl);
+
+  async function onPick(item: MediaItem) {
+    setPickerOpen(false);
+    if (busy) return;
+    setBusy('upload');
+    setError(null);
+    try {
+      const result = await setProductImageFromGallery(storeId, product.id, item.id);
+      onChange(result.data);
+    } catch (err) {
+      setError(humanApiError(err, 'Could not use that image.'));
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function onFile(file: File | undefined) {
     if (inputRef.current) inputRef.current.value = '';
@@ -113,7 +138,8 @@ export function ProductImageField({
     <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:p-5">
       <h2 className="text-xl font-semibold">Product image</h2>
       <p className="mt-1 text-sm text-[var(--color-muted)]">
-        Shown on your storefront. JPEG, PNG or WebP, up to 1.5 MB. Changes are saved immediately.
+        Shown on your storefront. Square, 1000 × 1000 px recommended. JPEG, PNG or WebP, up to 1.5 MB.
+        Changes are saved immediately, and every upload is kept in your gallery.
       </p>
       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start">
         <ImagePreview src={src} alt={product.name} />
@@ -139,6 +165,14 @@ export function ProductImageField({
               >
                 {busy === 'upload' ? 'Uploading…' : src ? 'Replace image' : 'Upload image'}
               </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={busy !== null}
+                onClick={() => setPickerOpen(true)}
+              >
+                Choose from gallery
+              </Button>
               {src ? (
                 <Button
                   type="button"
@@ -161,13 +195,20 @@ export function ProductImageField({
       <ConfirmDialog
         open={confirmRemove}
         title="Remove this image?"
-        description="The product will show no image on your storefront until you upload a new one."
+        description="The product will show no image on your storefront until you add a new one. The image stays in your gallery."
         confirmLabel="Remove image"
         danger
         safeDefault
         busy={busy === 'remove'}
         onCancel={() => setConfirmRemove(false)}
         onConfirm={() => void onRemove()}
+      />
+      <MediaPickerDialog
+        open={pickerOpen}
+        storeId={storeId}
+        purpose="product"
+        onClose={() => setPickerOpen(false)}
+        onSelect={(item) => void onPick(item)}
       />
     </section>
   );
@@ -181,14 +222,23 @@ export function PendingProductImage({
   file,
   onChange,
   disabled,
+  storeId,
+  galleryItem = null,
+  onGalleryChange,
 }: {
   file: File | null;
   onChange: (file: File | null) => void;
   disabled?: boolean;
+  /** With `onGalleryChange`, also offers picking an existing gallery image. */
+  storeId?: string | null;
+  galleryItem?: MediaItem | null;
+  onGalleryChange?: (item: MediaItem | null) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const canPick = Boolean(storeId && onGalleryChange);
 
   useEffect(() => {
     if (!file) {
@@ -205,17 +255,21 @@ export function PendingProductImage({
     if (!next) return;
     const problem = productImageProblem(next);
     setError(problem);
-    if (!problem) onChange(next);
+    if (!problem) {
+      onGalleryChange?.(null);
+      onChange(next);
+    }
   }
 
   return (
     <section className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:p-5">
       <h2 className="text-xl font-semibold">Product image</h2>
       <p className="mt-1 text-sm text-[var(--color-muted)]">
-        Optional. JPEG, PNG or WebP, up to 1.5 MB. Uploaded when you create the product.
+        Optional. Square, 1000 × 1000 px recommended. JPEG, PNG or WebP, up to 1.5 MB. Uploaded when you
+        create the product.
       </p>
       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start">
-        <ImagePreview src={preview} alt="Selected product image" />
+        <ImagePreview src={preview ?? productImageSrc(galleryItem?.url)} alt="Selected product image" />
         <div className="min-w-0 space-y-3">
           <input
             ref={inputRef}
@@ -235,14 +289,27 @@ export function PendingProductImage({
             >
               {file ? 'Choose another image' : 'Choose image'}
             </Button>
-            {file ? (
-              <Button type="button" variant="secondary" disabled={disabled} onClick={() => onChange(null)}>
+            {canPick ? (
+              <Button type="button" variant="secondary" disabled={disabled} onClick={() => setPickerOpen(true)}>
+                Choose from gallery
+              </Button>
+            ) : null}
+            {file || galleryItem ? (
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={disabled}
+                onClick={() => {
+                  onChange(null);
+                  onGalleryChange?.(null);
+                }}
+              >
                 Clear
               </Button>
             ) : null}
           </div>
-          {file ? (
-            <p className="break-all text-sm text-[var(--color-muted)]">{file.name}</p>
+          {file || galleryItem ? (
+            <p className="break-all text-sm text-[var(--color-muted)]">{file?.name ?? galleryItem?.filename}</p>
           ) : null}
           {error ? (
             <p className="text-sm text-[var(--color-danger)]" role="alert">
@@ -251,6 +318,20 @@ export function PendingProductImage({
           ) : null}
         </div>
       </div>
+      {canPick && storeId ? (
+        <MediaPickerDialog
+          open={pickerOpen}
+          storeId={storeId}
+          purpose="product"
+          onClose={() => setPickerOpen(false)}
+          onSelect={(item) => {
+            setPickerOpen(false);
+            setError(null);
+            onChange(null);
+            onGalleryChange?.(item);
+          }}
+        />
+      ) : null}
     </section>
   );
 }

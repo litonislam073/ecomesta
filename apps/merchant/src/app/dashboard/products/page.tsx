@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import Link from 'next/link';
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Category, OffsetPageMeta, Product, ProductStatus } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
 import { DemoCatalogCta } from '@/components/catalog/demo-catalog-cta';
@@ -11,8 +11,8 @@ import { StatusBadge } from '@/components/catalog/status-badge';
 import { StoreScoped } from '@/components/catalog/store-scoped';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { EmptyState } from '@/components/ui/empty-state';
+import { FilterBar, FilterField } from '@/components/ui/filter-bar';
 import { ErrorState } from '@/components/ui/error-state';
-import { Input } from '@/components/ui/input';
 import { LoadingState } from '@/components/ui/loading-state';
 import { Pagination } from '@/components/ui/pagination';
 import { Select } from '@/components/ui/select';
@@ -112,6 +112,10 @@ function ProductsContent() {
     );
   }
 
+  const filtersActive = Boolean(
+    query || status || productType || categoryId || sortBy !== 'updatedAt' || sortOrder !== 'desc',
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -136,88 +140,114 @@ function ProductsContent() {
         onImported={load}
       />
 
-      <form
-        className="flex flex-wrap gap-2"
-        onSubmit={(event: FormEvent) => {
-          event.preventDefault();
+      <FilterBar
+        onSubmit={() => {
           setPage(1);
           setQuery(search.trim());
         }}
+        search={{
+          value: search,
+          onChange: setSearch,
+          onClear: () => {
+            setSearch('');
+            setPage(1);
+            setQuery('');
+          },
+          placeholder: 'Search by product name or SKU…',
+          label: 'Search products',
+        }}
+        summary={
+          meta
+            ? `${meta.total} ${meta.total === 1 ? 'product' : 'products'}${filtersActive ? (meta.total === 1 ? ' matches your filters' : ' match your filters') : ''}`
+            : undefined
+        }
+        onReset={
+          filtersActive
+            ? () => {
+                setSearch('');
+                setQuery('');
+                setStatus('');
+                setProductType('');
+                setCategoryId('');
+                setSortBy('updatedAt');
+                setSortOrder('desc');
+                setPage(1);
+              }
+            : undefined
+        }
       >
-        <Input
-          className="max-w-xs"
-          placeholder="Search name or SKU"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          aria-label="Search products"
-        />
-        <Select
-          className="w-auto"
-          value={status}
-          onChange={(e) => {
-            setPage(1);
-            setStatus(e.target.value);
-          }}
-          aria-label="Status filter"
-        >
-          <option value="">All statuses</option>
-          <option value="DRAFT">DRAFT</option>
-          <option value="ACTIVE">ACTIVE</option>
-          <option value="ARCHIVED">ARCHIVED</option>
-        </Select>
-        <Select
-          className="w-auto"
-          value={productType}
-          onChange={(e) => {
-            setPage(1);
-            setProductType(e.target.value);
-          }}
-          aria-label="Type filter"
-        >
-          <option value="">All types</option>
-          <option value="PHYSICAL">PHYSICAL</option>
-          <option value="DIGITAL">DIGITAL</option>
-          <option value="SERVICE">SERVICE</option>
-        </Select>
-        <Select
-          className="w-auto"
-          value={categoryId}
-          onChange={(e) => {
-            setPage(1);
-            setCategoryId(e.target.value);
-          }}
-          aria-label="Category filter"
-        >
-          <option value="">All categories</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </Select>
-        <Select
-          className="w-auto"
-          value={`${sortBy}:${sortOrder}`}
-          onChange={(e) => {
-            const [nextSort, nextOrder] = e.target.value.split(':') as [
-              string,
-              'asc' | 'desc',
-            ];
-            setSortBy(nextSort);
-            setSortOrder(nextOrder);
-          }}
-          aria-label="Sort"
-        >
-          <option value="updatedAt:desc">Updated ↓</option>
-          <option value="createdAt:desc">Created ↓</option>
-          <option value="name:asc">Name A–Z</option>
-          <option value="basePrice:asc">Price ↑</option>
-          <option value="basePrice:desc">Price ↓</option>
-        </Select>
-        <Button type="submit" variant="secondary">
-          Search
-        </Button>
-      </form>
+        <FilterField label="Status">
+          <Select
+            className="h-10"
+            value={status}
+            onChange={(e) => {
+              setPage(1);
+              setStatus(e.target.value);
+            }}
+            aria-label="Status filter"
+          >
+            <option value="">All statuses</option>
+            <option value="DRAFT">Draft</option>
+            <option value="ACTIVE">Active</option>
+            <option value="ARCHIVED">Archived</option>
+          </Select>
+        </FilterField>
+        <FilterField label="Type">
+          <Select
+            className="h-10"
+            value={productType}
+            onChange={(e) => {
+              setPage(1);
+              setProductType(e.target.value);
+            }}
+            aria-label="Type filter"
+          >
+            <option value="">All types</option>
+            <option value="PHYSICAL">Physical</option>
+            <option value="DIGITAL">Digital</option>
+            <option value="SERVICE">Service</option>
+          </Select>
+        </FilterField>
+        <FilterField label="Category">
+          <Select
+            className="h-10"
+            value={categoryId}
+            onChange={(e) => {
+              setPage(1);
+              setCategoryId(e.target.value);
+            }}
+            aria-label="Category filter"
+          >
+            <option value="">All categories</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </Select>
+        </FilterField>
+        <FilterField label="Sort by">
+          <Select
+            className="h-10"
+            value={`${sortBy}:${sortOrder}`}
+            onChange={(e) => {
+              const [nextSort, nextOrder] = e.target.value.split(':') as [
+                string,
+                'asc' | 'desc',
+              ];
+              setSortBy(nextSort);
+              setSortOrder(nextOrder);
+            }}
+            aria-label="Sort"
+          >
+            <option value="updatedAt:desc">Recently updated</option>
+            <option value="createdAt:desc">Newest first</option>
+            <option value="name:asc">Name (A–Z)</option>
+            <option value="basePrice:asc">Price: low to high</option>
+            <option value="basePrice:desc">Price: high to low</option>
+          </Select>
+        </FilterField>
+      </FilterBar>
 
       {loading ? <LoadingState label="Loading products" /> : null}
       {!loading && error ? <ErrorState message={error} onRetry={() => void load()} /> : null}
@@ -306,8 +336,13 @@ function ProductsContent() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-2">
-                      <Link href={`/dashboard/products/${product.id}`}>
-                        <Button variant="secondary">View</Button>
+                      <Link
+                        href={`/dashboard/products/${product.id}`}
+                        aria-label={`${canWrite ? 'Edit' : 'View'} ${product.name}`}
+                      >
+                        <Button variant="secondary" tabIndex={-1}>
+                          {canWrite ? 'Edit' : 'View'}
+                        </Button>
                       </Link>
                       {canWrite && product.status !== 'ARCHIVED' ? (
                         <Button variant="danger" onClick={() => setArchiveId(product.id)}>

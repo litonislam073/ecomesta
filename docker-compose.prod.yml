@@ -57,6 +57,10 @@ x-api-env: &api-env
   SMTP_SECURE: ${SMTP_SECURE:-}
   APP_PUBLIC_URL: ${APP_PUBLIC_URL:-}
   SUPPORT_EMAIL: ${SUPPORT_EMAIL:-}
+  # Inbox for manual subscription payments; empty = ecomestabd@gmail.com.
+  BILLING_NOTIFICATION_EMAIL: ${BILLING_NOTIFICATION_EMAIL:-}
+  # Unset = "Continue with Google" hidden. Public client ID, no secret.
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
 
 services:
   postgres:

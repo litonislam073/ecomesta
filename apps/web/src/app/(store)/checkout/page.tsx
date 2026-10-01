@@ -38,7 +38,6 @@ export default async function CheckoutPage({
         </p>
       </div>
       <CheckoutForm
-        requirePhone={store.checkout?.requirePhone ?? false}
         allowOrderNotes={store.checkout?.allowOrderNotes ?? true}
       />
     </div>

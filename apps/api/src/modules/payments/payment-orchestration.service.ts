@@ -20,6 +20,7 @@ import { AuditService } from '../audit/audit.service';
 import { BillingAccessService } from '../billing/billing-access.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { assertPaymentRecordStatusTransition } from './payment-transitions';
+import { PlanEntitlementsService } from '../billing/plan-entitlements.service';
 import { PaymentProviderConfigService } from './payment-provider-config.service';
 import { generatePaymentInternalReference } from './payment-reference.util';
 import { PaymentProviderRegistry } from './providers/payment-provider.registry';
@@ -52,11 +53,17 @@ export class PaymentOrchestrationService {
     private readonly providerConfigs: PaymentProviderConfigService,
     private readonly registry: PaymentProviderRegistry,
     private readonly billingAccess: BillingAccessService,
+    private readonly entitlements: PlanEntitlementsService,
   ) {}
 
   async listPublicProviders(storeSlug: string) {
     const store = await this.requireActiveStoreBySlug(storeSlug);
-    const online = await this.providerConfigs.listPublicEnabled(store.id);
+    const enabled = await this.providerConfigs.listPublicEnabled(store.id);
+    // A provider enabled before a plan change stays hidden until the plan includes it.
+    const online = [];
+    for (const item of enabled) {
+      if (await this.entitlements.storeAllowsProvider(store.id, item.provider)) online.push(item);
+    }
     return {
       success: true as const,
       data: {
@@ -98,6 +105,9 @@ export class PaymentOrchestrationService {
 
     if (!this.registry.isOnline(input.provider)) {
       throw new BadRequestException('Provider does not support online payment');
+    }
+    if (!(await this.entitlements.storeAllowsProvider(store.id, input.provider))) {
+      throw new BadRequestException('This payment method is not available for this store');
     }
 
     const claimed = await this.claimPaymentAttemptUnderLock({
@@ -600,9 +610,11 @@ export class PaymentOrchestrationService {
     const apiBaseUrl = this.config.get<string>('API_URL')!.replace(/\/$/, '');
     const ref = params.order.publicReference!;
     const customer = this.customerFromAddresses(params.order.addresses);
-    const emailQs =
-      customer?.email?.trim()
-        ? `&email=${encodeURIComponent(customer.email.trim())}`
+    // Contact proof for the result page: the email, or the phone when the order has none.
+    const emailQs = customer?.email?.trim()
+      ? `&email=${encodeURIComponent(customer.email.trim())}`
+      : customer?.phone?.trim()
+        ? `&phone=${encodeURIComponent(customer.phone.trim())}`
         : '';
     const returnUrls = {
       success: `${webUrl}/payment/success?store=${encodeURIComponent(params.store.slug)}&order=${encodeURIComponent(ref)}${emailQs}`,

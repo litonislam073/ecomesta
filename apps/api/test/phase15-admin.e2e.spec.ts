@@ -119,6 +119,15 @@ describe('Phase 15 super admin (e2e)', () => {
     });
   });
 
+  beforeAll(async () => {
+    // A run that was interrupted never reached afterAll, leaving its test plan
+    // active and listed on the public pricing page. Retire any such leftovers.
+    await prisma.subscriptionPlan.updateMany({
+      where: { slug: { startsWith: 'p15-' }, active: true },
+      data: { active: false },
+    });
+  });
+
   afterAll(async () => {
     // Active plans are listed on the public pricing page; keep test plans off it.
     if (subscriptionPlanId) {

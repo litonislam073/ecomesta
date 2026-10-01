@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import Link from 'next/link';
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type {
   OffsetPageMeta,
   OrderListItem,
@@ -13,6 +13,7 @@ import { Button } from '@ecomesta/ui';
 import { StatusBadge } from '@/components/catalog/status-badge';
 import { StoreScoped } from '@/components/catalog/store-scoped';
 import { EmptyState } from '@/components/ui/empty-state';
+import { FilterBar, FilterField } from '@/components/ui/filter-bar';
 import { ErrorState } from '@/components/ui/error-state';
 import { Input } from '@/components/ui/input';
 import { LoadingState } from '@/components/ui/loading-state';
@@ -128,6 +129,17 @@ function OrdersContent() {
     );
   }
 
+  const filtersActive = Boolean(
+    query ||
+      status ||
+      paymentStatus ||
+      fulfillmentStatus ||
+      shippingQuery ||
+      createdFrom ||
+      createdTo ||
+      sortPreset !== 'newest',
+  );
+
   return (
     <div className="space-y-6">
       <div>
@@ -139,132 +151,169 @@ function OrdersContent() {
         </p>
       </div>
 
-      <form
-        className="flex flex-wrap gap-2"
-        onSubmit={(event: FormEvent) => {
-          event.preventDefault();
+      <FilterBar
+        onSubmit={() => {
           setPage(1);
           setQuery(search.trim());
           setShippingQuery(shippingMethod.trim());
         }}
+        search={{
+          value: search,
+          onChange: setSearch,
+          onClear: () => {
+            setSearch('');
+            setPage(1);
+            setQuery('');
+          },
+          placeholder: 'Search by order #, customer name, email or phone…',
+          label: 'Search orders',
+        }}
+        summary={
+          meta
+            ? `${meta.total} ${meta.total === 1 ? 'order' : 'orders'}${
+                filtersActive ? (meta.total === 1 ? ' matches your filters' : ' match your filters') : ''
+              }`
+            : undefined
+        }
+        onReset={
+          filtersActive
+            ? () => {
+                setSearch('');
+                setQuery('');
+                setStatus('');
+                setPaymentStatus('');
+                setFulfillmentStatus('');
+                setShippingMethod('');
+                setShippingQuery('');
+                setCreatedFrom('');
+                setCreatedTo('');
+                setSortPreset('newest');
+                setPage(1);
+              }
+            : undefined
+        }
       >
-        <Input
-          className="max-w-xs"
-          placeholder="Search order #, name, email, phone"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          aria-label="Search orders"
-        />
-        <Select
-          className="w-auto"
-          value={status}
-          onChange={(e) => {
-            setPage(1);
-            setStatus(e.target.value);
-          }}
-          aria-label="Order status filter"
-        >
-          <option value="">All statuses</option>
-          {(
-            [
-              'PENDING',
-              'CONFIRMED',
-              'PROCESSING',
-              'COMPLETED',
-              'CANCELLED',
-            ] as OrderStatus[]
-          ).map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </Select>
-        <Select
-          className="w-auto"
-          value={paymentStatus}
-          onChange={(e) => {
-            setPage(1);
-            setPaymentStatus(e.target.value);
-          }}
-          aria-label="Payment status filter"
-        >
-          <option value="">All payments</option>
-          {(['PENDING', 'PAID', 'FAILED', 'CANCELLED'] as PaymentStatus[]).map(
-            (s) => (
+        <FilterField label="Order status">
+          <Select
+            className="h-10"
+            value={status}
+            onChange={(e) => {
+              setPage(1);
+              setStatus(e.target.value);
+            }}
+            aria-label="Order status filter"
+          >
+            <option value="">All statuses</option>
+            {(
+              [
+                'PENDING',
+                'CONFIRMED',
+                'PROCESSING',
+                'COMPLETED',
+                'CANCELLED',
+              ] as OrderStatus[]
+            ).map((s) => (
               <option key={s} value={s}>
-                {s}
+                {humanize(s)}
               </option>
-            ),
-          )}
-        </Select>
-        <Select
-          className="w-auto"
-          value={fulfillmentStatus}
-          onChange={(e) => {
-            setPage(1);
-            setFulfillmentStatus(e.target.value);
-          }}
-          aria-label="Fulfillment status filter"
-        >
-          <option value="">All fulfillment</option>
-          {(
-            [
-              'UNFULFILLED',
-              'PARTIALLY_FULFILLED',
-              'FULFILLED',
-              'CANCELLED',
-            ] as FulfillmentStatus[]
-          ).map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </Select>
-        <Input
-          className="max-w-[10rem]"
-          placeholder="Shipping method"
-          value={shippingMethod}
-          onChange={(e) => setShippingMethod(e.target.value)}
-          aria-label="Shipping method filter"
-        />
-        <Input
-          type="date"
-          className="w-auto"
-          value={createdFrom}
-          onChange={(e) => {
-            setPage(1);
-            setCreatedFrom(e.target.value);
-          }}
-          aria-label="Created from"
-        />
-        <Input
-          type="date"
-          className="w-auto"
-          value={createdTo}
-          onChange={(e) => {
-            setPage(1);
-            setCreatedTo(e.target.value);
-          }}
-          aria-label="Created to"
-        />
-        <Select
-          className="w-auto"
-          value={sortPreset}
-          onChange={(e) => {
-            setPage(1);
-            setSortPreset(e.target.value as SortPreset);
-          }}
-          aria-label="Sort orders"
-        >
-          <option value="newest">Newest</option>
-          <option value="oldest">Oldest</option>
-          <option value="highest">Highest total</option>
-          <option value="lowest">Lowest total</option>
-        </Select>
-        <Button type="submit" variant="secondary">
-          Search
-        </Button>
-      </form>
+            ))}
+          </Select>
+        </FilterField>
+        <FilterField label="Payment">
+          <Select
+            className="h-10"
+            value={paymentStatus}
+            onChange={(e) => {
+              setPage(1);
+              setPaymentStatus(e.target.value);
+            }}
+            aria-label="Payment status filter"
+          >
+            <option value="">All payments</option>
+            {(['PENDING', 'PAID', 'FAILED', 'CANCELLED'] as PaymentStatus[]).map((s) => (
+              <option key={s} value={s}>
+                {humanize(s)}
+              </option>
+            ))}
+          </Select>
+        </FilterField>
+        <FilterField label="Fulfillment">
+          <Select
+            className="h-10"
+            value={fulfillmentStatus}
+            onChange={(e) => {
+              setPage(1);
+              setFulfillmentStatus(e.target.value);
+            }}
+            aria-label="Fulfillment status filter"
+          >
+            <option value="">All fulfillment</option>
+            {(
+              [
+                'UNFULFILLED',
+                'PARTIALLY_FULFILLED',
+                'FULFILLED',
+                'CANCELLED',
+              ] as FulfillmentStatus[]
+            ).map((s) => (
+              <option key={s} value={s}>
+                {humanize(s)}
+              </option>
+            ))}
+          </Select>
+        </FilterField>
+        <FilterField label="Sort by">
+          <Select
+            className="h-10"
+            value={sortPreset}
+            onChange={(e) => {
+              setPage(1);
+              setSortPreset(e.target.value as SortPreset);
+            }}
+            aria-label="Sort orders"
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="highest">Highest total</option>
+            <option value="lowest">Lowest total</option>
+          </Select>
+        </FilterField>
+        <FilterField label="Shipping method">
+          <Input
+            className="h-10"
+            placeholder="e.g. Inside Dhaka"
+            value={shippingMethod}
+            onChange={(e) => setShippingMethod(e.target.value)}
+            aria-label="Shipping method filter"
+          />
+        </FilterField>
+        <FilterField label="From date">
+          <Input
+            type="date"
+            className="h-10"
+            value={createdFrom}
+            max={createdTo || undefined}
+            onChange={(e) => {
+              setPage(1);
+              setCreatedFrom(e.target.value);
+            }}
+            aria-label="Created from"
+          />
+        </FilterField>
+        <FilterField label="To date">
+          <Input
+            type="date"
+            className="h-10"
+            value={createdTo}
+            min={createdFrom || undefined}
+            onChange={(e) => {
+              setPage(1);
+              setCreatedTo(e.target.value);
+            }}
+            aria-label="Created to"
+          />
+        </FilterField>
+      </FilterBar>
 
       {loading ? <LoadingState label="Loading orders" /> : null}
       {!loading && error ? <ErrorState message={error} onRetry={() => void load()} /> : null}
@@ -346,4 +395,10 @@ export default function OrdersPage() {
       <OrdersContent />
     </StoreScoped>
   );
+}
+
+/** PARTIALLY_FULFILLED → "Partially fulfilled". */
+function humanize(value: string) {
+  const text = value.toLowerCase().replace(/_/g, ' ');
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }

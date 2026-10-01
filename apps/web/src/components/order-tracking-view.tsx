@@ -4,17 +4,18 @@ import { useCallback, useEffect, useState } from 'react';
 import type { PublicOrderConfirmationDetail } from '@ecomesta/types';
 import { OrderTimeline } from '@/components/order-timeline';
 import { formatMoney } from '@/lib/money';
+import { contactProof, contactQuery, type OrderContact } from '@/lib/order-contact';
 import { publicGet, publicPost, PublicApiError } from '@/lib/public-api';
 
 function CancelOrderPanel({
   storeSlug,
   publicReference,
-  email,
+  contact,
   onCancelled,
 }: {
   storeSlug: string;
   publicReference: string;
-  email: string;
+  contact: OrderContact;
   onCancelled: (order: PublicOrderConfirmationDetail) => void;
 }) {
   const [confirming, setConfirming] = useState(false);
@@ -31,7 +32,7 @@ function CancelOrderPanel({
         data: PublicOrderConfirmationDetail;
       }>(
         `/public/stores/${encodeURIComponent(storeSlug)}/orders/${encodeURIComponent(publicReference)}/cancel`,
-        { email, reason: reason.trim() || undefined },
+        { ...contactProof(contact), reason: reason.trim() || undefined },
       );
       onCancelled(result.data);
       setConfirming(false);
@@ -119,18 +120,18 @@ function shouldPoll(order: PublicOrderConfirmationDetail): boolean {
 export function OrderTrackingView({
   storeSlug,
   initial,
-  email,
+  contact,
 }: {
   storeSlug: string;
   initial: PublicOrderConfirmationDetail;
-  email?: string | null;
+  /** Email or phone used at checkout; needed to refresh and to cancel. */
+  contact?: OrderContact | null;
 }) {
   const [order, setOrder] = useState(initial);
 
   const refresh = useCallback(async () => {
-    const qs = email
-      ? `?email=${encodeURIComponent(email)}`
-      : '';
+    const proof = contact ? contactQuery(contact) : '';
+    const qs = proof ? `?${proof}` : '';
     const result = await publicGet<{
       success: true;
       data: PublicOrderConfirmationDetail;
@@ -138,7 +139,8 @@ export function OrderTrackingView({
       `/public/stores/${encodeURIComponent(storeSlug)}/orders/${encodeURIComponent(order.publicReference)}${qs}`,
     );
     setOrder(result.data);
-  }, [storeSlug, order.publicReference, email]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- contact is read by value
+  }, [storeSlug, order.publicReference, contact?.email, contact?.phone]);
 
   useEffect(() => {
     if (!shouldPoll(order)) return;
@@ -168,11 +170,11 @@ export function OrderTrackingView({
             {order.cancelReason}
           </p>
         ) : null}
-        {order.canCancel && email ? (
+        {order.canCancel && contact && contactProof(contact) ? (
           <CancelOrderPanel
             storeSlug={storeSlug}
             publicReference={order.publicReference}
-            email={email}
+            contact={contact}
             onCancelled={setOrder}
           />
         ) : null}

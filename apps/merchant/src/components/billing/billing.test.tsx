@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { MerchantSubscription, PublicPlan } from '@ecomesta/types';
+import type { ManualPaymentAccount, MerchantBillingPayment, MerchantSubscription, PublicPlan } from '@ecomesta/types';
 import { SubscriptionBanner, SuspendedScreen } from '@/components/billing/subscription-notices';
 import { DashboardShell } from '@/components/dashboard/dashboard-shell';
 import BillingView from '@/app/dashboard/billing/billing-view';
@@ -54,6 +54,7 @@ function subscription(overrides: Partial<Sub> = {}, top: Partial<MerchantSubscri
     tenantName: 'Demo Shop',
     canManage: true,
     onlinePaymentAvailable: false,
+    pendingPayment: null,
     ...top,
     subscription: {
       status: 'TRIALING',
@@ -65,7 +66,7 @@ function subscription(overrides: Partial<Sub> = {}, top: Partial<MerchantSubscri
       paymentDueBy: '2026-12-04T18:00:00.000Z',
       currency: 'BDT',
       amountDue: 999,
-      plan: { name: 'Growth', slug: 'growth', monthlyPrice: 999, trialMonths: 2 },
+      plan: { name: 'Growth', slug: 'growth', monthlyPrice: 999, trialMonths: 2, limits: null },
       ...overrides,
     },
   };
@@ -85,6 +86,7 @@ const PLANS: PublicPlan[] = [
   currency: 'BDT',
   monthlyPrice: p.monthly,
   trialMonths: 2,
+  limits: null,
   prices: [
     { billingCycle: 'MONTHLY', amount: p.monthly, months: 1, discountPercent: 0, effectiveMonthly: p.monthly },
     { billingCycle: 'SEMI_ANNUAL', amount: p.y6, months: 6, discountPercent: 10, effectiveMonthly: p.y6 / 6 },
@@ -92,9 +94,45 @@ const PLANS: PublicPlan[] = [
   ],
 }));
 
-function mockApi(data: MerchantSubscription) {
+const ACCOUNTS: ManualPaymentAccount[] = [
+  { method: 'BKASH', label: 'bKash', number: '01309093407', transferType: 'Send Money' },
+  { method: 'NAGAD', label: 'Nagad', number: '01309093407', transferType: 'Send Money' },
+  { method: 'ROCKET', label: 'Rocket', number: '01757591788', transferType: 'Send Money' },
+  { method: 'UPAY', label: 'Upay', number: '01318090622', transferType: 'Send Money' },
+];
+
+function payment(overrides: Partial<MerchantBillingPayment> = {}): MerchantBillingPayment {
+  return {
+    id: 'pay-1',
+    planName: 'Growth',
+    planSlug: 'growth',
+    billingCycle: 'MONTHLY',
+    amount: 999,
+    currency: 'BDT',
+    method: 'BKASH',
+    senderNumber: '01712345678',
+    transactionId: 'ABC123XYZ',
+    status: 'PENDING',
+    rejectionReason: null,
+    createdAt: '2026-10-01T06:00:00.000Z',
+    reviewedAt: null,
+    ...overrides,
+  };
+}
+
+function mockApi(data: MerchantSubscription, payments: MerchantBillingPayment[] = []) {
   get.mockImplementation((path: string) =>
-    Promise.resolve({ success: true, data: path === '/public/plans' ? PLANS : data }),
+    Promise.resolve({
+      success: true,
+      data:
+        path === '/public/plans'
+          ? PLANS
+          : path === '/billing/payment-accounts'
+            ? ACCOUNTS
+            : path === '/billing/payments'
+              ? payments
+              : data,
+    }),
   );
 }
 
@@ -128,8 +166,7 @@ describe('Subscription notices', () => {
     expect(screen.getByRole('link', { name: 'Pay now' })).toHaveAttribute('href', '/dashboard/billing');
   });
 
-  it('suspended screen offers Pay & Reactivate without pretending to take payment', async () => {
-    const user = userEvent.setup();
+  it('suspended screen sends the owner to the payment section', () => {
     render(<SuspendedScreen data={subscription({ status: 'EXPIRED', phase: 'SUSPENDED' })} />);
     expect(screen.getByRole('heading', { name: 'Your store is suspended' })).toBeInTheDocument();
     expect(
@@ -137,18 +174,25 @@ describe('Subscription notices', () => {
         'Your 7-day payment grace period has ended. Complete your payment to reactivate your store.',
       ),
     ).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Pay & Reactivate' }));
-    const region = screen.getByRole('region', { name: 'How to pay' });
-    expect(region).toHaveTextContent('not available in the dashboard yet');
-    expect(region).not.toHaveTextContent(/success/i);
+    expect(screen.getByRole('link', { name: 'Pay & Reactivate' })).toHaveAttribute('href', '/dashboard/billing#pay');
     expect(post).not.toHaveBeenCalled();
+  });
+
+  it('suspended screen says the payment is being checked while one is under review', () => {
+    render(
+      <SuspendedScreen
+        data={subscription({ status: 'EXPIRED', phase: 'SUSPENDED' }, { pendingPayment: payment() })}
+      />,
+    );
+    expect(screen.queryByRole('link', { name: 'Pay & Reactivate' })).not.toBeInTheDocument();
+    expect(screen.getByText(/Your payment is being checked/)).toBeInTheDocument();
   });
 
   it('staff without billing rights see who can pay instead of a payment button', () => {
     render(
       <SuspendedScreen data={subscription({ status: 'EXPIRED', phase: 'SUSPENDED' }, { canManage: false })} />,
     );
-    expect(screen.queryByRole('button', { name: 'Pay & Reactivate' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Pay & Reactivate' })).not.toBeInTheDocument();
     expect(screen.getByText(/Only the account owner or an admin/)).toBeInTheDocument();
   });
 });
@@ -193,8 +237,8 @@ describe('Dashboard subscription gate', () => {
 });
 
 describe('Plan & billing page', () => {
-  function renderBilling(data: MerchantSubscription) {
-    mockApi(data);
+  function renderBilling(data: MerchantSubscription, payments: MerchantBillingPayment[] = []) {
+    mockApi(data, payments);
     nav.pathname = '/dashboard/billing';
     return render(
       <DashboardShell>
@@ -213,16 +257,9 @@ describe('Plan & billing page', () => {
 
   it('shows the suspended state with Pay & Reactivate', async () => {
     renderBilling(subscription({ status: 'EXPIRED', phase: 'SUSPENDED', amountDue: 999 }));
-    expect(await screen.findByRole('button', { name: 'Pay & Reactivate' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Pay & Reactivate' })).toHaveAttribute('href', '/dashboard/billing#pay');
     expect(screen.getByText('Amount due')).toBeInTheDocument();
-  });
-
-  it('drops free-trial wording from the plan picker once the trial is over', async () => {
-    renderBilling(subscription({ status: 'EXPIRED', phase: 'SUSPENDED', amountDue: 999 }));
-    expect(await screen.findByText('Choose the plan and billing period you want to pay for.')).toBeInTheDocument();
-    expect(screen.getByText('Billing period')).toBeInTheDocument();
-    expect(screen.queryByText(/after trial/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/months free/)).not.toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Complete your payment' })).toBeInTheDocument();
   });
 
   it('starts a free trial with the plan and interval from the pricing page', async () => {
@@ -235,7 +272,9 @@ describe('Plan & billing page', () => {
     const business = await screen.findByRole('radio', { name: /Business/ });
     expect(business).toBeChecked();
     expect(screen.getByRole('radio', { name: /6 Months/ })).toBeChecked();
-    expect(screen.getByText('৳10,795 / 6 months')).toBeInTheDocument();
+    expect(business.closest('label')).toHaveTextContent('৳10,795/6 months');
+    // No payment is taken to start a trial.
+    expect(screen.queryByRole('heading', { name: 'Complete your payment' })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Start 2 Months Free' }));
     expect(post).toHaveBeenCalledWith(
@@ -246,9 +285,111 @@ describe('Plan & billing page', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('Your 2-month free trial has started.');
   });
 
-  it('does not offer plan changes on a paid subscription', async () => {
+  it('shows the wallet number and exact amount for the chosen plan and wallet', async () => {
+    const user = userEvent.setup();
+    renderBilling(subscription({ status: 'PAST_DUE', phase: 'GRACE' }));
+    const panel = (await screen.findByRole('heading', { name: 'Complete your payment' })).closest('section')!;
+    expect(panel).toHaveTextContent('Growth plan');
+    expect(panel).toHaveTextContent('bKash number01309093407');
+    expect(panel).toHaveTextContent('Amount৳999');
+
+    await user.click(screen.getByRole('radio', { name: /Rocket/ }));
+    expect(panel).toHaveTextContent('Rocket number01757591788');
+    await user.click(screen.getByRole('radio', { name: /Upay/ }));
+    expect(panel).toHaveTextContent('Upay number01318090622');
+
+    await user.click(screen.getByRole('radio', { name: /Yearly/ }));
+    expect(panel).toHaveTextContent('Amount৳8,991');
+    expect(screen.getByRole('button', { name: /Submit ৳8,991 Upay payment/ })).toBeInTheDocument();
+  });
+
+  it('checks the number and transaction ID before submitting', async () => {
+    const user = userEvent.setup();
+    renderBilling(subscription({ status: 'PAST_DUE', phase: 'GRACE' }));
+    await screen.findByRole('heading', { name: 'Complete your payment' });
+    await user.type(screen.getByLabelText('Your bKash number'), '12345');
+    await user.type(screen.getByLabelText('Transaction ID'), 'ABC123XYZ');
+    await user.click(screen.getByRole('button', { name: /Submit ৳999 bKash payment/ }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/11-digit bKash number/);
+
+    await user.clear(screen.getByLabelText('Your bKash number'));
+    await user.type(screen.getByLabelText('Your bKash number'), '01712345678');
+    await user.clear(screen.getByLabelText('Transaction ID'));
+    await user.type(screen.getByLabelText('Transaction ID'), 'x');
+    await user.click(screen.getByRole('button', { name: /Submit ৳999 bKash payment/ }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/transaction ID/);
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('submits the payment and shows it is under review', async () => {
+    const user = userEvent.setup();
+    post.mockResolvedValue({ success: true, data: payment({ method: 'NAGAD', amount: 999 }) });
+    renderBilling(subscription({ status: 'PAST_DUE', phase: 'GRACE' }));
+    await screen.findByRole('heading', { name: 'Complete your payment' });
+    await user.click(screen.getByRole('radio', { name: /Nagad/ }));
+    await user.type(screen.getByLabelText('Your Nagad number'), '+880 1712-345678');
+    await user.type(screen.getByLabelText('Transaction ID'), 'abc123xyz');
+    await user.click(screen.getByRole('button', { name: /Submit ৳999 Nagad payment/ }));
+
+    expect(post).toHaveBeenCalledWith(
+      '/billing/payments',
+      {
+        planSlug: 'growth',
+        billingCycle: 'MONTHLY',
+        method: 'NAGAD',
+        senderNumber: '01712345678',
+        transactionId: 'ABC123XYZ',
+      },
+      { token: 'token' },
+    );
+    expect(await screen.findByRole('heading', { name: 'Payment under review' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Complete your payment' })).not.toBeInTheDocument();
+    expect(screen.getByText('Under review')).toBeInTheDocument();
+  });
+
+  it('hides the payment form while a payment is under review', async () => {
+    renderBilling(subscription({}, { pendingPayment: payment() }), [payment()]);
+    expect(await screen.findByRole('heading', { name: 'Payment under review' })).toBeInTheDocument();
+    expect(screen.getByText(/We are checking your ৳999 bKash payment for the Growth plan/)).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Complete your payment' })).not.toBeInTheDocument();
+  });
+
+  it('explains a rejected payment and lets the merchant pay again', async () => {
+    renderBilling(subscription({ status: 'PAST_DUE', phase: 'GRACE' }), [
+      payment({ status: 'REJECTED', rejectionReason: 'No payment with this ID reached our number.' }),
+    ]);
+    expect(await screen.findByText(/We could not confirm your last payment/)).toHaveTextContent(
+      'No payment with this ID reached our number.',
+    );
+    expect(screen.getByText('Not confirmed')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Complete your payment' })).toBeInTheDocument();
+  });
+
+  it('offers a free switch to a cheaper plan during the trial, but not an upgrade', async () => {
+    const user = userEvent.setup();
+    post.mockResolvedValue({
+      success: true,
+      data: subscription({ plan: { name: 'Starter', slug: 'starter', monthlyPrice: 499, trialMonths: 2, limits: null } }),
+    });
+    renderBilling(subscription());
+    await screen.findByRole('heading', { name: 'Complete your payment' });
+
+    await user.click(screen.getByRole('radio', { name: /^Business/ }));
+    expect(screen.queryByRole('button', { name: /Switch to Business now/ })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('radio', { name: /^Starter/ }));
+    await user.click(screen.getByRole('button', { name: 'Switch to Starter now' }));
+    expect(post).toHaveBeenCalledWith(
+      '/billing/subscription',
+      { planSlug: 'starter', billingCycle: 'MONTHLY' },
+      { token: 'token' },
+    );
+  });
+
+  it('lets a paid subscription renew or change plan by paying', async () => {
     renderBilling(subscription({ status: 'ACTIVE', phase: 'ACTIVE', endsAt: '2027-01-27T18:00:00.000Z' }));
     expect(await screen.findByText(/paid through January 28, 2027/)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Update plan' })).not.toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Complete your payment' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Switch to/ })).not.toBeInTheDocument();
   });
 });

@@ -75,7 +75,7 @@ describe('SF-03 checkout shows current server pricing (e2e)', () => {
       .post(`/api/v1/public/stores/${s.slug}/checkout`)
       .set('Idempotency-Key', idempotencyKey ?? `sf03-${n}-${suffix}`)
       .send({
-        customer: { name: 'SF03 Buyer', email },
+        customer: { name: 'SF03 Buyer', email, phone: '01711000000' },
         shippingAddress: { name: 'SF03 Buyer', addressLine1: '1 Main', city: 'Dhaka', country: 'BD', email },
         billingSameAsShipping: true,
         paymentProvider: 'COD',

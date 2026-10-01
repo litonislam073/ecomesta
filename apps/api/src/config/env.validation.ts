@@ -8,6 +8,7 @@ import {
   IsOptional,
   IsString,
   IsUrl,
+  Matches,
   Max,
   Min,
   validateSync,
@@ -182,6 +183,18 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsString()
   EMAIL_DISPATCH_INTERVAL_MS?: string;
+
+  /** Inbox told about new manual subscription payments. Defaults to ecomestabd@gmail.com. */
+  @IsOptional()
+  @IsEmail()
+  BILLING_NOTIFICATION_EMAIL?: string;
+
+  /** OAuth web client ID for "Continue with Google". Unset hides the button. */
+  @IsOptional()
+  @Matches(/^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/, {
+    message: 'GOOGLE_CLIENT_ID must look like 1234-abc.apps.googleusercontent.com',
+  })
+  GOOGLE_CLIENT_ID?: string;
 }
 
 /** Optional settings where an empty `KEY=` line in an env file means "not set". */
@@ -198,6 +211,8 @@ const EMPTY_MEANS_UNSET = [
   'SUPPORT_EMAIL',
   'EMAIL_PREVIEW_DIR',
   'EMAIL_DISPATCH_INTERVAL_MS',
+  'GOOGLE_CLIENT_ID',
+  'BILLING_NOTIFICATION_EMAIL',
 ];
 
 export function validateEnv(rawConfig: Record<string, unknown>): EnvironmentVariables {

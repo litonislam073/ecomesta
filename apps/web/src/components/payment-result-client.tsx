@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { PublicPaymentStatus } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
 import { formatMoney } from '@/lib/money';
+import { contactProof, contactQuery } from '@/lib/order-contact';
 import { publicGet, publicPost, PublicApiError } from '@/lib/public-api';
 
 /**
@@ -23,21 +24,24 @@ export function PaymentResultClient({
   const store = params.get('store') ?? '';
   const order = params.get('order') ?? '';
   const paymentRef = params.get('ref') ?? '';
+  // Contact proof: the checkout email, or the phone when the order has no email.
   const email = params.get('email') ?? '';
+  const phone = params.get('phone') ?? '';
+  const proofQuery = contactQuery({ email, phone });
   const [status, setStatus] = useState<PublicPaymentStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    if (!store || !paymentRef || !email.trim()) {
+    if (!store || !paymentRef || !proofQuery) {
       setStatus(null);
-      if (store && paymentRef && !email.trim()) {
-        setError('Checkout email is required to view payment status.');
+      if (store && paymentRef && !proofQuery) {
+        setError('The checkout phone number or email is required to view payment status.');
       }
       return;
     }
     try {
-      const qs = `?email=${encodeURIComponent(email.trim())}`;
+      const qs = `?${proofQuery}`;
       const result = await publicGet<{ success: true; data: PublicPaymentStatus }>(
         `/public/stores/${encodeURIComponent(store)}/payments/${encodeURIComponent(paymentRef)}${qs}`,
       );
@@ -48,7 +52,7 @@ export function PaymentResultClient({
         err instanceof PublicApiError ? err.message : 'Could not load payment status',
       );
     }
-  }, [store, paymentRef, email]);
+  }, [store, paymentRef, proofQuery]);
 
   useEffect(() => {
     void load();
@@ -57,7 +61,7 @@ export function PaymentResultClient({
   }, [load]);
 
   async function retry() {
-    if (!store || !order || !email.trim()) return;
+    if (!store || !order || !proofQuery) return;
     const provider = status?.provider;
     if (
       provider !== 'TEST' &&
@@ -75,7 +79,7 @@ export function PaymentResultClient({
       }>(`/public/stores/${encodeURIComponent(store)}/payments/retry`, {
         publicReference: order,
         provider,
-        email: email.trim(),
+        ...contactProof({ email, phone }),
       });
       if (result.data.redirectUrl) {
         window.location.href = result.data.redirectUrl;

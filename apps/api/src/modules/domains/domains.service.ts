@@ -15,6 +15,7 @@ import {
 import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import type { Request } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PlanEntitlementsService } from '../billing/plan-entitlements.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
 import {
@@ -53,6 +54,7 @@ export class DomainsService {
     private readonly audit: AuditService,
     private readonly resolver: StoreDomainResolver,
     @Inject(DOMAIN_DNS_PROVIDER) private readonly dns: DomainDnsProvider,
+    private readonly entitlements: PlanEntitlementsService,
   ) {}
 
   async list(userId: string, storeId: string) {
@@ -91,6 +93,7 @@ export class DomainsService {
     req?: Request,
   ) {
     const store = await this.assertWriteAccess(userId, storeId);
+    await this.entitlements.assertFeature(storeId, 'customDomain');
     const hostname = this.normalizeOrThrow(dto.hostname);
 
     if (isReservedHostname(hostname, this.resolver.platformRootDomain)) {

@@ -33,6 +33,8 @@ type CartState = {
 };
 
 type CartContextValue = {
+  /** False until the saved cart has been read from this browser. */
+  hydrated: boolean;
   storeSlug: string;
   currency: string;
   lines: CartLine[];
@@ -146,7 +148,6 @@ export function CartProvider({
           lines: [...prev.lines, { ...line, quantity: qty }],
         };
       });
-      setDrawerOpen(true);
     },
     [storeId, storeSlug, currency],
   );
@@ -210,6 +211,7 @@ export function CartProvider({
   );
 
   const value: CartContextValue = {
+    hydrated,
     storeSlug,
     currency,
     lines: state.lines,

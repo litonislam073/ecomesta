@@ -724,6 +724,31 @@ export interface PublicCategory {
   children?: PublicCategory[];
 }
 
+/** Where a gallery image is currently shown in the store. */
+export interface MediaUsage {
+  kind: 'product' | 'category' | 'store' | 'theme';
+  id: string | null;
+  label: string;
+}
+
+/** An image in the store's media gallery (merchant dashboard). */
+export interface MediaItem {
+  id: string;
+  /** Public URL; usable anywhere the store accepts an image URL. */
+  url: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  width: number | null;
+  height: number | null;
+  createdAt: string;
+  /** Empty when the image is not used anywhere and can be deleted. */
+  usedBy: MediaUsage[];
+}
+
+/** What an upload is for; each adds the checks that use relies on. */
+export type MediaPurpose = 'general' | 'product' | 'logo' | 'favicon' | 'background';
+
 export interface PublicProductImage {
   url: string;
   alt: string;
@@ -945,6 +970,61 @@ export interface PublicPlan {
   monthlyPrice: number;
   trialMonths: number;
   prices: PublicPlanPrice[];
+  /** What the plan unlocks. `null` when the plan sets no limits (everything allowed). */
+  limits: PlanLimits | null;
+}
+
+/** Features and quotas a subscription plan unlocks, enforced by the API. */
+export interface PlanLimits {
+  /** Products across all of the business's stores; `null` is unlimited. */
+  maxProducts: number | null;
+  customDomain: boolean;
+  /** SSLCommerz online payments (bKash, Nagad, cards). */
+  onlinePayments: boolean;
+  stripe: boolean;
+  coupons: boolean;
+  deliveryZones: boolean;
+  /** Every storefront theme; otherwise only the default theme. */
+  allThemes: boolean;
+}
+
+export type ManualPaymentMethod = 'BKASH' | 'NAGAD' | 'ROCKET' | 'UPAY';
+export type BillingPaymentStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+/** An Ecomesta wallet the merchant sends the subscription payment to. */
+export interface ManualPaymentAccount {
+  method: ManualPaymentMethod;
+  label: string;
+  number: string;
+  /** "Send Money" for personal wallets. */
+  transferType: string;
+}
+
+/** A subscription payment the merchant reported (merchant view, no internal user ids). */
+export interface MerchantBillingPayment {
+  id: string;
+  planName: string;
+  planSlug: string;
+  billingCycle: BillingCycle;
+  amount: number;
+  currency: 'BDT';
+  method: ManualPaymentMethod;
+  senderNumber: string;
+  transactionId: string;
+  status: BillingPaymentStatus;
+  rejectionReason: string | null;
+  createdAt: string;
+  reviewedAt: string | null;
+}
+
+/** A submitted payment as the Super Admin reviews it. */
+export interface AdminBillingPayment extends MerchantBillingPayment {
+  payToNumber: string;
+  tenant: { id: string; name: string; slug: string };
+  submittedBy: { id: string; email: string; name: string | null };
+  reviewedBy: { id: string; email: string } | null;
+  /** The business's current subscription when the payment was listed. */
+  currentSubscription: { status: SubscriptionStatus; planName: string } | null;
 }
 
 /** The signed-in merchant's platform subscription (no internal IDs). */
@@ -965,8 +1045,10 @@ export interface MerchantSubscription {
     currency: 'BDT';
     /** Amount for one billing period of the selected cycle after the trial. */
     amountDue: number;
-    plan: { name: string; slug: string; monthlyPrice: number; trialMonths: number };
+    plan: { name: string; slug: string; monthlyPrice: number; trialMonths: number; limits: PlanLimits | null };
   } | null;
+  /** A payment waiting for Ecomesta to check, if any. */
+  pendingPayment: MerchantBillingPayment | null;
 }
 
 /** Statuses a Super Admin may assign directly; other states stay system-owned. */

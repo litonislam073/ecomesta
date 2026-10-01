@@ -13,7 +13,7 @@ import {
 import { Card } from '@/components/ui/card';
 import { useSettingsDraft, useStoreSettings } from '@/lib/store-settings';
 
-const KEYS = ['checkoutRequirePhone', 'checkoutAllowOrderNotes'] as const;
+const KEYS = ['checkoutAllowOrderNotes'] as const;
 
 export default function CheckoutSettingsPage() {
   const { storeId, settings, loading, error, reload, save, saving, canEdit } =
@@ -38,14 +38,6 @@ export default function CheckoutSettingsPage() {
             {!canEdit ? <ReadOnlyNotice /> : null}
             <Card title="Customer information">
               <ToggleRow
-                id="checkout-require-phone"
-                label="Require a phone number"
-                description="Recommended for cash on delivery so couriers can reach the customer. Orders without a phone number are rejected."
-                checked={Boolean(draft.checkoutRequirePhone)}
-                disabled={!canEdit}
-                onChange={(v) => setField('checkoutRequirePhone', v)}
-              />
-              <ToggleRow
                 id="checkout-allow-notes"
                 label="Allow order notes"
                 description="Show an optional note field at checkout for delivery instructions."
@@ -66,14 +58,19 @@ export default function CheckoutSettingsPage() {
                   hint="Customers order without creating an account."
                 />
                 <ReadOnlyRow
-                  label="Email address"
+                  label="Phone number"
                   value="Required"
-                  hint="Used for order tracking and by online payment providers."
+                  hint="Couriers use it to reach the customer, and customers use it to track their order."
+                />
+                <ReadOnlyRow
+                  label="Email address"
+                  value="Optional"
+                  hint="Customers can add one for order updates; it is not needed to place an order."
                 />
                 <ReadOnlyRow
                   label="Shipping address"
                   value="Required"
-                  hint="Division, district and upazila are used to calculate delivery."
+                  hint="District and thana / upazila are used to calculate delivery."
                 />
               </dl>
             </Card>

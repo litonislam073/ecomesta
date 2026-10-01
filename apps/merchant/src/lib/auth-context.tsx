@@ -37,6 +37,8 @@ interface AuthContextValue {
     lastName: string;
     phone?: string;
   }) => Promise<void>;
+  /** Resolves `created: true` when the Google sign-in opened a new account. */
+  loginWithGoogle: (credential: string) => Promise<{ created: boolean }>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<boolean>;
   reloadProfile: () => Promise<void>;
@@ -143,6 +145,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [loadProfile],
   );
 
+  const loginWithGoogle = useCallback(
+    async (credential: string) => {
+      const result = await api.post<{
+        success: true;
+        data: { accessToken: string; created: boolean; user: AuthUser };
+      }>('/auth/google', { credential }, { token: null });
+      setAccessToken(result.data.accessToken);
+      await loadProfile(result.data.accessToken);
+      return { created: result.data.created };
+    },
+    [loadProfile],
+  );
+
   const reloadProfile = useCallback(async () => {
     if (!accessToken) return;
     await loadProfile(accessToken);
@@ -171,6 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       login,
       register,
+      loginWithGoogle,
       logout,
       refreshSession,
       reloadProfile,
@@ -181,6 +197,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       login,
       register,
+      loginWithGoogle,
       logout,
       refreshSession,
       reloadProfile,

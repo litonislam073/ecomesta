@@ -12,6 +12,7 @@ import {
 import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PlanEntitlementsService } from '../billing/plan-entitlements.service';
 import {
   CreateShippingZoneDto,
   ListShippingZonesQueryDto,
@@ -25,6 +26,7 @@ export class ShippingZonesService {
     private readonly prisma: PrismaService,
     private readonly authorization: AuthorizationService,
     private readonly audit: AuditService,
+    private readonly entitlements: PlanEntitlementsService,
   ) {}
 
   async create(
@@ -37,6 +39,7 @@ export class ShippingZonesService {
       StoreRole.STORE_MANAGER,
     ]);
     const store = await this.requireStore(storeId);
+    await this.entitlements.assertFeature(storeId, 'deliveryZones');
     const locations = await this.normalizeLocations(dto.locations);
 
     const zone = await this.prisma.$transaction(async (tx) => {

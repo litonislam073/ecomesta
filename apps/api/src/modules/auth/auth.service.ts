@@ -1,7 +1,9 @@
+import { randomBytes } from 'crypto';
 import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -13,7 +15,9 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { PasswordService } from './password.service';
 import { AuthRateLimitService } from './auth-rate-limit.service';
+import { GoogleAuthDto } from './dto/google-auth.dto';
 import { LoginDto } from './dto/login.dto';
+import { GoogleIdTokenVerifier } from './google-id-token.verifier';
 import { RegisterDto } from './dto/register.dto';
 import type {
   AccessTokenPayload,
@@ -41,6 +45,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly rateLimit: AuthRateLimitService,
     private readonly email: EmailService,
+    private readonly google: GoogleIdTokenVerifier,
   ) {}
 
   async register(dto: RegisterDto, req: Request, res: Response) {
@@ -114,6 +119,98 @@ export class AuthService {
         accessToken: tokens.accessToken,
         ...this.refreshTokenBodyField(tokens.refreshToken),
         expiresIn: tokens.expiresIn,
+        user: await this.toSafeProfile(user.id),
+      },
+    };
+  }
+
+  authProviders() {
+    const clientId = this.google.clientId();
+    return {
+      success: true as const,
+      data: { google: clientId ? { clientId } : null },
+    };
+  }
+
+  /**
+   * Sign in or register with a Google ID token. An existing account with the
+   * same verified email is linked to the Google account on first use.
+   */
+  async googleSignIn(dto: GoogleAuthDto, req: Request, res: Response) {
+    await this.enforceRateLimit(`google:${this.clientIp(req)}`, 20, 60);
+
+    if (!this.google.clientId()) {
+      throw new ServiceUnavailableException('Sign in with Google is not available.');
+    }
+    const identity = await this.google.verify(dto.credential);
+    if (!identity) {
+      throw new UnauthorizedException('Google sign-in failed. Please try again.');
+    }
+    if (!identity.emailVerified) {
+      throw new UnauthorizedException('Your Google account email is not verified.');
+    }
+
+    const email = this.normalizeEmail(identity.email);
+    const bySub = await this.prisma.user.findUnique({ where: { googleSub: identity.sub } });
+    const existing = bySub ?? (await this.prisma.user.findUnique({ where: { email } }));
+
+    let userId: string;
+    let created = false;
+    if (existing) {
+      if (existing.googleSub && existing.googleSub !== identity.sub) {
+        throw new ConflictException(
+          'This email is linked to a different Google account. Sign in with your password.',
+        );
+      }
+      this.assertUserCanAuthenticate(existing.status);
+      await this.prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          googleSub: identity.sub,
+          lastLoginAt: new Date(),
+          ...(existing.emailVerifiedAt ? {} : { emailVerifiedAt: new Date() }),
+          ...(existing.avatarUrl || !identity.picture ? {} : { avatarUrl: identity.picture }),
+        },
+      });
+      userId = existing.id;
+    } else {
+      await this.enforceRateLimit(`register:${this.clientIp(req)}`, 10, 60);
+      // Google-only accounts get an unguessable password; "Forgot password" can set a real one.
+      const passwordHash = await this.passwordService.hash(randomBytes(32).toString('base64url'));
+      const user = await this.prisma.$transaction(async (tx) => {
+        const createdUser = await tx.user.create({
+          data: {
+            email,
+            passwordHash,
+            googleSub: identity.sub,
+            firstName: identity.givenName?.slice(0, 100) ?? null,
+            lastName: identity.familyName?.slice(0, 100) ?? null,
+            avatarUrl: identity.picture,
+            platformRole: PlatformRole.USER,
+            status: UserStatus.ACTIVE,
+            emailVerifiedAt: new Date(),
+            lastLoginAt: new Date(),
+          },
+        });
+        await this.email.sendWelcomeEmail(createdUser, tx);
+        return createdUser;
+      });
+      this.email.dispatchPending();
+      userId = user.id;
+      created = true;
+    }
+
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    const tokens = await this.issueSession(user.id, user.email, user.platformRole, req);
+    this.setRefreshCookie(res, tokens.refreshToken);
+
+    return {
+      success: true as const,
+      data: {
+        accessToken: tokens.accessToken,
+        ...this.refreshTokenBodyField(tokens.refreshToken),
+        expiresIn: tokens.expiresIn,
+        created,
         user: await this.toSafeProfile(user.id),
       },
     };

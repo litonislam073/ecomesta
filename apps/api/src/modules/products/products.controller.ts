@@ -29,6 +29,7 @@ import {
   CreateProductDto,
   CreateVariantDto,
   ListProductsQueryDto,
+  SetProductImageFromGalleryDto,
   UpdateProductDto,
   UpdateVariantDto,
 } from './dto/product.dto';
@@ -123,6 +124,19 @@ export class ProductsController {
     @Req() req: Request,
   ) {
     return this.productsService.setImage(user.userId, storeId, productId, file, req);
+  }
+
+  @Post(':productId/image/from-gallery')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Use an image from the store’s media gallery as the product image' })
+  setImageFromGallery(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Param('productId', ParseUUIDPipe) productId: string,
+    @Body() dto: SetProductImageFromGalleryDto,
+    @Req() req: Request,
+  ) {
+    return this.productsService.setImageFromGallery(user.userId, storeId, productId, dto.mediaId, req);
   }
 
   @Delete(':productId/image')

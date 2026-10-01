@@ -1,4 +1,5 @@
 import type {
+  BillingPaymentParams,
   MerchantWelcomeParams,
   PasswordChangedParams,
   StoreCreatedParams,
@@ -196,3 +197,104 @@ export function supportRequestEmail(
     brand,
   );
 }
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  BKASH: 'bKash',
+  NAGAD: 'Nagad',
+  ROCKET: 'Rocket',
+  UPAY: 'Upay',
+};
+
+function taka(amount: number): string {
+  return `BDT ${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(Math.round(amount))}`;
+}
+
+function paymentDetails(params: BillingPaymentParams): DetailRow[] {
+  return [
+    { label: 'Business', value: params.businessName },
+    { label: 'Plan', value: `${params.planName} · ${CYCLE_LABELS[params.billingCycle] ?? params.billingCycle}` },
+    { label: 'Amount', value: taka(params.amount) },
+    { label: 'Method', value: PAYMENT_METHOD_LABELS[params.method] ?? params.method },
+    { label: 'Paid to', value: params.payToNumber },
+    { label: 'Sender number', value: params.senderNumber },
+    { label: 'Transaction ID', value: params.transactionId },
+    { label: 'Submitted', value: formatDateTime(params.submittedAt) },
+  ];
+}
+
+/** To Ecomesta: a merchant reported a payment that needs checking. */
+export function billingPaymentSubmittedEmail(
+  params: BillingPaymentParams,
+  brand: EmailBrand,
+  submittedBy: { name: string; email: string },
+  reviewUrl: string,
+): RenderedEmail {
+  const method = PAYMENT_METHOD_LABELS[params.method] ?? params.method;
+  return renderEmail(
+    {
+      subject: `[Payment] ${params.businessName}: ${taka(params.amount)} via ${method} (${params.transactionId})`,
+      preheader: `${params.businessName} paid ${taka(params.amount)} for ${params.planName}. Check and approve.`,
+      heading: 'New subscription payment to check',
+      intro: [
+        `${submittedBy.name} (${submittedBy.email}) reported a ${method} payment for the ${params.planName} plan.`,
+        `Check that ${taka(params.amount)} arrived on ${params.payToNumber} with this transaction ID, then approve or reject it in the admin dashboard. The plan is not active until it is approved.`,
+      ],
+      details: paymentDetails(params),
+      cta: { label: 'Review payment', url: reviewUrl },
+      notice: 'Reply to this email to contact the merchant directly.',
+    },
+    brand,
+  );
+}
+
+/** To the merchant: the payment was confirmed and the plan is active. */
+export function billingPaymentApprovedEmail(
+  params: BillingPaymentParams,
+  brand: EmailBrand,
+  firstName: string | null,
+  billingUrl: string,
+): RenderedEmail {
+  const until = params.paidThrough ? ` It is paid through ${formatDate(params.paidThrough)}.` : '';
+  return renderEmail(
+    {
+      subject: `Payment confirmed — your ${params.planName} plan is active`,
+      preheader: `We received ${taka(params.amount)}. Your ${params.planName} plan is active.`,
+      heading: 'Your payment is confirmed',
+      intro: [
+        greeting(firstName),
+        `Thank you! We received your payment of ${taka(params.amount)} and your ${params.planName} plan is now active.${until}`,
+      ],
+      details: paymentDetails(params),
+      cta: { label: 'View plan & billing', url: billingUrl },
+      outro: [supportSentence(brand)],
+    },
+    brand,
+  );
+}
+
+/** To the merchant: the payment could not be confirmed. */
+export function billingPaymentRejectedEmail(
+  params: BillingPaymentParams,
+  brand: EmailBrand,
+  firstName: string | null,
+  billingUrl: string,
+): RenderedEmail {
+  return renderEmail(
+    {
+      subject: 'We could not confirm your Ecomesta payment',
+      preheader: `Your ${taka(params.amount)} payment for ${params.planName} needs attention.`,
+      heading: 'We could not confirm your payment',
+      intro: [
+        greeting(firstName),
+        `We checked your ${PAYMENT_METHOD_LABELS[params.method] ?? params.method} payment for the ${params.planName} plan but could not confirm it.`,
+        ...(params.rejectionReason ? [`Reason: ${params.rejectionReason}`] : []),
+        'Please check the transaction ID and submit the payment again from Plan & billing.',
+      ],
+      details: paymentDetails(params),
+      cta: { label: 'Go to plan & billing', url: billingUrl },
+      outro: [supportSentence(brand)],
+    },
+    brand,
+  );
+}
+

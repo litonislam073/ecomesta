@@ -1,9 +1,7 @@
 'use client';
 
-import { useId, useState } from 'react';
 import Link from 'next/link';
 import type { MerchantSubscription } from '@ecomesta/types';
-import { Button } from '@ecomesta/ui';
 import {
   billingCycleDefinition,
   formatBdt,
@@ -11,7 +9,6 @@ import {
   formatCyclePrice,
   PAYMENT_GRACE_DAYS,
 } from '@ecomesta/utils';
-import { marketingSiteUrl } from '@/lib/marketing-site';
 
 type Sub = NonNullable<MerchantSubscription['subscription']>;
 
@@ -23,10 +20,7 @@ export function priceAfterTrial(sub: Sub): string {
   return formatCyclePrice(sub.amountDue, sub.billingCycle);
 }
 
-/**
- * Payment entry point. Paid subscription checkout is not switched on yet, so
- * this explains how to pay instead of pretending to take a payment.
- */
+/** Payment entry point: takes the owner to the bKash / Nagad / Rocket / Upay checkout. */
 export function PaymentCta({
   label,
   data,
@@ -34,10 +28,6 @@ export function PaymentCta({
   label: 'Pay now' | 'Pay & Reactivate';
   data: MerchantSubscription;
 }) {
-  const [open, setOpen] = useState(false);
-  const panelId = useId();
-  const contactHref = `${marketingSiteUrl()}/contact`;
-
   if (!data.canManage) {
     return (
       <p className="text-sm text-[var(--color-muted)]">
@@ -45,43 +35,20 @@ export function PaymentCta({
       </p>
     );
   }
-
+  if (data.pendingPayment) {
+    return (
+      <p className="text-sm text-[var(--color-ink)]">
+        Your payment is being checked. We will email you as soon as it is confirmed.
+      </p>
+    );
+  }
   return (
-    <div>
-      <Button
-        type="button"
-        className="h-10 rounded-lg px-5 font-semibold"
-        aria-expanded={open}
-        aria-controls={panelId}
-        onClick={() => setOpen((value) => !value)}
-      >
-        {label}
-      </Button>
-      {open ? (
-        <div
-          id={panelId}
-          role="region"
-          aria-label="How to pay"
-          className="mt-3 rounded-lg border border-[var(--color-border)] bg-white p-3 text-sm text-[var(--color-ink)]"
-        >
-          {data.onlinePaymentAvailable ? null : (
-            <>
-              <p>
-                Online subscription payment is not available in the dashboard yet. Contact the
-                Ecomesta team to complete your payment. Your store is reactivated as soon as the
-                payment is confirmed.
-              </p>
-              <a
-                href={contactHref}
-                className="mt-2 inline-block font-semibold text-[var(--color-accent)] underline-offset-4 hover:underline"
-              >
-                Contact Ecomesta support
-              </a>
-            </>
-          )}
-        </div>
-      ) : null}
-    </div>
+    <Link
+      href="/dashboard/billing#pay"
+      className="inline-flex h-10 items-center rounded-lg bg-[var(--color-accent)] px-5 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+    >
+      {label}
+    </Link>
   );
 }
 

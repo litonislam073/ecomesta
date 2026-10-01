@@ -83,7 +83,7 @@ export default function SettingsOverviewPage() {
               title="Checkout"
               lines={[
                 'Guest checkout',
-                settings.checkoutRequirePhone ? 'Phone required' : 'Phone optional',
+                'Phone required, email optional',
                 settings.checkoutAllowOrderNotes ? 'Order notes on' : 'Order notes off',
               ]}
             />

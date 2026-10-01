@@ -78,7 +78,10 @@ describe('ThemesService draft/publish separation', () => {
         findUnique: jest.fn().mockResolvedValue({ id: 'store-1', tenantId: 'tenant-1' }),
         update: jest.fn(),
       },
-      theme: { findFirst: jest.fn().mockResolvedValue(themeB) },
+      theme: {
+        findFirst: jest.fn().mockResolvedValue(themeB),
+        findUnique: jest.fn().mockResolvedValue(themeB),
+      },
       storeTheme: {
         findFirst: jest.fn(),
         update: jest.fn(),
@@ -94,13 +97,15 @@ describe('ThemesService draft/publish separation', () => {
       assertStoreAccess: jest.fn(),
     };
     const audit = { log: jest.fn() };
+    const entitlements = { assertFeature: jest.fn() };
     const service = new ThemesService(
       prisma as never,
       authorization as never,
       audit as never,
       redis as never,
+      entitlements as never,
     );
-    return { service, prisma, tx, del, audit };
+    return { service, prisma, tx, del, audit, entitlements };
   }
 
   /** The store theme lock must be the first statement of the transaction. */
@@ -115,7 +120,7 @@ describe('ThemesService draft/publish separation', () => {
   }
 
   it('selecting a theme never publishes or clears the public cache', async () => {
-    const { service, prisma, tx, del } = build();
+    const { service, prisma, tx, del, entitlements } = build();
     // Inside the lock: active row is A. After commit: live theme is A.
     tx.storeTheme.findFirst.mockResolvedValueOnce(liveA);
     prisma.storeTheme.findFirst.mockResolvedValueOnce(liveA);
@@ -132,6 +137,8 @@ describe('ThemesService draft/publish separation', () => {
     expect(res.data.liveTheme?.slug).toBe('default');
     expect(res.data.hasUnpublishedChanges).toBe(true);
     expectLockedFirst(tx);
+    // 'minimal' is not the default theme, so the plan must include every theme.
+    expect(entitlements.assertFeature).toHaveBeenCalledWith('store-1', 'allThemes');
   });
 
   it('saving a draft merges into the draft read under the lock and writes only the draft', async () => {

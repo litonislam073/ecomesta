@@ -16,6 +16,7 @@ import {
 import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PlanEntitlementsService } from '../billing/plan-entitlements.service';
 import {
   isSupportedCouponType,
   normalizeCouponCode,
@@ -32,6 +33,7 @@ export class CouponsService {
     private readonly prisma: PrismaService,
     private readonly authorization: AuthorizationService,
     private readonly audit: AuditService,
+    private readonly entitlements: PlanEntitlementsService,
   ) {}
 
   async create(
@@ -44,6 +46,7 @@ export class CouponsService {
       StoreRole.STORE_MANAGER,
     ]);
     const store = await this.requireStore(storeId);
+    await this.entitlements.assertFeature(storeId, 'coupons');
     const data = this.toCreateData(storeId, dto);
 
     let coupon: Coupon;

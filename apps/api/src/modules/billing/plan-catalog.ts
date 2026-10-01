@@ -1,5 +1,5 @@
 import type { Prisma, SubscriptionPlan } from '@prisma/client';
-import type { PublicPlan } from '@ecomesta/types';
+import type { PlanLimits, PublicPlan } from '@ecomesta/types';
 import {
   BILLING_CYCLES,
   DEFAULT_TRIAL_MONTHS,
@@ -40,6 +40,28 @@ export function readPlanSettings(configuration: Prisma.JsonValue | null): PlanSe
   };
 }
 
+/**
+ * Limits from `configuration.limits`. A plan without a `limits` object
+ * (e.g. an older or custom plan) restricts nothing.
+ */
+export function readPlanLimits(configuration: Prisma.JsonValue | null): PlanLimits | null {
+  const raw = asRecord(configuration).limits;
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const limits = raw as Record<string, unknown>;
+  const flag = (key: string) => limits[key] === true;
+  const maxProducts = limits.maxProducts;
+  return {
+    maxProducts:
+      typeof maxProducts === 'number' && Number.isInteger(maxProducts) && maxProducts >= 0 ? maxProducts : null,
+    customDomain: flag('customDomain'),
+    onlinePayments: flag('onlinePayments'),
+    stripe: flag('stripe'),
+    coupons: flag('coupons'),
+    deliveryZones: flag('deliveryZones'),
+    allThemes: flag('allThemes'),
+  };
+}
+
 export function planMonthlyPrice(plan: Pick<SubscriptionPlan, 'monthlyPrice'>): number {
   return Number(plan.monthlyPrice.toString());
 }
@@ -57,6 +79,7 @@ export function toPublicPlan(plan: SubscriptionPlan): PublicPlan {
     currency: 'BDT',
     monthlyPrice,
     trialMonths: settings.trialMonths,
+    limits: readPlanLimits(plan.configuration),
     prices: BILLING_CYCLES.map((cycle) => ({
       billingCycle: cycle.code,
       amount: billingCyclePrice(monthlyPrice, cycle.code),

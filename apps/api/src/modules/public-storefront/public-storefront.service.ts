@@ -323,8 +323,8 @@ export class PublicStorefrontService {
         address: store.address,
       },
       checkout: {
-        requireEmail: true,
-        requirePhone: store.checkoutRequirePhone,
+        requireEmail: false,
+        requirePhone: true,
         allowOrderNotes: store.checkoutAllowOrderNotes,
       },
       allowCustomerCancellation: store.allowCustomerCancellation,

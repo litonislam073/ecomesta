@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { PublicOrderConfirmationDetail } from '@ecomesta/types';
 import { OrderTrackingView } from '@/components/order-tracking-view';
+import { contactQuery, readContact } from '@/lib/order-contact';
 import { publicGet, PublicApiError } from '@/lib/public-api';
 import { requirePublicStore } from '@/lib/store-resolver';
 
@@ -33,19 +34,17 @@ export default async function OrderConfirmationPage({
 }) {
   const { store, storeSlug } = await requirePublicStore(searchParams);
   const reference = decodeURIComponent(params.reference);
-  const emailParam = searchParams.email;
-  const email =
-    typeof emailParam === 'string' && emailParam.trim()
-      ? emailParam.trim()
-      : null;
+  // Contact proof: the checkout email, or the phone when the order has no email.
+  const contact = readContact(searchParams);
+  const proofQuery = contactQuery(contact);
 
-  if (!email) {
+  if (!proofQuery) {
     notFound();
   }
 
   let order: PublicOrderConfirmationDetail;
   try {
-    const qs = `?email=${encodeURIComponent(email)}`;
+    const qs = `?${proofQuery}`;
     const result = await publicGet<{
       success: true;
       data: PublicOrderConfirmationDetail;
@@ -74,7 +73,7 @@ export default async function OrderConfirmationPage({
         </p>
       </div>
 
-      <OrderTrackingView storeSlug={storeSlug} initial={order} email={email} />
+      <OrderTrackingView storeSlug={storeSlug} initial={order} contact={contact} />
 
       <div className="flex flex-wrap justify-center gap-4 text-sm">
         <Link

@@ -41,6 +41,8 @@ function apiBaseUrl(): string {
 const NO_REFRESH_PATHS = new Set([
   '/auth/login',
   '/auth/register',
+  '/auth/google',
+  '/auth/providers',
   '/auth/refresh',
   '/auth/logout',
 ]);

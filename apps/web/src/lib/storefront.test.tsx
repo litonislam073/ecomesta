@@ -7,6 +7,7 @@ import { CartProvider, useCart } from '@/lib/cart';
 import { readStoreQuery } from '@/lib/domain-routing';
 
 vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
   useSearchParams: () => new URLSearchParams('store=alpha'),
 }));
 

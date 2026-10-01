@@ -12,6 +12,7 @@ import { CartProvider } from '@/lib/cart';
 import { themeCssVariables } from '@/lib/theme';
 
 vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
   useSearchParams: () => new URLSearchParams('store=alpha'),
   usePathname: () => '/',
 }));

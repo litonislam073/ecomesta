@@ -74,7 +74,9 @@ export class PublicCheckoutService {
     }
 
     const shippingAddress = this.toOrderAddress(dto.shippingAddress, dto.customer);
-    if (store.checkoutRequirePhone && !shippingAddress.phone?.trim()) {
+    // Email is optional, so the phone number is how the customer is reached and
+    // how they look the order up later: every storefront order needs one.
+    if (!shippingAddress.phone?.trim()) {
       throw new BadRequestException('A phone number is required to place this order');
     }
     const customerNote = store.checkoutAllowOrderNotes ? dto.customerNote : undefined;

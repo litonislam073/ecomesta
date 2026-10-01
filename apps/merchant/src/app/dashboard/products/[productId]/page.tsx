@@ -247,6 +247,11 @@ function ProductDetailContent() {
               <span className="text-sm text-[var(--color-muted)]">{product.productType}</span>
             </div>
           ) : null}
+          {product && canWrite ? (
+            <p className="mt-2 text-sm text-[var(--color-muted)]">
+              Edit the image, details, price and variants below. Click “Save changes” to update the product.
+            </p>
+          ) : null}
         </div>
         {canWrite && product && product.status !== 'ARCHIVED' ? (
           <Button variant="danger" onClick={() => setArchiveOpen(true)}>

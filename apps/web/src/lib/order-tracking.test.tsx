@@ -98,7 +98,7 @@ describe('Track order + confirmation tracking', () => {
     const user = userEvent.setup();
     render(<TrackOrderForm storeSlug="alpha" />);
     await user.type(screen.getByLabelText(/order reference/i), 'short-ref');
-    await user.type(screen.getByLabelText(/checkout email/i), 'ada@example.com');
+    await user.type(screen.getByLabelText(/checkout phone or email/i), 'ada@example.com');
     await user.click(screen.getByRole('button', { name: /track order/i }));
     expect(
       await screen.findByText(/full order reference/i),
@@ -115,7 +115,7 @@ describe('Track order + confirmation tracking', () => {
       screen.getByLabelText(/order reference/i),
       sampleOrder.publicReference,
     );
-    await user.type(screen.getByLabelText(/checkout email/i), 'ada@example.com');
+    await user.type(screen.getByLabelText(/checkout phone or email/i), 'ada@example.com');
     await user.click(screen.getByRole('button', { name: /track order/i }));
 
     await waitFor(() => {
@@ -124,6 +124,21 @@ describe('Track order + confirmation tracking', () => {
     expect(await screen.findByText('EM-100013')).toBeInTheDocument();
     expect(screen.getByText(/order placed/i)).toBeInTheDocument();
     expect(screen.getByText(/tracking: TRK-1/i)).toBeInTheDocument();
+  });
+
+  it('looks up an order by the checkout phone number', async () => {
+    const user = userEvent.setup();
+    getMock.mockResolvedValue({ success: true, data: sampleOrder });
+    render(<TrackOrderForm storeSlug="alpha" />);
+    await user.type(screen.getByLabelText(/order reference/i), sampleOrder.publicReference);
+    await user.type(screen.getByLabelText(/checkout phone or email/i), '01711 000000');
+    await user.click(screen.getByRole('button', { name: /track order/i }));
+    await waitFor(() =>
+      expect(getMock).toHaveBeenCalledWith(
+        `/public/stores/alpha/orders/${sampleOrder.publicReference}?phone=01711%20000000`,
+      ),
+    );
+    expect(await screen.findByText('EM-100013')).toBeInTheDocument();
   });
 
   it('shows a non-enumerating error for invalid lookups', async () => {
@@ -137,7 +152,7 @@ describe('Track order + confirmation tracking', () => {
       screen.getByLabelText(/order reference/i),
       'abcdefghijklmnopqrstuvwxyz012345',
     );
-    await user.type(screen.getByLabelText(/checkout email/i), 'nope@example.com');
+    await user.type(screen.getByLabelText(/checkout phone or email/i), 'nope@example.com');
     await user.click(screen.getByRole('button', { name: /track order/i }));
     expect(
       await screen.findByText(/could not find an order/i),

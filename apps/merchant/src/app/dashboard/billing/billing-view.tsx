@@ -1,16 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import type { MerchantSubscription } from '@ecomesta/types';
+import type { ManualPaymentAccount, MerchantBillingPayment, MerchantSubscription } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
 import { formatBdt, formatBillingDate, PAYMENT_GRACE_DAYS } from '@ecomesta/utils';
-import { PlanPicker, defaultSelection } from '@/components/billing/plan-picker';
 import {
-  PaymentCta,
-  cycleLabel,
-  priceAfterTrial,
-} from '@/components/billing/subscription-notices';
+  ManualPaymentPanel,
+  PaymentHistory,
+  PendingPaymentNotice,
+} from '@/components/billing/manual-payment';
+import { CycleSwitch, PlanCards } from '@/components/billing/plan-cards';
+import { defaultSelection } from '@/components/billing/plan-picker';
+import { PaymentCta, cycleLabel, priceAfterTrial } from '@/components/billing/subscription-notices';
 import { Card } from '@/components/ui/card';
 import { ErrorState } from '@/components/ui/error-state';
 import { LoadingState } from '@/components/ui/loading-state';
@@ -32,6 +34,7 @@ function Detail({ label, value }: { label: string; value: string }) {
 
 function StatusSummary({ data, sub }: { data: MerchantSubscription; sub: Sub }) {
   const dueBy = sub.paymentDueBy ? formatBillingDate(sub.paymentDueBy) : null;
+  const paying = Boolean(data.pendingPayment);
   switch (sub.phase) {
     case 'TRIAL':
       return (
@@ -39,12 +42,10 @@ function StatusSummary({ data, sub }: { data: MerchantSubscription; sub: Sub }) 
           <p className="inline-flex rounded-full bg-[#e3f1ec] px-3 py-1 text-sm font-semibold text-[var(--color-accent)]">
             {sub.plan.trialMonths} Months Free
           </p>
-          {sub.trialEndsAt ? (
-            <p>Your free trial ends on {formatBillingDate(sub.trialEndsAt)}.</p>
-          ) : null}
+          {sub.trialEndsAt ? <p>Your free trial ends on {formatBillingDate(sub.trialEndsAt)}.</p> : null}
           <p className="text-sm text-[var(--color-muted)]">
-            No payment is needed today. {priceAfterTrial(sub)} after the trial, with a{' '}
-            {PAYMENT_GRACE_DAYS}-day grace period to pay{dueBy ? ` (by ${dueBy})` : ''}.
+            No payment is needed today. {priceAfterTrial(sub)} after the trial — pay any time before then to keep
+            your store running, with a {PAYMENT_GRACE_DAYS}-day grace period{dueBy ? ` (until ${dueBy})` : ''}.
           </p>
         </div>
       );
@@ -52,11 +53,11 @@ function StatusSummary({ data, sub }: { data: MerchantSubscription; sub: Sub }) 
       return (
         <div className="space-y-3">
           <div>
-            <p className="font-semibold">Your trial has ended</p>
-            <p>Your store is currently in a {PAYMENT_GRACE_DAYS}-day payment grace period.</p>
-            {dueBy ? <p className="font-semibold">Payment due by {dueBy}.</p> : null}
+            <p className="font-semibold">Payment due</p>
+            <p>Your store is in a {PAYMENT_GRACE_DAYS}-day payment grace period.</p>
+            {dueBy ? <p className="font-semibold">Pay by {dueBy} to keep your store online.</p> : null}
           </div>
-          <PaymentCta label="Pay now" data={data} />
+          {paying ? null : <PaymentCta label="Pay now" data={data} />}
         </div>
       );
     case 'LAPSED':
@@ -66,22 +67,23 @@ function StatusSummary({ data, sub }: { data: MerchantSubscription; sub: Sub }) 
           <div>
             <p className="font-semibold">Your store is suspended</p>
             <p>
-              Your {PAYMENT_GRACE_DAYS}-day payment grace period has ended. Complete your payment to
-              reactivate your store.
+              Your {PAYMENT_GRACE_DAYS}-day payment grace period has ended. Complete your payment to reactivate your
+              store.
             </p>
           </div>
-          <PaymentCta label="Pay & Reactivate" data={data} />
+          {paying ? null : <PaymentCta label="Pay & Reactivate" data={data} />}
         </div>
       );
     case 'ACTIVE':
       return (
         <p>
           Your subscription is active
-          {sub.endsAt ? ` and paid through ${formatBillingDate(sub.endsAt)}` : ''}.
+          {sub.endsAt ? ` and paid through ${formatBillingDate(sub.endsAt)}` : ''}. Renew any time below to add
+          another period.
         </p>
       );
     default:
-      return <p>This subscription has been cancelled. Contact Ecomesta support to restart it.</p>;
+      return <p>This subscription has been cancelled. Choose a plan below and pay to restart it.</p>;
   }
 }
 
@@ -92,12 +94,14 @@ export default function BillingView() {
   const searchParams = useSearchParams();
   const requested = readPlanSelection(searchParams);
   const [selection, setSelection] = useState<PlanSelection | null>(null);
+  const [accounts, setAccounts] = useState<ManualPaymentAccount[] | null>(null);
+  const [payments, setPayments] = useState<MerchantBillingPayment[]>([]);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
 
   const sub = data?.subscription ?? null;
-  const canChangePlan =
-    Boolean(data?.canManage) && (!sub || !['ACTIVE', 'CANCELLED'].includes(sub.status));
+  const pending = data?.pendingPayment ?? null;
+  const canManage = Boolean(data?.canManage);
 
   useEffect(() => {
     if (!plans || selection) return;
@@ -105,7 +109,25 @@ export default function BillingView() {
     setSelection(defaultSelection(plans, requested ?? current));
   }, [plans, sub, requested, selection]);
 
-  async function savePlan() {
+  const loadPayments = useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const [accountsRes, paymentsRes] = await Promise.all([
+        api.get<{ success: true; data: ManualPaymentAccount[] }>('/billing/payment-accounts', { token: accessToken }),
+        api.get<{ success: true; data: MerchantBillingPayment[] }>('/billing/payments', { token: accessToken }),
+      ]);
+      setAccounts(accountsRes.data);
+      setPayments(paymentsRes.data);
+    } catch {
+      setAccounts([]);
+    }
+  }, [accessToken]);
+
+  useEffect(() => {
+    if (sub) void loadPayments();
+  }, [sub, loadPayments]);
+
+  async function startTrialOrSwitch() {
     if (!selection || !accessToken) return;
     setSaving(true);
     setMessage(null);
@@ -127,22 +149,43 @@ export default function BillingView() {
     }
   }
 
-  const unchanged =
-    sub && selection && sub.plan.slug === selection.plan && sub.billingCycle === selection.cycle;
-  const trialOver = Boolean(sub && sub.phase !== 'TRIAL');
+  function onPaymentSubmitted(payment: MerchantBillingPayment) {
+    if (data) setData({ ...data, pendingPayment: payment });
+    setPayments((current) => [payment, ...current]);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  const selectedPlan = plans?.find((plan) => plan.slug === selection?.plan) ?? null;
+  const currentPlan = plans?.find((plan) => plan.slug === sub?.plan.slug) ?? null;
+  const lastRejected = !pending && payments[0]?.status === 'REJECTED' ? payments[0] : null;
+  // During the trial the same or a cheaper plan (or another billing period) is free to switch to.
+  const freeSwitch =
+    sub?.phase === 'TRIAL' &&
+    selection !== null &&
+    selectedPlan !== null &&
+    currentPlan !== null &&
+    selectedPlan.monthlyPrice <= currentPlan.monthlyPrice &&
+    (selection.plan !== sub.plan.slug || selection.cycle !== sub.billingCycle);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Plan &amp; billing</h1>
-        <p className="mt-1 text-sm text-[var(--color-muted)]">
-          Your Ecomesta subscription. Prices are in BDT.
-        </p>
+        <p className="mt-1 text-sm text-[var(--color-muted)]">Your Ecomesta subscription. Prices are in BDT.</p>
       </div>
 
       {loading && !data ? <LoadingState label="Loading your subscription" /> : null}
       {error && !data ? (
         <ErrorState title="Could not load your subscription" message={error} onRetry={() => void refresh()} />
+      ) : null}
+
+      {pending ? <PendingPaymentNotice payment={pending} /> : null}
+      {lastRejected ? (
+        <p role="status" className="rounded-xl border border-[#f1c9b8] bg-[#fdf3ee] px-4 py-3 text-sm text-[#a3441f]">
+          We could not confirm your last payment ({formatBdt(lastRejected.amount)}, TrxID {lastRejected.transactionId})
+          {lastRejected.rejectionReason ? `: ${lastRejected.rejectionReason}` : '.'} Please check the details and pay
+          again below.
+        </p>
       ) : null}
 
       {data && sub ? (
@@ -155,61 +198,90 @@ export default function BillingView() {
                 label={sub.phase === 'ACTIVE' ? 'Price' : sub.phase === 'TRIAL' ? 'After trial' : 'Amount due'}
                 value={sub.phase === 'TRIAL' ? priceAfterTrial(sub) : formatBdt(sub.amountDue)}
               />
-              <Detail
-                label="Started"
-                value={formatBillingDate(sub.startsAt)}
-              />
+              <Detail label="Started" value={formatBillingDate(sub.startsAt)} />
             </dl>
           </div>
         </Card>
       ) : null}
 
-      {data && !sub ? (
-        <Card title="Choose a plan" description="Every plan starts with 2 months free. No payment details needed.">
-          <p className="text-sm text-[var(--color-muted)]">
-            Your business account does not have a plan yet.
-          </p>
-        </Card>
-      ) : null}
-
-      {data && canChangePlan && plans && plans.length > 0 && selection ? (
-        <Card
-          title={sub ? 'Change plan' : 'Start your free trial'}
-          description={
-            !sub
-              ? 'Nothing is charged today.'
-              : trialOver
-                ? 'Choose the plan and billing period you want to pay for.'
-                : 'Changing plan does not restart or extend your trial.'
-          }
-        >
-          <div className="space-y-4">
-            <PlanPicker
-              plans={plans}
-              value={selection}
-              onChange={setSelection}
-              idPrefix="billing"
-              trialOver={trialOver}
-            />
-            {message ? (
-              <p
-                role={message.tone === 'error' ? 'alert' : 'status'}
-                className={`text-sm ${message.tone === 'error' ? 'text-[#a3441f]' : 'text-[var(--color-accent)]'}`}
-              >
-                {message.text}
+      {data && plans && plans.length > 0 && selection ? (
+        <section aria-labelledby="choose-plan-title" className="space-y-4">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 id="choose-plan-title" className="text-lg font-semibold">
+                {sub ? 'Choose your plan' : 'Start your free trial'}
+              </h2>
+              <p className="text-sm text-[var(--color-muted)]">
+                {sub
+                  ? 'Pick a plan and billing period, then pay below. Plan changes take effect once your payment is confirmed.'
+                  : 'Every plan starts with 2 months free. Nothing is charged today.'}
               </p>
-            ) : null}
+            </div>
+            <CycleSwitch
+              value={selection.cycle}
+              onChange={(cycle) => setSelection({ ...selection, cycle })}
+              idPrefix="billing"
+            />
+          </div>
+          <PlanCards
+            plans={plans}
+            cycle={selection.cycle}
+            selected={selection.plan}
+            currentSlug={sub?.plan.slug ?? null}
+            onSelect={(plan) => setSelection({ ...selection, plan })}
+            idPrefix="billing"
+          />
+          {message ? (
+            <p
+              role={message.tone === 'error' ? 'alert' : 'status'}
+              className={`text-sm ${message.tone === 'error' ? 'text-[#a3441f]' : 'text-[var(--color-accent)]'}`}
+            >
+              {message.text}
+            </p>
+          ) : null}
+          {canManage && !sub ? (
             <Button
               type="button"
-              className="h-10 rounded-lg px-5 font-semibold"
-              disabled={saving || Boolean(unchanged)}
-              onClick={() => void savePlan()}
+              className="h-11 rounded-lg px-6 font-semibold"
+              disabled={saving}
+              onClick={() => void startTrialOrSwitch()}
             >
-              {saving ? 'Saving…' : sub ? 'Update plan' : 'Start 2 Months Free'}
+              {saving ? 'Starting…' : 'Start 2 Months Free'}
             </Button>
-          </div>
-        </Card>
+          ) : null}
+          {canManage && freeSwitch ? (
+            <div className="flex flex-wrap items-center gap-3 rounded-xl bg-[#f4f7f5] px-4 py-3 text-sm">
+              <span>Switching to {selectedPlan?.name} is free during your trial.</span>
+              <Button
+                type="button"
+                variant="secondary"
+                className="h-9 rounded-lg px-4 font-semibold"
+                disabled={saving}
+                onClick={() => void startTrialOrSwitch()}
+              >
+                {saving ? 'Switching…' : `Switch to ${selectedPlan?.name} now`}
+              </Button>
+            </div>
+          ) : null}
+        </section>
       ) : null}
+
+      {data && sub && !canManage ? (
+        <p className="text-sm text-[var(--color-muted)]">Only the account owner or an admin can pay for the plan.</p>
+      ) : null}
+
+      {data && sub && canManage && !pending && selectedPlan && selection && accounts && accounts.length > 0 ? (
+        <ManualPaymentPanel
+          plan={selectedPlan}
+          cycle={selection.cycle}
+          accounts={accounts}
+          token={accessToken}
+          trialEndsAt={sub.phase === 'TRIAL' ? sub.trialEndsAt : null}
+          onSubmitted={onPaymentSubmitted}
+        />
+      ) : null}
+
+      {sub ? <PaymentHistory payments={payments} /> : null}
     </div>
   );
 }

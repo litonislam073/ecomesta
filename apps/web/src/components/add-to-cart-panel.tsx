@@ -3,11 +3,14 @@
 import { useMemo, useState } from 'react';
 import type { PublicProductDetail } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
-import { useCart } from '@/lib/cart';
+import { lineKey, useCart } from '@/lib/cart';
 import { formatMoney } from '@/lib/money';
+import { useOrderNow } from '@/lib/use-order-now';
+import { ViewCartLink } from '@/components/view-cart-link';
 
 export function AddToCartPanel({ product }: { product: PublicProductDetail }) {
-  const { addItem } = useCart();
+  const { addItem, lines } = useCart();
+  const orderNow = useOrderNow();
   const [variantId, setVariantId] = useState(
     product.variants.find((v) => v.available)?.id ?? product.variants[0]?.id ?? '',
   );
@@ -23,25 +26,26 @@ export function AddToCartPanel({ product }: { product: PublicProductDetail }) {
   const available = selected ? selected.available : product.available;
   const needsVariant = product.hasVariants;
 
-  function onAdd() {
+  /** The cart line for the current selection, or null after showing why it can't be bought. */
+  function selectedLine() {
     setError(null);
     if (needsVariant && !selected) {
       setError('Select a variant.');
-      return;
+      return null;
     }
     if (needsVariant && selected && !selected.available) {
       setError('That variant is unavailable.');
-      return;
+      return null;
     }
     if (!needsVariant && !product.available) {
       setError('This product is unavailable.');
-      return;
+      return null;
     }
     if (quantity < 1) {
       setError('Quantity must be at least 1.');
-      return;
+      return null;
     }
-    addItem({
+    return {
       productId: product.id,
       productSlug: product.slug,
       productName: product.name,
@@ -51,8 +55,24 @@ export function AddToCartPanel({ product }: { product: PublicProductDetail }) {
       unitPrice: price,
       quantity,
       imageUrl: product.images[0]?.url ?? null,
-    });
+    };
   }
+
+  function onAdd() {
+    const line = selectedLine();
+    if (line) addItem(line);
+  }
+
+  function onOrderNow() {
+    const line = selectedLine();
+    if (line) orderNow(line);
+  }
+
+  const canBuy = needsVariant ? !!variantId && available : product.available;
+  // The selected variant (or the product) is already in the cart: offer the cart instead.
+  const inCart = lines.some(
+    (l) => lineKey(l) === lineKey({ productId: product.id, variantId: selected?.id ?? null }),
+  );
 
   return (
     <div className="space-y-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
@@ -107,12 +127,18 @@ export function AddToCartPanel({ product }: { product: PublicProductDetail }) {
         </p>
       ) : null}
 
-      <Button
-        onClick={onAdd}
-        disabled={needsVariant ? !variantId || !available : !product.available}
-      >
-        Add to cart
-      </Button>
+      <div className="grid grid-cols-2 gap-3">
+        <Button onClick={onOrderNow} disabled={!canBuy}>
+          Order now
+        </Button>
+        {inCart ? (
+          <ViewCartLink />
+        ) : (
+          <Button variant="secondary" onClick={onAdd} disabled={!canBuy}>
+            Add to cart
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

@@ -140,7 +140,7 @@ describe('Prod remediation — payment races + tenant suspend (e2e)', () => {
       .set('Idempotency-Key', key)
       .send({
         items: [{ productId, quantity: 1 }],
-        customer: { name: 'Race Guest', email: guestEmail },
+        customer: { name: 'Race Guest', email: guestEmail, phone: '01711000000' },
         shippingAddress: {
           name: 'Race Guest',
           addressLine1: '1 Main',

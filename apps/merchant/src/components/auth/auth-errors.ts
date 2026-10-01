@@ -16,7 +16,7 @@ export function isValidEmail(value: string): boolean {
  */
 export function authErrorMessage(
   error: unknown,
-  action: 'login' | 'register' | 'recovery',
+  action: 'login' | 'register' | 'recovery' | 'google',
 ): { message: string; details?: string[] } {
   if (!(error instanceof ApiError) || error.status >= 500) {
     return { message: CONNECTION_ERROR };

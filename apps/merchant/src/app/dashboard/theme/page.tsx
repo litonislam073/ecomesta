@@ -309,6 +309,7 @@ function ThemeContent() {
                 onSelect={(themeId) => void selectTheme(themeId)}
               />
               <BrandingSection
+                storeId={selectedStoreId}
                 value={draft.branding ?? {}}
                 saved={storeTheme.configuration?.branding}
                 disabled={fieldsDisabled}
@@ -332,6 +333,7 @@ function ThemeContent() {
                 onChange={(value) => updateSection('header', value)}
               />
               <HeroSection
+                storeId={selectedStoreId}
                 value={draft.hero ?? {}}
                 disabled={fieldsDisabled}
                 onChange={(value) => updateSection('hero', value)}

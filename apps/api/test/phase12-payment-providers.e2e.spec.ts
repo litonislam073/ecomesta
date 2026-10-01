@@ -183,6 +183,7 @@ describe('Phase 12 payment providers (e2e)', () => {
         customer: {
           name: 'Pay Guest',
           email: `pay.guest.${suffix}@example.com`,
+          phone: '01711000000',
         },
         shippingAddress: {
           name: 'Pay Guest',
@@ -284,6 +285,7 @@ describe('Phase 12 payment providers (e2e)', () => {
         customer: {
           name: 'Retry Guest',
           email: `retry.guest.${suffix}@example.com`,
+          phone: '01711000000',
         },
         shippingAddress: {
           name: 'Retry Guest',

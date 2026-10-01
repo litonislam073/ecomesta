@@ -6,6 +6,7 @@ import { AuthTokenService } from '../auth-tokens/auth-token.service';
 import { EmailConfigService } from './email.config';
 import {
   EMAIL_EVENTS,
+  type BillingPaymentParams,
   type MerchantWelcomeParams,
   type OutboxEmail,
   type PasswordChangedParams,
@@ -16,6 +17,9 @@ import type { EmailMessage } from './providers/email-provider';
 import { EmailSendError } from './providers/email-provider';
 import type { EmailBrand } from './templates/layout';
 import {
+  billingPaymentApprovedEmail,
+  billingPaymentRejectedEmail,
+  billingPaymentSubmittedEmail,
   emailVerificationEmail,
   passwordChangedEmail,
   passwordResetEmail,
@@ -102,6 +106,9 @@ export class EmailComposer {
     if (email.event === EMAIL_EVENTS.SUPPORT_REQUEST) {
       return this.composeSupport(email.params, row, brand);
     }
+    if (email.event === EMAIL_EVENTS.BILLING_PAYMENT_SUBMITTED) {
+      return this.composeBillingPaymentSubmitted(email.params, row, brand);
+    }
 
     const user = row.userId
       ? await this.prisma.user.findUnique({
@@ -128,6 +135,27 @@ export class EmailComposer {
       }
       case EMAIL_EVENTS.PASSWORD_CHANGED:
         return this.toMessage(email.event, user.email, passwordChangedEmail(email.params as PasswordChangedParams, brand));
+      case EMAIL_EVENTS.BILLING_PAYMENT_APPROVED:
+      case EMAIL_EVENTS.BILLING_PAYMENT_REJECTED: {
+        const profile = await this.prisma.user.findUnique({
+          where: { id: user.id },
+          select: { firstName: true },
+        });
+        const render =
+          email.event === EMAIL_EVENTS.BILLING_PAYMENT_APPROVED
+            ? billingPaymentApprovedEmail
+            : billingPaymentRejectedEmail;
+        return this.toMessage(
+          email.event,
+          user.email,
+          render(
+            email.params as BillingPaymentParams,
+            brand,
+            profile?.firstName ?? null,
+            `${this.config.merchantUrl()}/dashboard/billing`,
+          ),
+        );
+      }
       default:
         throw new EmailSendError('configuration', true);
     }
@@ -165,6 +193,34 @@ export class EmailComposer {
       storeId: row.storeId,
     });
     const composed = this.toMessage(EMAIL_EVENTS.SUPPORT_REQUEST, supportEmail, rendered);
+    composed.message.replyTo = sender.email;
+    return composed;
+  }
+
+  /** To Ecomesta's billing inbox; replies go to the merchant who paid. */
+  private async composeBillingPaymentSubmitted(
+    params: BillingPaymentParams,
+    row: OutboxRow,
+    brand: EmailBrand,
+  ): Promise<ComposedEmail> {
+    if (!row.userId) throw new EmailSendError('configuration', true);
+    const sender = await this.prisma.user.findUnique({
+      where: { id: row.userId },
+      select: { email: true, firstName: true, lastName: true },
+    });
+    if (!sender) throw new EmailSendError('configuration', true);
+    const name = [sender.firstName, sender.lastName].filter(Boolean).join(' ') || sender.email;
+    const rendered = billingPaymentSubmittedEmail(
+      params,
+      brand,
+      { name, email: sender.email },
+      `${this.config.adminUrl()}/dashboard/payments`,
+    );
+    const composed = this.toMessage(
+      EMAIL_EVENTS.BILLING_PAYMENT_SUBMITTED,
+      this.config.billingNotificationEmail(),
+      rendered,
+    );
     composed.message.replyTo = sender.email;
     return composed;
   }

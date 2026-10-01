@@ -188,6 +188,21 @@ enum BillingCycle {
   SEMI_ANNUAL
 }
 
+/// Mobile wallets merchants pay Ecomesta subscriptions with (manual transfer).
+enum ManualPaymentMethod {
+  BKASH
+  NAGAD
+  ROCKET
+  UPAY
+}
+
+/// Review state of a manually submitted subscription payment.
+enum BillingPaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum NotificationType {
   SYSTEM
   ORDER
@@ -221,6 +236,8 @@ model User {
   lastName        String?      @map("last_name")
   phone           String?
   avatarUrl       String?      @map("avatar_url")
+  /// Google account `sub` claim once the user has signed in with Google.
+  googleSub       String?      @unique @map("google_sub")
   platformRole    PlatformRole @default(USER) @map("platform_role")
   status          UserStatus   @default(ACTIVE)
   emailVerifiedAt DateTime?    @map("email_verified_at")
@@ -228,14 +245,16 @@ model User {
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")
 
-  tenantMemberships TenantUser[]
-  storeMemberships  StoreUser[]
-  mediaUploads      Media[]        @relation("MediaUploadedBy")
-  auditLogs         AuditLog[]
-  notifications     Notification[]
-  authSessions      AuthSession[]
-  authTokens        AuthToken[]
-  emailDeliveries   EmailDelivery[]
+  tenantMemberships        TenantUser[]
+  storeMemberships         StoreUser[]
+  mediaUploads             Media[]          @relation("MediaUploadedBy")
+  auditLogs                AuditLog[]
+  notifications            Notification[]
+  authSessions             AuthSession[]
+  authTokens               AuthToken[]
+  emailDeliveries          EmailDelivery[]
+  billingPaymentsSubmitted BillingPayment[] @relation("BillingPaymentSubmittedBy")
+  billingPaymentsReviewed  BillingPayment[] @relation("BillingPaymentReviewedBy")
 
   @@index([status])
   @@index([platformRole])
@@ -292,81 +311,82 @@ model Tenant {
   createdAt DateTime     @default(now()) @map("created_at")
   updatedAt DateTime     @updatedAt @map("updated_at")
 
-  stores        Store[]
-  memberships   TenantUser[]
-  subscriptions Subscription[]
-  auditLogs     AuditLog[]
-  notifications Notification[]
+  stores          Store[]
+  memberships     TenantUser[]
+  subscriptions   Subscription[]
+  billingPayments BillingPayment[]
+  auditLogs       AuditLog[]
+  notifications   Notification[]
 
   @@index([status])
   @@map("tenants")
 }
 
 model Store {
-  id          String      @id @default(uuid()) @db.Uuid
-  tenantId    String      @map("tenant_id") @db.Uuid
-  name        String
-  slug        String      @db.Citext
-  description String?
-  logoUrl     String?     @map("logo_url")
-  faviconUrl  String?     @map("favicon_url")
-  status      StoreStatus @default(DRAFT)
+  id                            String       @id @default(uuid()) @db.Uuid
+  tenantId                      String       @map("tenant_id") @db.Uuid
+  name                          String
+  slug                          String       @db.Citext
+  description                   String?
+  logoUrl                       String?      @map("logo_url")
+  faviconUrl                    String?      @map("favicon_url")
+  status                        StoreStatus  @default(DRAFT)
   /// Set only while the platform subscription has lapsed: the status to restore
   /// once payment is confirmed. Null for stores suspended for any other reason.
   statusBeforeBillingSuspension StoreStatus? @map("status_before_billing_suspension")
-  currency      String      @default("BDT") @db.Char(3)
-  timezone      String      @default("Asia/Dhaka")
+  currency                      String       @default("BDT") @db.Char(3)
+  timezone                      String       @default("Asia/Dhaka")
   /// Storefront content language (`en-BD` or `bn-BD` for merchant-created stores).
-  locale        String      @default("en-BD")
+  locale                        String       @default("en-BD")
   /// Public store contact details shown on the storefront.
-  email         String?     @db.VarChar(255)
-  phone         String?     @db.VarChar(40)
-  address       String?     @db.VarChar(500)
+  email                         String?      @db.VarChar(255)
+  phone                         String?      @db.VarChar(40)
+  address                       String?      @db.VarChar(500)
   /// Public checkout rejects orders without a phone number when true.
-  checkoutRequirePhone    Boolean @default(false) @map("checkout_require_phone")
+  checkoutRequirePhone          Boolean      @default(false) @map("checkout_require_phone")
   /// Public checkout drops customer notes when false.
-  checkoutAllowOrderNotes Boolean @default(true) @map("checkout_allow_order_notes")
+  checkoutAllowOrderNotes       Boolean      @default(true) @map("checkout_allow_order_notes")
   /// Guests may cancel unpaid, unfulfilled PENDING/CONFIRMED orders from order tracking.
-  allowCustomerCancellation Boolean @default(false) @map("allow_customer_cancellation")
+  allowCustomerCancellation     Boolean      @default(false) @map("allow_customer_cancellation")
   /// Storefront SEO (plain text; rendered through framework metadata only).
-  seoTitle           String?  @map("seo_title") @db.VarChar(120)
-  seoDescription     String?  @map("seo_description") @db.VarChar(320)
-  seoKeywords        String[] @default([]) @map("seo_keywords")
-  ogTitle            String?  @map("og_title") @db.VarChar(120)
-  ogDescription      String?  @map("og_description") @db.VarChar(320)
-  ogImageUrl         String?  @map("og_image_url") @db.VarChar(2048)
-  seoIndexingEnabled Boolean  @default(true) @map("seo_indexing_enabled")
+  seoTitle                      String?      @map("seo_title") @db.VarChar(120)
+  seoDescription                String?      @map("seo_description") @db.VarChar(320)
+  seoKeywords                   String[]     @default([]) @map("seo_keywords")
+  ogTitle                       String?      @map("og_title") @db.VarChar(120)
+  ogDescription                 String?      @map("og_description") @db.VarChar(320)
+  ogImageUrl                    String?      @map("og_image_url") @db.VarChar(2048)
+  seoIndexingEnabled            Boolean      @default(true) @map("seo_indexing_enabled")
   /// Monotonic counter used to allocate human order numbers (EM-100001…).
-  orderSequence Int         @default(100000) @map("order_sequence")
+  orderSequence                 Int          @default(100000) @map("order_sequence")
   /// Set once when the optional sample catalog is imported; never cleared.
-  demoCatalogImportedAt     DateTime? @map("demo_catalog_imported_at")
+  demoCatalogImportedAt         DateTime?    @map("demo_catalog_imported_at")
   /// Set once when the merchant creates their first non-demo product; never cleared.
-  firstRealProductCreatedAt DateTime? @map("first_real_product_created_at")
-  createdAt     DateTime    @default(now()) @map("created_at")
-  updatedAt     DateTime    @updatedAt @map("updated_at")
+  firstRealProductCreatedAt     DateTime?    @map("first_real_product_created_at")
+  createdAt                     DateTime     @default(now()) @map("created_at")
+  updatedAt                     DateTime     @updatedAt @map("updated_at")
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
-  memberships        StoreUser[]
-  products           Product[]
-  productVariants    ProductVariant[]
-  categories         Category[]
-  inventoryItems     InventoryItem[]
-  inventoryMovements InventoryMovement[]
-  customers          Customer[]
-  orders             Order[]
-  payments           Payment[]
+  memberships            StoreUser[]
+  products               Product[]
+  productVariants        ProductVariant[]
+  categories             Category[]
+  inventoryItems         InventoryItem[]
+  inventoryMovements     InventoryMovement[]
+  customers              Customer[]
+  orders                 Order[]
+  payments               Payment[]
   paymentProviderConfigs PaymentProviderConfig[]
-  paymentWebhookEvents PaymentWebhookEvent[]
-  shippingMethods    ShippingMethod[]
-  shippingZones      ShippingZone[]
-  shipments          Shipment[]
-  coupons            Coupon[]
-  media              Media[]
-  storeThemes        StoreTheme[]
-  domains            Domain[]
-  auditLogs          AuditLog[]
-  notifications      Notification[]
+  paymentWebhookEvents   PaymentWebhookEvent[]
+  shippingMethods        ShippingMethod[]
+  shippingZones          ShippingZone[]
+  shipments              Shipment[]
+  coupons                Coupon[]
+  media                  Media[]
+  storeThemes            StoreTheme[]
+  domains                Domain[]
+  auditLogs              AuditLog[]
+  notifications          Notification[]
 
   /// Globally unique: the slug is the `{slug}.{PLATFORM_ROOT_DOMAIN}` label and
   /// the public storefront API looks stores up by slug alone.
@@ -638,37 +658,37 @@ model CustomerAddress {
 // ---------------------------------------------------------------------------
 
 model Order {
-  id                String            @id @default(uuid()) @db.Uuid
-  storeId           String            @map("store_id") @db.Uuid
-  customerId        String?           @map("customer_id") @db.Uuid
-  orderNumber       String            @map("order_number")
+  id                 String              @id @default(uuid()) @db.Uuid
+  storeId            String              @map("store_id") @db.Uuid
+  customerId         String?             @map("customer_id") @db.Uuid
+  orderNumber        String              @map("order_number")
   /// Opaque guest-facing confirmation token (not sequential / not the UUID).
-  publicReference   String?           @unique @map("public_reference")
+  publicReference    String?             @unique @map("public_reference")
   /// Client Idempotency-Key for public checkout; scoped per store.
-  idempotencyKey    String?           @map("idempotency_key")
-  status            OrderStatus       @default(PENDING)
-  paymentStatus     PaymentStatus     @default(PENDING) @map("payment_status")
-  fulfillmentStatus FulfillmentStatus @default(UNFULFILLED) @map("fulfillment_status")
-  currency          String            @db.Char(3)
-  subtotal          Decimal           @default(0) @db.Decimal(12, 2)
-  discountTotal     Decimal           @default(0) @map("discount_total") @db.Decimal(12, 2)
-  shippingTotal     Decimal           @default(0) @map("shipping_total") @db.Decimal(12, 2)
-  taxTotal          Decimal           @default(0) @map("tax_total") @db.Decimal(12, 2)
-  grandTotal        Decimal           @default(0) @map("grand_total") @db.Decimal(12, 2)
+  idempotencyKey     String?             @map("idempotency_key")
+  status             OrderStatus         @default(PENDING)
+  paymentStatus      PaymentStatus       @default(PENDING) @map("payment_status")
+  fulfillmentStatus  FulfillmentStatus   @default(UNFULFILLED) @map("fulfillment_status")
+  currency           String              @db.Char(3)
+  subtotal           Decimal             @default(0) @db.Decimal(12, 2)
+  discountTotal      Decimal             @default(0) @map("discount_total") @db.Decimal(12, 2)
+  shippingTotal      Decimal             @default(0) @map("shipping_total") @db.Decimal(12, 2)
+  taxTotal           Decimal             @default(0) @map("tax_total") @db.Decimal(12, 2)
+  grandTotal         Decimal             @default(0) @map("grand_total") @db.Decimal(12, 2)
   /// Snapshot of shipping method display name at purchase (do not re-resolve).
-  shippingMethodName String?          @map("shipping_method_name")
+  shippingMethodName String?             @map("shipping_method_name")
   /// Snapshot of shipping method type at purchase.
   shippingMethodType ShippingMethodType? @map("shipping_method_type")
   /// Snapshot of matched shipping zone name at purchase (null if store-wide / legacy).
-  shippingZoneName  String?           @map("shipping_zone_name")
+  shippingZoneName   String?             @map("shipping_zone_name")
   /// Snapshot of coupon code applied at purchase (null if none).
-  couponCode        String?           @map("coupon_code") @db.Citext
-  customerNote      String?           @map("customer_note")
-  internalNote      String?           @map("internal_note")
+  couponCode         String?             @map("coupon_code") @db.Citext
+  customerNote       String?             @map("customer_note")
+  internalNote       String?             @map("internal_note")
   /// Customer-safe cancellation explanation (never use for internal merchant notes).
-  cancelReason      String?           @map("cancel_reason") @db.VarChar(500)
-  createdAt         DateTime          @default(now()) @map("created_at")
-  updatedAt         DateTime          @updatedAt @map("updated_at")
+  cancelReason       String?             @map("cancel_reason") @db.VarChar(500)
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
 
   store    Store     @relation(fields: [storeId], references: [id], onDelete: Restrict)
   customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
@@ -751,24 +771,24 @@ model OrderAddress {
 // ---------------------------------------------------------------------------
 
 model Payment {
-  id                 String          @id @default(uuid()) @db.Uuid
-  storeId            String          @map("store_id") @db.Uuid
-  orderId            String          @map("order_id") @db.Uuid
+  id                String          @id @default(uuid()) @db.Uuid
+  storeId           String          @map("store_id") @db.Uuid
+  orderId           String          @map("order_id") @db.Uuid
   /// Opaque internal payment attempt reference (not order number / UUID).
-  internalReference  String          @unique @map("internal_reference")
-  attemptNumber      Int             @default(1) @map("attempt_number")
-  provider           PaymentProvider
-  providerPaymentId  String?         @map("provider_payment_id")
-  amount             Decimal         @db.Decimal(12, 2)
-  currency           String          @db.Char(3)
-  status             PaymentStatus   @default(PENDING)
-  method             PaymentMethod   @default(OTHER)
-  metadata           Json?
-  createdAt          DateTime        @default(now()) @map("created_at")
-  updatedAt          DateTime        @updatedAt @map("updated_at")
+  internalReference String          @unique @map("internal_reference")
+  attemptNumber     Int             @default(1) @map("attempt_number")
+  provider          PaymentProvider
+  providerPaymentId String?         @map("provider_payment_id")
+  amount            Decimal         @db.Decimal(12, 2)
+  currency          String          @db.Char(3)
+  status            PaymentStatus   @default(PENDING)
+  method            PaymentMethod   @default(OTHER)
+  metadata          Json?
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
 
-  store Store @relation(fields: [storeId], references: [id], onDelete: Restrict)
-  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  store         Store                 @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  order         Order                 @relation(fields: [orderId], references: [id], onDelete: Restrict)
   webhookEvents PaymentWebhookEvent[]
 
   @@unique([orderId, attemptNumber])
@@ -782,18 +802,18 @@ model Payment {
 
 /// Per-store payment provider configuration. Secrets are encrypted at rest.
 model PaymentProviderConfig {
-  id                String          @id @default(uuid()) @db.Uuid
-  storeId           String          @map("store_id") @db.Uuid
-  provider          PaymentProvider
-  enabled           Boolean         @default(false)
+  id               String          @id @default(uuid()) @db.Uuid
+  storeId          String          @map("store_id") @db.Uuid
+  provider         PaymentProvider
+  enabled          Boolean         @default(false)
   /// test | live
-  mode              String          @default("test")
+  mode             String          @default("test")
   /// Non-secret settings safe to return to merchants (publishable keys, display name).
-  publicConfig      Json?           @map("public_config")
+  publicConfig     Json?           @map("public_config")
   /// AES-256-GCM ciphertext of secret JSON (never returned via API).
-  encryptedSecrets  String?         @map("encrypted_secrets")
-  createdAt         DateTime        @default(now()) @map("created_at")
-  updatedAt         DateTime        @updatedAt @map("updated_at")
+  encryptedSecrets String?         @map("encrypted_secrets")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
 
   store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
@@ -837,9 +857,9 @@ model BdDivision {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  districts              BdDistrict[]
-  customerAddresses      CustomerAddress[]
-  shippingZoneLocations  ShippingZoneLocation[]
+  districts             BdDistrict[]
+  customerAddresses     CustomerAddress[]
+  shippingZoneLocations ShippingZoneLocation[]
 
   @@index([active])
   @@map("bd_divisions")
@@ -855,10 +875,10 @@ model BdDistrict {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  division               BdDivision  @relation(fields: [divisionId], references: [id], onDelete: Restrict)
-  upazilas               BdUpazila[]
-  customerAddresses      CustomerAddress[]
-  shippingZoneLocations  ShippingZoneLocation[]
+  division              BdDivision             @relation(fields: [divisionId], references: [id], onDelete: Restrict)
+  upazilas              BdUpazila[]
+  customerAddresses     CustomerAddress[]
+  shippingZoneLocations ShippingZoneLocation[]
 
   @@unique([divisionId, code])
   @@unique([code])
@@ -877,9 +897,9 @@ model BdUpazila {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  district               BdDistrict @relation(fields: [districtId], references: [id], onDelete: Restrict)
-  customerAddresses      CustomerAddress[]
-  shippingZoneLocations  ShippingZoneLocation[]
+  district              BdDistrict             @relation(fields: [districtId], references: [id], onDelete: Restrict)
+  customerAddresses     CustomerAddress[]
+  shippingZoneLocations ShippingZoneLocation[]
 
   @@unique([districtId, code])
   @@unique([code])
@@ -1081,18 +1101,18 @@ model Theme {
 }
 
 model StoreTheme {
-  id                      String    @id @default(uuid()) @db.Uuid
-  storeId                 String    @map("store_id") @db.Uuid
-  themeId                 String    @map("theme_id") @db.Uuid
+  id                     String    @id @default(uuid()) @db.Uuid
+  storeId                String    @map("store_id") @db.Uuid
+  themeId                String    @map("theme_id") @db.Uuid
   /// Selected theme for this store (at most one true per store via app logic).
-  isActive                Boolean   @default(false) @map("is_active")
+  isActive               Boolean   @default(false) @map("is_active")
   /// Draft configuration edited by merchants (not public until published).
-  configuration           Json?
+  configuration          Json?
   /// Last published public-safe configuration snapshot.
-  publishedConfiguration  Json?     @map("published_configuration")
-  publishedAt             DateTime? @map("published_at")
-  createdAt               DateTime  @default(now()) @map("created_at")
-  updatedAt               DateTime  @updatedAt @map("updated_at")
+  publishedConfiguration Json?     @map("published_configuration")
+  publishedAt            DateTime? @map("published_at")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
 
   store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
   theme Theme @relation(fields: [themeId], references: [id], onDelete: Restrict)
@@ -1140,7 +1160,8 @@ model SubscriptionPlan {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  subscriptions Subscription[]
+  subscriptions   Subscription[]
+  billingPayments BillingPayment[]
 
   @@map("subscription_plans")
 }
@@ -1157,13 +1178,53 @@ model Subscription {
   createdAt    DateTime           @default(now()) @map("created_at")
   updatedAt    DateTime           @updatedAt @map("updated_at")
 
-  tenant Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  plan   SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  plan            SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+  billingPayments BillingPayment[]
 
   @@index([tenantId])
   @@index([planId])
   @@index([tenantId, status])
   @@map("subscriptions")
+}
+
+/// A subscription payment the merchant sent by mobile wallet and reported with
+/// its transaction ID. A Super Admin checks it and approves or rejects it;
+/// only an approval activates the plan.
+model BillingPayment {
+  id                String               @id @default(uuid()) @db.Uuid
+  tenantId          String               @map("tenant_id") @db.Uuid
+  planId            String               @map("plan_id") @db.Uuid
+  /// The subscription the approval activated or renewed.
+  subscriptionId    String?              @map("subscription_id") @db.Uuid
+  billingCycle      BillingCycle         @map("billing_cycle")
+  /// Server-calculated price of the plan and billing cycle at submission.
+  amount            Decimal              @db.Decimal(12, 2)
+  currency          String               @default("BDT")
+  method            ManualPaymentMethod
+  /// Ecomesta wallet number shown to the merchant when they paid.
+  payToNumber       String               @map("pay_to_number")
+  senderNumber      String               @map("sender_number")
+  transactionId     String               @map("transaction_id") @db.Citext
+  status            BillingPaymentStatus @default(PENDING)
+  submittedByUserId String               @map("submitted_by_user_id") @db.Uuid
+  reviewedByUserId  String?              @map("reviewed_by_user_id") @db.Uuid
+  reviewedAt        DateTime?            @map("reviewed_at")
+  rejectionReason   String?              @map("rejection_reason")
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+
+  tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  plan         SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+  subscription Subscription?    @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  submittedBy  User             @relation("BillingPaymentSubmittedBy", fields: [submittedByUserId], references: [id], onDelete: Restrict)
+  reviewedBy   User?            @relation("BillingPaymentReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  /// A wallet transaction ID can only ever be claimed once.
+  @@unique([method, transactionId])
+  @@index([status, createdAt])
+  @@index([tenantId, createdAt])
+  @@map("billing_payments")
 }
 
 // ---------------------------------------------------------------------------

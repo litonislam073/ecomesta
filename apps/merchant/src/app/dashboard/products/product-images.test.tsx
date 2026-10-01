@@ -250,4 +250,20 @@ describe('SF-04 product image — create and list pages', () => {
     expect(rows[0]!.querySelector('img')).toHaveAttribute('src', MEDIA_1);
     expect(rows[1]!.querySelector('img')).toBeNull();
   });
+
+  it('labels the row action Edit for managers and View for read-only staff', async () => {
+    const list = { success: true, data: { items: [product(null)], meta: { total: 1, page: 1, limit: 20, totalPages: 1 } } };
+    api.get.mockResolvedValue(list);
+    const { unmount } = render(<ProductsPage />);
+    const edit = await screen.findByRole('button', { name: 'Edit' });
+    expect(edit.closest('a')).toHaveAttribute('href', '/dashboard/products/prod-1');
+    expect(screen.queryByRole('button', { name: 'View' })).not.toBeInTheDocument();
+    unmount();
+
+    canManage = false;
+    render(<ProductsPage />);
+    const view = await screen.findByRole('button', { name: 'View' });
+    expect(view.closest('a')).toHaveAttribute('href', '/dashboard/products/prod-1');
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+  });
 });

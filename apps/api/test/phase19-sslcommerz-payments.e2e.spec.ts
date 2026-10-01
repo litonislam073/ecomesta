@@ -464,6 +464,7 @@ describe('Phase 19 SSLCommerz payments (e2e)', () => {
         customer: {
           name: 'Fail Guest',
           email: failEmail,
+          phone: '01711000000',
         },
         shippingAddress: {
           name: 'Fail Guest',
@@ -610,6 +611,7 @@ describe('Phase 19 SSLCommerz payments (e2e)', () => {
         customer: {
           name: 'BDT Guest',
           email: `ssl.bdt.${suffix}@example.com`,
+          phone: '01711000000',
         },
         shippingAddress: {
           name: 'BDT Guest',
@@ -650,6 +652,7 @@ describe('Phase 19 SSLCommerz payments (e2e)', () => {
         customer: {
           name: 'Test Guest',
           email: `ssl.test.${suffix}@example.com`,
+          phone: '01711000000',
         },
         shippingAddress: {
           name: 'Test Guest',

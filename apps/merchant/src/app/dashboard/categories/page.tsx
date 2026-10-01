@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Category, OffsetPageMeta } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
 import {
@@ -13,9 +13,9 @@ import { StoreScoped } from '@/components/catalog/store-scoped';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
-import { Input } from '@/components/ui/input';
 import { LoadingState } from '@/components/ui/loading-state';
 import { Pagination } from '@/components/ui/pagination';
+import { FilterBar, FilterField } from '@/components/ui/filter-bar';
 import { Select } from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast';
 import { ApiError, api } from '@/lib/api-client';
@@ -210,52 +210,84 @@ function CategoriesContent() {
         ) : null}
       </div>
 
-      <form
-        className="flex flex-wrap gap-2"
-        onSubmit={(event: FormEvent) => {
-          event.preventDefault();
+      <FilterBar
+        onSubmit={() => {
           setPage(1);
           setQuery(search.trim());
           setView('list');
         }}
-      >
-        <Input
-          className="max-w-xs"
-          placeholder="Search categories"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          aria-label="Search categories"
-        />
-        <Select
-          className="w-auto"
-          value={parentId}
-          onChange={(e) => {
+        search={{
+          value: search,
+          onChange: setSearch,
+          onClear: () => {
+            setSearch('');
             setPage(1);
-            setParentId(e.target.value);
-            setView('list');
-          }}
-          aria-label="Parent filter"
-        >
-          <option value="">All parents</option>
-          {parentOptions.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </Select>
-        <Select
-          className="w-auto"
-          value={view}
-          onChange={(e) => setView(e.target.value as 'list' | 'tree')}
-          aria-label="View mode"
-        >
-          <option value="tree">Tree view</option>
-          <option value="list">List view</option>
-        </Select>
-        <Button type="submit" variant="secondary">
-          Search
-        </Button>
-      </form>
+            setQuery('');
+          },
+          placeholder: 'Search categories by name…',
+          label: 'Search categories',
+        }}
+        summary={
+          view === 'list' && meta
+            ? `${meta.total} ${meta.total === 1 ? 'category' : 'categories'}${query || parentId ? (meta.total === 1 ? ' matches your filters' : ' match your filters') : ''}`
+            : 'Showing every category as a tree'
+        }
+        onReset={
+          query || parentId
+            ? () => {
+                setSearch('');
+                setQuery('');
+                setParentId('');
+                setPage(1);
+                setView('tree');
+              }
+            : undefined
+        }
+      >
+        <FilterField label="Parent category">
+          <Select
+            className="h-10"
+            value={parentId}
+            onChange={(e) => {
+              setPage(1);
+              setParentId(e.target.value);
+              setView('list');
+            }}
+            aria-label="Parent filter"
+          >
+            <option value="">All parents</option>
+            {parentOptions.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </Select>
+        </FilterField>
+        <FilterField label="View">
+          <div
+            role="radiogroup"
+            aria-label="View mode"
+            className="grid h-10 grid-cols-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] p-1 text-sm"
+          >
+            {(['tree', 'list'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                role="radio"
+                aria-checked={view === mode}
+                onClick={() => setView(mode)}
+                className={`rounded font-medium transition-colors ${
+                  view === mode
+                    ? 'bg-[var(--color-surface)] text-[var(--color-ink)] shadow-sm'
+                    : 'text-[var(--color-muted)] hover:text-[var(--color-ink)]'
+                }`}
+              >
+                {mode === 'tree' ? 'Tree' : 'List'}
+              </button>
+            ))}
+          </div>
+        </FilterField>
+      </FilterBar>
 
       {showForm ? (
         <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4">

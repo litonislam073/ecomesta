@@ -1,10 +1,13 @@
 import {
   ConflictException,
+  HttpException,
+  HttpStatus,
   Injectable,
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import {
+  BillingPaymentStatus,
   MembershipStatus,
   SubscriptionStatus,
   TenantRole,
@@ -18,7 +21,8 @@ import { billingCyclePrice, paymentDeadline, paymentDueFrom } from '@ecomesta/ut
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
-import { planMonthlyPrice, readPlanSettings, sortPlans, toPublicPlan } from './plan-catalog';
+import { PAYMENT_INCLUDE, toMerchantBillingPayment } from './billing-payment.mapper';
+import { planMonthlyPrice, readPlanLimits, readPlanSettings, sortPlans, toPublicPlan } from './plan-catalog';
 import { SubscriptionLifecycleService } from './subscription-lifecycle.service';
 
 /**
@@ -53,9 +57,13 @@ export class BillingService {
   async getForUser(userId: string, tenantSlug?: string): Promise<{ success: true; data: MerchantSubscription }> {
     const tenant = await this.resolveTenant(userId, tenantSlug);
     await this.lifecycle.evaluateTenant(tenant.id);
-    const [current, canManage] = await Promise.all([
+    const [current, canManage, pending] = await Promise.all([
       this.lifecycle.currentForTenant(tenant.id),
       this.authorization.hasTenantRole(userId, tenant.id, [TenantRole.OWNER, TenantRole.ADMIN]),
+      this.prisma.billingPayment.findFirst({
+        where: { tenantId: tenant.id, status: BillingPaymentStatus.PENDING },
+        include: PAYMENT_INCLUDE,
+      }),
     ]);
     return {
       success: true,
@@ -64,14 +72,17 @@ export class BillingService {
         canManage,
         onlinePaymentAvailable: SUBSCRIPTION_ONLINE_PAYMENT_ENABLED,
         subscription: current ? this.toMerchantDto(current) : null,
+        pendingPayment: pending ? toMerchantBillingPayment(pending) : null,
       },
     };
   }
 
   /**
-   * Starts the free trial when the business has never had a subscription;
-   * otherwise changes the plan or billing cycle without touching the dates.
-   * Nothing is charged either way.
+   * Starts the free trial on the chosen plan when the business has never had
+   * a subscription. During the trial the business may switch to the same or a
+   * cheaper plan, or change billing period; a more expensive plan only unlocks
+   * through an approved payment (BillingPaymentsService). After the trial every
+   * plan change goes through a payment.
    */
   async selectPlan(
     userId: string,
@@ -92,8 +103,19 @@ export class BillingService {
         });
         return { action: 'SUBSCRIPTION_TRIAL_STARTED' as const, subscription: created };
       }
-      if (current.status === SubscriptionStatus.ACTIVE || current.status === SubscriptionStatus.CANCELLED) {
-        throw new ConflictException('Plan changes for this subscription are not available yet');
+      if (current.status !== SubscriptionStatus.TRIALING) {
+        throw new ConflictException(
+          'Plan changes take effect once your payment is confirmed. Choose the plan and pay for it below.',
+        );
+      }
+      if (planMonthlyPrice(plan) > planMonthlyPrice(current.plan)) {
+        throw new HttpException(
+          {
+            message: `${plan.name} unlocks once your payment is confirmed. Pay for ${plan.name} below to upgrade.`,
+            error: 'Payment Required',
+          },
+          HttpStatus.PAYMENT_REQUIRED,
+        );
       }
       const updated = await tx.subscription.update({
         where: { id: current.id },
@@ -119,7 +141,7 @@ export class BillingService {
     return this.getForUser(userId, tenant.slug);
   }
 
-  private async resolveTenant(userId: string, tenantSlug?: string) {
+  async resolveTenant(userId: string, tenantSlug?: string) {
     const membership = await this.prisma.tenantUser.findFirst({
       where: {
         userId,
@@ -158,6 +180,7 @@ export class BillingService {
         slug: subscription.plan.slug,
         monthlyPrice,
         trialMonths: readPlanSettings(subscription.plan.configuration).trialMonths,
+        limits: readPlanLimits(subscription.plan.configuration),
       },
     };
   }

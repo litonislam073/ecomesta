@@ -91,14 +91,14 @@ export class PublicStorefrontController {
   }
 
   @Get('locations/districts')
-  @ApiOperation({ summary: 'List districts for a division' })
-  @ApiQuery({ name: 'divisionId', required: true })
+  @ApiOperation({ summary: 'List districts for a division, or all districts when divisionId is omitted' })
+  @ApiQuery({ name: 'divisionId', required: false })
   async listDistricts(
     @Param('storeSlug') storeSlug: string,
-    @Query('divisionId') divisionId: string,
+    @Query('divisionId') divisionId?: string,
   ) {
     await this.publicStorefront.requireActiveStore(storeSlug);
-    return this.locations.listDistricts(divisionId);
+    return this.locations.listDistricts(divisionId || undefined);
   }
 
   @Get('locations/upazilas')

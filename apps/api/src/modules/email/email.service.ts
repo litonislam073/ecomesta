@@ -6,6 +6,7 @@ import { EmailDispatcher } from './email-dispatcher.service';
 import { EmailConfigService } from './email.config';
 import {
   EMAIL_EVENTS,
+  type BillingPaymentParams,
   type OutboxEmail,
   type PasswordChangedParams,
   type StoreCreatedParams,
@@ -118,6 +119,27 @@ export class EmailService implements OnModuleDestroy {
     return this.sendTemplate(
       { event: EMAIL_EVENTS.SUPPORT_REQUEST, params },
       { ...target, idempotencyKey: `${EMAIL_EVENTS.SUPPORT_REQUEST}:${target.userId}:${requestId}` },
+    );
+  }
+
+  /**
+   * Queues a manual-payment email in the caller's transaction. SUBMITTED goes to
+   * Ecomesta's billing inbox (replies reach `userId`); APPROVED and REJECTED go
+   * to `userId`. One email per payment and event.
+   */
+  sendBillingPayment(
+    event:
+      | typeof EMAIL_EVENTS.BILLING_PAYMENT_SUBMITTED
+      | typeof EMAIL_EVENTS.BILLING_PAYMENT_APPROVED
+      | typeof EMAIL_EVENTS.BILLING_PAYMENT_REJECTED,
+    target: { userId: string; tenantId: string },
+    params: BillingPaymentParams,
+    tx?: Prisma.TransactionClient,
+  ) {
+    return this.sendTemplate(
+      { event, params },
+      { ...target, storeId: null, idempotencyKey: `${event}:${params.paymentId}` },
+      tx,
     );
   }
 

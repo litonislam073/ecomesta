@@ -1,13 +1,13 @@
 ﻿'use client';
 
 import Link from 'next/link';
-import { FormEvent, useCallback, useEffect, useState } from 'react';
-import type { Coupon, CouponType, OffsetPageMeta } from '@ecomesta/types';
+import { useCallback, useEffect, useState } from 'react';
+import type { Coupon, OffsetPageMeta } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
 import { StoreScoped } from '@/components/catalog/store-scoped';
 import { EmptyState } from '@/components/ui/empty-state';
+import { FilterBar, FilterField } from '@/components/ui/filter-bar';
 import { ErrorState } from '@/components/ui/error-state';
-import { Input } from '@/components/ui/input';
 import { LoadingState } from '@/components/ui/loading-state';
 import { Pagination } from '@/components/ui/pagination';
 import { Select } from '@/components/ui/select';
@@ -74,6 +74,8 @@ function CouponsContent() {
     );
   }
 
+  const filtersActive = Boolean(query || active || type);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -92,64 +94,89 @@ function CouponsContent() {
         ) : null}
       </div>
 
-      <form
-        className="flex flex-wrap gap-2"
-        onSubmit={(event: FormEvent) => {
-          event.preventDefault();
+      <FilterBar
+        onSubmit={() => {
           setPage(1);
           setQuery(search.trim());
         }}
+        search={{
+          value: search,
+          onChange: setSearch,
+          onClear: () => {
+            setSearch('');
+            setPage(1);
+            setQuery('');
+          },
+          placeholder: 'Search by coupon code…',
+          label: 'Search coupons',
+        }}
+        summary={
+          meta
+            ? `${meta.total} ${meta.total === 1 ? 'coupon' : 'coupons'}${
+                filtersActive ? (meta.total === 1 ? ' matches your filters' : ' match your filters') : ''
+              }`
+            : undefined
+        }
+        onReset={
+          filtersActive
+            ? () => {
+                setSearch('');
+                setQuery('');
+                setActive('');
+                setType('');
+                setPage(1);
+              }
+            : undefined
+        }
       >
-        <Input
-          className="max-w-xs"
-          placeholder="Search code"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          aria-label="Search coupons"
-        />
-        <Select
-          className="w-auto"
-          value={active}
-          onChange={(e) => {
-            setPage(1);
-            setActive(e.target.value);
-          }}
-          aria-label="Active filter"
-        >
-          <option value="">All statuses</option>
-          <option value="true">Active</option>
-          <option value="false">Inactive</option>
-        </Select>
-        <Select
-          className="w-auto"
-          value={type}
-          onChange={(e) => {
-            setPage(1);
-            setType(e.target.value);
-          }}
-          aria-label="Type filter"
-        >
-          <option value="">All types</option>
-          {(['PERCENTAGE', 'FIXED_AMOUNT'] as CouponType[]).map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
-        </Select>
-        <Button type="submit" variant="secondary">
-          Search
-        </Button>
-      </form>
+        <FilterField label="Status">
+          <Select
+            className="h-10"
+            value={active}
+            onChange={(e) => {
+              setPage(1);
+              setActive(e.target.value);
+            }}
+            aria-label="Active filter"
+          >
+            <option value="">All statuses</option>
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </Select>
+        </FilterField>
+        <FilterField label="Discount type">
+          <Select
+            className="h-10"
+            value={type}
+            onChange={(e) => {
+              setPage(1);
+              setType(e.target.value);
+            }}
+            aria-label="Type filter"
+          >
+            <option value="">All types</option>
+            <option value="PERCENTAGE">Percentage (%)</option>
+            <option value="FIXED_AMOUNT">Fixed amount</option>
+          </Select>
+        </FilterField>
+      </FilterBar>
 
       {loading ? <LoadingState label="Loading coupons" /> : null}
       {!loading && error ? (
         <ErrorState message={error} onRetry={() => void load()} />
       ) : null}
       {!loading && !error && items.length === 0 ? (
-        <EmptyState
-          title="No coupons yet"
-          description="Create a percentage or fixed-amount coupon for this store."
-        />
+        filtersActive ? (
+          <EmptyState
+            title="No coupons match your filters"
+            description="Try a different code or clear the filters."
+          />
+        ) : (
+          <EmptyState
+            title="No coupons yet"
+            description="Create a percentage or fixed-amount coupon for this store."
+          />
+        )
       ) : null}
 
       {!loading && !error && items.length > 0 ? (

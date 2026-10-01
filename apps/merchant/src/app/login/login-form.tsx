@@ -7,6 +7,7 @@ import { Button } from '@ecomesta/ui';
 import { LoadingState } from '@/components/ui/loading-state';
 import { AuthField, FormAlert, PasswordField, SecureNote } from '@/components/auth/auth-fields';
 import { authErrorMessage, isValidEmail } from '@/components/auth/auth-errors';
+import { GoogleSignIn } from '@/components/auth/google-sign-in';
 import { useAuth } from '@/lib/auth-context';
 import { safeNextPath } from '@/lib/plan-selection';
 
@@ -26,7 +27,7 @@ function validate(email: string, password: string): FieldErrors {
 }
 
 export default function LoginPage() {
-  const { login, user, loading } = useAuth();
+  const { login, loginWithGoogle, user, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = safeNextPath(searchParams.get('next'), '/dashboard');
@@ -49,6 +50,23 @@ export default function LoginPage() {
       router.replace(destination);
     }
   }, [loading, user, router, next]);
+
+  async function onGoogleCredential(credential: string) {
+    if (inFlight.current) {
+      return;
+    }
+    setError(null);
+    inFlight.current = true;
+    setSubmitting(true);
+    try {
+      await loginWithGoogle(credential);
+    } catch (err) {
+      setError(authErrorMessage(err, 'google'));
+    } finally {
+      inFlight.current = false;
+      setSubmitting(false);
+    }
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -93,6 +111,8 @@ export default function LoginPage() {
         Welcome back
       </h1>
       <p className="mt-2 text-[var(--color-muted)]">Sign in to manage your online store.</p>
+
+      <GoogleSignIn mode="signin" disabled={submitting} onCredential={onGoogleCredential} />
 
       <form className="mt-8 space-y-5" onSubmit={onSubmit} noValidate aria-busy={submitting}>
         <AuthField

@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import type { Category, Product, ProductStatus, ProductType } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
 import { Input } from '@/components/ui/input';
@@ -79,8 +79,13 @@ export function ProductForm({
   const [slugTouched, setSlugTouched] = useState(Boolean(initial?.slug));
   const [error, setError] = useState<string | null>(null);
 
+  // `useState` above already starts from `initial`; only a *different* initial
+  // (e.g. the product reloaded) should replace the fields. Re-applying the same
+  // object after mount would overwrite anything typed before effects ran.
+  const appliedInitial = useRef(initial);
   useEffect(() => {
-    if (initial) {
+    if (initial && initial !== appliedInitial.current) {
+      appliedInitial.current = initial;
       setValues(initial);
       setSlugTouched(true);
     }

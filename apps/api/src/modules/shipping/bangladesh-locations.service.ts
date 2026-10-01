@@ -14,16 +14,21 @@ export class BangladeshLocationsService {
     return { success: true as const, data: items };
   }
 
-  async listDistricts(divisionId: string) {
-    const division = await this.prisma.bdDivision.findFirst({
-      where: { id: divisionId, active: true },
-      select: { id: true },
-    });
-    if (!division) {
-      throw new NotFoundException('Division not found');
+  /** Districts of one division, or every active district when no division is given. */
+  async listDistricts(divisionId?: string) {
+    if (divisionId) {
+      const division = await this.prisma.bdDivision.findFirst({
+        where: { id: divisionId, active: true },
+        select: { id: true },
+      });
+      if (!division) {
+        throw new NotFoundException('Division not found');
+      }
     }
     const items = await this.prisma.bdDistrict.findMany({
-      where: { divisionId, active: true },
+      where: divisionId
+        ? { divisionId, active: true }
+        : { active: true, division: { active: true } },
       orderBy: { name: 'asc' },
       select: {
         id: true,

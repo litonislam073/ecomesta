@@ -318,21 +318,26 @@ describe('Merchant settings', () => {
   });
 
   describe('checkout and orders', () => {
-    it('toggles the phone requirement and shows fixed rules', async () => {
+    it('saves the order notes toggle and shows phone required, email optional', async () => {
       api.patch.mockResolvedValue({
         success: true,
-        data: { ...baseSettings, checkoutRequirePhone: true },
+        data: { ...baseSettings, checkoutAllowOrderNotes: false },
       });
       const user = userEvent.setup();
       render(<CheckoutSettingsPage />);
-      await user.click(await findLoaded('Require a phone number'));
+      await user.click(await findLoaded('Allow order notes'));
       await user.click(screen.getByRole('button', { name: 'Save changes' }));
       await waitFor(() =>
         expect(api.patch).toHaveBeenCalledWith('/stores/store-1/settings', {
-          checkoutRequirePhone: true,
+          checkoutAllowOrderNotes: false,
           expectedUpdatedAt: baseSettings.updatedAt,
         }),
       );
+      // The phone requirement is a platform rule now, not a store toggle.
+      expect(screen.queryByLabelText('Require a phone number')).toBeNull();
+      const row = (label: string) => screen.getByText(label, { selector: 'dt' }).parentElement!;
+      expect(row('Phone number')).toHaveTextContent('Required');
+      expect(row('Email address')).toHaveTextContent('Optional');
       expect(screen.getByText('Guest checkout')).toBeInTheDocument();
       expect(screen.getByRole('link', { name: 'Payment providers' })).toHaveAttribute(
         'href',
@@ -361,7 +366,7 @@ describe('Merchant settings', () => {
     it('disables toggles for read-only users', async () => {
       mockLoad(readOnly);
       render(<CheckoutSettingsPage />);
-      expect(await findLoaded('Require a phone number')).toBeDisabled();
+      expect(await findLoaded('Allow order notes')).toBeDisabled();
     });
   });
 

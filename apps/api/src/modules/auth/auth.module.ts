@@ -7,6 +7,7 @@ import { AccountRecoveryService } from './account-recovery.service';
 import { AuthController } from './auth.controller';
 import { AuthRateLimitService } from './auth-rate-limit.service';
 import { AuthService } from './auth.service';
+import { GoogleIdTokenVerifier } from './google-id-token.verifier';
 import { PasswordService } from './password.service';
 import { AccessTokenStrategy } from './strategies/access-token.strategy';
 import { RefreshTokenStrategy } from './strategies/refresh-token.strategy';
@@ -31,6 +32,7 @@ import { RolesGuard } from './guards/roles.guard';
     AccountRecoveryService,
     PasswordService,
     AuthRateLimitService,
+    GoogleIdTokenVerifier,
     AccessTokenStrategy,
     RefreshTokenStrategy,
     RolesGuard,

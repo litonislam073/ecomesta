@@ -1,6 +1,7 @@
 'use client';
 
 import type { StoreThemeConfig, ThemeHeroAlignment } from '@ecomesta/types';
+import { ImageField } from '@/components/media/image-field';
 import { Card } from '@/components/ui/card';
 import {
   NumberField,
@@ -15,10 +16,13 @@ type Hero = NonNullable<StoreThemeConfig['hero']>;
 const ALIGNMENTS: readonly ThemeHeroAlignment[] = ['left', 'center', 'right'];
 
 export function HeroSection({
+  storeId,
   value,
   onChange,
   disabled,
 }: {
+  /** Store whose gallery uploads go to; null while no store is selected. */
+  storeId: string | null;
   value: Hero;
   onChange: (patch: Hero) => void;
   disabled?: boolean;
@@ -61,8 +65,11 @@ export function HeroSection({
           disabled={disabled}
           onChange={(ctaHref) => onChange({ ...value, ctaHref })}
         />
-        <TextField
-          label="Background image URL"
+        <ImageField
+          label="Background image"
+          purpose="background"
+          previewShape="wide"
+          storeId={storeId}
           value={value.imageUrl ?? ''}
           disabled={disabled}
           onChange={(imageUrl) => onChange({ ...value, imageUrl })}

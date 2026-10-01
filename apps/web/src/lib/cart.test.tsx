@@ -1,7 +1,12 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CartProvider, useCart } from '@/lib/cart';
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+  useSearchParams: () => new URLSearchParams('store=alpha'),
+}));
 
 function Probe() {
   const cart = useCart();
@@ -140,6 +145,7 @@ describe('AddToCartPanel validation', () => {
     await user.selectOptions(screen.getByLabelText(/choose variant/i), 'v-bad');
     expect(screen.getByText(/currently unavailable/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /add to cart/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /order now/i })).toBeDisabled();
   });
 });
 

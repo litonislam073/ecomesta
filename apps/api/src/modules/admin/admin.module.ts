@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { AdminAuditController } from './admin-audit.controller';
+import { AdminBillingPaymentsController } from './admin-billing-payments.controller';
 import { AdminAuditService } from './admin-audit.service';
 import { AdminEmailController } from './admin-email.controller';
 import { AdminPlansController } from './admin-plans.controller';
@@ -20,6 +21,7 @@ import { AdminController } from './admin.controller';
   imports: [AuthModule],
   controllers: [
     AdminController,
+    AdminBillingPaymentsController,
     AdminUsersController,
     AdminTenantsController,
     AdminStoresController,

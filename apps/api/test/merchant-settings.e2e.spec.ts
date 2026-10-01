@@ -218,7 +218,7 @@ describe('Merchant store settings (e2e)', () => {
       });
       expect(data.fixed).toMatchObject({
         guestCheckout: true,
-        requireEmail: true,
+        requireEmail: false,
         currencyEditable: false,
         slugEditable: false,
       });
@@ -542,7 +542,7 @@ describe('Merchant store settings (e2e)', () => {
       expect(store.language).toBe('bn');
       expect(store.contact.email).toBe('support@settings.example.com');
       expect(store.checkout).toEqual({
-        requireEmail: true,
+        requireEmail: false,
         requirePhone: true,
         allowOrderNotes: false,
       });
@@ -653,14 +653,51 @@ describe('Merchant store settings (e2e)', () => {
         .expect(422);
     });
 
-    it('keeps phone optional and notes allowed once the owner reverts checkout settings', async () => {
+    it('places an order with a phone number and no email, then tracks it by phone', async () => {
+      const res = await http()
+        .post(`/api/v1/public/stores/${storeSlug}/checkout`)
+        .set('Idempotency-Key', `settings-phone-only-${suffix}`)
+        .send({
+          items: [{ productId, quantity: 1 }],
+          customer: { name: 'Phone Only', phone: '01811-222333' },
+          shippingAddress: {
+            name: 'Phone Only',
+            addressLine1: '2 Settings Road',
+            city: 'Dhaka',
+            country: 'BD',
+          },
+          billingSameAsShipping: true,
+          shippingMethodId,
+          paymentProvider: 'COD',
+          paymentMethod: 'CASH',
+        })
+        .expect(201);
+      const ref = res.body.data.publicReference as string;
+      const order = await prisma.order.findFirstOrThrow({
+        where: { storeId, publicReference: ref },
+        include: { addresses: true },
+      });
+      expect(order.addresses.every((a) => a.email === null)).toBe(true);
+      expect(order.addresses[0]!.phone).toBe('01811-222333');
+
+      const tracked = await http()
+        .get(`/api/v1/public/stores/${storeSlug}/orders/${ref}?phone=${encodeURIComponent('01811222333')}`)
+        .expect(200);
+      expect(tracked.body.data.publicReference).toBe(ref);
+    });
+
+    it('still requires the phone after the old phone toggle is turned off, and allows notes again', async () => {
       await http()
         .patch(settingsUrl())
         .set(auth(owner))
         .send({ checkoutRequirePhone: false, checkoutAllowOrderNotes: true })
         .expect(200);
       const email = `revert.${suffix}@example.com`;
-      const res = await placeOrder('revert', email, { customerNote: 'Ring twice' }, null);
+      const noPhone = await placeOrder('revert-nophone', email, {}, null);
+      expect(noPhone.status).toBe(400);
+      expect(JSON.stringify(noPhone.body)).toMatch(/phone number is required/i);
+
+      const res = await placeOrder('revert', email, { customerNote: 'Ring twice' });
       expect(res.status).toBe(201);
       const order = await prisma.order.findFirstOrThrow({
         where: { storeId, publicReference: res.body.data.publicReference },

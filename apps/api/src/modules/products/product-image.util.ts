@@ -6,12 +6,6 @@
 /** Stays below the 2 MB nginx `client_max_body_size` including multipart overhead. */
 export const PRODUCT_IMAGE_MAX_BYTES = 1_500_000;
 
-/**
- * How long a replaced/removed upload stays servable. Storefront pages cache
- * product data for 30 s, so this comfortably outlives any cached reference.
- */
-export const PRODUCT_IMAGE_RETIRE_GRACE_SECONDS = 600;
-
 export const PRODUCT_IMAGE_TYPES = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
@@ -57,4 +51,78 @@ const MEDIA_PATH = /\/api\/v1\/public\/media\/([0-9a-f-]{36})$/i;
 /** Media id when `imageUrl` points at an uploaded image served by this API. */
 export function uploadedMediaId(imageUrl: string | null): string | null {
   return imageUrl?.match(MEDIA_PATH)?.[1]?.toLowerCase() ?? null;
+}
+
+/** Pixel size read from the file header; null when the header is unreadable. */
+export function readImageDimensions(
+  buffer: Buffer,
+  mimeType: ProductImageMimeType,
+): { width: number; height: number } | null {
+  if (mimeType === 'image/png') {
+    // IHDR is always the first chunk: width and height follow the chunk type.
+    if (buffer.length < 24 || buffer.subarray(12, 16).toString('latin1') !== 'IHDR') return null;
+    return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
+  }
+  if (mimeType === 'image/webp') {
+    const chunk = buffer.subarray(12, 16).toString('latin1');
+    if (chunk === 'VP8 ' && buffer.length >= 30) {
+      return { width: buffer.readUInt16LE(26) & 0x3fff, height: buffer.readUInt16LE(28) & 0x3fff };
+    }
+    if (chunk === 'VP8L' && buffer.length >= 25) {
+      const bits = buffer.readUInt32LE(21);
+      return { width: (bits & 0x3fff) + 1, height: ((bits >> 14) & 0x3fff) + 1 };
+    }
+    if (chunk === 'VP8X' && buffer.length >= 30) {
+      return { width: buffer.readUIntLE(24, 3) + 1, height: buffer.readUIntLE(27, 3) + 1 };
+    }
+    return null;
+  }
+  // JPEG: walk the segments to the first start-of-frame marker.
+  let offset = 2;
+  while (offset + 9 < buffer.length) {
+    if (buffer[offset] !== 0xff) return null;
+    const marker = buffer[offset + 1]!;
+    if (marker === 0xff) {
+      offset += 1;
+      continue;
+    }
+    const isStartOfFrame =
+      marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc;
+    if (isStartOfFrame) {
+      return { width: buffer.readUInt16BE(offset + 7), height: buffer.readUInt16BE(offset + 5) };
+    }
+    offset += 2 + buffer.readUInt16BE(offset + 2);
+  }
+  return null;
+}
+
+/**
+ * What an upload is for. Each purpose only adds checks the storefront relies
+ * on; every upload ends up in the store's media gallery.
+ */
+export const MEDIA_PURPOSES = ['general', 'product', 'logo', 'favicon', 'background'] as const;
+export type MediaPurpose = (typeof MEDIA_PURPOSES)[number];
+
+/** Larger images are almost certainly a mistake and slow every storefront page. */
+export const MEDIA_MAX_DIMENSION = 6000;
+export const FAVICON_MIN_SIZE = 16;
+export const FAVICON_MAX_SIZE = 1024;
+
+/** Reason an image cannot be used for `purpose`, or null when it can. */
+export function mediaPurposeProblem(
+  purpose: MediaPurpose,
+  size: { width: number; height: number },
+): string | null {
+  if (size.width > MEDIA_MAX_DIMENSION || size.height > MEDIA_MAX_DIMENSION) {
+    return `Image must be at most ${MEDIA_MAX_DIMENSION}×${MEDIA_MAX_DIMENSION} pixels`;
+  }
+  if (purpose === 'favicon') {
+    if (size.width !== size.height) {
+      return `Favicon must be square (this image is ${size.width}×${size.height} pixels)`;
+    }
+    if (size.width < FAVICON_MIN_SIZE || size.width > FAVICON_MAX_SIZE) {
+      return `Favicon must be between ${FAVICON_MIN_SIZE}×${FAVICON_MIN_SIZE} and ${FAVICON_MAX_SIZE}×${FAVICON_MAX_SIZE} pixels`;
+    }
+  }
+  return null;
 }

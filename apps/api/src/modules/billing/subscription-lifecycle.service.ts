@@ -131,6 +131,31 @@ export class SubscriptionLifecycleService {
       });
     }
 
+    // A paid period that has ended needs renewing: same grace rules as a trial,
+    // counted from the end of the paid period (`endsAt`).
+    const paidPeriodEnded = await this.prisma.subscription.findMany({
+      where: { ...scope, status: SubscriptionStatus.ACTIVE, endsAt: { lte: now } },
+      select: { id: true, tenantId: true, endsAt: true },
+    });
+    for (const row of paidPeriodEnded) {
+      const moved = await this.prisma.subscription.updateMany({
+        where: { id: row.id, status: SubscriptionStatus.ACTIVE, endsAt: { lte: now } },
+        data: { status: SubscriptionStatus.PAST_DUE },
+      });
+      if (moved.count === 0) continue;
+      result.movedToGrace += 1;
+      await this.audit.log({
+        action: 'SUBSCRIPTION_RENEWAL_DUE',
+        entityType: 'Subscription',
+        entityId: row.id,
+        tenantId: row.tenantId,
+        metadata: {
+          paidThrough: row.endsAt?.toISOString() ?? null,
+          graceDays: PAYMENT_GRACE_DAYS,
+        },
+      });
+    }
+
     const lapsed = await this.prisma.subscription.findMany({
       where: {
         ...scope,

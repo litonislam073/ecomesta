@@ -7,6 +7,7 @@ import { Button } from '@ecomesta/ui';
 import { LoadingState } from '@/components/ui/loading-state';
 import { AuthField, FormAlert, PasswordField, SecureNote } from '@/components/auth/auth-fields';
 import { authErrorMessage, isValidEmail } from '@/components/auth/auth-errors';
+import { GoogleSignIn } from '@/components/auth/google-sign-in';
 import { PasswordRules, meetsPasswordRules } from '@/components/auth/password-rules';
 import { billingCycleDefinition } from '@ecomesta/utils';
 import { useAuth } from '@/lib/auth-context';
@@ -41,7 +42,7 @@ function validate(values: Record<Field, string>): FieldErrors {
 }
 
 export default function RegisterPage() {
-  const { register, user, loading } = useAuth();
+  const { register, loginWithGoogle, user, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const selection = readPlanSelection(searchParams);
@@ -76,6 +77,28 @@ export default function RegisterPage() {
     if (fieldErrors[field]) {
       setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
     }
+  }
+
+  async function onGoogleCredential(credential: string) {
+    if (inFlight.current) {
+      return;
+    }
+    setError(null);
+    inFlight.current = true;
+    setSubmitting(true);
+    try {
+      const { created: isNew } = await loginWithGoogle(credential);
+      if (isNew) {
+        setCreated(true);
+        router.replace(next);
+        return;
+      }
+      // Existing account: the signed-in effect routes to the dashboard or store setup.
+    } catch (err) {
+      setError(authErrorMessage(err, 'google'));
+    }
+    inFlight.current = false;
+    setSubmitting(false);
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -150,6 +173,8 @@ export default function RegisterPage() {
           — 2 months free. No payment details needed.
         </p>
       ) : null}
+
+      <GoogleSignIn mode="signup" disabled={submitting} onCredential={onGoogleCredential} />
 
       <form className="mt-8 space-y-5" onSubmit={onSubmit} noValidate aria-busy={submitting}>
         <div className="grid gap-5 sm:grid-cols-2">
