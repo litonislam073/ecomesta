@@ -366,6 +366,28 @@ describe('AI support chat', () => {
     expect((chatCalls()[1]![1] as { messages: unknown[] }).messages).toEqual([{ role: 'user', content: 'Hello' }]);
   });
 
+  it('offers the support form when live chat cannot answer, with the question filled in', async () => {
+    postMock.mockImplementation((path: string) =>
+      path === '/ai-support/chat'
+        ? Promise.reject(
+            new PublicApiError(503, 'SERVICE_UNAVAILABLE', 'Live chat is not available right now. Please contact our support team and we will help you.'),
+          )
+        : Promise.resolve({ success: true, data: { submitted: true, reference: 'D0WN1234' } }),
+    );
+    const { user, dialog } = await openChat({ email: 'rahim@example.com' });
+    await user.type(within(dialog).getByLabelText('Message Ecomesta Support'), 'Can I take bKash payments?{Enter}');
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Live chat is not available right now');
+
+    const form = await within(dialog).findByRole('form', { name: 'Contact our support team' });
+    expect(within(form).getByLabelText('How can we help?')).toHaveValue('Can I take bKash payments?');
+    await user.click(within(form).getByRole('button', { name: 'Send to support' }));
+    expect(await within(dialog).findByRole('status', { name: '' })).toHaveTextContent(
+      'Sent to our support team (reference #D0WN1234). We will reply to rahim@example.com.',
+    );
+    const [, body] = postMock.mock.calls.find(([path]) => path === '/ai-support/handoff')!;
+    expect(body).toMatchObject({ name: 'Rahim', phone: '01711000000', message: 'Can I take bKash payments?', ...CREDENTIALS });
+  });
+
   it('shows the rate limit message from the API', async () => {
     postMock.mockImplementation(() =>
       Promise.reject(new PublicApiError(429, 'RATE_LIMITED', "You're sending messages very quickly. Please wait a little and try again.")),

@@ -71,6 +71,12 @@ export class PlanEntitlementsService {
     );
   }
 
+  /** Whether the store's plan includes `feature` (shopper-facing paths decide how to refuse). */
+  async storeHasFeature(storeId: string, feature: PlanFeature, db: Db = this.prisma): Promise<boolean> {
+    const limits = await this.limitsForTenant(await this.tenantOfStore(storeId, db), db);
+    return !limits || limits[feature];
+  }
+
   /** Plan feature an online payment provider needs, if any. */
   static featureForProvider(provider: string): PlanFeature | null {
     if (provider === 'SSL_COMMERZ') return 'onlinePayments';

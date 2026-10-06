@@ -62,6 +62,24 @@ describe('Admin shell auth gate', () => {
     expect(screen.getByRole('link', { name: 'Email' })).toHaveAttribute('href', '/dashboard/email');
   });
 
+  it('truncates a long admin email in the header instead of widening the page on phones', () => {
+    const longEmail = 'platform.operations.supervisor@ecomesta-example.com';
+    authState = { user: { ...superAdmin, email: longEmail }, loading: false, isSuperAdmin: true };
+    render(
+      <AdminShell>
+        <p>Platform content</p>
+      </AdminShell>,
+    );
+
+    const email = screen.getByText(longEmail);
+    expect(email).toHaveClass('truncate');
+    expect(email).toHaveAttribute('title', longEmail);
+    // The header block must be allowed to shrink for truncation to apply.
+    expect(email.parentElement).toHaveClass('min-w-0');
+    expect(email.parentElement?.parentElement).toHaveClass('min-w-0');
+    expect(screen.getByRole('button', { name: 'Log out' })).toHaveClass('shrink-0');
+  });
+
   it('shows a session placeholder while the refresh call is in flight', () => {
     authState = { user: null, loading: true, isSuperAdmin: false };
     render(

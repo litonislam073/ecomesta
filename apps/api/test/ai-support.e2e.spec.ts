@@ -92,7 +92,12 @@ describe('AI support agent (e2e)', () => {
     if (keys.length) await redis.getClient().del(...keys);
   }
 
+  // Handoffs go to the support inbox; set it here instead of relying on the
+  // developer's .env (the missing-inbox 503 is covered with a spy below).
+  const originalSupportEmail = process.env.SUPPORT_EMAIL;
+
   beforeAll(async () => {
+    process.env.SUPPORT_EMAIL = 'support@ecomesta.test';
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(AI_CHAT_CLIENT)
       .useValue(fake)
@@ -140,6 +145,8 @@ describe('AI support agent (e2e)', () => {
       });
     }
     await app?.close();
+    if (originalSupportEmail === undefined) delete process.env.SUPPORT_EMAIL;
+    else process.env.SUPPORT_EMAIL = originalSupportEmail;
   });
 
   describe('anonymous chat', () => {

@@ -53,6 +53,19 @@ Server loads ACTIVE catalog prices, computes subtotal, validates the coupon, ret
 
 Does **not** expose coupon id, usage counts, or merchant metadata.
 
+## Plan entitlement
+
+Coupons are included in Growth and Business, not in Starter. Merchant coupon
+APIs refuse Starter with `403 PLAN_UPGRADE_REQUIRED`, and redemption follows the
+store's **current** plan too: `CouponValidationService` checks the plan before
+it looks up any code (public validate, checkout quote, shipping quote, checkout
+placement under lock, merchant-created orders). On a plan without coupons every
+code gets `422` `PLAN_UPGRADE_REQUIRED` with the shopper-facing message
+"Coupons are not available at this store." — the quote returns it as
+`couponError` with no discount, and placing an order with a coupon is refused
+(no order, no redemption). Existing coupons are never deleted on a downgrade;
+they work again once the store is back on Growth or Business.
+
 ## Discount math
 
 Single source: `CouponValidationService` + `calculateCouponDiscount`.

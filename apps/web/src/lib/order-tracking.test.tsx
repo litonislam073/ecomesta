@@ -11,14 +11,14 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams('store=alpha'),
 }));
 
-const getMock = vi.fn();
+const lookupMock = vi.fn();
 vi.mock('@/lib/public-api', async () => {
   const actual = await vi.importActual<typeof import('@/lib/public-api')>(
     '@/lib/public-api',
   );
   return {
     ...actual,
-    publicGet: (...args: unknown[]) => getMock(...args),
+    publicPost: (...args: unknown[]) => lookupMock(...args),
   };
 });
 
@@ -90,7 +90,7 @@ const sampleOrder: PublicOrderConfirmationDetail = {
 
 describe('Track order + confirmation tracking', () => {
   beforeEach(() => {
-    getMock.mockReset();
+    lookupMock.mockReset();
     replace.mockReset();
   });
 
@@ -103,12 +103,12 @@ describe('Track order + confirmation tracking', () => {
     expect(
       await screen.findByText(/full order reference/i),
     ).toBeInTheDocument();
-    expect(getMock).not.toHaveBeenCalled();
+    expect(lookupMock).not.toHaveBeenCalled();
   });
 
   it('looks up an order with email verification and shows timeline', async () => {
     const user = userEvent.setup();
-    getMock.mockResolvedValue({ success: true, data: sampleOrder });
+    lookupMock.mockResolvedValue({ success: true, data: sampleOrder });
     render(<TrackOrderForm storeSlug="alpha" />);
 
     await user.type(
@@ -119,7 +119,7 @@ describe('Track order + confirmation tracking', () => {
     await user.click(screen.getByRole('button', { name: /track order/i }));
 
     await waitFor(() => {
-      expect(getMock).toHaveBeenCalled();
+      expect(lookupMock).toHaveBeenCalled();
     });
     expect(await screen.findByText('EM-100013')).toBeInTheDocument();
     expect(screen.getByText(/order placed/i)).toBeInTheDocument();
@@ -128,23 +128,30 @@ describe('Track order + confirmation tracking', () => {
 
   it('looks up an order by the checkout phone number', async () => {
     const user = userEvent.setup();
-    getMock.mockResolvedValue({ success: true, data: sampleOrder });
+    lookupMock.mockResolvedValue({ success: true, data: sampleOrder });
     render(<TrackOrderForm storeSlug="alpha" />);
     await user.type(screen.getByLabelText(/order reference/i), sampleOrder.publicReference);
     await user.type(screen.getByLabelText(/checkout phone or email/i), '01711 000000');
     await user.click(screen.getByRole('button', { name: /track order/i }));
     await waitFor(() =>
-      expect(getMock).toHaveBeenCalledWith(
-        `/public/stores/alpha/orders/${sampleOrder.publicReference}?phone=01711%20000000`,
+      // The phone goes in the POST body, never in the request URL.
+      expect(lookupMock).toHaveBeenCalledWith(
+        `/public/stores/alpha/orders/${sampleOrder.publicReference}/lookup`,
+        { phone: '01711 000000' },
       ),
     );
     expect(await screen.findByText('EM-100013')).toBeInTheDocument();
+    expect(replace).toHaveBeenCalledWith(
+      `/track-order?store=alpha&ref=${sampleOrder.publicReference}`,
+      { scroll: false },
+    );
+    expect(JSON.stringify(replace.mock.calls)).not.toMatch(/01711/);
   });
 
   it('shows a non-enumerating error for invalid lookups', async () => {
     const user = userEvent.setup();
     const { PublicApiError } = await import('@/lib/public-api');
-    getMock.mockRejectedValue(
+    lookupMock.mockRejectedValue(
       new PublicApiError(404, 'NOT_FOUND', 'Order not found'),
     );
     render(<TrackOrderForm storeSlug="alpha" />);

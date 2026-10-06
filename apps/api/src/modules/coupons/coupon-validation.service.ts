@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { CouponType, OrderStatus, Prisma, type Coupon } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PLAN_UPGRADE_REQUIRED, PlanEntitlementsService } from '../billing/plan-entitlements.service';
 import {
   calculateCouponDiscount,
   isSupportedCouponType,
@@ -18,7 +19,10 @@ type Tx = Prisma.TransactionClient;
 
 @Injectable()
 export class CouponValidationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly entitlements: PlanEntitlementsService,
+  ) {}
 
   /**
    * Preview validation outside a placement transaction (public validate / UI).
@@ -35,6 +39,8 @@ export class CouponValidationService {
     if (!code || code.length > 64) {
       throw new BadRequestException('Invalid coupon code');
     }
+
+    await this.assertCouponsIncluded(params.storeId, this.prisma);
 
     const coupon = await this.prisma.coupon.findFirst({
       where: { storeId: params.storeId, code },
@@ -71,6 +77,8 @@ export class CouponValidationService {
     if (!code || code.length > 64) {
       throw new BadRequestException('Invalid coupon code');
     }
+
+    await this.assertCouponsIncluded(params.storeId, tx);
 
     const rows = await tx.$queryRaw<
       {
@@ -127,6 +135,19 @@ export class CouponValidationService {
       now: params.now ?? new Date(),
       usageCount: coupon.usageCount,
       client: tx,
+    });
+  }
+
+  /**
+   * Coupons are a plan feature. A store whose current plan does not include
+   * them (e.g. after a downgrade to Starter) keeps its coupons, but none can be
+   * redeemed — every code gets the same refusal, so codes cannot be probed.
+   */
+  private async assertCouponsIncluded(storeId: string, db: Tx | PrismaService) {
+    if (await this.entitlements.storeHasFeature(storeId, 'coupons', db)) return;
+    throw new UnprocessableEntityException({
+      message: 'Coupons are not available at this store.',
+      error: PLAN_UPGRADE_REQUIRED,
     });
   }
 

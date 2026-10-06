@@ -4,8 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import type { PublicOrderConfirmationDetail } from '@ecomesta/types';
 import { OrderTimeline } from '@/components/order-timeline';
 import { formatMoney } from '@/lib/money';
-import { contactProof, contactQuery, type OrderContact } from '@/lib/order-contact';
-import { publicGet, publicPost, PublicApiError } from '@/lib/public-api';
+import { contactProof, lookupPublicOrder, type OrderContact } from '@/lib/order-contact';
+import { publicPost, PublicApiError } from '@/lib/public-api';
 
 function CancelOrderPanel({
   storeSlug,
@@ -130,15 +130,7 @@ export function OrderTrackingView({
   const [order, setOrder] = useState(initial);
 
   const refresh = useCallback(async () => {
-    const proof = contact ? contactQuery(contact) : '';
-    const qs = proof ? `?${proof}` : '';
-    const result = await publicGet<{
-      success: true;
-      data: PublicOrderConfirmationDetail;
-    }>(
-      `/public/stores/${encodeURIComponent(storeSlug)}/orders/${encodeURIComponent(order.publicReference)}${qs}`,
-    );
-    setOrder(result.data);
+    setOrder(await lookupPublicOrder(storeSlug, order.publicReference, contact ?? {}));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- contact is read by value
   }, [storeSlug, order.publicReference, contact?.email, contact?.phone]);
 

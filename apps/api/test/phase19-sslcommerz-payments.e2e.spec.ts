@@ -10,6 +10,7 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
 import { SslCommerzHttp } from '../src/modules/payments/providers/sslcommerz/sslcommerz.http';
 import { activateOnboarded, withPayment } from './support/onboarding';
+import { expectSafeReturnUrl, paymentStatusFromReturnUrl } from './support/payment-return';
 
 describe('Phase 19 SSLCommerz payments (e2e)', () => {
   jest.setTimeout(60_000);
@@ -559,6 +560,124 @@ describe('Phase 19 SSLCommerz payments (e2e)', () => {
     expect(retried.body.data.attemptNumber).toBe(2);
     expect(retried.body.data.provider).toBe('SSL_COMMERZ');
     expect(retried.body.data.internalReference).not.toBe(internalReference);
+  });
+
+  it('returns the shopper with an opaque payment reference the result page can use', async () => {
+    const email = `ssl.return.${suffix}@example.com`;
+    const phone = '01712333444';
+    const placeOrder = async (key: string) => {
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/public/stores/${storeSlug}/checkout`)
+        .set('Idempotency-Key', `p19-return-${key}-${suffix}`)
+        .send({
+          items: [{ productId, quantity: 1 }],
+          customer: { name: 'Return Guest', email, phone },
+          shippingAddress: { name: 'Return Guest', phone, addressLine1: '5 Banani', city: 'Dhaka', country: 'BD', email },
+          billingSameAsShipping: true,
+          shippingMethodId,
+          paymentProvider: 'SSL_COMMERZ',
+          paymentMethod: 'CARD',
+        })
+        .expect(201);
+      return res.body.data.publicReference as string;
+    };
+    const startSession = async (key: string, path: 'create' | 'retry', publicReference: string) => {
+      httpMock.postForm.mockResolvedValueOnce({
+        status: 200,
+        body: {
+          status: 'SUCCESS',
+          sessionkey: `sess_return_${key}_${suffix}`,
+          GatewayPageURL: `https://sandbox.sslcommerz.com/gwprocess/v4/gw.php?Q=PAY&SESSIONKEY=sess_return_${key}_${suffix}`,
+        },
+      });
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/public/stores/${storeSlug}/payments/${path}`)
+        .send({ publicReference, provider: 'SSL_COMMERZ', phone })
+        .expect(201);
+      const fields = httpMock.postForm.mock.calls.at(-1)![1] as Record<string, string>;
+      return { data: res.body.data as { internalReference: string; paymentId: string; attemptNumber: number }, fields };
+    };
+    const ipn = (internalReference: string, status: string, valId: string, validation: Record<string, string>) => {
+      httpMock.getJson.mockResolvedValueOnce({ status: 200, body: { tran_id: internalReference, val_id: valId, ...validation } });
+      return request(app.getHttpServer())
+        .post('/api/v1/public/payment-webhooks/SSL_COMMERZ')
+        .set('Content-Type', 'application/x-www-form-urlencoded')
+        .send(
+          [
+            `tran_id=${encodeURIComponent(internalReference)}`,
+            `val_id=${encodeURIComponent(valId)}`,
+            `status=${status}`,
+            'amount=25.50',
+            'currency_amount=25.50',
+            'currency=USD',
+          ].join('&'),
+        )
+        .expect(201);
+    };
+
+    // --- Successful payment.
+    const publicReference = await placeOrder('ok');
+    const { data: started, fields } = await startSession('ok', 'create', publicReference);
+    const internalReference = started.internalReference;
+    expect(fields.tran_id).toBe(internalReference);
+    const order = await prisma.order.findFirstOrThrow({ where: { storeId, publicReference } });
+    const forbidden = [email, phone, storeId, order.id, started.paymentId, storePassword, storeIdSecret];
+    const expected = { storeSlug, publicReference, internalReference, forbidden };
+    expectSafeReturnUrl(fields.success_url!, { ...expected, path: '/payment/success' });
+    expectSafeReturnUrl(fields.fail_url!, { ...expected, path: '/payment/failure' });
+    expectSafeReturnUrl(fields.cancel_url!, { ...expected, path: '/payment/cancel' });
+
+    // SSLCommerz posts the shopper back to success_url; the URL alone marks nothing.
+    expect((await paymentStatusFromReturnUrl(app, fields.success_url!, { phone }).expect(200)).body.data.status).toBe('PENDING');
+
+    await ipn(internalReference, 'VALID', `val_return_${suffix}`, { status: 'VALID', amount: '25.50', currency_amount: '25.50' });
+    const paid = await paymentStatusFromReturnUrl(app, fields.success_url!, { phone }).expect(200);
+    expect(paid.body.data).toMatchObject({ internalReference, status: 'PAID', orderPaymentStatus: 'PAID', orderNumber: order.orderNumber });
+    // Refreshing the success page repeats the same lookup.
+    expect((await paymentStatusFromReturnUrl(app, fields.success_url!, { email }).expect(200)).body.data.status).toBe('PAID');
+    for (const secret of [storePassword, storeIdSecret, storeId, order.id]) {
+      expect(JSON.stringify(paid.body)).not.toContain(secret);
+    }
+
+    // Ownership: unknown reference, wrong contact, another store → nothing.
+    await request(app.getHttpServer())
+      .post(`/api/v1/public/stores/${storeSlug}/payments/pay_unknownReference000000/status`)
+      .send({ phone })
+      .expect(404);
+    await paymentStatusFromReturnUrl(app, fields.success_url!, { phone: '01999999999' }).expect(404);
+    await paymentStatusFromReturnUrl(app, fields.success_url!, {}).expect((res) => expect([400, 404]).toContain(res.status));
+    await paymentStatusFromReturnUrl(app, fields.success_url!, { phone }, otherStoreSlug).expect(404);
+
+    // --- Cancelled at the gateway, then a retry with its own reference.
+    const cancelledOrder = await placeOrder('cancel');
+    const { data: cancelling, fields: cancelFields } = await startSession('cancel', 'create', cancelledOrder);
+    expectSafeReturnUrl(cancelFields.cancel_url!, {
+      path: '/payment/cancel',
+      storeSlug,
+      publicReference: cancelledOrder,
+      internalReference: cancelling.internalReference,
+      forbidden,
+    });
+    expect((await paymentStatusFromReturnUrl(app, cancelFields.cancel_url!, { phone }).expect(200)).body.data.status).toBe('PENDING');
+    await ipn(cancelling.internalReference, 'CANCELLED', `val_return_cancel_${suffix}`, { status: 'CANCELLED' });
+    expect((await paymentStatusFromReturnUrl(app, cancelFields.cancel_url!, { phone }).expect(200)).body.data.status).toBe('CANCELLED');
+
+    const { data: retried, fields: retryFields } = await startSession('retry', 'retry', cancelledOrder);
+    expect(retried.internalReference).not.toBe(cancelling.internalReference);
+    expectSafeReturnUrl(retryFields.success_url!, {
+      path: '/payment/success',
+      storeSlug,
+      publicReference: cancelledOrder,
+      internalReference: retried.internalReference,
+      forbidden,
+    });
+    expect((await paymentStatusFromReturnUrl(app, retryFields.success_url!, { phone }).expect(200)).body.data).toMatchObject({ status: 'PENDING', attemptNumber: 2 });
+
+    // --- Failed at the gateway.
+    const failedOrder = await placeOrder('fail');
+    const { data: failing, fields: failFields } = await startSession('fail', 'create', failedOrder);
+    await ipn(failing.internalReference, 'FAILED', `val_return_fail_${suffix}`, { status: 'INVALID_TRANSACTION' });
+    expect((await paymentStatusFromReturnUrl(app, failFields.fail_url!, { phone }).expect(200)).body.data.status).toBe('FAILED');
   });
 
   it('rejects wrong tran_id and cross-store config access', async () => {

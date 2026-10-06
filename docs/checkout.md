@@ -24,11 +24,12 @@ Guest checkout places real orders through the Phase 8 order pipeline. Coupons ar
 | POST | `/api/v1/public/stores/:storeSlug/shipping/quote` | Server-priced methods for location + cart |
 | POST | `/api/v1/public/stores/:storeSlug/coupons/validate` | Preview discount from live catalog prices |
 | POST | `/api/v1/public/stores/:storeSlug/checkout` | Requires `Idempotency-Key` + `shippingMethodId`; optional `couponCode` + location IDs |
-| GET | `/api/v1/public/stores/:storeSlug/orders/:publicReference` | Optional `?email=` / `?phone=`; see [order-tracking.md](./order-tracking.md) |
+| POST | `/api/v1/public/stores/:storeSlug/orders/:publicReference/lookup` | Body `{ email }` or `{ phone }`; see [order-tracking.md](./order-tracking.md) |
+| GET | `/api/v1/public/stores/:storeSlug/orders/:publicReference` | Same with `?email=` / `?phone=` (API clients; puts the contact in the URL) |
 
 Client must not send unit prices, subtotals, shipping totals, discounts, payment status, or order status. Extra money fields are rejected by DTO whitelist. Coupon codes are re-validated under lock at placement.
 
-After checkout the storefront opens `/order-confirmation/[reference]`. Guests can also use `/track-order` (reference + email).
+After checkout the storefront opens `/order-confirmation/[reference]?store=…` — without the customer's phone or email, which the tab keeps in `sessionStorage` (see [order-tracking.md](./order-tracking.md#contact-details-never-go-in-urls)). Guests can also use `/track-order` (reference + phone or email).
 
 ## Server-side pricing
 
@@ -69,7 +70,7 @@ Redis fixed-window via `RedisRateLimitService`: **30 checkout attempts / 60s / s
 
 - `public_reference`: 24-byte `base64url` token (unguessable)
 - Confirmation URLs use this token, not sequential `orderNumber` or UUID
-- Optional email query must match a snapshot address email
+- Lookups need the checkout email or phone (request body); it must match a snapshot address
 
 ## Guest checkout
 

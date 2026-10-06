@@ -1,13 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import type { PublicPaymentStatus } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
 import { formatMoney } from '@/lib/money';
-import { contactProof, contactQuery } from '@/lib/order-contact';
-import { publicGet, publicPost, PublicApiError } from '@/lib/public-api';
+import {
+  contactProof,
+  recallOrderContact,
+  rememberOrderContact,
+  takeLegacyContact,
+  type OrderContact,
+} from '@/lib/order-contact';
+import { publicPost, PublicApiError } from '@/lib/public-api';
 
 /**
  * Informational payment result page.
@@ -20,30 +26,45 @@ export function PaymentResultClient({
   tone: 'success' | 'cancel' | 'failure' | 'continue';
   title: string;
 }) {
+  const router = useRouter();
   const params = useSearchParams();
   const store = params.get('store') ?? '';
   const order = params.get('order') ?? '';
   const paymentRef = params.get('ref') ?? '';
-  // Contact proof: the checkout email, or the phone when the order has no email.
-  const email = params.get('email') ?? '';
-  const phone = params.get('phone') ?? '';
-  const proofQuery = contactQuery({ email, phone });
+  // Contact proof (checkout email or phone) kept by checkout in this tab — never in the URL.
+  const [contact, setContact] = useState<OrderContact | null | undefined>(undefined);
+  const proof = contact ? contactProof(contact) : null;
   const [status, setStatus] = useState<PublicPaymentStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    const legacy = takeLegacyContact(window.location.href);
+    if (legacy) {
+      if (store && order) rememberOrderContact(store, order, legacy.contact);
+      router.replace(legacy.cleanUrl, { scroll: false });
+      setContact(legacy.contact);
+      return;
+    }
+    setContact(store && order ? recallOrderContact(store, order) : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once per order
+  }, [store, order]);
+
   const load = useCallback(async () => {
-    if (!store || !paymentRef || !proofQuery) {
+    if (contact === undefined) return;
+    if (!store || !paymentRef || !proof) {
       setStatus(null);
-      if (store && paymentRef && !proofQuery) {
-        setError('The checkout phone number or email is required to view payment status.');
+      if (store && paymentRef && !proof) {
+        setError(
+          'Open this page in the browser tab you checked out in, or track your order with its reference and your phone number or email.',
+        );
       }
       return;
     }
     try {
-      const qs = `?${proofQuery}`;
-      const result = await publicGet<{ success: true; data: PublicPaymentStatus }>(
-        `/public/stores/${encodeURIComponent(store)}/payments/${encodeURIComponent(paymentRef)}${qs}`,
+      const result = await publicPost<{ success: true; data: PublicPaymentStatus }>(
+        `/public/stores/${encodeURIComponent(store)}/payments/${encodeURIComponent(paymentRef)}/status`,
+        proof,
       );
       setStatus(result.data);
       setError(null);
@@ -52,7 +73,8 @@ export function PaymentResultClient({
         err instanceof PublicApiError ? err.message : 'Could not load payment status',
       );
     }
-  }, [store, paymentRef, proofQuery]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- proof is derived from contact
+  }, [store, paymentRef, contact]);
 
   useEffect(() => {
     void load();
@@ -61,7 +83,7 @@ export function PaymentResultClient({
   }, [load]);
 
   async function retry() {
-    if (!store || !order || !proofQuery) return;
+    if (!store || !order || !proof) return;
     const provider = status?.provider;
     if (
       provider !== 'TEST' &&
@@ -79,7 +101,7 @@ export function PaymentResultClient({
       }>(`/public/stores/${encodeURIComponent(store)}/payments/retry`, {
         publicReference: order,
         provider,
-        ...contactProof({ email, phone }),
+        ...proof,
       });
       if (result.data.redirectUrl) {
         window.location.href = result.data.redirectUrl;

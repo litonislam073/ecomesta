@@ -31,6 +31,7 @@ import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
 import { activateOnboarded, withPayment } from './support/onboarding';
+import { expectSafeReturnUrl, paymentStatusFromReturnUrl } from './support/payment-return';
 
 const stripeMock = (
   Stripe as unknown as {
@@ -557,6 +558,144 @@ describe('Phase 18 Stripe payments (e2e)', () => {
       where: { storeId, publicReference },
     });
     expect(orders).toHaveLength(1);
+  });
+
+  it('returns the shopper with an opaque payment reference the result page can use', async () => {
+    const email = `return.guest.${suffix}@example.com`;
+    const phone = '01711222333';
+    const placeOrder = async (key: string) => {
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/public/stores/${storeSlug}/checkout`)
+        .set('Idempotency-Key', `p18-return-${key}-${suffix}`)
+        .send({
+          items: [{ productId, quantity: 1 }],
+          customer: { name: 'Return Guest', email, phone },
+          shippingAddress: { name: 'Return Guest', addressLine1: '4 Main', city: 'Austin', country: 'US', email, phone },
+          billingSameAsShipping: true,
+          shippingMethodId,
+          paymentProvider: 'STRIPE',
+          paymentMethod: 'CARD',
+        })
+        .expect(201);
+      return res.body.data.publicReference as string;
+    };
+    const lastSession = () =>
+      stripeMock.sessionsCreate.mock.calls.at(-1)![0] as { success_url: string; cancel_url: string };
+    const webhook = (event: { id: string; type: string; data: unknown }) => {
+      stripeMock.constructEvent.mockReturnValueOnce(event);
+      return request(app.getHttpServer())
+        .post('/api/v1/public/payment-webhooks/STRIPE')
+        .set('Content-Type', 'application/json')
+        .set('stripe-signature', 't=1,v1=valid')
+        .send(JSON.stringify(event))
+        .expect(201);
+    };
+
+    // --- Successful payment.
+    const publicReference = await placeOrder('ok');
+    stripeMock.sessionsCreate.mockResolvedValueOnce({
+      id: `cs_return_${suffix}`,
+      url: `https://checkout.stripe.test/pay/cs_return_${suffix}`,
+    });
+    const initiated = await request(app.getHttpServer())
+      .post(`/api/v1/public/stores/${storeSlug}/payments/create`)
+      .send({ publicReference, provider: 'STRIPE', phone })
+      .expect(201);
+    const internalReference = initiated.body.data.internalReference as string;
+    const order = await prisma.order.findFirstOrThrow({ where: { storeId, publicReference } });
+    const forbidden = [email, phone, storeId, order.id, initiated.body.data.paymentId, stripeSecret, stripeWebhookSecret];
+    const { success_url: successUrl, cancel_url: cancelUrl } = lastSession();
+    expectSafeReturnUrl(successUrl, { path: '/payment/success', storeSlug, publicReference, internalReference, forbidden });
+    expectSafeReturnUrl(cancelUrl, { path: '/payment/cancel', storeSlug, publicReference, internalReference, forbidden });
+
+    // Coming back is informational: still pending until the verified webhook.
+    const pending = await paymentStatusFromReturnUrl(app, successUrl, { phone }).expect(200);
+    expect(pending.body.data).toMatchObject({ internalReference, status: 'PENDING', publicReference });
+
+    await webhook({
+      id: `evt_return_${suffix}`,
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          id: `cs_return_${suffix}`,
+          payment_status: 'paid',
+          amount_total: 2550,
+          client_reference_id: internalReference,
+          metadata: { ecomestaInternalReference: internalReference },
+        },
+      },
+    });
+    const paid = await paymentStatusFromReturnUrl(app, successUrl, { phone }).expect(200);
+    expect(paid.body.data).toMatchObject({ status: 'PAID', orderPaymentStatus: 'PAID', orderNumber: order.orderNumber });
+    // A refresh of the success page asks again with the same URL: same answer.
+    const refreshed = await paymentStatusFromReturnUrl(app, successUrl, { email }).expect(200);
+    expect(refreshed.body.data.status).toBe('PAID');
+    for (const secret of [stripeSecret, stripeWebhookSecret, storeId, order.id]) {
+      expect(JSON.stringify(paid.body)).not.toContain(secret);
+    }
+
+    // Ownership: unknown reference, wrong or missing contact, another store → nothing.
+    await request(app.getHttpServer())
+      .post(`/api/v1/public/stores/${storeSlug}/payments/pay_unknownReference000000/status`)
+      .send({ phone })
+      .expect(404);
+    await paymentStatusFromReturnUrl(app, successUrl, { phone: '01999999999' }).expect(404);
+    await paymentStatusFromReturnUrl(app, successUrl, { email: 'someone.else@example.com' }).expect(404);
+    await paymentStatusFromReturnUrl(app, successUrl, {}).expect((res) => expect([400, 404]).toContain(res.status));
+    const otherToken = (
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/register')
+        .send({ email: `phase18.other.${suffix}@example.com`, password: 'SecurePass1', firstName: 'Other', lastName: 'Store' })
+        .expect(201)
+    ).body.data.accessToken as string;
+    const otherStoreSlug = `stripe-other-${suffix}`;
+    await request(app.getHttpServer())
+      .post('/api/v1/onboarding/store')
+      .set('Authorization', `Bearer ${otherToken}`)
+      .send(withPayment({ businessName: 'Stripe Other', tenantSlug: `stripe-other-t-${suffix}`, storeName: 'Stripe Other', storeSlug: otherStoreSlug }))
+      .expect(201)
+      .then(activateOnboarded(app));
+    await prisma.store.update({ where: { slug: otherStoreSlug }, data: { status: StoreStatus.ACTIVE } });
+    await paymentStatusFromReturnUrl(app, successUrl, { phone }, otherStoreSlug).expect(404);
+
+    // --- Failed / cancelled payment, then a retry with its own reference.
+    const failedOrder = await placeOrder('fail');
+    stripeMock.sessionsCreate.mockResolvedValueOnce({
+      id: `cs_return_fail_${suffix}`,
+      url: `https://checkout.stripe.test/pay/cs_return_fail_${suffix}`,
+    });
+    const failing = await request(app.getHttpServer())
+      .post(`/api/v1/public/stores/${storeSlug}/payments/create`)
+      .send({ publicReference: failedOrder, provider: 'STRIPE', phone })
+      .expect(201);
+    const failingRef = failing.body.data.internalReference as string;
+    const failCancelUrl = lastSession().cancel_url;
+    expectSafeReturnUrl(failCancelUrl, { path: '/payment/cancel', storeSlug, publicReference: failedOrder, internalReference: failingRef, forbidden });
+    // Cancelling at Stripe only brings the shopper back; the redirect marks nothing.
+    expect((await paymentStatusFromReturnUrl(app, failCancelUrl, { phone }).expect(200)).body.data.status).toBe('PENDING');
+
+    await webhook({
+      id: `evt_return_fail_${suffix}`,
+      type: 'payment_intent.payment_failed',
+      data: { object: { id: `pi_return_fail_${suffix}`, amount: 2550, metadata: { ecomestaInternalReference: failingRef } } },
+    });
+    const failed = await paymentStatusFromReturnUrl(app, failCancelUrl, { phone }).expect(200);
+    expect(failed.body.data).toMatchObject({ status: 'FAILED', provider: 'STRIPE' });
+
+    stripeMock.sessionsCreate.mockResolvedValueOnce({
+      id: `cs_return_retry_${suffix}`,
+      url: `https://checkout.stripe.test/pay/cs_return_retry_${suffix}`,
+    });
+    const retried = await request(app.getHttpServer())
+      .post(`/api/v1/public/stores/${storeSlug}/payments/retry`)
+      .send({ publicReference: failedOrder, provider: 'STRIPE', phone })
+      .expect(201);
+    const retryRef = retried.body.data.internalReference as string;
+    expect(retryRef).not.toBe(failingRef);
+    const retrySuccessUrl = lastSession().success_url;
+    expectSafeReturnUrl(retrySuccessUrl, { path: '/payment/success', storeSlug, publicReference: failedOrder, internalReference: retryRef, forbidden });
+    expect((await paymentStatusFromReturnUrl(app, retrySuccessUrl, { phone }).expect(200)).body.data).toMatchObject({ status: 'PENDING', attemptNumber: 2 });
+    expect((await paymentStatusFromReturnUrl(app, failCancelUrl, { phone }).expect(200)).body.data.status).toBe('FAILED');
   });
 
   it('still supports TEST initiation while Stripe is configured', async () => {

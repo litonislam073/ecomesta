@@ -5,8 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import type { PublicOrderConfirmationDetail } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
 import { OrderTrackingView } from '@/components/order-tracking-view';
-import { contactQuery, type OrderContact } from '@/lib/order-contact';
-import { publicGet, PublicApiError } from '@/lib/public-api';
+import { lookupPublicOrder, parseContactInput, type OrderContact } from '@/lib/order-contact';
+import { PublicApiError } from '@/lib/public-api';
 
 export function TrackOrderForm({ storeSlug }: { storeSlug: string }) {
   const router = useRouter();
@@ -29,25 +29,17 @@ export function TrackOrderForm({ storeSlug }: { storeSlug: string }) {
       setError('Enter the full order reference from your confirmation.');
       return;
     }
-    // One field: anything with an @ is the checkout email, otherwise the phone.
-    const lookup: OrderContact = value.includes('@')
-      ? { email: value.toLowerCase() }
-      : { phone: value };
-    if (!value || (!lookup.email && value.replace(/\D/g, '').length < 6)) {
+    const lookup = parseContactInput(value);
+    if (!lookup) {
       setError('Enter the phone number or email used at checkout.');
       return;
     }
 
     setBusy(true);
     try {
-      const result = await publicGet<{
-        success: true;
-        data: PublicOrderConfirmationDetail;
-      }>(
-        `/public/stores/${encodeURIComponent(storeSlug)}/orders/${encodeURIComponent(ref)}?${contactQuery(lookup)}`,
-      );
+      const found = await lookupPublicOrder(storeSlug, ref, lookup);
       setContact(lookup);
-      setOrder(result.data);
+      setOrder(found);
       router.replace(
         `/track-order?store=${encodeURIComponent(storeSlug)}&ref=${encodeURIComponent(ref)}`,
         { scroll: false },

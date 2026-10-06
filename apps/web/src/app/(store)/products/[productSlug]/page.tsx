@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import type { PublicProductDetail } from '@ecomesta/types';
 import { AddToCartPanel } from '@/components/add-to-cart-panel';
-import { publicGet, PublicApiError } from '@/lib/public-api';
+import { fetchPublicProduct } from '@/lib/catalog-lookup';
+import { PublicApiError } from '@/lib/public-api';
 import {
   requirePublicStore,
   storeCanonicalUrl,
@@ -20,9 +21,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   try {
     const { store } = await requirePublicStore(searchParams);
-    const result = await publicGet<{ success: true; data: PublicProductDetail }>(
-      `/public/stores/${store.slug}/products/${encodeURIComponent(params.productSlug)}`,
-    );
+    const result = await fetchPublicProduct(store.slug, params.productSlug);
     const product = result.data;
     const configuration = await fetchPublicTheme(store.slug)
       .then((theme) => theme.configuration)
@@ -65,9 +64,7 @@ export default async function ProductDetailPage({
   const { store } = await requirePublicStore(searchParams);
   let product: PublicProductDetail;
   try {
-    const result = await publicGet<{ success: true; data: PublicProductDetail }>(
-      `/public/stores/${store.slug}/products/${encodeURIComponent(params.productSlug)}`,
-    );
+    const result = await fetchPublicProduct(store.slug, params.productSlug);
     product = result.data;
   } catch (err) {
     if (err instanceof PublicApiError && err.status === 404) {

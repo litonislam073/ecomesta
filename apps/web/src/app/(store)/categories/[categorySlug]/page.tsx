@@ -6,6 +6,7 @@ import type {
   PublicProductCard,
 } from '@ecomesta/types';
 import { ProductCard } from '@/components/product-card';
+import { fetchPublicCategory } from '@/lib/catalog-lookup';
 import { publicGet, PublicApiError } from '@/lib/public-api';
 import {
   requirePublicStore,
@@ -24,9 +25,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   try {
     const { store } = await requirePublicStore(searchParams);
-    const result = await publicGet<{ success: true; data: PublicCategory }>(
-      `/public/stores/${store.slug}/categories/${encodeURIComponent(params.categorySlug)}`,
-    );
+    const result = await fetchPublicCategory(store.slug, params.categorySlug);
     const category = result.data;
     const configuration = await fetchPublicTheme(store.slug)
       .then((theme) => theme.configuration)
@@ -72,9 +71,7 @@ export default async function CategoryPage({
 
   let category: PublicCategory;
   try {
-    const result = await publicGet<{ success: true; data: PublicCategory }>(
-      `/public/stores/${store.slug}/categories/${encodeURIComponent(params.categorySlug)}`,
-    );
+    const result = await fetchPublicCategory(store.slug, params.categorySlug);
     category = result.data;
   } catch (err) {
     if (err instanceof PublicApiError && err.status === 404) {

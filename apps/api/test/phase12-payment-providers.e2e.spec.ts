@@ -9,6 +9,7 @@ import { AppModule } from '../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
+import { TestPaymentProvider } from '../src/modules/payments/providers/test/test-payment.provider';
 import { activateOnboarded, withPayment } from './support/onboarding';
 
 describe('Phase 12 payment providers (e2e)', () => {
@@ -212,6 +213,7 @@ describe('Phase 12 payment providers (e2e)', () => {
       });
     expect(forbidden.status).toBe(400);
 
+    const createPayment = jest.spyOn(TestPaymentProvider.prototype, 'createPayment');
     const initiated = await request(app.getHttpServer())
       .post(`/api/v1/public/stores/${storeSlug}/payments/create`)
       .send({ publicReference, provider: 'TEST', email: `pay.guest.${suffix}@example.com` })
@@ -221,6 +223,15 @@ describe('Phase 12 payment providers (e2e)', () => {
     expect(initiated.body.data.redirectUrl).toBeTruthy();
     expect(initiated.body.data.internalReference).toMatch(/^pay_/);
     internalReference = initiated.body.data.internalReference;
+
+    // Return URLs go through the provider, browser history and referrers: no contact details.
+    expect(createPayment).toHaveBeenCalledTimes(1);
+    const { returnUrls } = createPayment.mock.calls[0]![0];
+    createPayment.mockRestore();
+    for (const url of [...Object.values(returnUrls), initiated.body.data.redirectUrl]) {
+      expect(url).not.toMatch(/email=|phone=|pay\.guest|01711000000/);
+    }
+    expect(returnUrls.success).toContain(`order=${publicReference}`);
   });
 
   it('rejects invalid/missing webhook signatures and processes verified events idempotently', async () => {
@@ -270,6 +281,21 @@ describe('Phase 12 payment providers (e2e)', () => {
       )
       .expect(200);
     expect(status.body.data.status).toBe('PAID');
+
+    // Same status with the proof in the body (what the storefront uses); wrong proof → 404.
+    const posted = await request(app.getHttpServer())
+      .post(`/api/v1/public/stores/${storeSlug}/payments/${internalReference}/status`)
+      .send({ phone: '01711000000' })
+      .expect(200);
+    expect(posted.body.data.status).toBe('PAID');
+    await request(app.getHttpServer())
+      .post(`/api/v1/public/stores/${storeSlug}/payments/${internalReference}/status`)
+      .send({ phone: '01999999999' })
+      .expect(404);
+    await request(app.getHttpServer())
+      .post(`/api/v1/public/stores/${storeSlug}/payments/${internalReference}/status`)
+      .send({})
+      .expect((res) => expect([400, 404]).toContain(res.status));
 
     const payments = await prisma.payment.findMany({
       where: { storeId, order: { publicReference } },

@@ -103,6 +103,22 @@ export class InitiatePublicPaymentDto {
   phone?: string;
 }
 
+export class PublicPaymentStatusLookupDto {
+  @ApiPropertyOptional({
+    description: 'Email and/or phone required for contact proof',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  email?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  phone?: string;
+}
+
 export class RetryPublicPaymentDto {
   @ApiProperty()
   @IsString()

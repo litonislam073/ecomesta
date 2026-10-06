@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Headers,
+  HttpCode,
   Param,
   ParseEnumPipe,
   Post,
@@ -14,6 +15,7 @@ import { PaymentProvider } from '@prisma/client';
 import type { Request } from 'express';
 import {
   InitiatePublicPaymentDto,
+  PublicPaymentStatusLookupDto,
   RetryPublicPaymentDto,
 } from './dto/payment-provider.dto';
 import { PaymentOrchestrationService } from './payment-orchestration.service';
@@ -92,6 +94,23 @@ export class PublicPaymentsController {
       internalReference,
       { email, phone },
     );
+  }
+
+  @Post('stores/:storeSlug/payments/:internalReference/status')
+  @HttpCode(200)
+  @ApiOperation({
+    summary:
+      'Fetch payment status with email/phone proof in the body (keeps contact details out of URLs and access logs)',
+  })
+  lookupStatus(
+    @Param('storeSlug') storeSlug: string,
+    @Param('internalReference') internalReference: string,
+    @Body() dto: PublicPaymentStatusLookupDto,
+  ) {
+    return this.orchestration.getPublicPaymentStatus(storeSlug, internalReference, {
+      email: dto.email,
+      phone: dto.phone,
+    });
   }
 
   @Post('payment-webhooks/:provider')

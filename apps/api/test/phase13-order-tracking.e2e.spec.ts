@@ -273,6 +273,28 @@ describe('Phase 13 order tracking + operations (e2e)', () => {
     });
   });
 
+  it('looks an order up with the contact proof in the body, for its own customer only', async () => {
+    const lookup = (slug: string, proof: Record<string, string>) =>
+      request(app.getHttpServer())
+        .post(`/api/v1/public/stores/${slug}/orders/${publicReference}/lookup`)
+        .send(proof);
+
+    const own = await lookup(storeSlug, { email: customerEmail }).expect(200);
+    expect(own.body.data.publicReference).toBe(publicReference);
+    expect(own.body.data.timeline[0].type).toBe('ORDER_CREATED');
+    await lookup(storeSlug, { phone: '+15550013' }).expect(200);
+
+    // Another customer, no proof, another store: the same not-found as a bad reference.
+    await lookup(storeSlug, { email: 'someone.else@example.com' }).expect(404);
+    await lookup(storeSlug, { phone: '01999999999' }).expect(404);
+    await lookup(storeSlug, {}).expect(404);
+    await lookup(otherStoreSlug, { email: customerEmail }).expect(404);
+    await request(app.getHttpServer())
+      .post(`/api/v1/public/stores/${storeSlug}/orders/EM-100001/lookup`)
+      .send({ email: customerEmail })
+      .expect(404);
+  });
+
   it('supports merchant filters, timeline, cancel reason, and shipment tracking', async () => {
     const list = await request(app.getHttpServer())
       .get(

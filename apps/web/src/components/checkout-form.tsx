@@ -16,7 +16,7 @@ import type {
 import { Button } from '@ecomesta/ui';
 import { lineKey, useCart } from '@/lib/cart';
 import { formatMoney } from '@/lib/money';
-import { contactProof, contactQuery } from '@/lib/order-contact';
+import { contactProof, rememberOrderContact } from '@/lib/order-contact';
 import { publicGet, publicPost, PublicApiError } from '@/lib/public-api';
 
 const QUOTE_DEBOUNCE_MS = 250;
@@ -711,6 +711,9 @@ export function CheckoutForm({
         idempotencyKey: idempotencyKeyRef.current ?? undefined,
       });
 
+      // The confirmation and payment pages load the order with this; it stays out of URLs.
+      rememberOrderContact(storeSlug, result.data.publicReference, { email, phone });
+
       if (
         paymentProvider === 'TEST' ||
         paymentProvider === 'STRIPE' ||
@@ -731,7 +734,7 @@ export function CheckoutForm({
           return;
         }
         router.push(
-          `/payment/success?store=${encodeURIComponent(storeSlug)}&order=${encodeURIComponent(result.data.publicReference)}&ref=${encodeURIComponent(initiated.data.internalReference)}&${contactQuery({ email, phone })}`,
+          `/payment/success?store=${encodeURIComponent(storeSlug)}&order=${encodeURIComponent(result.data.publicReference)}&ref=${encodeURIComponent(initiated.data.internalReference)}`,
         );
         return;
       }
@@ -739,7 +742,7 @@ export function CheckoutForm({
       clear();
       idempotencyKeyRef.current = null;
       router.push(
-        `/order-confirmation/${encodeURIComponent(result.data.publicReference)}?store=${encodeURIComponent(storeSlug)}&${contactQuery({ email, phone })}`,
+        `/order-confirmation/${encodeURIComponent(result.data.publicReference)}?store=${encodeURIComponent(storeSlug)}`,
       );
     } catch (err) {
       const message =

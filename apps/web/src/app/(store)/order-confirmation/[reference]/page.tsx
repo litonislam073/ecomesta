@@ -1,10 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import type { PublicOrderConfirmationDetail } from '@ecomesta/types';
-import { OrderTrackingView } from '@/components/order-tracking-view';
-import { contactQuery, readContact } from '@/lib/order-contact';
-import { publicGet, PublicApiError } from '@/lib/public-api';
+import { OrderConfirmationClient } from '@/components/order-confirmation-client';
 import { requirePublicStore } from '@/lib/store-resolver';
 
 export async function generateMetadata({
@@ -34,46 +30,11 @@ export default async function OrderConfirmationPage({
 }) {
   const { store, storeSlug } = await requirePublicStore(searchParams);
   const reference = decodeURIComponent(params.reference);
-  // Contact proof: the checkout email, or the phone when the order has no email.
-  const contact = readContact(searchParams);
-  const proofQuery = contactQuery(contact);
-
-  if (!proofQuery) {
-    notFound();
-  }
-
-  let order: PublicOrderConfirmationDetail;
-  try {
-    const qs = `?${proofQuery}`;
-    const result = await publicGet<{
-      success: true;
-      data: PublicOrderConfirmationDetail;
-    }>(
-      `/public/stores/${encodeURIComponent(storeSlug)}/orders/${encodeURIComponent(reference)}${qs}`,
-    );
-    order = result.data;
-  } catch (err) {
-    if (err instanceof PublicApiError && err.status === 404) {
-      notFound();
-    }
-    throw err;
-  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-8 text-center">
-        <p className="text-sm uppercase tracking-[0.2em] text-[var(--color-muted)]">
-          Thank you
-        </p>
-        <h1 className="mt-3 font-[family-name:var(--font-display)] text-4xl tracking-tight">
-          Order confirmed
-        </h1>
-        <p className="mt-3 text-[var(--color-muted)]">
-          {store.name} received your order. Save your reference for tracking.
-        </p>
-      </div>
-
-      <OrderTrackingView storeSlug={storeSlug} initial={order} contact={contact} />
+      {/* Loaded in the browser with the checkout contact proof, which never goes in the URL. */}
+      <OrderConfirmationClient storeSlug={storeSlug} storeName={store.name} reference={reference} />
 
       <div className="flex flex-wrap justify-center gap-4 text-sm">
         <Link

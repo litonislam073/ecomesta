@@ -610,16 +610,15 @@ export class PaymentOrchestrationService {
     const apiBaseUrl = this.config.get<string>('API_URL')!.replace(/\/$/, '');
     const ref = params.order.publicReference!;
     const customer = this.customerFromAddresses(params.order.addresses);
-    // Contact proof for the result page: the email, or the phone when the order has none.
-    const emailQs = customer?.email?.trim()
-      ? `&email=${encodeURIComponent(customer.email.trim())}`
-      : customer?.phone?.trim()
-        ? `&phone=${encodeURIComponent(customer.phone.trim())}`
-        : '';
+    // No contact details in return URLs: they pass through the provider, browser
+    // history, analytics and referrers. The result page keeps its own contact proof.
+    // `ref` is this attempt's opaque internal reference: the result page needs it
+    // (with the contact proof) to read the payment status.
+    const returnQs = `store=${encodeURIComponent(params.store.slug)}&order=${encodeURIComponent(ref)}&ref=${encodeURIComponent(params.payment.internalReference)}`;
     const returnUrls = {
-      success: `${webUrl}/payment/success?store=${encodeURIComponent(params.store.slug)}&order=${encodeURIComponent(ref)}${emailQs}`,
-      cancel: `${webUrl}/payment/cancel?store=${encodeURIComponent(params.store.slug)}&order=${encodeURIComponent(ref)}${emailQs}`,
-      failure: `${webUrl}/payment/failure?store=${encodeURIComponent(params.store.slug)}&order=${encodeURIComponent(ref)}${emailQs}`,
+      success: `${webUrl}/payment/success?${returnQs}`,
+      cancel: `${webUrl}/payment/cancel?${returnQs}`,
+      failure: `${webUrl}/payment/failure?${returnQs}`,
     };
 
     const adapter = this.registry.getAdapter(params.payment.provider);

@@ -39,3 +39,25 @@ since migration `20261006090000_paid_onboarding` every plan has
 Subscriptions that were `TRIALING` before trials ended keep their
 `trial_ends_at`. They still follow trial → 7-day grace → suspension, and may
 switch to the same or a cheaper plan during the trial.
+
+## Renewals and plan changes (no proration)
+
+A payment changes the plan only when a Super Admin approves it; a payment under
+review unlocks nothing.
+
+- **Renewal — same plan and billing period:** the new period is added to the
+  end of the current one (`endsAt` + period), so paying early loses nothing.
+- **Change of plan or billing period (upgrade or downgrade):** the new plan
+  starts on the day of approval and runs for the paid period from that day.
+  **Unused time on the previous plan is not credited, refunded or prorated** —
+  it simply ends. This is the intended business rule; there is no proration.
+  Merchants who want to keep their remaining time should change plan near the
+  end of the current period.
+- **What a downgrade keeps and refuses:** nothing is deleted. Products, coupons,
+  delivery zones, custom domains and payment-provider settings stay stored.
+  From the moment the plan changes, everything the new plan does not include
+  is refused server-side (`PLAN_UPGRADE_REQUIRED`): creating coupons, delivery
+  zones or domains, enabling SSLCommerz/Stripe, premium themes, products over
+  the plan limit — and shoppers can no longer redeem existing coupons (see
+  [coupons.md](./coupons.md#plan-entitlement)). Moving back to a plan that
+  includes the feature makes the stored data usable again.

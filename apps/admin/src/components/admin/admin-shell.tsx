@@ -62,7 +62,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-20 border-b border-[var(--color-border)] bg-[var(--color-surface)]/95 backdrop-blur">
             <div className="flex items-center justify-between gap-3 px-4 py-3 md:px-6">
-              <div className="flex items-center gap-3">
+              <div className="flex shrink-0 items-center gap-3">
                 <Button
                   variant="secondary"
                   className="lg:hidden"
@@ -74,13 +74,19 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 </Button>
                 <Badge tone="warning">Super Admin</Badge>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <p className="text-sm font-medium">{displayName(user)}</p>
-                  <p className="text-xs text-[var(--color-muted)]">{user.email}</p>
+              {/* min-w-0 + truncate: a long email must not push the page wider than a phone screen. */}
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="min-w-0 max-w-[14rem] text-right">
+                  <p className="truncate text-sm font-medium" title={displayName(user)}>
+                    {displayName(user)}
+                  </p>
+                  <p className="truncate text-xs text-[var(--color-muted)]" title={user.email}>
+                    {user.email}
+                  </p>
                 </div>
                 <Button
                   variant="ghost"
+                  className="shrink-0"
                   onClick={() => {
                     void logout().then(() => router.replace('/login'));
                   }}

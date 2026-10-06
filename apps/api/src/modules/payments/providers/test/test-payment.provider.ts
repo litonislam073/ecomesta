@@ -36,9 +36,11 @@ export class TestPaymentProvider implements PaymentGatewayAdapter {
         : null;
     const redirectUrl = base
       ? `${base}/payment/continue?ref=${encodeURIComponent(input.internalReference)}`
-      : input.returnUrls.success.includes('?')
-        ? `${input.returnUrls.success}&ref=${encodeURIComponent(input.internalReference)}`
-        : `${input.returnUrls.success}?ref=${encodeURIComponent(input.internalReference)}`;
+      : /[?&]ref=/.test(input.returnUrls.success)
+        ? input.returnUrls.success
+        : input.returnUrls.success.includes('?')
+          ? `${input.returnUrls.success}&ref=${encodeURIComponent(input.internalReference)}`
+          : `${input.returnUrls.success}?ref=${encodeURIComponent(input.internalReference)}`;
 
     return {
       providerPaymentId,

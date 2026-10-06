@@ -289,7 +289,13 @@ export function AiSupportPanel({ open, onClose }: { open: boolean; onClose: () =
   const [restart, setRestart] = useState<{ details: VisitorDetails; notice: string } | null>(null);
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState<{ message: string; retryable: boolean } | null>(null);
+  const [error, setError] = useState<{
+    message: string;
+    retryable: boolean;
+    /** The chat could not answer: offer the support form instead (AI down, network, timeout). */
+    offerSupport?: boolean;
+    supportResult?: ChatEntry['handoffResult'];
+  } | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const mounted = useRef(true);
@@ -384,7 +390,7 @@ export function AiSupportPanel({ open, onClose }: { open: boolean; onClose: () =
       setVisitor(null);
     } else {
       setPending(false);
-      setError({ message: outcome.message, retryable: outcome.retryable });
+      setError({ message: outcome.message, retryable: outcome.retryable, offerSupport: true });
     }
   }
 
@@ -554,6 +560,21 @@ export function AiSupportPanel({ open, onClose }: { open: boolean; onClose: () =
               </button>
             ) : null}
           </div>
+        ) : null}
+        {/* The reply above tells the visitor to contact support; let them do it here. */}
+        {error?.offerSupport && visitor && entries.at(-1)?.role === 'user' ? (
+          <HandoffForm
+            entry={{
+              id: 'chat-unavailable',
+              role: 'assistant',
+              content: error.message,
+              handoff: { reason: 'Chat could not answer' },
+              handoffResult: error.supportResult ?? null,
+            }}
+            transcript={entries}
+            visitor={visitor}
+            onSent={(result) => setError((current) => current && { ...current, supportResult: result })}
+          />
         ) : null}
       </div>
 

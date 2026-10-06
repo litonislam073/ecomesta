@@ -190,6 +190,21 @@ export class PublicStorefrontController {
     );
   }
 
+  @Post('orders/:publicReference/lookup')
+  @HttpCode(200)
+  @ApiOperation({
+    summary:
+      'Look up a public order with email/phone proof in the body (keeps contact details out of URLs and access logs)',
+  })
+  lookupOrder(
+    @Param('storeSlug') storeSlug: string,
+    @Param('publicReference') publicReference: string,
+    @Body() dto: PublicOrderLookupQueryDto,
+    @Req() req: Request,
+  ) {
+    return this.publicCheckout.getOrder(storeSlug, publicReference, dto, req);
+  }
+
   @Post('orders/:publicReference/cancel')
   @HttpCode(200)
   @ApiOperation({

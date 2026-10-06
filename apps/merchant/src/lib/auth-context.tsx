@@ -46,6 +46,27 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+let refreshInFlight: Promise<string | null> | null = null;
+
+/**
+ * One refresh at a time in this tab. The API rotates the refresh token on
+ * every call, so a second concurrent POST /auth/refresh with the same cookie
+ * (the start-up refresh racing a 401 retry, or React running the start-up
+ * effect twice) is refused and would sign the merchant out.
+ */
+function refreshAccessTokenOnce(): Promise<string | null> {
+  refreshInFlight ??= api
+    .post<{ success: true; data: { accessToken: string } }>('/auth/refresh', {}, { token: null })
+    .then(
+      (refreshed) => refreshed.data.accessToken,
+      () => null,
+    )
+    .finally(() => {
+      refreshInFlight = null;
+    });
+  return refreshInFlight;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -61,17 +82,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       getAccessToken: () => accessToken,
       onUnauthorized: clearSession,
       refreshAccessToken: async () => {
-        try {
-          const refreshed = await api.post<{
-            success: true;
-            data: { accessToken: string };
-          }>('/auth/refresh', {}, { token: null });
-          setAccessToken(refreshed.data.accessToken);
-          return refreshed.data.accessToken;
-        } catch {
-          clearSession();
-          return null;
-        }
+        const token = await refreshAccessTokenOnce();
+        if (token) setAccessToken(token);
+        else clearSession();
+        return token;
       },
     });
   }, [accessToken, clearSession]);
@@ -84,13 +98,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshSession = useCallback(async () => {
+    const token = await refreshAccessTokenOnce();
+    if (!token) {
+      clearSession();
+      return false;
+    }
     try {
-      const refreshed = await api.post<{
-        success: true;
-        data: { accessToken: string };
-      }>('/auth/refresh', {}, { token: null });
-      setAccessToken(refreshed.data.accessToken);
-      await loadProfile(refreshed.data.accessToken);
+      setAccessToken(token);
+      await loadProfile(token);
       return true;
     } catch {
       clearSession();

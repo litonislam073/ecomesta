@@ -4,14 +4,33 @@ Customer-facing order confirmation/tracking and merchant order operations.
 
 ## Public tracking
 
-**Endpoint:** `GET /api/v1/public/stores/:storeSlug/orders/:publicReference`
+**Endpoint:** `POST /api/v1/public/stores/:storeSlug/orders/:publicReference/lookup`
+with the proof in the JSON body (the storefront uses this one). The older
+`GET …/orders/:publicReference?email=|phone=` still works for API clients but
+puts the contact in the URL (proxy/access logs), so prefer the POST.
 
-**Required** query (email and/or phone — missing → `404`):
+**Required** proof (email and/or phone — missing → `404`):
 
 - `email` — must match shipping/billing address email (wrong → `404`)
 - `phone` — must match shipping/billing phone (wrong → `404`)
 
-Public payment initiate / retry / status endpoints use the same contact-proof rule.
+Public payment initiate / retry / status endpoints use the same contact-proof
+rule; status is `POST …/payments/:internalReference/status` with the proof in
+the body (`GET …?email=|phone=` kept for API clients).
+
+### Contact details never go in URLs
+
+The customer's phone and email are never put in a storefront URL — not the
+confirmation link, not the payment-provider return URLs
+(`/payment/success|cancel|failure?store=…&order=…&ref=pay_…`, where `ref` is the attempt's opaque payment reference the result page needs for its status lookup), not client-side redirects —
+so they cannot leak through browser history, analytics page views, referrers or
+logs. After checkout the storefront keeps the proof in that tab's
+`sessionStorage` (`ecomesta_order_contact:<store>:<reference>`) and sends it in
+POST bodies, so the confirmation and payment-result pages load after a refresh
+or a provider redirect. A visitor without it (another browser, a shared link)
+is asked for the checkout phone or email and the API checks it. Old links that
+still carry `?email=`/`?phone=` work once and the parameter is removed from the
+address bar.
 
 ### Security strategy
 
@@ -22,7 +41,7 @@ Public payment initiate / retry / status endpoints use the same contact-proof ru
 - Cross-store references return `404`.
 - Inactive / suspended-tenant stores return `404`.
 - Lookup is rate-limited per store + IP.
-- Track-order and payment UIs always send checkout email with the reference.
+- Track-order, confirmation and payment UIs send the checkout email or phone in the request body, never in a URL.
 
 ### Customer-safe payload
 
@@ -71,8 +90,8 @@ When the store enables **Settings → Orders → Let customers cancel their own 
 
 ## Storefront UX
 
-- `/order-confirmation/[reference]` — confirmation + live tracking (polls every 20s until completed/cancelled/delivered)
-- `/track-order` — guest lookup (reference + email)
+- `/order-confirmation/[reference]?store=…` — confirmation + live tracking (polls every 20s until completed/cancelled/delivered); no contact details in the URL
+- `/track-order` — guest lookup (reference + phone or email)
 
 ## Merchant UX
 

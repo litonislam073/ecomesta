@@ -403,9 +403,14 @@ describe('CheckoutForm — phone required, email optional', () => {
     expect(body.customer.phone).toBe('01711-000000');
     expect(body.shippingAddress.phone).toBe('01711-000000');
     expect(body.shippingAddress.email).toBeUndefined();
-    expect(pushMock).toHaveBeenCalledWith(
-      '/order-confirmation/ref-phone-only?store=alpha&phone=01711-000000',
-    );
+    // The phone never goes in the confirmation URL; this tab keeps it for the lookup.
+    expect(pushMock).toHaveBeenCalledWith('/order-confirmation/ref-phone-only?store=alpha');
+    expect(JSON.stringify(pushMock.mock.calls)).not.toMatch(/01711|phone=|email=/);
+    expect(
+      JSON.parse(
+        window.sessionStorage.getItem('ecomesta_order_contact:alpha:ref-phone-only') ?? 'null',
+      ),
+    ).toEqual({ phone: '01711-000000' });
   });
 
   it('refuses to place an order without a phone number', async () => {
