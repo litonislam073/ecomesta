@@ -63,7 +63,10 @@ function renderShell() {
 }
 
 describe('Dashboard shell responsive header (TE-07)', () => {
-  beforeEach(() => get.mockReset());
+  // Braces: a function returned from beforeEach would run as a cleanup hook.
+  beforeEach(() => {
+    get.mockReset();
+  });
 
   it('truncates a long name and email, keeping the full text available', async () => {
     renderShell();
