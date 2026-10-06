@@ -11,6 +11,8 @@ export function expectSafeReturnUrl(
   url: string,
   expected: {
     path: '/payment/success' | '/payment/cancel' | '/payment/failure';
+    /** Storefront origin the shopper must land on, when the test pins it. */
+    origin?: string;
     storeSlug: string;
     publicReference: string;
     internalReference: string;
@@ -18,6 +20,7 @@ export function expectSafeReturnUrl(
   },
 ) {
   const parsed = new URL(url);
+  if (expected.origin) expect(parsed.origin).toBe(expected.origin);
   expect(parsed.pathname).toBe(expected.path);
   expect([...parsed.searchParams.keys()].sort()).toEqual(['order', 'ref', 'store']);
   expect(parsed.searchParams.get('store')).toBe(expected.storeSlug);

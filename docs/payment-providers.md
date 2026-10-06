@@ -17,6 +17,16 @@ Payment becomes authoritative only after:
 
 Redirect pages (`/payment/success|cancel|failure|continue`) are informational and poll server status only.
 
+**Return origin.** Providers send the shopper back to the storefront the
+payment started on, not to the platform website (`WEB_URL` serves no
+storefront pages in production). `StoreDomainResolver.storefrontOrigin()`
+builds it from the store's own domain rows only — its primary `ACTIVE`
+domain (a verified custom domain), else `https://{slug}.{PLATFORM_ROOT_DOMAIN}`
+(with `WEB_URL`'s scheme) — never from request headers; an unusable stored
+hostname falls back to the platform subdomain. With a loopback `WEB_URL`
+(local development) every store returns to that origin and is picked with
+`?store=`. The URL carries only `store`, `order` and `ref=pay_…`.
+
 For SSLCommerz, the trusted verification step is the **Order Validation API** after IPN — see [sslcommerz.md](./sslcommerz.md).
 
 ## Provider abstraction

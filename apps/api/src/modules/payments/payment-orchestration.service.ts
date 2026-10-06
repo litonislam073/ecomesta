@@ -21,6 +21,7 @@ import { BillingAccessService } from '../billing/billing-access.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { assertPaymentRecordStatusTransition } from './payment-transitions';
 import { PlanEntitlementsService } from '../billing/plan-entitlements.service';
+import { StoreDomainResolver } from '../domains/store-domain.resolver';
 import { PaymentProviderConfigService } from './payment-provider-config.service';
 import { generatePaymentInternalReference } from './payment-reference.util';
 import { PaymentProviderRegistry } from './providers/payment-provider.registry';
@@ -54,6 +55,7 @@ export class PaymentOrchestrationService {
     private readonly registry: PaymentProviderRegistry,
     private readonly billingAccess: BillingAccessService,
     private readonly entitlements: PlanEntitlementsService,
+    private readonly domains: StoreDomainResolver,
   ) {}
 
   async listPublicProviders(storeSlug: string) {
@@ -606,7 +608,10 @@ export class PaymentOrchestrationService {
         params.payment.provider,
       );
 
-    const webUrl = this.config.get<string>('WEB_URL')!.replace(/\/$/, '');
+    // Providers send the shopper back to the storefront the payment started on
+    // (its verified custom domain or platform subdomain), where the result
+    // pages and the tab's contact proof live — not the platform website.
+    const storefrontOrigin = await this.domains.storefrontOrigin(params.store);
     const apiBaseUrl = this.config.get<string>('API_URL')!.replace(/\/$/, '');
     const ref = params.order.publicReference!;
     const customer = this.customerFromAddresses(params.order.addresses);
@@ -616,9 +621,9 @@ export class PaymentOrchestrationService {
     // (with the contact proof) to read the payment status.
     const returnQs = `store=${encodeURIComponent(params.store.slug)}&order=${encodeURIComponent(ref)}&ref=${encodeURIComponent(params.payment.internalReference)}`;
     const returnUrls = {
-      success: `${webUrl}/payment/success?${returnQs}`,
-      cancel: `${webUrl}/payment/cancel?${returnQs}`,
-      failure: `${webUrl}/payment/failure?${returnQs}`,
+      success: `${storefrontOrigin}/payment/success?${returnQs}`,
+      cancel: `${storefrontOrigin}/payment/cancel?${returnQs}`,
+      failure: `${storefrontOrigin}/payment/failure?${returnQs}`,
     };
 
     const adapter = this.registry.getAdapter(params.payment.provider);
@@ -634,7 +639,7 @@ export class PaymentOrchestrationService {
       customer,
       publicConfig: {
         ...publicConfig,
-        simulateBaseUrl: webUrl,
+        simulateBaseUrl: storefrontOrigin,
         apiBaseUrl,
       },
       secrets,

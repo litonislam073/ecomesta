@@ -22,6 +22,8 @@ import {
   validateHostname,
 } from './domain-normalize';
 
+const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]']);
+
 export interface ResolvedStorefrontStore {
   id: string;
   name: string;
@@ -65,6 +67,8 @@ export class StoreDomainResolver {
 
   private readonly allowLocalHostnames: boolean;
 
+  private readonly webUrl: string;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
@@ -77,6 +81,7 @@ export class StoreDomainResolver {
       .toLowerCase();
     this.allowLocalHostnames =
       config.get<string>('NODE_ENV') !== 'production';
+    this.webUrl = config.get<string>('WEB_URL') ?? 'http://localhost:3000';
   }
 
   /** Strips ports/protocol and applies the local-hostname policy. */
@@ -204,6 +209,27 @@ export class StoreDomainResolver {
       select: { hostname: true },
     });
     return primary?.hostname.toLowerCase() ?? this.platformHostnameFor(store.slug);
+  }
+
+  /**
+   * Public origin (scheme + host) of the store's storefront, for links that
+   * must open on it — e.g. payment provider return URLs. The host comes only
+   * from the store's own domain rows (its primary ACTIVE domain: a verified
+   * custom domain or its platform subdomain), never from a request header; an
+   * unusable hostname falls back to the platform subdomain. With a loopback
+   * WEB_URL (local development) every store is served from that one origin
+   * and picked with `?store=`.
+   */
+  async storefrontOrigin(store: { id: string; slug: string }): Promise<string> {
+    const web = new URL(this.webUrl);
+    if (LOOPBACK_HOSTNAMES.has(web.hostname)) {
+      return web.origin;
+    }
+    const platformHost = this.platformHostnameFor(store.slug);
+    const host = this.normalize(await this.canonicalHostname(store)) ?? platformHost;
+    // Platform subdomains share WEB_URL's port; custom domains use the default one.
+    const port = host === platformHost && web.port ? `:${web.port}` : '';
+    return `${web.protocol}//${host}${port}`;
   }
 
   async invalidateHostname(hostname: string): Promise<void> {

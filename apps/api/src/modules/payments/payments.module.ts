@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { DomainsModule } from '../domains/domains.module';
 import { PaymentSecretsCryptoService } from './crypto/payment-secrets-crypto.service';
 import { PaymentOrchestrationService } from './payment-orchestration.service';
 import { PaymentProviderConfigService } from './payment-provider-config.service';
@@ -13,6 +14,7 @@ import { StripePaymentProvider } from './providers/stripe/stripe-payment.provide
 import { TestPaymentProvider } from './providers/test/test-payment.provider';
 
 @Module({
+  imports: [DomainsModule],
   controllers: [
     PaymentsController,
     PaymentProvidersController,
