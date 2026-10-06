@@ -7,6 +7,9 @@ export const CREATE_STORE_ERROR = 'Unable to create your store right now. Please
 export const CHECK_FIELDS = 'Please check the highlighted fields.';
 export const SLUG_TAKEN = 'That store URL is already in use. Try another one.';
 export const SESSION_EXPIRED = 'Your session has expired. Please sign in again.';
+export const CHECK_PAYMENT = 'Please check your payment details: the wallet, the number you paid from and the transaction ID.';
+
+const PAYMENT_FIELDS = ['planSlug', 'billingCycle', 'method', 'senderNumber', 'transactionId'];
 
 export const SLUG_HINT = 'Use Latin letters or numbers, with hyphens between words (for example: my-store).';
 export const STORE_SLUG_TOO_LONG = 'Store URL must be 63 characters or fewer.';
@@ -28,12 +31,20 @@ const FIELDS = Object.keys(FIELD_MESSAGES) as OnboardField[];
 export function onboardingErrorMessage(
   error: unknown,
   { tenantSlugEdited }: { tenantSlugEdited: boolean },
-): { message: string; fieldErrors: OnboardFieldErrors } {
+): { message: string; fieldErrors: OnboardFieldErrors; payment?: boolean } {
   if (!(error instanceof ApiError) || error.status >= 500) {
     return { message: CREATE_STORE_ERROR, fieldErrors: {} };
   }
   if (error.status === 401) {
     return { message: SESSION_EXPIRED, fieldErrors: {} };
+  }
+  // The payment checks answer with merchant-facing sentences (a reused
+  // transaction ID, a wrong wallet number); those are shown as they are.
+  if (error.status === 409 && /transaction|payment/i.test(error.message)) {
+    return { message: error.message, fieldErrors: {}, payment: true };
+  }
+  if (error.status === 400 && !Array.isArray(error.details) && error.message) {
+    return { message: error.message, fieldErrors: {}, payment: true };
   }
   if (error.status === 409) {
     return {
@@ -52,6 +63,12 @@ export function onboardingErrorMessage(
     if (fieldErrors.tenantSlug && !tenantSlugEdited) {
       fieldErrors.storeSlug = fieldErrors.tenantSlug;
       delete fieldErrors.tenantSlug;
+    }
+    const paymentDetail = details.some(
+      (detail) => typeof detail === 'string' && PAYMENT_FIELDS.some((name) => detail.startsWith(`${name} `)),
+    );
+    if (Object.keys(fieldErrors).length === 0 && paymentDetail) {
+      return { message: CHECK_PAYMENT, fieldErrors, payment: true };
     }
     return { message: CHECK_FIELDS, fieldErrors };
   }

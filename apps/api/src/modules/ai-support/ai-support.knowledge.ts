@@ -10,7 +10,7 @@ import {
   type ContentPage,
   type ContentSection,
 } from '@ecomesta/utils/marketing-content';
-import { BILLING_CYCLES, DEFAULT_TRIAL_MONTHS, PAYMENT_GRACE_DAYS } from '@ecomesta/utils';
+import { BILLING_CYCLES, PAYMENT_GRACE_DAYS } from '@ecomesta/utils';
 
 /** One retrievable piece of Ecomesta knowledge. */
 export interface KnowledgeChunk {
@@ -32,13 +32,14 @@ function platformFacts(): KnowledgeChunk[] {
   return [
     {
       id: 'fact-trial-billing',
-      title: 'Free trial, billing periods and payment due dates',
+      title: 'Signing up, free trial, billing periods and payment due dates',
       path: '/pricing',
       text: [
-        `Every new store starts with ${DEFAULT_TRIAL_MONTHS} months free on the plan chosen at sign-up. No payment details are needed to start.`,
+        'There is no free trial. A new merchant creates an account, enters the store name and web address, chooses a plan and billing period, and pays for it in the last step of sign-up with bKash, Nagad, Rocket or Upay.',
+        'The store is created right away but stays offline for customers until the Ecomesta team confirms the payment, usually within a few hours; meanwhile the merchant can already add products. If the payment cannot be confirmed, the merchant can pay again from Plan & billing.',
         `Billing periods: ${cycles}.`,
-        `When the trial or a paid period ends, payment is due with a ${PAYMENT_GRACE_DAYS}-day grace period; the store keeps working during the grace period. If payment is not made by then, the store is paused until payment is completed. Products, orders and settings are kept.`,
-        'During the free trial a merchant can switch to a cheaper plan or another billing period for free. Upgrading, and any plan change after the trial, takes effect once the payment for the new plan is confirmed.',
+        `When a paid period ends, payment is due with a ${PAYMENT_GRACE_DAYS}-day grace period; the store keeps working during the grace period. If payment is not made by then, the store is paused until payment is completed. Products, orders and settings are kept.`,
+        'A plan change or upgrade takes effect once the payment for the new plan is confirmed.',
       ].join(' '),
     },
     {

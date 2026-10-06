@@ -1,5 +1,5 @@
 import type { PublicPlan } from '@ecomesta/types';
-import { DEFAULT_TRIAL_MONTHS, PAYMENT_GRACE_DAYS } from '@ecomesta/utils';
+import { PAYMENT_GRACE_DAYS } from '@ecomesta/utils';
 import type { AiSupportKnowledge } from './ai-support.knowledge';
 import type { ChatToolDefinition } from './openai.client';
 
@@ -27,7 +27,7 @@ export const AI_SUPPORT_TOOLS: ChatToolDefinition[] = [
     type: 'function',
     function: {
       name: 'get_pricing',
-      description: 'Current Ecomesta plans with BDT prices for every billing period, plan limits and trial terms.',
+      description: 'Current Ecomesta plans with BDT prices for every billing period, plan limits and how paying at sign-up works.',
       parameters: { type: 'object', properties: {}, additionalProperties: false },
     },
   },
@@ -102,7 +102,8 @@ export async function runAiSupportTool(
       return {
         result: JSON.stringify({
           currency: 'BDT',
-          freeTrialMonths: DEFAULT_TRIAL_MONTHS,
+          freeTrial: false,
+          signUp: 'Pay for the chosen plan in the last step of sign-up; the store goes live once the payment is confirmed.',
           gracePeriodDays: PAYMENT_GRACE_DAYS,
           page: '/pricing',
           plans: plans.map((plan) => ({

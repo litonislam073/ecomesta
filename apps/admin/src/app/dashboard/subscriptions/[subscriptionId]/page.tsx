@@ -139,7 +139,7 @@ export default function AdminSubscriptionDetailPage() {
                 <dt className="text-[var(--color-muted)]">Price per period</dt>
                 <dd>{formatPlanMoney(subscription.amountDue)}</dd>
                 <dt className="text-[var(--color-muted)]">Trial length</dt>
-                <dd>{subscription.plan.trialMonths} months</dd>
+                <dd>{subscription.plan.trialMonths > 0 ? `${subscription.plan.trialMonths} months` : 'None'}</dd>
                 <dt className="text-[var(--color-muted)]">Starts</dt>
                 <dd>{formatDateTime(subscription.startsAt)}</dd>
                 <dt className="text-[var(--color-muted)]">Ends</dt>

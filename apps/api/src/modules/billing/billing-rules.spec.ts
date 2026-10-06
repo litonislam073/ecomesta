@@ -45,24 +45,30 @@ describe('plan prices', () => {
   });
 });
 
+// New stores no longer get a trial, but trials started earlier (and any a
+// Super Admin sets on a plan) still end on calendar months.
 describe('trial dates (Asia/Dhaka calendar months)', () => {
+  it('has no free months by default', () => {
+    expect(trialEndDate(dhaka('2026-09-28'))).toEqual(dhaka('2026-09-28'));
+  });
+
   it('ends two calendar months after the start', () => {
-    expect(trialEndDate(dhaka('2026-09-28'))).toEqual(dhaka('2026-11-28'));
-    expect(formatBillingDate(trialEndDate(dhaka('2026-09-28')))).toBe('November 28, 2026');
+    expect(trialEndDate(dhaka('2026-09-28'), 2)).toEqual(dhaka('2026-11-28'));
+    expect(formatBillingDate(trialEndDate(dhaka('2026-09-28'), 2))).toBe('November 28, 2026');
   });
 
   it('clamps to the last day of shorter months', () => {
-    expect(trialEndDate(dhaka('2026-12-31'))).toEqual(dhaka('2027-02-28'));
-    expect(trialEndDate(dhaka('2027-12-31'))).toEqual(dhaka('2028-02-29'));
-    expect(trialEndDate(dhaka('2026-08-31'))).toEqual(dhaka('2026-10-31'));
+    expect(trialEndDate(dhaka('2026-12-31'), 2)).toEqual(dhaka('2027-02-28'));
+    expect(trialEndDate(dhaka('2027-12-31'), 2)).toEqual(dhaka('2028-02-29'));
+    expect(trialEndDate(dhaka('2026-08-31'), 2)).toEqual(dhaka('2026-10-31'));
     expect(addCalendarMonths(dhaka('2027-03-31'), -1)).toEqual(dhaka('2027-02-28'));
   });
 
   it('uses the Dhaka date even when the UTC date is different', () => {
     // 01:30 on Oct 1 in Dhaka is still Sep 30 in UTC.
     const start = new Date('2026-09-30T19:30:00.000Z');
-    expect(trialEndDate(start).toISOString()).toBe('2026-11-30T19:30:00.000Z');
-    expect(formatBillingDate(trialEndDate(start))).toBe('December 1, 2026');
+    expect(trialEndDate(start, 2).toISOString()).toBe('2026-11-30T19:30:00.000Z');
+    expect(formatBillingDate(trialEndDate(start, 2))).toBe('December 1, 2026');
   });
 
   it('gives a 7-day payment grace period after the trial', () => {
@@ -125,10 +131,10 @@ describe('plan catalog', () => {
     ]);
   });
 
-  it('defaults to a 2-month trial and ignores invalid settings', () => {
-    expect(readPlanSettings(null).trialMonths).toBe(2);
-    expect(readPlanSettings({ trialMonths: -1 }).trialMonths).toBe(2);
-    expect(readPlanSettings({ trialMonths: 1.5 }).trialMonths).toBe(2);
+  it('defaults to no free trial and ignores invalid settings', () => {
+    expect(readPlanSettings(null).trialMonths).toBe(0);
+    expect(readPlanSettings({ trialMonths: -1 }).trialMonths).toBe(0);
+    expect(readPlanSettings({ trialMonths: 1.5 }).trialMonths).toBe(0);
     expect(readPlanSettings({ trialMonths: 3 }).trialMonths).toBe(3);
   });
 

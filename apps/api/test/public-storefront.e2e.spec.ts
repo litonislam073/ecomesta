@@ -8,6 +8,7 @@ import { AppModule } from '../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 describe('Public storefront (e2e)', () => {
   let app: NestExpressApplication;
@@ -80,26 +81,26 @@ describe('Public storefront (e2e)', () => {
     const onboard = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set('Authorization', `Bearer ${manager.token}`)
-      .send({
+      .send(withPayment({
         businessName: 'Public Tenant',
         tenantSlug: `pub-tenant-${suffix}`,
         storeName: 'Public Store',
         storeSlug,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     tenantId = onboard.body.data.tenant.id;
     storeId = onboard.body.data.store.id;
 
     const onboardB = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set('Authorization', `Bearer ${managerB.token}`)
-      .send({
+      .send(withPayment({
         businessName: 'Other Tenant',
         tenantSlug: `other-tenant-${suffix}`,
         storeName: 'Other Store',
         storeSlug: otherStoreSlug,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     otherStoreId = onboardB.body.data.store.id;
 
     await prisma.store.update({
@@ -223,6 +224,9 @@ describe('Public storefront (e2e)', () => {
       await prisma.tenantUser.deleteMany({
         where: { tenantId: { in: tenants.map((t) => t.id) } },
       });
+      // Sign-up payments and the plan they started belong to the tenant.
+      await prisma.billingPayment.deleteMany({ where: { tenantId: { in: tenants.map((t) => t.id) } } });
+      await prisma.subscription.deleteMany({ where: { tenantId: { in: tenants.map((t) => t.id) } } });
       await prisma.tenant.deleteMany({
         where: { id: { in: tenants.map((t) => t.id) } },
       });

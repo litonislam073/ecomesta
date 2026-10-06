@@ -17,6 +17,7 @@ import {
 } from '../src/modules/email/providers/email-provider';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 const GENERIC = 'If an account exists for that email, you will receive password reset instructions.';
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
@@ -130,6 +131,8 @@ describe('Transactional email (e2e)', () => {
     if (tenantIds.length) {
       await prisma.subscription.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.store.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // Sign-up payments and the plan they started belong to the tenant.
+      await prisma.billingPayment.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.tenant.deleteMany({ where: { id: { in: tenantIds } } });
     }
     await prisma.authSession.deleteMany({ where: { userId: { in: userIds } } });
@@ -206,8 +209,8 @@ describe('Transactional email (e2e)', () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/onboarding/store')
         .set('Authorization', `Bearer ${merchant.token}`)
-        .send(onboardBody)
-        .expect(201);
+        .send(withPayment(onboardBody))
+        .expect(201).then(activateOnboarded(app));
       storeId = res.body.data.store.id;
       tenantIds.push(res.body.data.tenant.id);
 
@@ -224,7 +227,7 @@ describe('Transactional email (e2e)', () => {
       await request(app.getHttpServer())
         .post('/api/v1/onboarding/store')
         .set('Authorization', `Bearer ${merchant.token}`)
-        .send(onboardBody)
+        .send(withPayment(onboardBody))
         .expect(409);
       const store = await prisma.store.findUniqueOrThrow({ where: { id: storeId } });
       await email.sendStoreCreated(
@@ -237,7 +240,9 @@ describe('Transactional email (e2e)', () => {
       await drain();
       const sent = provider.sent.filter((m) => m.event === 'STORE_CREATED' && m.to === merchant.email);
       expect(sent).toHaveLength(1);
-      expect(sent[0]!.subject).toBe('Your store Txmail <Demo> Store is ready');
+      // Created at sign-up together with the payment: live once the payment is confirmed.
+      expect(sent[0]!.subject).toBe('Your store Txmail <Demo> Store has been created');
+      expect(sent[0]!.text).toContain('goes live for customers as soon as it is confirmed');
       expect(sent[0]!.html).toContain('Txmail &lt;Demo&gt; Store');
       expect(sent[0]!.text).toContain(`?store=${onboardBody.storeSlug}`);
       expect(sent[0]!.text).toContain('/dashboard');

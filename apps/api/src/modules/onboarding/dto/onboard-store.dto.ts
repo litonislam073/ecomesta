@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { BillingCycle } from '@prisma/client';
+import { BillingCycle, ManualPaymentMethod } from '@prisma/client';
 import { Transform } from 'class-transformer';
 import {
   IsIn,
@@ -78,18 +78,32 @@ export class OnboardStoreDto {
   @Matches(LOCALE_REGEX)
   locale?: string;
 
-  @ApiPropertyOptional({ example: 'growth', description: 'Starts the free trial on this plan' })
-  @IsOptional()
+  @ApiProperty({ example: 'growth', description: 'Plan the first payment is for' })
   @IsString()
   @MaxLength(120)
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? normalizeSlug(value) : value,
   )
   @Matches(SLUG_REGEX)
-  planSlug?: string;
+  planSlug!: string;
 
-  @ApiPropertyOptional({ enum: BillingCycle, description: 'Defaults to MONTHLY when a plan is given' })
-  @IsOptional()
+  @ApiProperty({ enum: BillingCycle })
   @IsIn(Object.values(BillingCycle))
-  billingCycle?: BillingCycle;
+  billingCycle!: BillingCycle;
+
+  // The first subscription payment, made by mobile wallet before the store
+  // is created. The store stays offline until a Super Admin confirms it.
+  @ApiProperty({ enum: ManualPaymentMethod })
+  @IsIn(Object.values(ManualPaymentMethod))
+  method!: ManualPaymentMethod;
+
+  @ApiProperty({ example: '01712345678', description: 'Wallet number the merchant paid from' })
+  @IsString()
+  @MaxLength(20)
+  senderNumber!: string;
+
+  @ApiProperty({ example: 'BKA7XY12QZ', description: 'Transaction ID from the wallet payment message' })
+  @IsString()
+  @MaxLength(40)
+  transactionId!: string;
 }

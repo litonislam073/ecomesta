@@ -146,10 +146,10 @@ describe('AI support chat', () => {
 
   it('types the reply like a person: typing dots first, then the text appears gradually', async () => {
     Object.assign(replyPacing, { minThinkMs: 300, maxThinkMs: 300, thinkMsPerChar: 0, maxTypeMs: 900, charsPerSecond: 1 });
-    const reply = 'আপনি দুই মাস ফ্রি পাবেন, তারপর মাসে ৳99 থেকে প্ল্যান শুরু।';
+    const reply = 'প্ল্যান মাসে ৳99 থেকে শুরু, স্টোর খোলার সময় পেমেন্ট করতে হয়।';
     postMock.mockImplementation(() => ok(reply));
     const { user, dialog } = await openChat();
-    await user.type(within(dialog).getByLabelText('Message Ecomesta Support'), 'Free trial ache?{Enter}');
+    await user.type(within(dialog).getByLabelText('Message Ecomesta Support'), 'Price koto?{Enter}');
     // The answer is back immediately, but a person takes a moment: dots, no text yet.
     expect(await within(dialog).findByRole('status', { name: 'Ecomesta Support is typing' })).toBeInTheDocument();
     expect(within(dialog).queryByText(reply)).toBeNull();
@@ -274,8 +274,8 @@ describe('AI support chat', () => {
 
   it('keeps the conversation after a page reload, also under React Strict Mode', async () => {
     const saved = [
-      { id: 'u1', role: 'user', content: 'Is there a free trial?' },
-      { id: 'a1', role: 'assistant', content: 'Yes, two months free.' },
+      { id: 'u1', role: 'user', content: 'How much is the Starter plan?' },
+      { id: 'a1', role: 'assistant', content: 'Starter is ৳99 a month.' },
     ];
     window.sessionStorage.setItem('ecomesta_ai_support_v1', JSON.stringify(saved));
     window.sessionStorage.setItem(
@@ -291,8 +291,8 @@ describe('AI support chat', () => {
     );
     await user.click(await screen.findByRole('button', { name: 'Open Ecomesta support chat' }));
     const dialog = await screen.findByRole('dialog', { name: 'Ecomesta Support' });
-    expect(await within(dialog).findByText('Is there a free trial?')).toBeInTheDocument();
-    expect(within(dialog).getByText('Yes, two months free.')).toBeInTheDocument();
+    expect(await within(dialog).findByText('How much is the Starter plan?')).toBeInTheDocument();
+    expect(within(dialog).getByText('Starter is ৳99 a month.')).toBeInTheDocument();
     expect(JSON.parse(window.sessionStorage.getItem('ecomesta_ai_support_v1')!)).toEqual(saved);
   });
 

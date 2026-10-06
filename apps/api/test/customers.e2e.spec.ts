@@ -8,6 +8,7 @@ import { AppModule } from '../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 describe('Customers (e2e)', () => {
   let app: NestExpressApplication;
@@ -84,26 +85,26 @@ describe('Customers (e2e)', () => {
     const onboardA = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set('Authorization', `Bearer ${managerA.token}`)
-      .send({
+      .send(withPayment({
         businessName: 'Customer Tenant A',
         tenantSlug: `cust-tenant-a-${suffix}`,
         storeName: 'Customer Store A',
         storeSlug: `cust-store-a-${suffix}`,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     tenantAId = onboardA.body.data.tenant.id;
     storeAId = onboardA.body.data.store.id;
 
     const onboardB = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set('Authorization', `Bearer ${managerB.token}`)
-      .send({
+      .send(withPayment({
         businessName: 'Customer Tenant B',
         tenantSlug: `cust-tenant-b-${suffix}`,
         storeName: 'Customer Store B',
         storeSlug: `cust-store-b-${suffix}`,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     tenantBId = onboardB.body.data.tenant.id;
     storeBId = onboardB.body.data.store.id;
 
@@ -149,6 +150,9 @@ describe('Customers (e2e)', () => {
       await prisma.tenantUser.deleteMany({
         where: { tenantId: { in: tenantIds } },
       });
+      // Sign-up payments and the plan they started belong to the tenant.
+      await prisma.billingPayment.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.subscription.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.tenant.deleteMany({ where: { id: { in: tenantIds } } });
     }
     await prisma.authSession.deleteMany({ where: { userId: { in: userIds } } });

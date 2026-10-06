@@ -40,7 +40,7 @@ function StatusSummary({ data, sub }: { data: MerchantSubscription; sub: Sub }) 
       return (
         <div className="space-y-2">
           <p className="inline-flex rounded-full bg-[#e3f1ec] px-3 py-1 text-sm font-semibold text-[var(--color-accent)]">
-            {sub.plan.trialMonths} Months Free
+            Free trial
           </p>
           {sub.trialEndsAt ? <p>Your free trial ends on {formatBillingDate(sub.trialEndsAt)}.</p> : null}
           <p className="text-sm text-[var(--color-muted)]">
@@ -123,11 +123,16 @@ export default function BillingView() {
     }
   }, [accessToken]);
 
+  // Loaded once the subscription is known, also without a subscription: a new
+  // store pays here (again, if its sign-up payment was rejected). Later updates
+  // to `data` (e.g. a payment just submitted) must not reload over local state.
+  const hasData = Boolean(data);
   useEffect(() => {
-    if (sub) void loadPayments();
-  }, [sub, loadPayments]);
+    if (hasData) void loadPayments();
+  }, [hasData, loadPayments]);
 
-  async function startTrialOrSwitch() {
+  /** Plan switch without payment: only for businesses still in an earlier free trial. */
+  async function switchDuringTrial() {
     if (!selection || !accessToken) return;
     setSaving(true);
     setMessage(null);
@@ -138,7 +143,7 @@ export default function BillingView() {
         { token: accessToken },
       );
       setData(result.data);
-      setMessage({ tone: 'ok', text: sub ? 'Your plan has been updated.' : 'Your 2-month free trial has started.' });
+      setMessage({ tone: 'ok', text: 'Your plan has been updated.' });
     } catch (err) {
       setMessage({
         tone: 'error',
@@ -209,12 +214,12 @@ export default function BillingView() {
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <h2 id="choose-plan-title" className="text-lg font-semibold">
-                {sub ? 'Choose your plan' : 'Start your free trial'}
+                Choose your plan
               </h2>
               <p className="text-sm text-[var(--color-muted)]">
                 {sub
                   ? 'Pick a plan and billing period, then pay below. Plan changes take effect once your payment is confirmed.'
-                  : 'Every plan starts with 2 months free. Nothing is charged today.'}
+                  : 'Pick a plan and billing period, then pay below. Your store goes live as soon as we confirm the payment.'}
               </p>
             </div>
             <CycleSwitch
@@ -239,16 +244,6 @@ export default function BillingView() {
               {message.text}
             </p>
           ) : null}
-          {canManage && !sub ? (
-            <Button
-              type="button"
-              className="h-11 rounded-lg px-6 font-semibold"
-              disabled={saving}
-              onClick={() => void startTrialOrSwitch()}
-            >
-              {saving ? 'Starting…' : 'Start 2 Months Free'}
-            </Button>
-          ) : null}
           {canManage && freeSwitch ? (
             <div className="flex flex-wrap items-center gap-3 rounded-xl bg-[#f4f7f5] px-4 py-3 text-sm">
               <span>Switching to {selectedPlan?.name} is free during your trial.</span>
@@ -257,7 +252,7 @@ export default function BillingView() {
                 variant="secondary"
                 className="h-9 rounded-lg px-4 font-semibold"
                 disabled={saving}
-                onClick={() => void startTrialOrSwitch()}
+                onClick={() => void switchDuringTrial()}
               >
                 {saving ? 'Switching…' : `Switch to ${selectedPlan?.name} now`}
               </Button>
@@ -266,22 +261,22 @@ export default function BillingView() {
         </section>
       ) : null}
 
-      {data && sub && !canManage ? (
+      {data && !canManage ? (
         <p className="text-sm text-[var(--color-muted)]">Only the account owner or an admin can pay for the plan.</p>
       ) : null}
 
-      {data && sub && canManage && !pending && selectedPlan && selection && accounts && accounts.length > 0 ? (
+      {data && canManage && !pending && selectedPlan && selection && accounts && accounts.length > 0 ? (
         <ManualPaymentPanel
           plan={selectedPlan}
           cycle={selection.cycle}
           accounts={accounts}
           token={accessToken}
-          trialEndsAt={sub.phase === 'TRIAL' ? sub.trialEndsAt : null}
+          trialEndsAt={sub?.phase === 'TRIAL' ? sub.trialEndsAt : null}
           onSubmitted={onPaymentSubmitted}
         />
       ) : null}
 
-      {sub ? <PaymentHistory payments={payments} /> : null}
+      {data ? <PaymentHistory payments={payments} /> : null}
     </div>
   );
 }

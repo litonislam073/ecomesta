@@ -170,7 +170,7 @@ export default function RegisterPage() {
             {selectedPlan ? `${selectedPlan.name} plan` : 'Your selected plan'} ·{' '}
             {billingCycleDefinition(selection.cycle).label}
           </span>{' '}
-          — 2 months free. No payment details needed.
+          — you pay for it in the last step of store setup.
         </p>
       ) : null}
 

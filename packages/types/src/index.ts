@@ -1058,6 +1058,8 @@ export interface AdminBillingPayment extends MerchantBillingPayment {
 export interface MerchantSubscription {
   tenantName: string;
   canManage: boolean;
+  /** A store created at sign-up is offline until its first payment is confirmed. */
+  awaitingFirstPayment: boolean;
   /** False until paid subscription billing is switched on. */
   onlinePaymentAvailable: boolean;
   subscription: {

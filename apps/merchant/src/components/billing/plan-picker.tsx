@@ -8,25 +8,23 @@ function planPrice(plan: PublicPlan, cycle: BillingCycleCode): number {
   return plan.prices.find((price) => price.billingCycle === cycle)?.amount ?? plan.monthlyPrice;
 }
 
-/** Plan + billing period choice. Nothing is charged; prices apply after the free trial. */
+/** Plan + billing period choice; the plan is paid for in the next step. */
 export function PlanPicker({
   plans,
   value,
   onChange,
   idPrefix,
-  trialOver = false,
 }: {
   plans: PublicPlan[];
   value: PlanSelection;
   onChange: (next: PlanSelection) => void;
   idPrefix: string;
-  trialOver?: boolean;
 }) {
   return (
     <div className="space-y-4">
       <fieldset>
         <legend className="text-sm font-semibold text-[var(--color-ink)]">
-          {trialOver ? 'Billing period' : 'Billing after the free trial'}
+          Billing period
         </legend>
         <div className="mt-2 grid grid-cols-3 gap-1 rounded-lg border border-[var(--color-border)] bg-[#f4f7f5] p-1">
           {BILLING_CYCLES.map((cycle) => {
@@ -85,17 +83,11 @@ export function PlanPicker({
                     <span className="font-semibold text-[var(--color-ink)]">{plan.name}</span>
                     <span className="text-sm text-[var(--color-ink)]">
                       {formatCyclePrice(planPrice(plan, value.cycle), value.cycle)}
-                      {trialOver ? null : <span className="text-[var(--color-muted)]"> after trial</span>}
                     </span>
                   </span>
                   {plan.tagline ? (
                     <span className="block text-sm text-[var(--color-muted)]">{plan.tagline}</span>
                   ) : null}
-                  {trialOver ? null : (
-                    <span className="mt-0.5 block text-xs font-semibold text-[var(--color-accent)]">
-                      {plan.trialMonths} months free
-                    </span>
-                  )}
                 </span>
               </label>
             );

@@ -8,6 +8,7 @@ import { AppModule } from '../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 describe('Phase 11 shipping + payments (e2e)', () => {
   jest.setTimeout(60_000);
@@ -88,25 +89,25 @@ describe('Phase 11 shipping + payments (e2e)', () => {
     const onboard = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set('Authorization', `Bearer ${manager.token}`)
-      .send({
+      .send(withPayment({
         businessName: 'Ship Tenant',
         tenantSlug: `ship-tenant-${suffix}`,
         storeName: 'Ship Store',
         storeSlug: `ship-store-${suffix}`,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     storeId = onboard.body.data.store.id;
 
     const onboardB = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set('Authorization', `Bearer ${other.token}`)
-      .send({
+      .send(withPayment({
         businessName: 'Other Ship Tenant',
         tenantSlug: `ship-tenant-b-${suffix}`,
         storeName: 'Other Ship Store',
         storeSlug: `ship-other-${suffix}`,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     otherStoreId = onboardB.body.data.store.id;
 
     await prisma.store.update({

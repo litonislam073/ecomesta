@@ -8,6 +8,7 @@ import { AppModule } from '../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 describe('Public checkout (e2e)', () => {
   jest.setTimeout(60_000);
@@ -119,25 +120,25 @@ describe('Public checkout (e2e)', () => {
     const onboard = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set('Authorization', `Bearer ${manager.token}`)
-      .send({
+      .send(withPayment({
         businessName: 'Checkout Tenant',
         tenantSlug: `chk-tenant-${suffix}`,
         storeName: 'Checkout Store',
         storeSlug,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     storeId = onboard.body.data.store.id;
 
     const onboardB = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set('Authorization', `Bearer ${managerB.token}`)
-      .send({
+      .send(withPayment({
         businessName: 'Other Checkout Tenant',
         tenantSlug: `chk-tenant-b-${suffix}`,
         storeName: 'Other Checkout Store',
         storeSlug: otherStoreSlug,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     otherStoreId = onboardB.body.data.store.id;
 
     await prisma.store.update({

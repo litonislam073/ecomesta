@@ -52,9 +52,31 @@ export function PaymentCta({
   );
 }
 
-/** Slim banner at the top of the dashboard for trial / grace states. */
+/** Slim banner at the top of the dashboard for awaiting-payment / trial / grace states. */
 export function SubscriptionBanner({ data, showTrial }: { data: MerchantSubscription; showTrial: boolean }) {
   const sub = data.subscription;
+  if (!sub && data.awaitingFirstPayment) {
+    return (
+      <section
+        aria-labelledby="launch-banner-title"
+        className="mb-6 rounded-lg border-2 border-[#d9a441] bg-[#fff8e8] px-4 py-3"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h2 id="launch-banner-title" className="font-semibold text-[var(--color-ink)]">
+              Your store is not live yet
+            </h2>
+            <p className="text-sm text-[var(--color-ink)]">
+              {data.pendingPayment
+                ? 'We are confirming your payment. Your store goes live for customers as soon as it is confirmed — you can add products meanwhile.'
+                : 'Pay for your plan to bring your store online. You can add products meanwhile.'}
+            </p>
+          </div>
+          {data.pendingPayment ? null : <PaymentCta label="Pay now" data={data} />}
+        </div>
+      </section>
+    );
+  }
   if (!sub) return null;
 
   if (sub.phase === 'GRACE') {
@@ -66,7 +88,7 @@ export function SubscriptionBanner({ data, showTrial }: { data: MerchantSubscrip
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <h2 id="grace-banner-title" className="font-semibold text-[var(--color-ink)]">
-              Your trial has ended
+              Payment due
             </h2>
             <p className="text-sm text-[var(--color-ink)]">
               Your store is currently in a {PAYMENT_GRACE_DAYS}-day payment grace period.
@@ -90,8 +112,8 @@ export function SubscriptionBanner({ data, showTrial }: { data: MerchantSubscrip
   if (showTrial && sub.phase === 'TRIAL' && sub.trialEndsAt) {
     return (
       <p className="mb-6 rounded-lg border border-[var(--color-border)] bg-[#f1f8f5] px-4 py-2 text-sm text-[var(--color-ink)]">
-        <span className="font-semibold">{sub.plan.trialMonths} Months Free</span> · Your free trial
-        ends on {formatBillingDate(sub.trialEndsAt)}.{' '}
+        <span className="font-semibold">Free trial</span> · Your free trial ends on{' '}
+        {formatBillingDate(sub.trialEndsAt)}.{' '}
         <Link href="/dashboard/billing" className="font-semibold text-[var(--color-accent)] underline-offset-4 hover:underline">
           Plan &amp; billing
         </Link>

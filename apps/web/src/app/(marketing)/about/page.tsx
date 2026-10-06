@@ -51,8 +51,8 @@ export default function AboutPage() {
           <h2 className="font-display text-2xl tracking-tight">Where we are today</h2>
           <p className="mt-4 text-lg leading-relaxed text-[var(--color-muted)]">
             Ecomesta already covers the core of an online store — catalog, inventory, orders,
-            payments, delivery zones, coupons, themes and custom domains. Every plan starts with 2 months
-            free, and we are improving the platform with feedback from merchants.
+            payments, delivery zones, coupons, themes and custom domains. Plans start at ৳99 a month, and we
+            are improving the platform with feedback from merchants.
           </p>
         </FadeUp>
       </Container>

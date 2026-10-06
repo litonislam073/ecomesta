@@ -86,7 +86,7 @@ describe('Register form', () => {
     render(<RegisterPage />);
 
     expect(await screen.findByText(/Growth plan · Yearly/)).toBeInTheDocument();
-    expect(screen.getByText(/2 months free\. No payment details needed\./)).toBeInTheDocument();
+    expect(screen.getByText(/you pay for it in the last step of store setup/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute(
       'href',
       `/login?next=${encodeURIComponent('/onboard?plan=growth&interval=yearly')}`,

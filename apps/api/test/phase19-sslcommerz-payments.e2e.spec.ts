@@ -9,6 +9,7 @@ import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
 import { SslCommerzHttp } from '../src/modules/payments/providers/sslcommerz/sslcommerz.http';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 describe('Phase 19 SSLCommerz payments (e2e)', () => {
   jest.setTimeout(60_000);
@@ -104,13 +105,13 @@ describe('Phase 19 SSLCommerz payments (e2e)', () => {
     const onboard = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set('Authorization', `Bearer ${manager.token}`)
-      .send({
+      .send(withPayment({
         businessName: 'SSL Tenant',
         tenantSlug: `ssl-tenant-${suffix}`,
         storeName: 'SSL Store',
         storeSlug,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     storeId = onboard.body.data.store.id;
     await prisma.store.update({
       where: { id: storeId },
@@ -120,13 +121,13 @@ describe('Phase 19 SSLCommerz payments (e2e)', () => {
     const otherOnboard = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set('Authorization', `Bearer ${otherManager.token}`)
-      .send({
+      .send(withPayment({
         businessName: 'SSL Other Tenant',
         tenantSlug: `ssl-other-tenant-${suffix}`,
         storeName: 'SSL Other Store',
         storeSlug: otherStoreSlug,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     otherStoreId = otherOnboard.body.data.store.id;
     await prisma.store.update({
       where: { id: otherStoreId },

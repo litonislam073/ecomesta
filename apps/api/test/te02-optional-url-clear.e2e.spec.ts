@@ -9,6 +9,7 @@ import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
 import { publishedThemeCacheKey } from '../src/modules/themes/theme-cache';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 /** TE-02: optional URL fields can be removed and the removal can be published. */
 describe('TE-02 clearing optional theme URLs (e2e)', () => {
@@ -83,8 +84,8 @@ describe('TE-02 clearing optional theme URLs (e2e)', () => {
         await http()
           .post('/api/v1/onboarding/store')
           .set(auth(s))
-          .send({ businessName: `TE02 ${key}`, tenantSlug: `${s.slug}-t`, storeName: `TE02 ${key}`, storeSlug: s.slug })
-          .expect(201)
+          .send(withPayment({ businessName: `TE02 ${key}`, tenantSlug: `${s.slug}-t`, storeName: `TE02 ${key}`, storeSlug: s.slug }))
+          .expect(201).then(activateOnboarded(app))
       ).body.data.store.id;
       await prisma.store.update({ where: { id: s.id }, data: { status: StoreStatus.ACTIVE } });
       await draft(s);

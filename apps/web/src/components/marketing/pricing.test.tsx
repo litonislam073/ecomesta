@@ -55,13 +55,13 @@ afterEach(() => {
 });
 
 describe('Pricing plans', () => {
-  it('shows monthly prices first with a 2 months free badge on every plan', () => {
+  it('shows monthly prices first, with no free-trial offer', () => {
     render(<PricingPlans plans={PLANS} merchantOrigin={MERCHANT} />);
     expect(screen.getByRole('radio', { name: /Monthly/ })).toBeChecked();
     expect(within(card('Starter')).getByText('৳499')).toBeInTheDocument();
     expect(within(card('Growth')).getByText('৳999')).toBeInTheDocument();
     expect(within(card('Business')).getByText('৳1,999')).toBeInTheDocument();
-    expect(screen.getAllByText('2 Months Free')).toHaveLength(3);
+    expect(screen.queryByText(/Months Free|free trial/i)).not.toBeInTheDocument();
     expect(within(card('Growth')).getByText('Most Popular')).toBeInTheDocument();
     expect(within(card('Starter')).queryByText('Most Popular')).not.toBeInTheDocument();
   });
@@ -77,17 +77,22 @@ describe('Pricing plans', () => {
     ['Starter', 'Growth', 'Business'].forEach((name, i) => {
       expect(within(card(name)).getByText(prices[i]!)).toBeInTheDocument();
     });
-    expect(within(card('Growth')).getByRole('link', { name: 'Start 2 Months Free' })).toHaveAttribute(
+    expect(within(card('Growth')).getByRole('link', { name: 'Choose Growth' })).toHaveAttribute(
       'href',
       `${MERCHANT}/register?plan=growth&interval=${slug}`,
     );
   });
 
-  it('never offers an immediate purchase', () => {
+  it('sends each plan to sign-up, where it is paid for when the store is created', () => {
     const { container } = render(<PricingPlans plans={PLANS} merchantOrigin={MERCHANT} />);
-    expect(container.textContent).not.toMatch(/Pay Now|Buy Now|Subscribe Now/i);
-    expect(screen.getAllByRole('link', { name: 'Start 2 Months Free' })).toHaveLength(3);
-    expect(screen.getAllByText(/No payment details needed today/)).toHaveLength(3);
+    expect(container.textContent).not.toMatch(/Pay Now|Buy Now|Subscribe Now|No payment details/i);
+    ['Starter', 'Growth', 'Business'].forEach((name) => {
+      expect(within(card(name)).getByRole('link', { name: `Choose ${name}` })).toHaveAttribute(
+        'href',
+        `${MERCHANT}/register?plan=${name.toLowerCase()}&interval=monthly`,
+      );
+    });
+    expect(screen.getAllByText(/when you create your\s+store/)).toHaveLength(3);
   });
 
   it('keeps the billing toggle keyboard accessible', async () => {
@@ -113,14 +118,18 @@ describe('Pricing page', () => {
     render(await PricingPage());
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Simple pricing for your growing business');
-    expect(screen.getByText('Start your online store free for 2 months. Choose the plan that fits your business.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Choose the plan that fits your business. Pay with bKash, Nagad, Rocket or Upay and start selling.'),
+    ).toBeInTheDocument();
+    // \b keeps "12 months" (yearly billing) from counting as the old "2 months free".
+    expect(document.body.textContent).not.toMatch(/\b2 months|free trial|months free/i);
     expect(screen.getAllByRole('heading', { level: 3, name: /Starter|Growth|Business/ })).toHaveLength(3);
   });
 
   it('has the pricing SEO title, description and canonical URL', () => {
     expect(metadata.title).toEqual({ absolute: 'Ecomesta Pricing | Online Store Plans in Bangladesh' });
     expect(metadata.description).toBe(
-      'Choose an Ecomesta plan for your online business. Start free for 2 months with flexible monthly, 6-month and yearly options.',
+      'Choose an Ecomesta plan for your online business, from ৳99 a month, with flexible monthly, 6-month and yearly options.',
     );
     expect(String(metadata.alternates?.canonical)).toMatch(/\/pricing$/);
     expect(metadata.openGraph?.title).toBe('Ecomesta Pricing | Online Store Plans in Bangladesh');

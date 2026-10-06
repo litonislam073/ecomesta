@@ -11,6 +11,7 @@ import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter
 import { StoreDomainResolver } from '../src/modules/domains/store-domain.resolver';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 /**
  * QA-001: storefront browsers on `{slug}.{root}` and ACTIVE custom domains
@@ -49,13 +50,13 @@ describe('Storefront CORS (e2e)', () => {
     const res = await http()
       .post('/api/v1/onboarding/store')
       .set('Authorization', `Bearer ${manager.token}`)
-      .send({
+      .send(withPayment({
         businessName: `CORS ${label}`,
         tenantSlug: `cors-${label}-${suffix}`,
         storeName: `CORS ${label}`,
         storeSlug: slug,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     storeIds.push(res.body.data.store.id);
     tenantIds.push(res.body.data.tenant.id);
     await prisma.store.update({
@@ -135,6 +136,8 @@ describe('Storefront CORS (e2e)', () => {
         await prisma.auditLog.deleteMany({ where: { tenantId: { in: tenantIds } } });
         await prisma.emailDelivery.deleteMany({ where: { tenantId: { in: tenantIds } } });
         await prisma.tenantUser.deleteMany({ where: { tenantId: { in: tenantIds } } });
+        // Sign-up payments and the plan they started belong to the tenant.
+        await prisma.billingPayment.deleteMany({ where: { tenantId: { in: tenantIds } } });
         await prisma.tenant.deleteMany({ where: { id: { in: tenantIds } } });
       }
       if (manager.id) {

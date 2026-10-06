@@ -8,6 +8,7 @@ import { AppModule } from '../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 describe('Phase 14 coupons (e2e)', () => {
   jest.setTimeout(90_000);
@@ -120,25 +121,25 @@ describe('Phase 14 coupons (e2e)', () => {
     const onboard = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set('Authorization', `Bearer ${manager.token}`)
-      .send({
+      .send(withPayment({
         businessName: 'P14 Tenant',
         tenantSlug: `p14-tenant-${suffix}`,
         storeName: 'P14 Store',
         storeSlug,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     storeId = onboard.body.data.store.id;
 
     const otherOnboard = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set('Authorization', `Bearer ${otherManager.token}`)
-      .send({
+      .send(withPayment({
         businessName: 'P14 Other Tenant',
         tenantSlug: `p14-tenant-b-${suffix}`,
         storeName: 'P14 Other Store',
         storeSlug: otherStoreSlug,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     otherStoreId = otherOnboard.body.data.store.id;
 
     await prisma.store.update({

@@ -9,6 +9,7 @@ import { AppModule } from '../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 /**
  * SF-03: checkout must show the server's current prices, never the cart's
@@ -172,8 +173,8 @@ describe('SF-03 checkout shows current server pricing (e2e)', () => {
         await http()
           .post('/api/v1/onboarding/store')
           .set(auth(s))
-          .send({ businessName: `SF03 ${s.key}`, tenantSlug: `${s.slug}-t`, storeName: `SF03 ${s.key}`, storeSlug: s.slug })
-          .expect(201)
+          .send(withPayment({ businessName: `SF03 ${s.key}`, tenantSlug: `${s.slug}-t`, storeName: `SF03 ${s.key}`, storeSlug: s.slug }))
+          .expect(201).then(activateOnboarded(app))
       ).body.data.store.id;
       await prisma.store.update({ where: { id: s.id }, data: { status: StoreStatus.ACTIVE } });
 

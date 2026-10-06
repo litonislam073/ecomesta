@@ -145,7 +145,7 @@ export default function AdminPlansPage() {
                   <td className="px-4 py-3">{formatPlanMoney(plan.monthlyPrice)}</td>
                   <td className="px-4 py-3">{formatPlanMoney(cyclePrice(plan, 'SEMI_ANNUAL'))}</td>
                   <td className="px-4 py-3">{formatPlanMoney(cyclePrice(plan, 'YEARLY'))}</td>
-                  <td className="px-4 py-3">{plan.trialMonths} months</td>
+                  <td className="px-4 py-3">{plan.trialMonths > 0 ? `${plan.trialMonths} months` : 'None'}</td>
                   <td className="px-4 py-3">
                     <Badge tone={plan.active ? 'success' : 'neutral'}>
                       {plan.active ? 'Active' : 'Inactive'}

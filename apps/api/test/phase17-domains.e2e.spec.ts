@@ -25,6 +25,7 @@ import {
   platformSubdomainHostname,
   platformSubdomainSlug,
 } from '../src/modules/domains/domain-normalize';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 describe('Phase 17 custom domains (e2e)', () => {
   jest.setTimeout(120_000);
@@ -137,25 +138,25 @@ describe('Phase 17 custom domains (e2e)', () => {
     const onboard = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set(authManager())
-      .send({
+      .send(withPayment({
         businessName: 'P17 Tenant',
         tenantSlug: `p17-tenant-${suffix}`,
         storeName: 'P17 Store',
         storeSlug,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     storeId = onboard.body.data.store.id;
 
     const otherOnboard = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set(authOther())
-      .send({
+      .send(withPayment({
         businessName: 'P17 Other Tenant',
         tenantSlug: `p17-tenant-b-${suffix}`,
         storeName: 'P17 Other Store',
         storeSlug: otherStoreSlug,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     otherStoreId = otherOnboard.body.data.store.id;
 
     for (const id of [storeId, otherStoreId]) {

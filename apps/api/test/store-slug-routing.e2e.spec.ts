@@ -15,6 +15,7 @@ import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
 import { isReservedStoreSlug } from '../src/modules/domains/domain-normalize';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 /**
  * Store slugs are the `{slug}.{PLATFORM_ROOT_DOMAIN}` label, so they must be
@@ -111,25 +112,25 @@ describe('Store slug uniqueness and platform subdomain routing (e2e)', () => {
     const onboardA = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set(auth(merchantA.token))
-      .send({
+      .send(withPayment({
         businessName: 'Slug Tenant A',
         tenantSlug: tenantSlugA,
         storeName: 'Shop A',
         storeSlug: slugA,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     storeAId = onboardA.body.data.store.id;
 
     const onboardB = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set(auth(merchantB.token))
-      .send({
+      .send(withPayment({
         businessName: 'Slug Tenant B',
         tenantSlug: tenantSlugB,
         storeName: 'Shop B',
         storeSlug: slugB,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     storeBId = onboardB.body.data.store.id;
     tenantBId = onboardB.body.data.tenant.id;
   });
@@ -165,12 +166,12 @@ describe('Store slug uniqueness and platform subdomain routing (e2e)', () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/onboarding/store')
         .set(auth(merchantC.token))
-        .send({
+        .send(withPayment({
           businessName: 'Slug Tenant C',
           tenantSlug,
           storeName: 'Copycat',
           storeSlug: slugA.toUpperCase(),
-        })
+        }))
         .expect(409);
       expect(res.body.error.message).toBe('Store slug is already taken');
       expect(JSON.stringify(res.body)).not.toContain(storeAId);

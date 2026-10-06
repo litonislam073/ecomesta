@@ -8,6 +8,7 @@ import { AppModule } from '../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 describe('Phase 13 order tracking + operations (e2e)', () => {
   jest.setTimeout(90_000);
@@ -92,25 +93,25 @@ describe('Phase 13 order tracking + operations (e2e)', () => {
     const onboard = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set('Authorization', `Bearer ${manager.token}`)
-      .send({
+      .send(withPayment({
         businessName: 'P13 Tenant',
         tenantSlug: `p13-tenant-${suffix}`,
         storeName: 'P13 Store',
         storeSlug,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     storeId = onboard.body.data.store.id;
 
     const otherOnboard = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set('Authorization', `Bearer ${otherManager.token}`)
-      .send({
+      .send(withPayment({
         businessName: 'P13 Other Tenant',
         tenantSlug: `p13-tenant-b-${suffix}`,
         storeName: 'P13 Other Store',
         storeSlug: otherStoreSlug,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     otherStoreId = otherOnboard.body.data.store.id;
 
     await prisma.store.update({

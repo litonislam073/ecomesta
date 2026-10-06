@@ -12,7 +12,7 @@ export const metadata = buildMetadata({
   path: '/pricing',
   title: 'Ecomesta Pricing | Online Store Plans in Bangladesh',
   description:
-    'Choose an Ecomesta plan for your online business. Start free for 2 months with flexible monthly, 6-month and yearly options.',
+    'Choose an Ecomesta plan for your online business, from ৳99 a month, with flexible monthly, 6-month and yearly options.',
 });
 
 export const revalidate = 300;
@@ -24,28 +24,28 @@ const CRUMBS = [
 
 const FAQS: Faq[] = [
   {
-    question: 'Do I need to pay to start?',
+    question: 'How do I start?',
     answer:
-      'No. Every plan starts with 2 months free and no payment details are needed to create your store.',
+      'Create your account, add your store name and web address, choose a plan, and pay for it in the last step. Your store is created right away and goes live for customers as soon as our team confirms the payment — usually within a few hours. You can add products meanwhile.',
   },
   {
-    question: 'What happens when the free trial ends?',
-    answer: `Your plan price applies from the end of the trial. You get a ${PAYMENT_GRACE_DAYS}-day grace period to pay, and your store keeps working during that time. If payment is not made by the end of the grace period, the store is paused until the payment is completed — your products, orders and settings are kept.`,
+    question: 'What happens when my paid period ends?',
+    answer: `Renew from Plan & billing before the period ends. You get a ${PAYMENT_GRACE_DAYS}-day grace period to pay, and your store keeps working during that time. If payment is not made by the end of the grace period, the store is paused until the payment is completed — your products, orders and settings are kept.`,
   },
   {
     question: 'How do I pay?',
     answer:
-      'From Plan & billing in your dashboard: send the plan price with bKash, Nagad, Rocket or Upay to the Ecomesta number shown there, then enter your number and the transaction ID. Our team confirms each payment, usually within a few hours, and emails you as soon as your plan is active.',
+      'Send the plan price with bKash, Nagad, Rocket or Upay to the Ecomesta number shown at sign-up (and later in Plan & billing), then enter your number and the transaction ID. Our team confirms each payment, usually within a few hours, and emails you as soon as your plan is active.',
   },
   {
     question: 'How do the 6-month and yearly options work?',
     answer:
-      'You pay for 6 or 12 months at once after the trial and save 10% or 25% compared with paying monthly.',
+      'You pay for 6 or 12 months at once and save 10% or 25% compared with paying monthly.',
   },
   {
     question: 'Can I change my plan later?',
     answer:
-      'Yes. During the free trial you can switch to a cheaper plan or another billing period at any time. Upgrading, and any change after the trial, takes effect as soon as the payment for the new plan is confirmed.',
+      'Yes. Choose the new plan or billing period in Plan & billing and pay for it; the change takes effect as soon as the payment is confirmed.',
   },
   {
     question: 'Are payment gateway fees included?',
@@ -72,7 +72,7 @@ export default async function PricingPage() {
       <PageHero
         eyebrow="Pricing"
         title="Simple pricing for your growing business"
-        intro="Start your online store free for 2 months. Choose the plan that fits your business."
+        intro="Choose the plan that fits your business. Pay with bKash, Nagad, Rocket or Upay and start selling."
         crumbs={CRUMBS}
       />
       <section aria-labelledby="plans-heading" className="py-14 sm:py-16">
@@ -84,18 +84,18 @@ export default async function PricingPage() {
             <>
               <PricingPlans plans={plans} merchantOrigin={merchantUrl()} />
               <p className="mt-8 text-center text-sm text-[var(--color-muted)]">
-                All prices are in Bangladeshi Taka (BDT). Nothing is charged during the free trial.
+                All prices are in Bangladeshi Taka (BDT). You pay for your plan when you create your store.
               </p>
             </>
           ) : (
             <div className="mx-auto max-w-xl rounded-2xl border border-[var(--color-border)] bg-white p-8 text-center">
               <p className="font-semibold text-[var(--color-ink)]">Plan prices could not be loaded right now.</p>
               <p className="mt-2 text-[var(--color-muted)]">
-                You can still create your store and start the 2-month free trial. Please refresh this page to see
-                current prices.
+                You can still create your store; the current prices are shown at sign-up. Please refresh this page to
+                see them here.
               </p>
               <ButtonLink href={registerUrl()} cta="pricing-start-fallback" className="mt-6">
-                Start 2 Months Free
+                Create Your Store
               </ButtonLink>
             </div>
           )}

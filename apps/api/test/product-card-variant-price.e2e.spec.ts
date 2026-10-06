@@ -9,6 +9,7 @@ import { AppModule } from '../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 /**
  * Product cards for products with variants showed `basePrice` (often 0.00).
@@ -81,7 +82,7 @@ describe('Public product cards: variant price range (e2e)', () => {
       await http().post('/api/v1/auth/register').send({ email: `${slug}@example.com`, password: 'SecurePass1', firstName: 'V', lastName: 'C' }).expect(201)
     ).body.data.accessToken;
     storeId = (
-      await http().post('/api/v1/onboarding/store').set(auth()).send({ businessName: 'VCard', tenantSlug: `${slug}-t`, storeName: 'VCard', storeSlug: slug }).expect(201)
+      await http().post('/api/v1/onboarding/store').set(auth()).send(withPayment({ businessName: 'VCard', tenantSlug: `${slug}-t`, storeName: 'VCard', storeSlug: slug })).expect(201).then(activateOnboarded(app))
     ).body.data.store.id;
     await prisma.store.update({ where: { id: storeId }, data: { status: StoreStatus.ACTIVE } });
     categoryId = (await http().post(`/api/v1/stores/${storeId}/categories`).set(auth()).send({ name: 'Tops', slug: 'tops' }).expect(201)).body.data.id;

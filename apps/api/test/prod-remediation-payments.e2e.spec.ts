@@ -9,6 +9,7 @@ import { AppModule } from '../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 describe('Prod remediation — payment races + tenant suspend (e2e)', () => {
   jest.setTimeout(90_000);
@@ -82,13 +83,13 @@ describe('Prod remediation — payment races + tenant suspend (e2e)', () => {
     const onboard = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set('Authorization', `Bearer ${manager.token}`)
-      .send({
+      .send(withPayment({
         businessName: 'Race Tenant',
         tenantSlug: `race-tenant-${suffix}`,
         storeName: 'Race Store',
         storeSlug,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     storeId = onboard.body.data.store.id;
     tenantId = onboard.body.data.tenant.id;
     await prisma.store.update({

@@ -14,6 +14,7 @@ import {
   DEMO_CATEGORIES,
   DEMO_PRODUCTS,
 } from '../src/modules/demo-catalog/demo-catalog.data';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 describe('Demo catalog import (e2e)', () => {
   jest.setTimeout(90_000);
@@ -110,13 +111,13 @@ describe('Demo catalog import (e2e)', () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/onboarding/store')
         .set('Authorization', `Bearer ${owners[key].token}`)
-        .send({
+        .send(withPayment({
           businessName: `Demo Tenant ${key}`,
           tenantSlug: `demo-tenant-${key.toLowerCase()}-${suffix}`,
           storeName: `Demo Store ${key}`,
           storeSlug: stores[key].slug,
-        })
-        .expect(201);
+        }))
+        .expect(201).then(activateOnboarded(app));
       stores[key].tenantId = res.body.data.tenant.id;
       stores[key].id = res.body.data.store.id;
     }
@@ -157,6 +158,9 @@ describe('Demo catalog import (e2e)', () => {
     if (tenantIds.length > 0) {
       await prisma.tenantUser.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.auditLog.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // Sign-up payments and the plan they started belong to the tenant.
+      await prisma.billingPayment.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.subscription.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.tenant.deleteMany({ where: { id: { in: tenantIds } } });
     }
     await prisma.authSession.deleteMany({ where: { userId: { in: userIds } } });

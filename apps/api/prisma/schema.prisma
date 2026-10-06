@@ -334,6 +334,9 @@ model Store {
   /// Set only while the platform subscription has lapsed: the status to restore
   /// once payment is confirmed. Null for stores suspended for any other reason.
   statusBeforeBillingSuspension StoreStatus? @map("status_before_billing_suspension")
+  /// New stores stay offline (INACTIVE) until their first subscription
+  /// payment is approved; the approval brings them online.
+  awaitingFirstPayment          Boolean      @default(false) @map("awaiting_first_payment")
   currency                      String       @default("BDT") @db.Char(3)
   timezone                      String       @default("Asia/Dhaka")
   /// Storefront content language (`en-BD` or `bn-BD` for merchant-created stores).

@@ -11,6 +11,7 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
 import { publishedThemeCacheKey } from '../src/modules/themes/theme-cache';
 import { ThemesService } from '../src/modules/themes/themes.service';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 /**
  * TE-03: concurrent draft saves must not lose each other's edits. Requests are
@@ -97,8 +98,8 @@ describe('TE-03 concurrent theme draft saves (e2e)', () => {
         await http()
           .post('/api/v1/onboarding/store')
           .set(auth(s.token))
-          .send({ businessName: `TE03 ${key}`, tenantSlug: `${s.slug}-t`, storeName: `TE03 ${key}`, storeSlug: s.slug })
-          .expect(201)
+          .send(withPayment({ businessName: `TE03 ${key}`, tenantSlug: `${s.slug}-t`, storeName: `TE03 ${key}`, storeSlug: s.slug }))
+          .expect(201).then(activateOnboarded(app))
       ).body.data.store.id;
       await prisma.store.update({ where: { id: s.id }, data: { status: StoreStatus.ACTIVE } });
       const list = await http().get(`/api/v1/stores/${s.id}/themes`).set(auth(s.token)).expect(200);

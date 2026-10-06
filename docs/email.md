@@ -53,7 +53,7 @@ EmailProvider interface ─► SmtpEmailProvider (Nodemailer) | ConsoleEmailProv
 | Event | Trigger | Content |
 | --- | --- | --- |
 | `MERCHANT_WELCOME` | Registration | Welcome, dashboard link, email confirmation link if unverified |
-| `STORE_CREATED` | Onboarding or additional store, after commit | Store name, store URL, dashboard, plan/trial when known |
+| `STORE_CREATED` | Onboarding or additional store, after commit | Store name, store URL, dashboard, plan when known; a sign-up store says it goes live once its payment is confirmed |
 | `EMAIL_VERIFICATION` | Dashboard "Send confirmation email" | Link valid 48 h, single use |
 | `PASSWORD_RESET` | `/forgot-password` | Link valid 60 min, single use |
 | `PASSWORD_CHANGED` | Successful reset | Time (UTC), all sessions signed out, reset link if it wasn't them |

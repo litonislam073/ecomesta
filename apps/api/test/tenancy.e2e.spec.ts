@@ -8,6 +8,7 @@ import { AppModule } from '../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { OnboardingService } from '../src/modules/onboarding/onboarding.service';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 describe('Tenancy (e2e)', () => {
   let app: NestExpressApplication;
@@ -91,6 +92,9 @@ describe('Tenancy (e2e)', () => {
     const tenantIds = [tenantAId, tenantBId].filter(Boolean);
     if (tenantIds.length > 0) {
       await prisma.store.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // Sign-up payments and the plan they started belong to the tenant.
+      await prisma.billingPayment.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.subscription.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.tenant.deleteMany({ where: { id: { in: tenantIds } } });
     }
 
@@ -197,12 +201,12 @@ describe('Tenancy (e2e)', () => {
   it('rejects unauthenticated onboarding', async () => {
     await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
-      .send({
+      .send(withPayment({
         businessName: 'No Auth Co',
         storeName: 'No Auth Store',
         tenantSlug: `no-auth-${suffix}`,
         storeSlug: `no-auth-store-${suffix}`,
-      })
+      }))
       .expect(401);
   });
 
@@ -210,17 +214,18 @@ describe('Tenancy (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set('Authorization', `Bearer ${userB.token}`)
-      .send({
+      .send(withPayment({
         businessName: 'Tenant B Co',
         storeName: 'Store B',
         tenantSlug: `tenant-b-${suffix}`,
         storeSlug: `store-b-${suffix}`,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
 
     tenantBId = res.body.data.tenant.id;
     storeBId = res.body.data.store.id;
-    expect(res.body.data.store.status).toBe('ACTIVE');
+    // Offline until the sign-up payment is confirmed (activateOnboarded does that next).
+    expect(res.body.data.store.status).toBe('INACTIVE');
     expect(res.body.data.store.currency).toBe('BDT');
     expect(res.body.data.store.timezone).toBe('Asia/Dhaka');
     expect(res.body.data.store.locale).toBe('en-BD');
@@ -254,12 +259,12 @@ describe('Tenancy (e2e)', () => {
     await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set('Authorization', `Bearer ${userB.token}`)
-      .send({
+      .send(withPayment({
         businessName: 'Should Fail',
         storeName: 'Orphan Store',
         tenantSlug: `tenant-a-${suffix}`,
         storeSlug: `orphan-store-${suffix}`,
-      })
+      }))
       .expect(409);
 
     const afterStores = await prisma.store.count({
@@ -334,12 +339,15 @@ describe('Tenancy (e2e)', () => {
     });
 
     await expect(
-      onboarding.createTenantAndStore(userA.id, {
-        businessName: 'TX Fail',
-        storeName: 'TX Fail Store',
-        tenantSlug: `tx-fail-${suffix}`,
-        storeSlug: `tx-fail-store-${suffix}`,
-      }),
+      onboarding.createTenantAndStore(
+        userA.id,
+        withPayment({
+          businessName: 'TX Fail',
+          storeName: 'TX Fail Store',
+          tenantSlug: `tx-fail-${suffix}`,
+          storeSlug: `tx-fail-store-${suffix}`,
+        }),
+      ),
     ).rejects.toThrow('forced failure');
 
     const after = await prisma.tenant.count({

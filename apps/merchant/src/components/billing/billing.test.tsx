@@ -53,6 +53,7 @@ function subscription(overrides: Partial<Sub> = {}, top: Partial<MerchantSubscri
   return {
     tenantName: 'Demo Shop',
     canManage: true,
+    awaitingFirstPayment: false,
     onlinePaymentAvailable: false,
     pendingPayment: null,
     ...top,
@@ -149,7 +150,7 @@ afterEach(() => cleanup());
 describe('Subscription notices', () => {
   it('shows the trial end date on the dashboard home', () => {
     render(<SubscriptionBanner data={subscription()} showTrial />);
-    expect(screen.getByText('2 Months Free')).toBeInTheDocument();
+    expect(screen.getByText('Free trial')).toBeInTheDocument();
     expect(screen.getByText(/Your free trial\s+ends on November 28, 2026/)).toBeInTheDocument();
   });
 
@@ -160,10 +161,31 @@ describe('Subscription notices', () => {
         showTrial={false}
       />,
     );
-    expect(screen.getByRole('heading', { name: 'Your trial has ended' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Payment due' })).toBeInTheDocument();
     expect(screen.getByText(/7-day payment grace period/)).toHaveTextContent('Payment due by December 5, 2026.');
     expect(screen.getByText(/Growth plan · Yearly · Amount due ৳8,991/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Pay now' })).toHaveAttribute('href', '/dashboard/billing');
+  });
+
+  it('tells a new store it is offline until its sign-up payment is confirmed', () => {
+    const awaiting = { ...subscription(), subscription: null, awaitingFirstPayment: true };
+    const { unmount } = render(<SubscriptionBanner data={{ ...awaiting, pendingPayment: payment() }} showTrial />);
+    expect(screen.getByRole('heading', { name: 'Your store is not live yet' })).toBeInTheDocument();
+    expect(screen.getByText(/We are confirming your payment/)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Pay now' })).not.toBeInTheDocument();
+    unmount();
+
+    // The payment was rejected: there is nothing under review, so pay again.
+    render(<SubscriptionBanner data={awaiting} showTrial />);
+    expect(screen.getByText(/Pay for your plan to bring your store online/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Pay now' })).toHaveAttribute('href', '/dashboard/billing#pay');
+  });
+
+  it('shows nothing for a business without a plan whose store is already live', () => {
+    const { container } = render(
+      <SubscriptionBanner data={{ ...subscription(), subscription: null, awaitingFirstPayment: false }} showTrial />,
+    );
+    expect(container).toBeEmptyDOMElement();
   });
 
   it('suspended screen sends the owner to the payment section', () => {
@@ -231,7 +253,7 @@ describe('Dashboard subscription gate', () => {
         <p>Orders page</p>
       </DashboardShell>,
     );
-    expect(await screen.findByRole('heading', { name: 'Your trial has ended' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Payment due' })).toBeInTheDocument();
     expect(screen.getByText('Orders page')).toBeInTheDocument();
   });
 });
@@ -262,27 +284,21 @@ describe('Plan & billing page', () => {
     expect(await screen.findByRole('heading', { name: 'Complete your payment' })).toBeInTheDocument();
   });
 
-  it('starts a free trial with the plan and interval from the pricing page', async () => {
-    const user = userEvent.setup();
+  it('asks a business without a plan to pay for the plan chosen on the pricing page', async () => {
     nav.search = new URLSearchParams('plan=business&interval=6-months');
-    const none: MerchantSubscription = { ...subscription(), subscription: null };
-    post.mockResolvedValue({ success: true, data: subscription() });
+    const none: MerchantSubscription = { ...subscription(), subscription: null, awaitingFirstPayment: true };
     renderBilling(none);
 
     const business = await screen.findByRole('radio', { name: /Business/ });
     expect(business).toBeChecked();
     expect(screen.getByRole('radio', { name: /6 Months/ })).toBeChecked();
-    expect(business.closest('label')).toHaveTextContent('৳10,795/6 months');
-    // No payment is taken to start a trial.
-    expect(screen.queryByRole('heading', { name: 'Complete your payment' })).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: 'Start 2 Months Free' }));
-    expect(post).toHaveBeenCalledWith(
-      '/billing/subscription',
-      { planSlug: 'business', billingCycle: 'SEMI_ANNUAL' },
-      { token: 'token' },
-    );
-    expect(await screen.findByRole('status')).toHaveTextContent('Your 2-month free trial has started.');
+    expect(screen.getByText(/Your store goes live as soon as we confirm the payment/)).toBeInTheDocument();
+    // There is no free trial to start: the plan is paid for right here.
+    expect(screen.queryByRole('button', { name: /Months Free|free trial/i })).not.toBeInTheDocument();
+    const panel = (await screen.findByRole('heading', { name: 'Complete your payment' })).closest('section')!;
+    expect(panel).toHaveTextContent('Business plan');
+    expect(panel).toHaveTextContent('Amount৳10,795');
+    expect(post).not.toHaveBeenCalled();
   });
 
   it('shows the wallet number and exact amount for the chosen plan and wallet', async () => {

@@ -104,15 +104,28 @@ export function storeCreatedEmail(params: StoreCreatedParams, brand: EmailBrand,
   if (params.trialEndsAt) {
     details.push({ label: 'Free trial', value: `Until ${formatDate(params.trialEndsAt)}` });
   }
+  if (params.awaitingPayment) {
+    details.push({ label: 'Status', value: 'Waiting for payment confirmation' });
+  }
   return renderEmail(
     {
-      subject: `Your store ${params.storeName} is ready`,
-      preheader: `${params.storeName} has been created on Ecomesta.`,
-      heading: 'Your store is ready',
-      intro: [
-        greeting(params.firstName),
-        `${params.storeName} has been created. Add your products, set up payments and delivery, then share your store link with customers.`,
-      ],
+      subject: params.awaitingPayment
+        ? `Your store ${params.storeName} has been created`
+        : `Your store ${params.storeName} is ready`,
+      preheader: params.awaitingPayment
+        ? `${params.storeName} goes live as soon as we confirm your payment.`
+        : `${params.storeName} has been created on Ecomesta.`,
+      heading: params.awaitingPayment ? 'Your store has been created' : 'Your store is ready',
+      intro: params.awaitingPayment
+        ? [
+            greeting(params.firstName),
+            `${params.storeName} has been created. We are checking your payment, and your store goes live for customers as soon as it is confirmed. You will get an email then.`,
+            'Meanwhile you can add your products and set up payments and delivery in your dashboard.',
+          ]
+        : [
+            greeting(params.firstName),
+            `${params.storeName} has been created. Add your products, set up payments and delivery, then share your store link with customers.`,
+          ],
       details,
       cta: { label: 'Open Your Dashboard', url: dashboardUrl },
       outro: [supportSentence(brand)],

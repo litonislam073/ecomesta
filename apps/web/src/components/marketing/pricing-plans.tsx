@@ -123,22 +123,19 @@ export function PricingPlans({
               {plan.tagline || plan.description ? (
                 <p className="mt-2 text-[var(--color-muted)]">{plan.tagline ?? plan.description}</p>
               ) : null}
-              <p className="mt-5 inline-flex w-fit rounded-full bg-[#e3f1ec] px-3 py-1 text-sm font-semibold text-[var(--color-accent)]">
-                {plan.trialMonths} Months Free
-              </p>
-              <p className="mt-4 flex flex-wrap items-baseline gap-x-1.5">
+              <p className="mt-5 flex flex-wrap items-baseline gap-x-1.5">
                 <span
                   key={switched ? cycle : undefined}
                   className={`inline-block font-display text-4xl tracking-tight text-[var(--color-ink)] ${switched ? 'em-price-in' : ''}`}
                 >
                   {formatBdt(amount)}
                 </span>
-                <span className="text-[var(--color-muted)]">{PERIOD_SUFFIX[cycle]} after trial</span>
+                <span className="text-[var(--color-muted)]">{PERIOD_SUFFIX[cycle]}</span>
               </p>
               <p key={switched ? cycle : undefined} className={`mt-1 min-h-5 text-sm text-[var(--color-muted)] ${switched ? 'em-price-in' : ''}`}>
                 {price && price.months > 1
                   ? `${formatBdt(Math.round(price.effectiveMonthly))}/month · Save ${price.discountPercent}%`
-                  : 'Billed monthly after your trial'}
+                  : 'Billed monthly'}
               </p>
               <ButtonLink
                 href={`${merchantOrigin}${planRegisterPath(plan.slug, cycle)}`}
@@ -146,11 +143,11 @@ export function PricingPlans({
                 cta={`pricing-start-${plan.slug}`}
                 className="mt-6 w-full"
               >
-                Start {plan.trialMonths} Months Free
+                Choose {plan.name}
               </ButtonLink>
               <p className="mt-3 text-sm text-[var(--color-muted)]">
-                Free for {plan.trialMonths} months. No payment details needed today. After the trial,
-                you pay {formatBdt(amount)} {PERIOD_WORDS[cycle]} to keep your store online.
+                Pay {formatBdt(amount)} {PERIOD_WORDS[cycle]} with bKash, Nagad, Rocket or Upay when you create your
+                store. It goes live as soon as we confirm the payment.
               </p>
               {plan.features.length > 0 ? (
                 <CheckList className="mt-6 border-t border-[var(--color-border)] pt-6 text-sm" items={plan.features} />

@@ -1,6 +1,6 @@
 import type { PublicPlan } from '@ecomesta/types';
 import { indexableMarketingPaths } from '@ecomesta/utils/marketing-content';
-import { DEFAULT_TRIAL_MONTHS, PAYMENT_GRACE_DAYS, formatBdt } from '@ecomesta/utils';
+import { PAYMENT_GRACE_DAYS, formatBdt } from '@ecomesta/utils';
 import type { KnowledgeChunk } from './ai-support.knowledge';
 import { STYLE_HINT, type LanguageStyle } from './ai-support.language';
 import { SYSTEM_PROMPT_CANARY } from './ai-support.safety';
@@ -51,7 +51,7 @@ Facts
 - Only state things that come from these instructions or from tool results. If you do not know, say so honestly and offer human support. Never invent features, integrations, prices, statistics, reviews, guarantees or timelines.
 - Ecomesta has no direct bKash, Nagad or Rocket checkout integration for stores: shoppers can pay with those through SSLCommerz's payment page (Growth and Business plans). No courier integrations exist; merchants add tracking numbers manually. No AI features exist for merchants. There is no Facebook, Messenger or social media integration: Facebook sellers keep posting and chatting and share links to their Ecomesta product pages, where the order is placed.
 - Merchants pay their own Ecomesta plan manually with bKash, Nagad, Rocket or Upay from Plan & billing in the dashboard; the team confirms it.
-- Every new store gets ${DEFAULT_TRIAL_MONTHS} months free on its chosen plan; after a trial or paid period ends there is a ${PAYMENT_GRACE_DAYS}-day grace period.
+- There is no free trial: a new merchant pays for the chosen plan in the last step of sign-up, and the store goes live once the team confirms the payment. After a paid period ends there is a ${PAYMENT_GRACE_DAYS}-day grace period.
 - Current plans (BDT):
 ${planSummary(input.plans)}
 - For anything else (features, setup steps, payments, shipping, domains, themes, coupons, policies) call search_ecomesta_knowledge first, then answer from what it returns. For "how do I…" questions base the steps only on the reference material or search results; never make up menu names or steps.

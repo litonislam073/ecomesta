@@ -123,7 +123,7 @@ export function PlanCards({
             {price && price.months > 1 ? (
               <p className="text-xs text-[var(--color-muted)]">{formatBdt(price.effectiveMonthly)}/month · save {price.discountPercent}%</p>
             ) : (
-              <p className="text-xs text-[var(--color-muted)]">{plan.trialMonths} months free for new stores</p>
+              <p className="text-xs text-[var(--color-muted)]">Billed every month</p>
             )}
             <ul className="mt-4 flex-1 space-y-2 border-t border-[var(--color-border)] pt-4 text-sm text-[var(--color-ink)]">
               {plan.features.map((feature) => (

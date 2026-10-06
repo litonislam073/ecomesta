@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useState, type FormEvent } from 'react';
+import { useId, useState, type FormEvent, type ReactNode } from 'react';
 import type {
   ManualPaymentAccount,
   ManualPaymentMethod,
@@ -82,10 +82,20 @@ function StepTitle({ n, title }: { n: number; title: string }) {
   );
 }
 
+/** What the merchant reports after paying by mobile wallet. */
+export interface WalletPaymentInput {
+  method: ManualPaymentMethod;
+  senderNumber: string;
+  transactionId: string;
+}
+
 /**
  * Pay for a plan with bKash / Nagad / Rocket / Upay: the merchant sends the
  * money to Ecomesta's number, then reports their number and the transaction ID.
  * The plan activates when Ecomesta confirms the payment.
+ *
+ * By default the payment is sent to `/billing/payments`. Sign-up passes
+ * `onPay` instead, so the payment and the new store are created together.
  */
 export function ManualPaymentPanel({
   plan,
@@ -94,6 +104,11 @@ export function ManualPaymentPanel({
   token,
   trialEndsAt,
   onSubmitted,
+  onPay,
+  heading = 'Complete your payment',
+  intro = 'Pay with bKash, Nagad, Rocket or Upay. Your plan activates as soon as our team confirms it.',
+  submitLabel,
+  footer,
 }: {
   plan: PublicPlan;
   cycle: BillingCycleCode;
@@ -101,7 +116,14 @@ export function ManualPaymentPanel({
   token: string | null;
   /** While trialing, the paid period starts when the trial ends. */
   trialEndsAt: string | null;
-  onSubmitted: (payment: MerchantBillingPayment) => void;
+  onSubmitted?: (payment: MerchantBillingPayment) => void;
+  /** Replaces the default submission; throw an Error to show its message. */
+  onPay?: (payment: WalletPaymentInput) => Promise<void>;
+  heading?: string;
+  intro?: string;
+  /** Button text for the amount and wallet, e.g. "Pay ৳99 with bKash". */
+  submitLabel?: (amount: string, wallet: string) => string;
+  footer?: ReactNode;
 }) {
   const formId = useId();
   const [method, setMethod] = useState<ManualPaymentMethod>(accounts[0]?.method ?? 'BKASH');
@@ -130,14 +152,20 @@ export function ManualPaymentPanel({
     }
     setSubmitting(true);
     try {
-      const result = await api.post<{ success: true; data: MerchantBillingPayment }>(
-        '/billing/payments',
-        { planSlug: plan.slug, billingCycle: cycle, method, senderNumber: digits, transactionId },
-        { token },
-      );
-      onSubmitted(result.data);
+      if (onPay) {
+        await onPay({ method, senderNumber: digits, transactionId });
+      } else {
+        const result = await api.post<{ success: true; data: MerchantBillingPayment }>(
+          '/billing/payments',
+          { planSlug: plan.slug, billingCycle: cycle, method, senderNumber: digits, transactionId },
+          { token },
+        );
+        onSubmitted?.(result.data);
+      }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not submit your payment. Please try again.');
+      setError(
+        err instanceof ApiError || err instanceof Error ? err.message : 'Could not submit your payment. Please try again.',
+      );
     } finally {
       setSubmitting(false);
     }
@@ -154,11 +182,9 @@ export function ManualPaymentPanel({
       <header className="bg-gradient-to-r from-[#0f3d30] via-[#145240] to-[#1b6b53] px-5 py-5 text-white sm:px-7">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">Secure checkout</p>
         <h2 id={`${formId}-title`} className="mt-1 text-xl font-semibold sm:text-2xl">
-          Complete your payment
+          {heading}
         </h2>
-        <p className="mt-1 text-sm text-white/80">
-          Pay with bKash, Nagad, Rocket or Upay. Your plan activates as soon as our team confirms it.
-        </p>
+        <p className="mt-1 text-sm text-white/80">{intro}</p>
       </header>
 
       <div className="grid gap-0 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
@@ -295,8 +321,13 @@ export function ManualPaymentPanel({
             className="flex h-12 w-full items-center justify-center rounded-xl text-base font-semibold text-white shadow-md transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
             style={{ backgroundColor: brand.color }}
           >
-            {submitting ? 'Submitting…' : `Submit ${formatBdt(amount)} ${label} payment`}
+            {submitting
+              ? 'Submitting…'
+              : submitLabel
+                ? submitLabel(formatBdt(amount), label)
+                : `Submit ${formatBdt(amount)} ${label} payment`}
           </button>
+          {footer}
         </form>
       </div>
     </section>

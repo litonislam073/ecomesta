@@ -61,7 +61,47 @@ vi.mock('@/lib/store-context', () => ({
   }),
 }));
 
-const createButton = () => screen.getByRole('button', { name: 'Create Store' });
+const PLANS = ['starter', 'growth', 'business'].map((slug, i) => ({
+  slug,
+  name: slug[0]!.toUpperCase() + slug.slice(1),
+  description: null,
+  tagline: null,
+  features: [],
+  highlighted: slug === 'growth',
+  currency: 'BDT',
+  monthlyPrice: [99, 299, 699][i]!,
+  trialMonths: 0,
+  prices: [
+    { billingCycle: 'MONTHLY', amount: [99, 299, 699][i]!, months: 1, discountPercent: 0, effectiveMonthly: [99, 299, 699][i]! },
+    { billingCycle: 'YEARLY', amount: [891, 2691, 6291][i]!, months: 12, discountPercent: 25, effectiveMonthly: 0 },
+  ],
+}));
+const ACCOUNTS = [
+  { method: 'BKASH', label: 'bKash', number: '01309093407', transferType: 'Send Money' },
+  { method: 'NAGAD', label: 'Nagad', number: '01309093407', transferType: 'Send Money' },
+];
+
+/** Public plans and the wallet numbers come from the API; everything else answers empty. */
+function mockApi() {
+  get.mockImplementation(async (path: string) => {
+    if (path === '/public/plans') return { success: true, data: PLANS };
+    if (path === '/billing/payment-accounts') return { success: true, data: ACCOUNTS };
+    return { success: true, data: [] };
+  });
+}
+
+const continueButton = () => screen.getByRole('button', { name: 'Continue to payment' });
+const payButton = () => screen.getByRole('button', { name: /create my store/ });
+
+/** Store details → payment step → the payment that creates the store. */
+async function payAndCreate(user: ReturnType<typeof userEvent.setup>, { double = false } = {}) {
+  await screen.findByRole('radio', { name: /Starter/ });
+  await user.click(continueButton());
+  await user.type(await screen.findByLabelText('Your bKash number'), '01712345678');
+  await user.type(screen.getByLabelText('Transaction ID'), 'trx12345');
+  if (double) await user.dblClick(payButton());
+  else await user.click(payButton());
+}
 
 /** Existing behaviour tests skip the success-path display floor and redirect pause. */
 function renderForm(props: { minDisplayMs?: number; redirectDelayMs?: number } = {}) {
@@ -87,7 +127,7 @@ describe('Onboard form', () => {
   beforeEach(() => {
     post.mockReset();
     get.mockReset();
-    get.mockResolvedValue({ success: true, data: [] });
+    mockApi();
     searchParams.value = new URLSearchParams();
     reloadProfile.mockReset();
     refreshStores.mockReset();
@@ -113,8 +153,9 @@ describe('Onboard form', () => {
     post.mockResolvedValue({ success: true, data: {} });
     renderForm();
 
-    await user.type(screen.getByLabelText('Business name'), 'Demo Shop BD');
-    await user.click(createButton());
+    await user.type(await screen.findByLabelText('Business name'), 'Demo Shop BD');
+    await screen.findByRole('radio', { name: /Starter/ });
+    await payAndCreate(user);
 
     await waitFor(() => {
       expect(post).toHaveBeenCalledWith(
@@ -127,6 +168,11 @@ describe('Onboard form', () => {
           currency: 'BDT',
           timezone: 'Asia/Dhaka',
           locale: 'en-BD',
+          planSlug: 'starter',
+          billingCycle: 'MONTHLY',
+          method: 'BKASH',
+          senderNumber: '01712345678',
+          transactionId: 'TRX12345',
         },
         { token: 'access-token' },
       );
@@ -136,46 +182,80 @@ describe('Onboard form', () => {
       expect(refreshStores).toHaveBeenCalled();
       expect(replace).toHaveBeenCalledWith('/dashboard');
     });
-    expect(screen.getByRole('status')).toHaveTextContent('Your store is ready');
+    expect(screen.getByRole('status')).toHaveTextContent('Store created. Waiting for payment confirmation.');
   });
 
-  it('starts the free trial with the plan and interval chosen on the pricing page', async () => {
+  it('keeps the plan and interval chosen on the pricing page and asks for payment at the end', async () => {
     const user = userEvent.setup();
     searchParams.value = new URLSearchParams('plan=growth&interval=yearly');
-    get.mockResolvedValue({
-      success: true,
-      data: ['starter', 'growth', 'business'].map((slug, i) => ({
-        slug,
-        name: slug[0]!.toUpperCase() + slug.slice(1),
-        description: null,
-        tagline: null,
-        features: [],
-        highlighted: slug === 'growth',
-        currency: 'BDT',
-        monthlyPrice: [499, 999, 1999][i],
-        trialMonths: 2,
-        prices: [
-          { billingCycle: 'YEARLY', amount: [4491, 8991, 17991][i], months: 12, discountPercent: 25, effectiveMonthly: 0 },
-        ],
-      })),
-    });
     post.mockResolvedValue({ success: true, data: {} });
     renderForm();
 
     expect(await screen.findByRole('radio', { name: /Growth/ })).toBeChecked();
     expect(screen.getByRole('radio', { name: /Yearly/ })).toBeChecked();
-    expect(screen.getByText('৳8,991 / year')).toBeInTheDocument();
-    expect(screen.getByText(/2 months free\. No payment details needed/)).toBeInTheDocument();
+    expect(screen.getByText('৳2,691 / year')).toBeInTheDocument();
+    expect(screen.getByText(/You pay for it in the next step/)).toBeInTheDocument();
+    expect(screen.queryByText(/months free|free trial/i)).toBeNull();
 
     await user.type(screen.getByLabelText('Business name'), 'Demo Shop BD');
-    await user.click(createButton());
+    await user.click(continueButton());
+    // Payment is the last step: the amount comes from the chosen plan and period.
+    expect(await screen.findByRole('heading', { level: 1, name: 'Pay for your plan' })).toBeInTheDocument();
+    const progress = screen.getByRole('list', { name: 'Setup progress' });
+    expect(within(progress).getAllByRole('listitem')[2]).toHaveAttribute('aria-current', 'step');
+    expect(screen.getByText('Growth plan')).toBeInTheDocument();
+    expect(screen.getAllByText('৳2,691').length).toBeGreaterThan(0);
+    expect(post).not.toHaveBeenCalled();
+
+    await user.type(screen.getByLabelText('Your bKash number'), '01712345678');
+    await user.type(screen.getByLabelText('Transaction ID'), 'TRX12345');
+    await user.click(payButton());
     await waitFor(() => {
       expect(post).toHaveBeenCalledWith(
         '/onboarding/store',
-        expect.objectContaining({ planSlug: 'growth', billingCycle: 'YEARLY' }),
+        expect.objectContaining({ planSlug: 'growth', billingCycle: 'YEARLY', method: 'BKASH', transactionId: 'TRX12345' }),
         { token: 'access-token' },
       );
     });
+  });
+
+  it('keeps a refused payment on the payment step with what was typed', async () => {
+    const user = userEvent.setup();
+    const { ApiError } = await import('@/lib/api-client');
+    post.mockRejectedValueOnce(
+      new ApiError(409, 'CONFLICT', 'This transaction ID has already been submitted. Check the ID in your payment message.'),
+    );
+    renderForm();
+    await user.type(await screen.findByLabelText('Business name'), 'Demo Shop');
+    await screen.findByRole('radio', { name: /Starter/ });
+    await payAndCreate(user);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('This transaction ID has already been submitted');
+    expect(screen.getByLabelText('Transaction ID')).toHaveValue('TRX12345');
+    expect(screen.getByLabelText('Your bKash number')).toHaveValue('01712345678');
+    expect(reloadProfile).not.toHaveBeenCalled();
+
+    // Fixing the ID and paying again creates the store.
+    post.mockResolvedValueOnce({ success: true, data: {} });
+    await user.clear(screen.getByLabelText('Transaction ID'));
+    await user.type(screen.getByLabelText('Transaction ID'), 'TRX99999');
+    await user.click(payButton());
+    await waitFor(() => expect(post).toHaveBeenLastCalledWith(
+      '/onboarding/store',
+      expect.objectContaining({ transactionId: 'TRX99999' }),
+      { token: 'access-token' },
+    ));
+  });
+
+  it('goes back to the store details without losing them', async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await user.type(await screen.findByLabelText('Business name'), 'Demo Shop');
+    await screen.findByRole('radio', { name: /Starter/ });
+    await user.click(continueButton());
+    await user.click(await screen.findByRole('button', { name: '← Back to store details' }));
+    expect(screen.getByLabelText('Business name')).toHaveValue('Demo Shop');
+    expect(post).not.toHaveBeenCalled();
   });
 
   it('sends signed-out visitors to register without losing the chosen plan', async () => {
@@ -192,7 +272,7 @@ describe('Onboard form', () => {
     renderForm();
 
     await user.type(screen.getByLabelText('Business name'), 'বাংলা দোকান');
-    await user.click(createButton());
+    await user.click(continueButton());
 
     expect(post).not.toHaveBeenCalled();
     expect(screen.getByLabelText('Store URL')).toHaveAccessibleDescription(/latin letters or numbers/i);
@@ -218,7 +298,7 @@ describe('Onboard form', () => {
     authState.user = merchant(1);
     renderForm();
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/dashboard'));
-    expect(screen.queryByRole('button', { name: 'Create Store' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Continue to payment' })).toBeNull();
     expect(post).not.toHaveBeenCalled();
   });
 
@@ -248,7 +328,7 @@ describe('Onboard form', () => {
     const user = userEvent.setup();
     renderForm();
     await user.type(screen.getByLabelText('Store name'), 'A');
-    await user.click(createButton());
+    await user.click(continueButton());
 
     const business = screen.getByLabelText('Business name');
     expect(business).toHaveAttribute('aria-invalid', 'true');
@@ -272,7 +352,7 @@ describe('Onboard form', () => {
     expect(slug).toHaveValue('my-cool-store');
     expect(slug).toHaveAccessibleDescription(/http:\/\/localhost:3000\/\?store=my-cool-store/);
 
-    await user.click(createButton());
+    await payAndCreate(user);
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith(
         '/onboarding/store',
@@ -288,7 +368,7 @@ describe('Onboard form', () => {
     await user.type(screen.getByLabelText('Business name'), 'Demo Shop');
     await user.clear(screen.getByLabelText('Store URL'));
     await user.type(screen.getByLabelText('Store URL'), 'a');
-    await user.click(createButton());
+    await user.click(continueButton());
     expect(screen.getByLabelText('Store URL')).toHaveAttribute('aria-invalid', 'true');
     expect(post).not.toHaveBeenCalled();
   });
@@ -304,7 +384,7 @@ describe('Onboard form', () => {
     await user.clear(slug);
     await user.click(slug);
     await user.paste(longest);
-    await user.click(createButton());
+    await payAndCreate(user);
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith(
@@ -328,7 +408,7 @@ describe('Onboard form', () => {
     await user.tab();
     expect(slug).toHaveValue(tooLong);
 
-    await user.click(createButton());
+    await user.click(continueButton());
     expect(slug).toHaveAttribute('aria-invalid', 'true');
     expect(slug).toHaveAccessibleDescription(/Store URL must be 63 characters or fewer\./);
     await waitFor(() => expect(slug).toHaveFocus());
@@ -355,7 +435,7 @@ describe('Onboard form', () => {
     expect(tenant).toHaveValue('demo-shop');
     await user.clear(tenant);
     await user.type(tenant, 'demo-holdings');
-    await user.click(createButton());
+    await payAndCreate(user);
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith(
         '/onboarding/store',
@@ -385,7 +465,7 @@ describe('Onboard form', () => {
     post.mockImplementation(() => new Promise(() => {}));
     renderForm();
     await user.type(screen.getByLabelText('Business name'), 'Demo Shop');
-    await user.click(createButton());
+    await payAndCreate(user);
     const busy = await screen.findByRole('button', { name: 'Creating Store...' });
     expect(busy).toBeDisabled();
     await user.click(busy);
@@ -398,14 +478,14 @@ describe('Onboard form', () => {
     post.mockRejectedValue(new ApiError(409, 'CONFLICT', 'Tenant slug is already taken'));
     renderForm();
     await user.type(screen.getByLabelText('Business name'), 'Demo Shop');
-    await user.click(createButton());
+    await payAndCreate(user);
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'That store URL is already in use. Try another one.',
     );
     expect(screen.getByLabelText('Store URL')).toHaveAttribute('aria-invalid', 'true');
     expect(screen.queryByText(/tenant slug/i)).toBeNull();
-    expect(createButton()).toBeEnabled();
+    expect(continueButton()).toBeEnabled();
   });
 
   it('maps a conflict on an edited account ID to that field', async () => {
@@ -417,7 +497,7 @@ describe('Onboard form', () => {
     await user.click(screen.getByText('Advanced settings'));
     await user.clear(screen.getByLabelText('Account ID'));
     await user.type(screen.getByLabelText('Account ID'), 'taken-id');
-    await user.click(createButton());
+    await payAndCreate(user);
     await screen.findByRole('alert');
     expect(screen.getByLabelText('Account ID')).toHaveAttribute('aria-invalid', 'true');
     expect(screen.getByLabelText('Store URL')).not.toHaveAttribute('aria-invalid');
@@ -433,7 +513,7 @@ describe('Onboard form', () => {
     );
     renderForm();
     await user.type(screen.getByLabelText('Business name'), 'Demo Shop');
-    await user.click(createButton());
+    await payAndCreate(user);
     expect(await screen.findByRole('alert')).toHaveTextContent('Please check the highlighted fields.');
     expect(screen.getByLabelText('Store URL')).toHaveAttribute('aria-invalid', 'true');
     expect(screen.queryByText(/regular expression/)).toBeNull();
@@ -447,13 +527,13 @@ describe('Onboard form', () => {
     );
     renderForm();
     await user.type(screen.getByLabelText('Business name'), 'Demo Shop');
-    await user.click(createButton());
+    await payAndCreate(user);
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Unable to create your store right now. Please try again.');
     expect(alert).not.toHaveTextContent(/prisma|P2002/i);
 
     post.mockRejectedValueOnce(new TypeError('Failed to fetch'));
-    await user.click(createButton());
+    await payAndCreate(user);
     await waitFor(() => expect(post).toHaveBeenCalledTimes(2));
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Unable to create your store right now. Please try again.',
@@ -466,7 +546,7 @@ describe('Onboard form', () => {
       post.mockReturnValue(deferred().promise);
       renderForm();
       await user.type(screen.getByLabelText('Business name'), 'Fresh Fashion');
-      await user.click(createButton());
+      await payAndCreate(user);
 
       const heading = await screen.findByRole('heading', { level: 1, name: 'Creating your store' });
       await waitFor(() => expect(heading).toHaveFocus());
@@ -475,8 +555,9 @@ describe('Onboard form', () => {
       expect(screen.getByRole('status')).toHaveTextContent('Creating your store...');
       expect(setupSteps()).toEqual([
         'Account verified (completed)',
+        expect.stringContaining('Payment submitted (completed)'),
         expect.stringContaining('Creating your store (in progress)'),
-        'Preparing your dashboard (pending)',
+        expect.stringContaining('Preparing your dashboard (pending)'),
       ]);
       expect(screen.getByRole('button', { name: 'Creating Store...' })).toBeDisabled();
       expect(screen.queryByLabelText('Business name')).toBeNull();
@@ -487,7 +568,7 @@ describe('Onboard form', () => {
       post.mockReturnValue(deferred().promise);
       renderForm();
       await user.type(screen.getByLabelText('Business name'), 'Fresh Fashion');
-      await user.dblClick(createButton());
+      await payAndCreate(user, { double: true });
       await screen.findByRole('heading', { name: 'Creating your store' });
       expect(post).toHaveBeenCalledTimes(1);
     });
@@ -500,25 +581,25 @@ describe('Onboard form', () => {
       reloadProfile.mockReturnValue(profile.promise);
       renderForm({ redirectDelayMs: 60_000 });
       await user.type(screen.getByLabelText('Business name'), 'Fresh Fashion');
-      await user.click(createButton());
+      await payAndCreate(user);
       await screen.findByRole('heading', { name: 'Creating your store' });
-      expect(setupSteps()[1]).toContain('(in progress)');
+      expect(setupSteps()[2]).toContain('(in progress)');
 
       create.resolve({ success: true, data: {} });
       await waitFor(() =>
         expect(screen.getByRole('status')).toHaveTextContent('Store created. Preparing your dashboard...'),
       );
-      expect(setupSteps()[1]).toContain('(completed)');
-      expect(setupSteps()[2]).toContain('(in progress)');
+      expect(setupSteps()[2]).toContain('(completed)');
+      expect(setupSteps()[3]).toContain('(in progress)');
 
       // The new membership arrives mid-flow; it must not swap in the "already has a store" screen.
       authState.user = merchant(1);
       profile.resolve();
 
-      const done = await screen.findByRole('heading', { level: 1, name: 'Your store is ready!' });
+      const done = await screen.findByRole('heading', { level: 1, name: 'Your store has been created' });
       await waitFor(() => expect(done).toHaveFocus());
-      expect(screen.getByText('Your Ecomesta store has been created successfully.')).toBeInTheDocument();
-      expect(screen.getByRole('status')).toHaveTextContent('Your store is ready!');
+      expect(screen.getByText(/goes live for customers as soon as it is confirmed/)).toBeInTheDocument();
+      expect(screen.getByRole('status')).toHaveTextContent('Store created. Waiting for payment confirmation.');
       expect(setupSteps().every((step) => step?.includes('(completed)'))).toBe(true);
       expect(refreshStores).toHaveBeenCalledTimes(1);
       expect(replace).not.toHaveBeenCalled();
@@ -532,8 +613,8 @@ describe('Onboard form', () => {
       post.mockResolvedValue({ success: true, data: {} });
       renderForm({ redirectDelayMs: 50 });
       await user.type(screen.getByLabelText('Business name'), 'Fresh Fashion');
-      await user.click(createButton());
-      await screen.findByRole('heading', { name: 'Your store is ready!' });
+      await payAndCreate(user);
+      await screen.findByRole('heading', { name: 'Your store has been created' });
       await waitFor(() => expect(replace).toHaveBeenCalledWith('/dashboard'));
     });
 
@@ -542,13 +623,13 @@ describe('Onboard form', () => {
       post.mockResolvedValue({ success: true, data: {} });
       renderForm({ minDisplayMs: 400, redirectDelayMs: 60_000 });
       await user.type(screen.getByLabelText('Business name'), 'Fresh Fashion');
-      await user.click(createButton());
+      await payAndCreate(user);
       await waitFor(() =>
         expect(screen.getByRole('status')).toHaveTextContent('Store created. Preparing your dashboard...'),
       );
-      expect(screen.queryByRole('heading', { name: 'Your store is ready!' })).toBeNull();
+      expect(screen.queryByRole('heading', { name: 'Your store has been created' })).toBeNull();
       expect(
-        await screen.findByRole('heading', { name: 'Your store is ready!' }, { timeout: 2000 }),
+        await screen.findByRole('heading', { name: 'Your store has been created' }, { timeout: 2000 }),
       ).toBeInTheDocument();
     });
 
@@ -558,14 +639,14 @@ describe('Onboard form', () => {
       post.mockRejectedValue(new ApiError(500, 'INTERNAL_SERVER_ERROR', 'relation "stores" does not exist'));
       renderForm({ minDisplayMs: 60_000 });
       await user.type(screen.getByLabelText('Business name'), 'Fresh Fashion');
-      await user.click(createButton());
+      await payAndCreate(user);
 
       const alert = await screen.findByRole('alert');
       expect(alert).toHaveTextContent("We couldn't create your store");
       expect(alert).toHaveTextContent('Unable to create your store right now. Please try again.');
       expect(alert).not.toHaveTextContent(/relation|stores/);
       expect(screen.getByLabelText('Business name')).toHaveValue('Fresh Fashion');
-      expect(createButton()).toBeEnabled();
+      expect(continueButton()).toBeEnabled();
       expect(reloadProfile).not.toHaveBeenCalled();
       await waitFor(() => expect(alert.parentElement).toHaveFocus());
     });
@@ -576,7 +657,7 @@ describe('Onboard form', () => {
       post.mockRejectedValue(new ApiError(409, 'CONFLICT', 'Store slug is already taken'));
       renderForm();
       await user.type(screen.getByLabelText('Business name'), 'Fresh Fashion');
-      await user.click(createButton());
+      await payAndCreate(user);
 
       const alert = await screen.findByRole('alert');
       expect(alert).toHaveTextContent("We couldn't create your store");
@@ -597,8 +678,8 @@ describe('Onboard form', () => {
       });
       const { container } = renderForm({ redirectDelayMs: 60_000 });
       await user.type(screen.getByLabelText('Business name'), 'Fresh Fashion');
-      await user.click(createButton());
-      await screen.findByRole('heading', { name: 'Your store is ready!' });
+      await payAndCreate(user);
+      await screen.findByRole('heading', { name: 'Your store has been created' });
       expect(container.textContent).not.toMatch(/tenant-id|store-id|5f1f7e0c|9a2b4c6d/);
       expect(screen.getByText('Fresh Fashion')).toBeInTheDocument();
     });

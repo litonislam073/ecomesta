@@ -10,6 +10,7 @@ import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
 import { jpegImage, pngImage, webpImage } from './support/image-fixtures';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 /**
  * SF-04: merchants upload, replace and remove a product image. Images are kept
@@ -90,8 +91,8 @@ describe('SF-04 merchant product images (e2e)', () => {
         await http()
           .post('/api/v1/onboarding/store')
           .set(auth(s))
-          .send({ businessName: `SF04 ${s.key}`, tenantSlug: `${s.slug}-t`, storeName: `SF04 ${s.key}`, storeSlug: s.slug })
-          .expect(201)
+          .send(withPayment({ businessName: `SF04 ${s.key}`, tenantSlug: `${s.slug}-t`, storeName: `SF04 ${s.key}`, storeSlug: s.slug }))
+          .expect(201).then(activateOnboarded(app))
       ).body.data.store.id;
       await prisma.store.update({ where: { id: s.id }, data: { status: StoreStatus.ACTIVE } });
       s.productId = (await product(s, `Kurta ${s.key}`)).id;

@@ -14,6 +14,7 @@ import { AppModule } from '../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 describe('Merchant store settings (e2e)', () => {
   jest.setTimeout(120_000);
@@ -118,26 +119,26 @@ describe('Merchant store settings (e2e)', () => {
     const onboard = await http()
       .post('/api/v1/onboarding/store')
       .set(auth(owner))
-      .send({
+      .send(withPayment({
         businessName: 'Settings Tenant',
         tenantSlug: `settings-tenant-${suffix}`,
         storeName: 'Settings Store',
         storeSlug,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     storeId = onboard.body.data.store.id;
     tenantId = onboard.body.data.store.tenantId ?? onboard.body.data.tenant?.id;
 
     const otherOnboard = await http()
       .post('/api/v1/onboarding/store')
       .set(auth(otherOwner))
-      .send({
+      .send(withPayment({
         businessName: 'Settings Other Tenant',
         tenantSlug: `settings-tenant-b-${suffix}`,
         storeName: 'Settings Other Store',
         storeSlug: otherStoreSlug,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     otherStoreId = otherOnboard.body.data.store.id;
 
     for (const id of [storeId, otherStoreId]) {

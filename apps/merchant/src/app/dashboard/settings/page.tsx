@@ -9,7 +9,13 @@ import { useSubscription } from '@/lib/subscription-context';
 
 function subscriptionLines(data: MerchantSubscription | null): string[] {
   const sub = data?.subscription;
-  if (!sub) return ['Choose a plan · 2 months free'];
+  if (!sub) {
+    return [
+      data?.pendingPayment
+        ? 'Payment being confirmed · your store goes live once it is confirmed'
+        : 'No plan yet · choose and pay for a plan in Plan & billing',
+    ];
+  }
   const lines = [`${sub.plan.name} plan`];
   if (sub.phase === 'TRIAL' && sub.trialEndsAt) {
     lines.push(`Free trial ends ${formatBillingDate(sub.trialEndsAt)}`);

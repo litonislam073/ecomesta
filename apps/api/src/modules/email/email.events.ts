@@ -37,7 +37,10 @@ export interface StoreCreatedParams {
   storeSlug: string;
   planName: string | null;
   billingCycle: string | null;
+  /** Only on stores created during the old free-trial offer. */
   trialEndsAt: string | null;
+  /** The store waits offline until the sign-up payment is confirmed. */
+  awaitingPayment?: boolean;
 }
 
 export interface PasswordChangedParams {

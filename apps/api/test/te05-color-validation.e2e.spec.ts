@@ -9,6 +9,7 @@ import { AppModule } from '../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 /**
  * TE-05 / TE-06 API defense: direct writes with an invalid theme color or a
@@ -100,8 +101,8 @@ describe('TE-05 / TE-06 theme color and font validation (e2e)', () => {
       await http()
         .post('/api/v1/onboarding/store')
         .set(auth())
-        .send({ businessName: 'TE05', tenantSlug: `${store.slug}-t`, storeName: 'TE05', storeSlug: store.slug })
-        .expect(201)
+        .send(withPayment({ businessName: 'TE05', tenantSlug: `${store.slug}-t`, storeName: 'TE05', storeSlug: store.slug }))
+        .expect(201).then(activateOnboarded(app))
     ).body.data.store.id;
     await prisma.store.update({ where: { id: store.id }, data: { status: StoreStatus.ACTIVE } });
 
@@ -121,8 +122,8 @@ describe('TE-05 / TE-06 theme color and font validation (e2e)', () => {
       await http()
         .post('/api/v1/onboarding/store')
         .set(auth(storeB))
-        .send({ businessName: 'TE06 B', tenantSlug: `${storeB.slug}-t`, storeName: 'TE06 B', storeSlug: storeB.slug })
-        .expect(201)
+        .send(withPayment({ businessName: 'TE06 B', tenantSlug: `${storeB.slug}-t`, storeName: 'TE06 B', storeSlug: storeB.slug }))
+        .expect(201).then(activateOnboarded(app))
     ).body.data.store.id;
     await prisma.store.update({ where: { id: storeB.id }, data: { status: StoreStatus.ACTIVE } });
     await patch({ typography: { headingFont: 'Georgia', bodyFont: 'Georgia' } }, storeB).expect(200);

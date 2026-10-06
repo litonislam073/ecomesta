@@ -2,8 +2,10 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import type { ManualPaymentAccount } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
 import { AuthField, FormAlert } from '@/components/auth/auth-fields';
+import { ManualPaymentPanel, type WalletPaymentInput } from '@/components/billing/manual-payment';
 import { PlanPicker, defaultSelection } from '@/components/billing/plan-picker';
 import { SetupProgress } from '@/components/onboarding/onboarding-shell';
 import {
@@ -50,6 +52,8 @@ const CREATE_FAILED_TITLE = "We couldn't create your store";
 
 /** creating = POST /onboarding/store in flight; finalizing = profile + store list reload. */
 type Phase = 'form' | 'creating' | 'finalizing' | 'completed';
+/** Store details first; the payment is the last step and creates the store. */
+type Step = 'details' | 'payment';
 
 function wait(ms: number) {
   return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
@@ -136,6 +140,11 @@ function ProvisioningPanel({
   const steps: ProvisioningStep[] = [
     { label: 'Account verified', state: 'done' },
     {
+      label: 'Payment submitted',
+      state: 'done',
+      detail: 'Our team checks it and brings your store online.',
+    },
+    {
       label: 'Creating your store',
       state: phase === 'creating' ? 'current' : 'done',
       detail: 'Saving your store name, web address and Bangladesh defaults (BDT · Asia/Dhaka).',
@@ -151,7 +160,7 @@ function ProvisioningPanel({
       ? 'Creating your store...'
       : phase === 'finalizing'
         ? 'Store created. Preparing your dashboard...'
-        : 'Your store is ready!';
+        : 'Store created. Waiting for payment confirmation.';
 
   return (
     <div>
@@ -170,11 +179,11 @@ function ProvisioningPanel({
         tabIndex={-1}
         className="mt-6 font-display text-3xl tracking-tight text-[var(--color-ink)] outline-none"
       >
-        {completed ? 'Your store is ready!' : 'Creating your store'}
+        {completed ? 'Your store has been created' : 'Creating your store'}
       </h1>
       <p className="mt-2 text-[var(--color-muted)]">
         {completed
-          ? 'Your Ecomesta store has been created successfully.'
+          ? 'We are confirming your payment. Your store goes live for customers as soon as it is confirmed — meanwhile you can add products in your dashboard.'
           : "We're getting everything ready for your online business."}
       </p>
 
@@ -247,6 +256,9 @@ export default function OnboardForm({
   const [pendingFocus, setPendingFocus] = useState<OnboardField | 'alert' | null>(null);
   const [error, setError] = useState<{ title?: string; message: string } | null>(null);
   const [phase, setPhase] = useState<Phase>('form');
+  const [step, setStep] = useState<Step>('details');
+  const [accounts, setAccounts] = useState<ManualPaymentAccount[] | null>(null);
+  const [accountsError, setAccountsError] = useState<string | null>(null);
   const [provisioned, setProvisioned] = useState<{ name: string; url: string | null }>({
     name: '',
     url: null,
@@ -356,15 +368,41 @@ export default function OnboardForm({
     return Boolean(firstInvalid);
   }
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function loadAccounts() {
+    if (accounts || !accessToken) return;
+    setAccountsError(null);
+    try {
+      const result = await api.get<{ success: true; data: ManualPaymentAccount[] }>('/billing/payment-accounts', {
+        token: accessToken,
+      });
+      setAccounts(result.data);
+    } catch {
+      setAccountsError('We could not load the payment details. Please refresh the page and try again.');
+    }
+  }
+
+  /** Step 1 → 2: the details are checked here; the API checks them again with the payment. */
+  function onContinue(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (inFlight.current) return;
     setError(null);
     if (showFieldErrors(validate())) return;
     if (!accessToken) {
       setError({ message: SESSION_EXPIRED });
       return;
     }
+    if (!planChoice) {
+      setError({ message: 'Choose a plan to continue.' });
+      return;
+    }
+    setStep('payment');
+    void loadAccounts();
+    window.scrollTo?.({ top: 0 });
+  }
+
+  /** Step 2: the payment creates the store (offline until the payment is confirmed). */
+  async function createStore(payment: WalletPaymentInput): Promise<void> {
+    if (inFlight.current || !planChoice) return;
+    if (!accessToken) throw new Error(SESSION_EXPIRED);
 
     const nextBusinessName = businessName.trim();
     const nextStoreName = storeName.trim() || nextBusinessName;
@@ -382,18 +420,21 @@ export default function OnboardForm({
           tenantSlug: slugify(tenantSlug, TENANT_SLUG_MAX) || nextStoreSlug,
           storeSlug: nextStoreSlug,
           ...STORE_DEFAULTS,
-          ...(planChoice ? { planSlug: planChoice.plan, billingCycle: planChoice.cycle } : {}),
+          planSlug: planChoice.plan,
+          billingCycle: planChoice.cycle,
+          ...payment,
         },
         { token: accessToken },
       );
     } catch (err) {
-      // Failures surface immediately; the minimum display time only applies to success.
-      const mapped = onboardingErrorMessage(err, { tenantSlugEdited });
-      setError({ title: CREATE_FAILED_TITLE, message: mapped.message });
-      // The provisioning heading that held focus is unmounted; move focus to the field or the alert.
-      if (!showFieldErrors(mapped.fieldErrors)) setPendingFocus('alert');
-      setPhase('form');
       inFlight.current = false;
+      setPhase('form');
+      const mapped = onboardingErrorMessage(err, { tenantSlugEdited });
+      // Payment problems are shown on the payment step, which keeps what was typed.
+      if (mapped.payment) throw new Error(mapped.message);
+      setError({ title: CREATE_FAILED_TITLE, message: mapped.message });
+      setStep('details');
+      if (!showFieldErrors(mapped.fieldErrors)) setPendingFocus('alert');
       return;
     }
 
@@ -415,33 +456,89 @@ export default function OnboardForm({
     void logout().then(() => router.replace('/login'));
   }
 
+  const summaryName = storeName.trim() || businessName.trim();
+  const chosenPlan = planChoice ? plans?.find((plan) => plan.slug === planChoice.plan) ?? null : null;
+  const paymentView =
+    step === 'payment' && planChoice && chosenPlan ? (
+      <div>
+        <SetupProgress current="payment" />
+        <p className="mt-6 text-sm font-semibold text-[var(--color-accent)]">Step 3 of 3 · Payment</p>
+        <h1 className="mt-2 font-display text-3xl tracking-tight text-[var(--color-ink)]">Pay for your plan</h1>
+        <p className="mt-2 text-[var(--color-muted)]">
+          Your store <span className="font-medium text-[var(--color-ink)]">{summaryName}</span> is created as soon as
+          you submit your payment. It goes live for customers once our team confirms the payment.
+        </p>
+        <div className="mt-6">
+          {accounts ? (
+            <ManualPaymentPanel
+              plan={chosenPlan}
+              cycle={planChoice.cycle}
+              accounts={accounts}
+              token={accessToken}
+              trialEndsAt={null}
+              onPay={createStore}
+              heading="Last step: pay for your plan"
+              intro="Send the payment with bKash, Nagad, Rocket or Upay, then tell us your number and the transaction ID."
+              submitLabel={(amount) => `I've paid ${amount} — create my store`}
+              footer={
+                <button
+                  type="button"
+                  onClick={() => setStep('details')}
+                  className="w-full rounded-sm text-center text-sm font-semibold text-[var(--color-accent)] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+                >
+                  ← Back to store details
+                </button>
+              }
+            />
+          ) : accountsError ? (
+            <FormAlert title="Payment details unavailable" message={accountsError} />
+          ) : (
+            <StatusPanel title="Loading payment details…" />
+          )}
+        </div>
+      </div>
+    ) : null;
+
   if (signingOut) {
     return <StatusPanel title="Signing out…" />;
   }
-  if (provisioning) {
-    return (
-      <ProvisioningPanel
-        phase={phase}
-        storeName={provisioned.name}
-        storeUrl={provisioned.url}
-        headingRef={headingRef}
-        onOpenDashboard={openDashboard}
-      />
-    );
-  }
-  if (loading || !user) {
+  if (!provisioning && (loading || !user)) {
     return <StatusPanel title="Checking your account..." />;
   }
-  if (hasStore) {
+  if (!provisioning && hasStore) {
     return <StatusPanel title="You already have a store" detail="Opening your dashboard…" />;
   }
+  if (provisioning || paymentView) {
+    // The payment step keeps its place in the tree while the store is created,
+    // so a refused payment comes back with what was typed and the error.
+    return (
+      <>
+        {provisioning ? (
+          <ProvisioningPanel
+            phase={phase as Exclude<Phase, 'form'>}
+            storeName={provisioned.name}
+            storeUrl={provisioned.url}
+            headingRef={headingRef}
+            onOpenDashboard={openDashboard}
+          />
+        ) : null}
+        {/* Only while the request runs; after success the payment step is done. */}
+        {paymentView && (!provisioning || phase === 'creating') ? (
+          <div hidden={provisioning}>{paymentView}</div>
+        ) : null}
+      </>
+    );
+  }
+  if (!user) {
+    return <StatusPanel title="Checking your account..." />;
+  }
 
-  const summaryName = storeName.trim() || businessName.trim();
+
 
   return (
     <div>
-      <SetupProgress />
-      <p className="mt-6 text-sm font-semibold text-[var(--color-accent)]">Step 2 of 2 · Store setup</p>
+      <SetupProgress current="store" />
+      <p className="mt-6 text-sm font-semibold text-[var(--color-accent)]">Step 2 of 3 · Store details</p>
       <h1 className="mt-2 font-display text-3xl tracking-tight text-[var(--color-ink)]">
         Let&apos;s set up your store
       </h1>
@@ -449,7 +546,7 @@ export default function OnboardForm({
         Add a few details about your business to get your Ecomesta store ready.
       </p>
 
-      <form className="mt-6 space-y-5" onSubmit={onSubmit} noValidate>
+      <form className="mt-6 space-y-5" onSubmit={onContinue} noValidate>
         <AuthField
           id={FIELD_IDS.businessName}
           label="Business name"
@@ -548,7 +645,7 @@ export default function OnboardForm({
                 Your plan
               </h2>
               <p className="text-sm text-[var(--color-muted)]">
-                2 months free. No payment details needed. You can change your plan during the trial.
+                You pay for it in the next step. Your store goes live as soon as we confirm the payment.
               </p>
             </div>
             <PlanPicker plans={plans} value={planChoice} onChange={setPlanChoice} idPrefix="onboard" />
@@ -582,7 +679,7 @@ export default function OnboardForm({
         ) : null}
 
         <Button type="submit" className="h-11 w-full rounded-lg text-base font-semibold">
-          Create Store
+          Continue to payment
         </Button>
       </form>
 

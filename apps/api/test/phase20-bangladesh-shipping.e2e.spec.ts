@@ -14,6 +14,7 @@ import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
 import { seedBangladeshLocations } from '../prisma/seed-bangladesh-locations';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 describe('Phase 20 Bangladesh shipping zones (e2e)', () => {
   jest.setTimeout(90_000);
@@ -105,25 +106,25 @@ describe('Phase 20 Bangladesh shipping zones (e2e)', () => {
     const onboard = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set('Authorization', `Bearer ${manager.token}`)
-      .send({
+      .send(withPayment({
         businessName: 'BD Ship Tenant',
         tenantSlug: `bd-ship-tenant-${suffix}`,
         storeName: 'BD Ship Store',
         storeSlug,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     storeId = onboard.body.data.store.id;
 
     const onboardB = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set('Authorization', `Bearer ${other.token}`)
-      .send({
+      .send(withPayment({
         businessName: 'Other BD Tenant',
         tenantSlug: `bd-ship-tenant-b-${suffix}`,
         storeName: 'Other BD Store',
         storeSlug: `bd-other-${suffix}`,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     otherStoreId = onboardB.body.data.store.id;
 
     await prisma.store.update({

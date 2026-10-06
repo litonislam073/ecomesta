@@ -1,11 +1,9 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
-  BillingCycle,
   Prisma,
   StoreStatus,
   SubscriptionStatus,
   type Subscription,
-  type SubscriptionPlan,
 } from '@prisma/client';
 import type { Request } from 'express';
 import {
@@ -15,14 +13,12 @@ import {
   billingCycleDefinition,
   paymentDeadline,
   subscriptionPhase,
-  trialEndDate,
   type SubscriptionPhase,
 } from '@ecomesta/utils';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../redis/redis.service';
 import { AuditService } from '../audit/audit.service';
 import { domainResolutionCacheKey } from '../domains/domain-cache';
-import { readPlanSettings } from './plan-catalog';
 
 type Tx = Prisma.TransactionClient;
 
@@ -55,30 +51,6 @@ export class SubscriptionLifecycleService {
     private readonly audit: AuditService,
     private readonly redis: RedisService,
   ) {}
-
-  /** New subscriptions always start in TRIALING; nothing is charged. */
-  startTrial(
-    tx: Tx,
-    params: {
-      tenantId: string;
-      plan: Pick<SubscriptionPlan, 'id' | 'configuration'>;
-      billingCycle: BillingCycle;
-      now?: Date;
-    },
-  ): Promise<Subscription> {
-    const startsAt = params.now ?? new Date();
-    const { trialMonths } = readPlanSettings(params.plan.configuration);
-    return tx.subscription.create({
-      data: {
-        tenantId: params.tenantId,
-        planId: params.plan.id,
-        billingCycle: params.billingCycle,
-        status: SubscriptionStatus.TRIALING,
-        startsAt,
-        trialEndsAt: trialEndDate(startsAt, trialMonths),
-      },
-    });
-  }
 
   /** The subscription that governs the tenant right now (paid beats pending beats ended). */
   async currentForTenant(tenantId: string, client: Tx | PrismaService = this.prisma) {
@@ -264,7 +236,7 @@ export class SubscriptionLifecycleService {
     source: PaymentConfirmationSource;
     actorUserId?: string;
     req?: Request;
-  }): Promise<{ activated: boolean; storesRestored: number }> {
+  }): Promise<{ activated: boolean; storesRestored: number; storesLaunched: number }> {
     const confirmedAt = params.confirmedAt ?? new Date();
     const outcome = await this.prisma.$transaction(async (tx) => {
       let activated = false;
@@ -306,7 +278,33 @@ export class SubscriptionLifecycleService {
           data: { status: store.statusBeforeBillingSuspension!, statusBeforeBillingSuspension: null },
         });
       }
-      return { tenantId: subscription.tenantId, activated, storeIds: stores.map((store) => store.id) };
+
+      // Stores created at sign-up wait offline for their first payment; it
+      // has now been confirmed, so they go live. A store a Super Admin
+      // suspended meanwhile stays suspended.
+      const awaiting = await tx.store.findMany({
+        where: { tenantId: subscription.tenantId, awaitingFirstPayment: true },
+        select: { id: true, status: true },
+      });
+      const launchedIds = awaiting.filter((store) => store.status === StoreStatus.INACTIVE).map((store) => store.id);
+      if (launchedIds.length > 0) {
+        await tx.store.updateMany({
+          where: { id: { in: launchedIds }, status: StoreStatus.INACTIVE },
+          data: { status: StoreStatus.ACTIVE },
+        });
+      }
+      if (awaiting.length > 0) {
+        await tx.store.updateMany({
+          where: { id: { in: awaiting.map((store) => store.id) } },
+          data: { awaitingFirstPayment: false },
+        });
+      }
+      return {
+        tenantId: subscription.tenantId,
+        activated,
+        storeIds: stores.map((store) => store.id),
+        launchedIds,
+      };
     });
 
     if (outcome.activated) {
@@ -331,8 +329,23 @@ export class SubscriptionLifecycleService {
         req: params.req,
       });
     }
-    await this.invalidateStorefrontCache(outcome.storeIds);
-    return { activated: outcome.activated, storesRestored: outcome.storeIds.length };
+    for (const storeId of outcome.launchedIds) {
+      await this.audit.log({
+        action: 'STORE_LAUNCHED_AFTER_FIRST_PAYMENT',
+        entityType: 'Store',
+        entityId: storeId,
+        storeId,
+        tenantId: outcome.tenantId,
+        userId: params.actorUserId,
+        req: params.req,
+      });
+    }
+    await this.invalidateStorefrontCache([...outcome.storeIds, ...outcome.launchedIds]);
+    return {
+      activated: outcome.activated,
+      storesRestored: outcome.storeIds.length,
+      storesLaunched: outcome.launchedIds.length,
+    };
   }
 
   private async invalidateStorefrontCache(storeIds: string[]): Promise<void> {

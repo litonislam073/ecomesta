@@ -19,7 +19,7 @@ export default function OnboardRoute() {
         heading="Your online store is one step away."
         description="Name your store and choose its web address. Products, payments and delivery options are managed from your dashboard."
         points={[
-          '2 months free on every plan, no payment details needed',
+          'Pay for your plan in the last step: your store goes live as soon as we confirm the payment',
           'Your storefront: an online store at its own web address',
           'Products & orders: manage products, inventory and orders in one place',
           'Payments & delivery: Cash on Delivery, SSLCommerz and Stripe, with delivery charges by area',

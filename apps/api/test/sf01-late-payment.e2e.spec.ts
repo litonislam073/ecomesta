@@ -10,6 +10,7 @@ import { AppModule } from '../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 /**
  * SF-01 (QA-003 / QA-015): a cancelled order must never become CANCELLED/PAID.
@@ -144,8 +145,8 @@ describe('SF-01 paid-after-cancel payment race (e2e)', () => {
         await http()
           .post('/api/v1/onboarding/store')
           .set(auth(s))
-          .send({ businessName: `SF01 ${key}`, tenantSlug: `${s.slug}-t`, storeName: `SF01 ${key}`, storeSlug: s.slug })
-          .expect(201)
+          .send(withPayment({ businessName: `SF01 ${key}`, tenantSlug: `${s.slug}-t`, storeName: `SF01 ${key}`, storeSlug: s.slug }))
+          .expect(201).then(activateOnboarded(app))
       ).body.data.store.id;
       await prisma.store.update({ where: { id: s.id }, data: { status: StoreStatus.ACTIVE } });
     }

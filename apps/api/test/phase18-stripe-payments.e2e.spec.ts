@@ -30,6 +30,7 @@ import { AppModule } from '../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 const stripeMock = (
   Stripe as unknown as {
@@ -117,13 +118,13 @@ describe('Phase 18 Stripe payments (e2e)', () => {
     const onboard = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set('Authorization', `Bearer ${manager.token}`)
-      .send({
+      .send(withPayment({
         businessName: 'Stripe Tenant',
         tenantSlug: `stripe-tenant-${suffix}`,
         storeName: 'Stripe Store',
         storeSlug,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     storeId = onboard.body.data.store.id;
     await prisma.store.update({
       where: { id: storeId },

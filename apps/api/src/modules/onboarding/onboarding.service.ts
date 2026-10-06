@@ -1,6 +1,5 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import {
-  BillingCycle,
   MembershipStatus,
   StoreRole,
   StoreStatus,
@@ -11,7 +10,11 @@ import type { Request } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { BillingService } from '../billing/billing.service';
-import { SubscriptionLifecycleService } from '../billing/subscription-lifecycle.service';
+import {
+  BillingPaymentsService,
+  billingPaymentConflict,
+  prepareWalletPayment,
+} from '../billing/billing-payments.service';
 import { EmailService } from '../email/email.service';
 import {
   STORE_SLUG_TAKEN_MESSAGE,
@@ -26,7 +29,7 @@ export class OnboardingService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly billing: BillingService,
-    private readonly lifecycle: SubscriptionLifecycleService,
+    private readonly payments: BillingPaymentsService,
     private readonly email: EmailService,
   ) {}
 
@@ -39,7 +42,10 @@ export class OnboardingService {
       throw new ConflictException('Tenant slug is already taken');
     }
     await assertStoreSlugAvailable(this.prisma, dto.storeSlug);
-    const plan = dto.planSlug ? await this.billing.requireActivePlan(dto.planSlug) : null;
+    // Payment is the last step of sign-up: nothing is created unless the
+    // plan and the wallet details are valid.
+    const plan = await this.billing.requireActivePlan(dto.planSlug);
+    const prepared = prepareWalletPayment(dto);
 
     const result = await this.prisma
       .$transaction(async (tx) => {
@@ -68,7 +74,10 @@ export class OnboardingService {
             currency: dto.currency ?? 'BDT',
             timezone: dto.timezone ?? 'Asia/Dhaka',
             locale: dto.locale ?? 'en-BD',
-            status: StoreStatus.ACTIVE,
+            // Offline until the first payment is confirmed; the merchant can
+            // still set it up in the dashboard meanwhile.
+            status: StoreStatus.INACTIVE,
+            awaitingFirstPayment: true,
           },
         });
 
@@ -81,13 +90,13 @@ export class OnboardingService {
           },
         });
 
-        const subscription = plan
-          ? await this.lifecycle.startTrial(tx, {
-              tenantId: tenant.id,
-              plan,
-              billingCycle: dto.billingCycle ?? BillingCycle.MONTHLY,
-            })
-          : null;
+        const payment = await this.payments.createPending(tx, {
+          tenantId: tenant.id,
+          userId,
+          plan,
+          billingCycle: dto.billingCycle,
+          prepared,
+        });
 
         const owner = await tx.user.findUniqueOrThrow({
           where: { id: userId },
@@ -99,16 +108,20 @@ export class OnboardingService {
             firstName: owner.firstName,
             storeName: store.name,
             storeSlug: store.slug,
-            planName: plan?.name ?? null,
-            billingCycle: subscription?.billingCycle ?? null,
-            trialEndsAt: subscription?.trialEndsAt?.toISOString() ?? null,
+            planName: plan.name,
+            billingCycle: dto.billingCycle,
+            trialEndsAt: null,
+            awaitingPayment: true,
           },
           tx,
         );
 
-        return { tenant, store, subscription };
+        return { tenant, store, payment };
       })
       .catch((error: unknown) => {
+        // A reused transaction ID is reported as such, not as a taken slug.
+        const paymentConflict = billingPaymentConflict(error);
+        if (paymentConflict) throw paymentConflict;
         // A concurrent onboarding claimed the tenant or store slug first.
         if (isUniqueConstraintError(error)) {
           throw new ConflictException(STORE_SLUG_TAKEN_MESSAGE);
@@ -138,22 +151,7 @@ export class OnboardingService {
       req,
     });
 
-    if (result.subscription && plan) {
-      await this.audit.log({
-        action: 'SUBSCRIPTION_TRIAL_STARTED',
-        entityType: 'Subscription',
-        entityId: result.subscription.id,
-        userId,
-        tenantId: result.tenant.id,
-        metadata: {
-          planSlug: plan.slug,
-          billingCycle: result.subscription.billingCycle,
-          trialEndsAt: result.subscription.trialEndsAt?.toISOString() ?? null,
-          via: 'onboarding',
-        },
-        req,
-      });
-    }
+    await this.payments.auditSubmitted(result.payment, plan, userId, req);
 
     return {
       success: true as const,
@@ -178,16 +176,9 @@ export class OnboardingService {
           createdAt: result.store.createdAt,
           updatedAt: result.store.updatedAt,
         },
-        subscription:
-          result.subscription && plan
-            ? {
-                status: result.subscription.status,
-                billingCycle: result.subscription.billingCycle,
-                startsAt: result.subscription.startsAt,
-                trialEndsAt: result.subscription.trialEndsAt,
-                plan: { name: plan.name, slug: plan.slug },
-              }
-            : null,
+        // The plan starts when the payment is approved.
+        subscription: null,
+        payment: this.payments.toMerchantDto(result.payment),
       },
     };
   }

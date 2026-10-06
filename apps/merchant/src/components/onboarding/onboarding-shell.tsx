@@ -44,35 +44,62 @@ export function OnboardingShell({ children }: { children: ReactNode }) {
   );
 }
 
-/** Two-step progress: the account step is done and not navigable. */
-export function SetupProgress() {
+function DoneMark() {
   return (
-    <ol aria-label="Setup progress" className="grid grid-cols-2 gap-2 text-sm">
-      <li className="flex items-center gap-2 border-t-2 border-[var(--color-accent)] pt-2 text-[var(--color-muted)]">
-        <span
-          aria-hidden="true"
-          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent)] text-white"
-        >
-          <svg viewBox="0 0 20 20" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 10.5l4 4 8-9" />
-          </svg>
-        </span>
-        <span>
-          Account<span className="sr-only"> (completed)</span>
-        </span>
-      </li>
-      <li
-        aria-current="step"
-        className="flex items-center gap-2 border-t-2 border-[var(--color-accent)] pt-2 font-semibold text-[var(--color-ink)]"
-      >
-        <span
-          aria-hidden="true"
-          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-[var(--color-accent)] text-[11px] font-bold text-[var(--color-accent)]"
-        >
-          2
-        </span>
-        <span>Store setup</span>
-      </li>
+    <span
+      aria-hidden="true"
+      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent)] text-white"
+    >
+      <svg viewBox="0 0 20 20" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 10.5l4 4 8-9" />
+      </svg>
+    </span>
+  );
+}
+
+/**
+ * Three-step progress: account (done), store details, payment. Payment is the
+ * last step; the store is created when it is submitted. Steps are not links.
+ */
+export function SetupProgress({ current = 'store' }: { current?: 'store' | 'payment' }) {
+  const steps = [
+    { key: 'account', label: 'Account' },
+    { key: 'store', label: 'Store details' },
+    { key: 'payment', label: 'Payment' },
+  ] as const;
+  const currentIndex = steps.findIndex((step) => step.key === current);
+  return (
+    <ol aria-label="Setup progress" className="grid grid-cols-3 gap-2 text-sm">
+      {steps.map((step, index) => {
+        const done = index < currentIndex;
+        const active = index === currentIndex;
+        return (
+          <li
+            key={step.key}
+            aria-current={active ? 'step' : undefined}
+            className={`flex items-center gap-2 border-t-2 pt-2 ${
+              done || active ? 'border-[var(--color-accent)]' : 'border-[var(--color-border)]'
+            } ${active ? 'font-semibold text-[var(--color-ink)]' : 'text-[var(--color-muted)]'}`}
+          >
+            {done ? (
+              <DoneMark />
+            ) : (
+              <span
+                aria-hidden="true"
+                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 text-[11px] font-bold ${
+                  active ? 'border-[var(--color-accent)] text-[var(--color-accent)]' : 'border-[var(--color-border)]'
+                }`}
+              >
+                {index + 1}
+              </span>
+            )}
+            <span>
+              {step.label}
+              {done ? <span className="sr-only"> (completed)</span> : null}
+            </span>
+          </li>
+        );
+      })}
     </ol>
   );
 }

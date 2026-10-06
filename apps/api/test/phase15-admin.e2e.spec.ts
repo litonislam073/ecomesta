@@ -17,6 +17,7 @@ import {
   assertSubscriptionStatusTransition,
   isValidSubscriptionTransition,
 } from '../src/modules/admin/subscription-transitions';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 describe('Phase 15 super admin (e2e)', () => {
   jest.setTimeout(90_000);
@@ -103,13 +104,13 @@ describe('Phase 15 super admin (e2e)', () => {
     const onboard = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set(authOwner())
-      .send({
+      .send(withPayment({
         businessName: 'P15 Tenant',
         tenantSlug: `p15-tenant-${suffix}`,
         storeName: 'P15 Store',
         storeSlug,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     tenantId = onboard.body.data.tenant.id;
     storeId = onboard.body.data.store.id;
 
@@ -593,8 +594,12 @@ describe('Phase 15 super admin (e2e)', () => {
       .query({ search: `p15-tenant-${suffix}` })
       .set(authSa())
       .expect(200);
-    expect(searched.body.data.items).toHaveLength(1);
-    expect(searched.body.data.items[0].id).toBe(subscriptionId);
+    // The tenant also has the plan its sign-up payment started; the search
+    // finds both, and the one assigned here among them.
+    const searchedIds = (searched.body.data.items as Array<{ id: string; plan: { slug: string } }>)
+      .filter((item) => item.plan.slug === `p15-starter-${suffix}`)
+      .map((item) => item.id);
+    expect(searchedIds).toEqual([subscriptionId]);
 
     const detail = await request(app.getHttpServer())
       .get(`/api/v1/admin/subscriptions/${subscriptionId}`)

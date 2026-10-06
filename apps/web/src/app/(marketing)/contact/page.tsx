@@ -68,7 +68,7 @@ export default function ContactPage() {
           </h2>
           <LinkCard href="/faq" title="FAQ" description="Stores, payments, delivery, checkout and more." />
           <LinkCard href="/resources" title="Resources" description="Setup guides for every part of the platform." />
-          <LinkCard href="/pricing" title="Pricing" description="Plans in BDT and the 2-month free trial." />
+          <LinkCard href="/pricing" title="Pricing" description="Plans and prices in BDT, from ৳99 a month." />
         </FadeUp>
       </Container>
       <CtaSection />

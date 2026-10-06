@@ -10,6 +10,7 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
 import { publishedThemeCacheKey } from '../src/modules/themes/theme-cache';
 import { ThemesService } from '../src/modules/themes/themes.service';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 /**
  * ST-002: selecting, saving and previewing a theme are draft-only; publishing
@@ -83,8 +84,8 @@ describe('ST-002 theme draft/publish separation (e2e)', () => {
         await request(app.getHttpServer())
           .post('/api/v1/onboarding/store')
           .set(auth(user))
-          .send({ businessName: tenant, tenantSlug: `${slug}-t`, storeName: tenant, storeSlug: slug })
-          .expect(201)
+          .send(withPayment({ businessName: tenant, tenantSlug: `${slug}-t`, storeName: tenant, storeSlug: slug }))
+          .expect(201).then(activateOnboarded(app))
       ).body.data.store.id as string;
     storeId = await onboard(manager, 'ST002 A', storeSlug);
     otherStoreId = await onboard(other, 'ST002 B', otherSlug);

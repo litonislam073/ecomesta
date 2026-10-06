@@ -57,19 +57,21 @@ export class BillingService {
   async getForUser(userId: string, tenantSlug?: string): Promise<{ success: true; data: MerchantSubscription }> {
     const tenant = await this.resolveTenant(userId, tenantSlug);
     await this.lifecycle.evaluateTenant(tenant.id);
-    const [current, canManage, pending] = await Promise.all([
+    const [current, canManage, pending, awaitingStores] = await Promise.all([
       this.lifecycle.currentForTenant(tenant.id),
       this.authorization.hasTenantRole(userId, tenant.id, [TenantRole.OWNER, TenantRole.ADMIN]),
       this.prisma.billingPayment.findFirst({
         where: { tenantId: tenant.id, status: BillingPaymentStatus.PENDING },
         include: PAYMENT_INCLUDE,
       }),
+      this.prisma.store.count({ where: { tenantId: tenant.id, awaitingFirstPayment: true } }),
     ]);
     return {
       success: true,
       data: {
         tenantName: tenant.name,
         canManage,
+        awaitingFirstPayment: awaitingStores > 0,
         onlinePaymentAvailable: SUBSCRIPTION_ONLINE_PAYMENT_ENABLED,
         subscription: current ? this.toMerchantDto(current) : null,
         pendingPayment: pending ? toMerchantBillingPayment(pending) : null,
@@ -78,11 +80,11 @@ export class BillingService {
   }
 
   /**
-   * Starts the free trial on the chosen plan when the business has never had
-   * a subscription. During the trial the business may switch to the same or a
-   * cheaper plan, or change billing period; a more expensive plan only unlocks
-   * through an approved payment (BillingPaymentsService). After the trial every
-   * plan change goes through a payment.
+   * Plan changes without a payment exist only for businesses still in a free
+   * trial they started before trials ended: they may switch to the same or a
+   * cheaper plan, or change billing period. A business without a subscription
+   * starts its plan by paying for it (BillingPaymentsService); there is no
+   * free trial any more. Every other plan change also goes through a payment.
    */
   async selectPlan(
     userId: string,
@@ -96,12 +98,13 @@ export class BillingService {
     const outcome = await this.prisma.$transaction(async (tx) => {
       const current = await this.lifecycle.currentForTenant(tenant.id, tx);
       if (!current) {
-        const created = await this.lifecycle.startTrial(tx, {
-          tenantId: tenant.id,
-          plan,
-          billingCycle: input.billingCycle,
-        });
-        return { action: 'SUBSCRIPTION_TRIAL_STARTED' as const, subscription: created };
+        throw new HttpException(
+          {
+            message: `Pay for ${plan.name} below to start your plan. It starts as soon as our team confirms the payment.`,
+            error: 'Payment Required',
+          },
+          HttpStatus.PAYMENT_REQUIRED,
+        );
       }
       if (current.status !== SubscriptionStatus.TRIALING) {
         throw new ConflictException(

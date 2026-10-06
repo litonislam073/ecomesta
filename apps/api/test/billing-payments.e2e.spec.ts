@@ -3,13 +3,14 @@ import { Test } from '@nestjs/testing';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import request from 'supertest';
-import { PlatformRole, StoreStatus, SubscriptionStatus, UserStatus } from '@prisma/client';
+import { BillingCycle, PlatformRole, StoreStatus, SubscriptionStatus, UserStatus } from '@prisma/client';
 import { addCalendarDays, addCalendarMonths } from '@ecomesta/utils';
 import { AppModule } from '../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { SubscriptionLifecycleService } from '../src/modules/billing/subscription-lifecycle.service';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
+import { withPayment } from './support/onboarding';
 
 const TEST_EMAIL = /^pay\.[a-z]+\.\d+-\d+@example\.com$/;
 
@@ -73,6 +74,8 @@ describe('Plans, entitlements and manual billing payments (e2e)', () => {
   const upgrader = merchant('upgrader');
   const renewer = merchant('renewer');
   const outsider = merchant('outsider');
+  const newcomer = merchant('newcomer');
+  const retrier = merchant('retrier');
   const admin = { email: `pay.admin.${suffix}@example.com`, token: '', id: '' };
 
   const server = () => app.getHttpServer();
@@ -87,8 +90,47 @@ describe('Plans, entitlements and manual billing payments (e2e)', () => {
     user.id = res.body.data.user.id;
   }
 
+  /**
+   * A business that signed up before free trials ended: it keeps its 2-month
+   * trial on the chosen plan, with the store already live. (New sign-ups pay
+   * instead — see "paid sign-up" below.)
+   */
   async function onboard(user: Merchant, planSlug: string, cycle = 'MONTHLY') {
     const res = await request(server())
+      .post('/api/v1/onboarding/store')
+      .set(bearer(user))
+      .send(withPayment({
+        businessName: `Pay ${user.tenantSlug}`,
+        tenantSlug: user.tenantSlug,
+        storeName: `Pay ${user.storeSlug}`,
+        storeSlug: user.storeSlug,
+      }))
+      .expect(201);
+    user.tenantId = res.body.data.tenant.id;
+    user.storeId = res.body.data.store.id;
+    await prisma.billingPayment.deleteMany({ where: { tenantId: user.tenantId } });
+    await prisma.emailDelivery.deleteMany({ where: { tenantId: user.tenantId, eventType: 'BILLING_PAYMENT_SUBMITTED' } });
+    const plan = await prisma.subscriptionPlan.findUniqueOrThrow({ where: { slug: planSlug } });
+    const startsAt = new Date();
+    await prisma.subscription.create({
+      data: {
+        tenantId: user.tenantId,
+        planId: plan.id,
+        billingCycle: cycle as BillingCycle,
+        status: SubscriptionStatus.TRIALING,
+        startsAt,
+        trialEndsAt: addCalendarMonths(startsAt, 2),
+      },
+    });
+    await prisma.store.update({
+      where: { id: user.storeId },
+      data: { status: StoreStatus.ACTIVE, awaitingFirstPayment: false },
+    });
+  }
+
+  /** A new merchant today: the store is created with its first payment. */
+  const signUp = (user: Merchant, body: Record<string, unknown> = {}) =>
+    request(server())
       .post('/api/v1/onboarding/store')
       .set(bearer(user))
       .send({
@@ -96,14 +138,13 @@ describe('Plans, entitlements and manual billing payments (e2e)', () => {
         tenantSlug: user.tenantSlug,
         storeName: `Pay ${user.storeSlug}`,
         storeSlug: user.storeSlug,
-        planSlug,
-        billingCycle: cycle,
-      })
-      .expect(201);
-    user.tenantId = res.body.data.tenant.id;
-    user.storeId = res.body.data.store.id;
-    await prisma.store.update({ where: { id: user.storeId }, data: { status: StoreStatus.ACTIVE } });
-  }
+        planSlug: 'growth',
+        billingCycle: 'YEARLY',
+        method: 'NAGAD',
+        senderNumber: '01812345678',
+        transactionId: txn(),
+        ...body,
+      });
 
   const subscriptionOf = (user: Merchant) =>
     prisma.subscription.findFirstOrThrow({
@@ -145,7 +186,7 @@ describe('Plans, entitlements and manual billing payments (e2e)', () => {
       if (keys.length > 0) await redis.getClient().del(...keys);
     }
 
-    for (const user of [starter, upgrader, renewer, outsider, admin]) await register(user);
+    for (const user of [starter, upgrader, renewer, outsider, newcomer, retrier, admin]) await register(user);
     await prisma.user.update({
       where: { id: admin.id },
       data: { platformRole: PlatformRole.SUPER_ADMIN, status: UserStatus.ACTIVE },
@@ -159,6 +200,95 @@ describe('Plans, entitlements and manual billing payments (e2e)', () => {
   afterAll(async () => {
     if (prisma) await removeTestData(prisma);
     await app?.close();
+  });
+
+  describe('paid sign-up', () => {
+    let paymentId = '';
+    let usedTransactionId = '';
+
+    it('refuses a sign-up without a valid payment and creates nothing', async () => {
+      // An undefined field is left out of the request body.
+      await signUp(newcomer, { transactionId: undefined }).expect(400);
+      await signUp(newcomer, { senderNumber: '12345' }).expect(400);
+      await signUp(newcomer, { method: 'PAYPAL' }).expect(400);
+      await signUp(newcomer, { planSlug: undefined }).expect(400);
+      expect(await prisma.tenant.count({ where: { slug: newcomer.tenantSlug } })).toBe(0);
+    });
+
+    it('creates the store offline with a payment under review at the server price, and no plan yet', async () => {
+      const transactionId = txn();
+      usedTransactionId = transactionId;
+      const res = await signUp(newcomer, { transactionId }).expect(201);
+      newcomer.tenantId = res.body.data.tenant.id;
+      newcomer.storeId = res.body.data.store.id;
+      paymentId = res.body.data.payment.id;
+      expect(res.body.data.store.status).toBe('INACTIVE');
+      expect(res.body.data.subscription).toBeNull();
+      expect(res.body.data.payment).toMatchObject({ status: 'PENDING', amount: 2691, billingCycle: 'YEARLY' });
+      expect(await prisma.subscription.count({ where: { tenantId: newcomer.tenantId } })).toBe(0);
+      const store = await prisma.store.findUniqueOrThrow({ where: { id: newcomer.storeId } });
+      expect(store).toMatchObject({ status: StoreStatus.INACTIVE, awaitingFirstPayment: true });
+
+      // Shoppers cannot see it yet; the merchant can already set it up.
+      await request(server()).get(`/api/v1/public/stores/${newcomer.storeSlug}`).expect(404);
+      await request(server()).get(`/api/v1/stores/${newcomer.storeId}/products`).set(bearer(newcomer)).expect(200);
+      const billing = await request(server()).get('/api/v1/billing/subscription').set(bearer(newcomer)).expect(200);
+      expect(billing.body.data).toMatchObject({
+        awaitingFirstPayment: true,
+        subscription: null,
+        pendingPayment: { status: 'PENDING', transactionId },
+      });
+    });
+
+    it('never accepts the same transaction ID for another sign-up', async () => {
+      const res = await signUp(retrier, { transactionId: usedTransactionId, method: 'NAGAD' }).expect(409);
+      expect(res.body.error.message).toMatch(/transaction ID has already been submitted/);
+      expect(await prisma.tenant.count({ where: { slug: retrier.tenantSlug } })).toBe(0);
+    });
+
+    it('does not start a plan without a payment', async () => {
+      const res = await request(server())
+        .post('/api/v1/billing/subscription')
+        .set(bearer(newcomer))
+        .send({ planSlug: 'starter', billingCycle: 'MONTHLY' })
+        .expect(402);
+      expect(res.body.error.message).toMatch(/Pay for Starter/);
+      expect(await prisma.subscription.count({ where: { tenantId: newcomer.tenantId } })).toBe(0);
+    });
+
+    it('brings the store online when a Super Admin approves the payment', async () => {
+      await request(server()).post(`/api/v1/admin/billing-payments/${paymentId}/approve`).set(bearer(admin)).expect(200);
+      const store = await prisma.store.findUniqueOrThrow({ where: { id: newcomer.storeId } });
+      expect(store).toMatchObject({ status: StoreStatus.ACTIVE, awaitingFirstPayment: false });
+      const sub = await subscriptionOf(newcomer);
+      expect(sub).toMatchObject({ status: SubscriptionStatus.ACTIVE, billingCycle: 'YEARLY', trialEndsAt: null });
+      expect(sub.plan.slug).toBe('growth');
+      expect(sub.endsAt!.getTime()).toBeGreaterThan(addCalendarMonths(new Date(), 11).getTime());
+      await request(server()).get(`/api/v1/public/stores/${newcomer.storeSlug}`).expect(200);
+    });
+
+    it('keeps the store offline when the payment is rejected, until a new payment is approved', async () => {
+      const res = await signUp(retrier).expect(201);
+      retrier.tenantId = res.body.data.tenant.id;
+      retrier.storeId = res.body.data.store.id;
+      await request(server())
+        .post(`/api/v1/admin/billing-payments/${res.body.data.payment.id}/reject`)
+        .set(bearer(admin))
+        .send({ reason: 'No payment with this transaction ID reached our Nagad number.' })
+        .expect(200);
+      expect(await prisma.store.findUniqueOrThrow({ where: { id: retrier.storeId } })).toMatchObject({
+        status: StoreStatus.INACTIVE,
+        awaitingFirstPayment: true,
+      });
+
+      const again = await submit(retrier, { planSlug: 'starter', billingCycle: 'MONTHLY' }).expect(201);
+      await request(server()).post(`/api/v1/admin/billing-payments/${again.body.data.id}/approve`).set(bearer(admin)).expect(200);
+      expect(await prisma.store.findUniqueOrThrow({ where: { id: retrier.storeId } })).toMatchObject({
+        status: StoreStatus.ACTIVE,
+        awaitingFirstPayment: false,
+      });
+      expect((await subscriptionOf(retrier)).plan.slug).toBe('starter');
+    });
   });
 
   describe('plans', () => {

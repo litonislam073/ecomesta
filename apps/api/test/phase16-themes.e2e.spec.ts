@@ -13,6 +13,7 @@ import {
   normalizeThemeConfiguration,
   themeConfigurationsEqual,
 } from '../src/modules/themes/theme-config.normalizer';
+import { activateOnboarded, withPayment } from './support/onboarding';
 
 describe('Phase 16 storefront theming (e2e)', () => {
   jest.setTimeout(90_000);
@@ -101,25 +102,25 @@ describe('Phase 16 storefront theming (e2e)', () => {
     const onboard = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set(authManager())
-      .send({
+      .send(withPayment({
         businessName: 'P16 Tenant',
         tenantSlug: `p16-tenant-${suffix}`,
         storeName: 'P16 Store',
         storeSlug,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     storeId = onboard.body.data.store.id;
 
     const otherOnboard = await request(app.getHttpServer())
       .post('/api/v1/onboarding/store')
       .set(authOther())
-      .send({
+      .send(withPayment({
         businessName: 'P16 Other Tenant',
         tenantSlug: `p16-tenant-b-${suffix}`,
         storeName: 'P16 Other Store',
         storeSlug: `p16-other-${suffix}`,
-      })
-      .expect(201);
+      }))
+      .expect(201).then(activateOnboarded(app));
     otherStoreId = otherOnboard.body.data.store.id;
 
     for (const id of [storeId, otherStoreId]) {

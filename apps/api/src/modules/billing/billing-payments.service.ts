@@ -11,6 +11,7 @@ import {
   TenantRole,
   type BillingCycle,
   type ManualPaymentMethod,
+  type SubscriptionPlan,
 } from '@prisma/client';
 import type { Request } from 'express';
 import type {
@@ -49,6 +50,45 @@ export function normalizeTransactionId(value: string): string | null {
   return /^[A-Z0-9]{6,30}$/.test(id) ? id : null;
 }
 
+export interface WalletPaymentDetails {
+  method: ManualPaymentMethod;
+  senderNumber: string;
+  transactionId: string;
+}
+
+export interface PreparedWalletPayment {
+  method: ManualPaymentMethod;
+  account: ManualPaymentAccount;
+  senderNumber: string;
+  transactionId: string;
+}
+
+/** Checks the wallet details a merchant typed; throws 400 with the message they see. */
+export function prepareWalletPayment(input: WalletPaymentDetails): PreparedWalletPayment {
+  const account = MANUAL_PAYMENT_ACCOUNTS.find((item) => item.method === input.method);
+  if (!account) throw new BadRequestException('Choose bKash, Nagad, Rocket or Upay');
+  const senderNumber = normalizeBdMobile(input.senderNumber);
+  if (!senderNumber) {
+    throw new BadRequestException('Enter the 11-digit mobile number you paid from, e.g. 01712345678');
+  }
+  const transactionId = normalizeTransactionId(input.transactionId);
+  if (!transactionId) {
+    throw new BadRequestException('Enter the transaction ID from your payment message (letters and numbers)');
+  }
+  return { method: input.method, account, senderNumber, transactionId };
+}
+
+/** Turns a unique-constraint error on billing payments into the 409 merchants see. */
+export function billingPaymentConflict(err: unknown): ConflictException | null {
+  if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== 'P2002') return null;
+  const target = JSON.stringify(err.meta?.target ?? '');
+  return new ConflictException(
+    target.includes('transaction')
+      ? 'This transaction ID has already been submitted. Check the ID in your payment message.'
+      : 'You already have a payment waiting for review. We will confirm it shortly.',
+  );
+}
+
 
 
 @Injectable()
@@ -85,18 +125,7 @@ export class BillingPaymentsService {
     const tenant = await this.billing.resolveTenant(userId, input.tenant);
     await this.authorization.assertTenantRole(userId, tenant.id, [TenantRole.OWNER, TenantRole.ADMIN]);
     const plan = await this.billing.requireActivePlan(input.planSlug);
-    const account = MANUAL_PAYMENT_ACCOUNTS.find((item) => item.method === input.method);
-    if (!account) throw new BadRequestException('Choose bKash, Nagad, Rocket or Upay');
-    const senderNumber = normalizeBdMobile(input.senderNumber);
-    if (!senderNumber) {
-      throw new BadRequestException('Enter the 11-digit mobile number you paid from, e.g. 01712345678');
-    }
-    const transactionId = normalizeTransactionId(input.transactionId);
-    if (!transactionId) {
-      throw new BadRequestException('Enter the transaction ID from your payment message (letters and numbers)');
-    }
-    // The price always comes from the plan, never from the client.
-    const amount = billingCyclePrice(planMonthlyPrice(plan), input.billingCycle);
+    const prepared = prepareWalletPayment(input);
 
     const existingPending = await this.prisma.billingPayment.findFirst({
       where: { tenantId: tenant.id, status: BillingPaymentStatus.PENDING },
@@ -108,57 +137,72 @@ export class BillingPaymentsService {
 
     let created: PaymentRow;
     try {
-      created = await this.prisma.$transaction(async (tx) => {
-        const row = await tx.billingPayment.create({
-          data: {
-            tenantId: tenant.id,
-            planId: plan.id,
-            billingCycle: input.billingCycle,
-            amount,
-            method: input.method,
-            payToNumber: account.number,
-            senderNumber,
-            transactionId,
-            submittedByUserId: userId,
-          },
-          include: PAYMENT_INCLUDE,
-        });
-        await this.email.sendBillingPayment(
-          EMAIL_EVENTS.BILLING_PAYMENT_SUBMITTED,
-          { userId, tenantId: tenant.id },
-          this.emailParams(row),
-          tx,
-        );
-        return row;
-      });
+      created = await this.prisma.$transaction((tx) =>
+        this.createPending(tx, { tenantId: tenant.id, userId, plan, billingCycle: input.billingCycle, prepared }),
+      );
     } catch (err) {
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-        const target = JSON.stringify(err.meta?.target ?? '');
-        throw new ConflictException(
-          target.includes('transaction')
-            ? 'This transaction ID has already been submitted. Check the ID in your payment message.'
-            : 'You already have a payment waiting for review. We will confirm it shortly.',
-        );
-      }
-      throw err;
+      throw billingPaymentConflict(err) ?? err;
     }
     this.email.dispatchPending();
+    await this.auditSubmitted(created, plan, userId, req);
+    return { success: true, data: this.toMerchantDto(created) };
+  }
 
+  /**
+   * Stores a payment waiting for review and queues the billing-inbox email,
+   * inside the caller's transaction (also used by onboarding, where the
+   * store is created in the same transaction). The amount always comes from
+   * the plan, never from the client.
+   */
+  async createPending(
+    tx: Prisma.TransactionClient,
+    params: {
+      tenantId: string;
+      userId: string;
+      plan: SubscriptionPlan;
+      billingCycle: BillingCycle;
+      prepared: PreparedWalletPayment;
+    },
+  ): Promise<PaymentRow> {
+    const amount = billingCyclePrice(planMonthlyPrice(params.plan), params.billingCycle);
+    const row = await tx.billingPayment.create({
+      data: {
+        tenantId: params.tenantId,
+        planId: params.plan.id,
+        billingCycle: params.billingCycle,
+        amount,
+        method: params.prepared.method,
+        payToNumber: params.prepared.account.number,
+        senderNumber: params.prepared.senderNumber,
+        transactionId: params.prepared.transactionId,
+        submittedByUserId: params.userId,
+      },
+      include: PAYMENT_INCLUDE,
+    });
+    await this.email.sendBillingPayment(
+      EMAIL_EVENTS.BILLING_PAYMENT_SUBMITTED,
+      { userId: params.userId, tenantId: params.tenantId },
+      this.emailParams(row),
+      tx,
+    );
+    return row;
+  }
+
+  async auditSubmitted(row: PaymentRow, plan: SubscriptionPlan, userId: string, req?: Request): Promise<void> {
     await this.audit.log({
       action: 'BILLING_PAYMENT_SUBMITTED',
       entityType: 'BillingPayment',
-      entityId: created.id,
-      tenantId: tenant.id,
+      entityId: row.id,
+      tenantId: row.tenantId,
       userId,
       metadata: {
         planSlug: plan.slug,
-        billingCycle: input.billingCycle,
-        amount,
-        method: input.method,
+        billingCycle: row.billingCycle,
+        amount: Number(row.amount),
+        method: row.method,
       },
       req,
     });
-    return { success: true, data: this.toMerchantDto(created) };
   }
 
   async listForTenant(
@@ -400,7 +444,7 @@ export class BillingPaymentsService {
     };
   }
 
-  private toMerchantDto(row: PaymentRow): MerchantBillingPayment {
+  toMerchantDto(row: PaymentRow): MerchantBillingPayment {
     return toMerchantBillingPayment(row);
   }
 

@@ -13,8 +13,12 @@ export const BILLING_TIME_ZONE = 'Asia/Dhaka';
 const BILLING_UTC_OFFSET_MS = 6 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Default free trial when a plan does not configure `trialMonths`. */
-export const DEFAULT_TRIAL_MONTHS = 2;
+/**
+ * Free months when a plan does not configure `trialMonths`. New stores no
+ * longer get a free trial: they pay when they create the store. Subscriptions
+ * already in a trial keep their own `trialEndsAt`.
+ */
+export const DEFAULT_TRIAL_MONTHS = 0;
 
 /** Days after the trial (or a paid period) ends before the store is suspended. */
 export const PAYMENT_GRACE_DAYS = 7;

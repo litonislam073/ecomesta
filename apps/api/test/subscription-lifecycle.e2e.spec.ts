@@ -3,13 +3,14 @@ import { Test } from '@nestjs/testing';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import request from 'supertest';
-import { PlatformRole, StoreStatus, SubscriptionStatus, UserStatus } from '@prisma/client';
+import { BillingCycle, PlatformRole, StoreStatus, SubscriptionStatus, UserStatus } from '@prisma/client';
 import { addCalendarDays, addCalendarMonths, paymentDeadline } from '@ecomesta/utils';
 import { AppModule } from '../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { SubscriptionLifecycleService } from '../src/modules/billing/subscription-lifecycle.service';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
+import { withPayment } from './support/onboarding';
 
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 
@@ -35,6 +36,7 @@ async function removeTestData(prisma: PrismaService) {
   ).filter((plan) => TEST_PLAN.test(plan.slug));
 
   await prisma.$transaction(async (tx) => {
+    await tx.billingPayment.deleteMany({ where: { tenantId: { in: tenantIds } } });
     await tx.subscription.deleteMany({ where: { tenantId: { in: tenantIds } } });
     await tx.storeTheme.deleteMany({ where: { storeId: { in: storeIds } } });
     await tx.domain.deleteMany({ where: { storeId: { in: storeIds } } });
@@ -94,21 +96,46 @@ describe('Subscription lifecycle (e2e)', () => {
     user.id = res.body.data.user.id;
   }
 
+  /**
+   * A business that signed up before free trials ended. New sign-ups pay
+   * instead (see billing-payments.e2e), but these businesses keep their trial
+   * and go through the same trial → grace → suspension lifecycle. Without a
+   * plan it is a business from before plans existed (no subscription).
+   */
   async function onboard(user: Merchant, plan?: { slug: string; cycle: string }) {
     const res = await request(server())
       .post('/api/v1/onboarding/store')
       .set(bearer(user))
-      .send({
+      .send(withPayment({
         businessName: `Sub ${user.tenantSlug}`,
         tenantSlug: user.tenantSlug,
         storeName: `Sub ${user.storeSlug}`,
         storeSlug: user.storeSlug,
-        ...(plan ? { planSlug: plan.slug, billingCycle: plan.cycle } : {}),
-      })
+      }))
       .expect(201);
     user.tenantId = res.body.data.tenant.id;
     user.storeId = res.body.data.store.id;
-    await prisma.store.update({ where: { id: user.storeId }, data: { status: StoreStatus.ACTIVE } });
+    // Back then sign-up took no payment, started the trial and opened the store.
+    await prisma.billingPayment.deleteMany({ where: { tenantId: user.tenantId } });
+    await prisma.emailDelivery.deleteMany({ where: { tenantId: user.tenantId, eventType: 'BILLING_PAYMENT_SUBMITTED' } });
+    if (plan) {
+      const trialPlan = await prisma.subscriptionPlan.findUniqueOrThrow({ where: { slug: plan.slug } });
+      const startsAt = new Date();
+      await prisma.subscription.create({
+        data: {
+          tenantId: user.tenantId,
+          planId: trialPlan.id,
+          billingCycle: plan.cycle as BillingCycle,
+          status: SubscriptionStatus.TRIALING,
+          startsAt,
+          trialEndsAt: addCalendarMonths(startsAt, 2),
+        },
+      });
+    }
+    await prisma.store.update({
+      where: { id: user.storeId },
+      data: { status: StoreStatus.ACTIVE, awaitingFirstPayment: false },
+    });
     return res;
   }
 
@@ -203,14 +230,13 @@ describe('Subscription lifecycle (e2e)', () => {
     await app?.close();
   });
 
-  it('starts a 2-calendar-month free trial for the plan and cycle chosen at onboarding', async () => {
-    const before = new Date();
-    const res = await onboard(owner, { slug: planSlug('growth'), cycle: 'YEARLY' });
+  it('keeps an existing 2-calendar-month free trial on the plan and cycle chosen', async () => {
+    await onboard(owner, { slug: planSlug('growth'), cycle: 'YEARLY' });
+    const res = await request(server()).get('/api/v1/billing/subscription').set(bearer(owner)).expect(200);
     const sub = res.body.data.subscription;
-    expect(sub).toMatchObject({ status: 'TRIALING', billingCycle: 'YEARLY', plan: { slug: planSlug('growth') } });
-    const startsAt = new Date(sub.startsAt);
-    expect(startsAt.getTime()).toBeGreaterThanOrEqual(before.getTime() - 1000);
-    expect(new Date(sub.trialEndsAt)).toEqual(addCalendarMonths(startsAt, 2));
+    expect(sub).toMatchObject({ status: 'TRIALING', phase: 'TRIAL', billingCycle: 'YEARLY', plan: { slug: planSlug('growth') } });
+    expect(new Date(sub.trialEndsAt)).toEqual(addCalendarMonths(new Date(sub.startsAt), 2));
+    expect(res.body.data.awaitingFirstPayment).toBe(false);
     expect(await prisma.payment.count({ where: { storeId: owner.storeId } })).toBe(0);
   });
 
@@ -421,7 +447,7 @@ describe('Subscription lifecycle (e2e)', () => {
       const sub = await subscriptionOf(owner);
       await expect(
         lifecycle.activateAfterConfirmedPayment({ subscriptionId: sub.id, source: 'ADMIN_CONFIRMED' }),
-      ).resolves.toEqual({ activated: false, storesRestored: 0 });
+      ).resolves.toEqual({ activated: false, storesRestored: 0, storesLaunched: 0 });
     });
 
     it('never suspends a paid subscription', async () => {
