@@ -80,6 +80,20 @@ describe('Admin shell auth gate', () => {
     expect(screen.getByRole('button', { name: 'Log out' })).toHaveClass('shrink-0');
   });
 
+  it('caps the page content at 1400px, centred, without capping the sidebar or header', () => {
+    render(
+      <AdminShell>
+        <p>Platform content</p>
+      </AdminShell>,
+    );
+
+    const content = screen.getByText('Platform content').parentElement!;
+    expect(content).toHaveClass('mx-auto', 'w-full', 'max-w-[1400px]');
+    expect(content.parentElement?.tagName).toBe('MAIN');
+    expect(screen.getByRole('banner').closest('.max-w-\[1400px\]')).toBeNull();
+    expect(screen.getByRole('navigation', { name: /platform admin/i }).closest('.max-w-\[1400px\]')).toBeNull();
+  });
+
   it('shows a session placeholder while the refresh call is in flight', () => {
     authState = { user: null, loading: true, isSuperAdmin: false };
     render(

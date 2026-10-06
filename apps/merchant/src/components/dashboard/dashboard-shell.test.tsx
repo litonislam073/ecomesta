@@ -93,6 +93,14 @@ describe('Dashboard shell responsive header (TE-07)', () => {
     expect(screen.getByRole('button', { name: 'Log out' })).toHaveClass('shrink-0');
   });
 
+  it('caps the page content at 1400px, centred, without capping the sidebar or header', async () => {
+    renderShell();
+    const content = (await screen.findByText('Theme page')).closest('main')!.firstElementChild!;
+    expect(content).toHaveClass('mx-auto', 'w-full', 'max-w-[1400px]');
+    expect(screen.getByRole('banner').closest('.max-w-\[1400px\]')).toBeNull();
+    expect(screen.getByRole('main').parentElement?.parentElement).not.toHaveClass('max-w-[1400px]');
+  });
+
   it('the mobile navigation panel opens from Menu and closes on Escape, returning focus', async () => {
     const user = userEvent.setup();
     renderShell();

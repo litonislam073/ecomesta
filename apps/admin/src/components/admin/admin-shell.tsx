@@ -45,7 +45,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-ink)]">
-      <div className="mx-auto flex min-h-screen max-w-[1400px]">
+      <div className="flex min-h-screen">
         <aside className="hidden w-64 shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)] lg:block">
           <div className="sticky top-0 flex h-screen flex-col px-3 py-5">
             <Link href="/dashboard" className="block px-3">
@@ -106,7 +106,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
             </div>
           ) : null}
 
-          <main className="flex-1 px-4 py-6 md:px-6">{children}</main>
+          <main className="flex-1 px-4 py-6 md:px-6">
+            {/* Page content stops growing at 1400px and stays centred on wide screens. */}
+            <div className="mx-auto w-full max-w-[1400px]">{children}</div>
+          </main>
         </div>
       </div>
     </div>
