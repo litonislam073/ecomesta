@@ -296,3 +296,27 @@ describe('content claims', () => {
     expect(text).not.toMatch(/trusted by|#1\b|award-winning|\d[\d,]*\+ (merchants|stores|sellers)|aggregateRating/i);
   });
 });
+
+describe('Google Search Console verification', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it('puts the verification meta tag on the home page when it is configured', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', SITE);
+    vi.stubEnv('NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION', 'de4CNHkovLx6G1neyBe5AXxpdONRp5APnujbhw6_z4I');
+    vi.resetModules();
+    const { PLATFORM_HOME_METADATA } = await import('@/components/platform-home');
+    // Next renders this as <meta name="google-site-verification" content="…"> in <head>.
+    expect(PLATFORM_HOME_METADATA.verification).toEqual({ google: 'de4CNHkovLx6G1neyBe5AXxpdONRp5APnujbhw6_z4I' });
+  });
+
+  it('adds no verification tag when none is configured', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', SITE);
+    vi.stubEnv('NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION', '');
+    vi.resetModules();
+    const { PLATFORM_HOME_METADATA } = await import('@/components/platform-home');
+    expect(PLATFORM_HOME_METADATA.verification).toBeUndefined();
+  });
+});
