@@ -46,6 +46,10 @@ export function indexableMarketingPaths(): string[] {
     '/faq',
     '/about',
     '/contact',
+    '/privacy-policy',
+    '/terms',
+    '/refund-policy',
+    '/cookie-policy',
   ];
   const contentPaths = Object.values(PAGES_BY_HUB).flatMap((pages) =>
     pages.map(contentPath),

@@ -154,6 +154,10 @@ const MARKETING_PATH_PREFIXES = [
   '/faq',
   '/about',
   '/contact',
+  '/privacy-policy',
+  '/terms',
+  '/refund-policy',
+  '/cookie-policy',
   '/login',
   '/register',
 ];

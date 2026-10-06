@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { MarketingHeaderFrame } from './header-frame';
 import { MobileNav } from './mobile-nav';
-import { FOOTER_NAV, PRIMARY_NAV, marketingHref } from './nav';
+import { FOOTER_NAV, LEGAL_NAV, PRIMARY_NAV, marketingHref } from './nav';
 import { ButtonLink } from './primitives';
 
 export interface MarketingLinks {
@@ -67,7 +67,7 @@ export function MarketingHeader({
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className="rounded-md px-3 py-2 text-[15px] font-medium text-[var(--color-muted)] transition-colors hover:text-[var(--color-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
+                  className="whitespace-nowrap rounded-md px-2 py-2 text-[15px] font-medium text-[var(--color-muted)] transition-colors xl:px-3 hover:text-[var(--color-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
                 >
                   {item.label}
                 </Link>
@@ -83,7 +83,7 @@ export function MarketingHeader({
           >
             Login
           </a>
-          <ButtonLink href={registerHref} size="sm" cta="create-store-header" className="hidden sm:inline-flex">
+          <ButtonLink href={registerHref} size="sm" cta="create-store-header" className="hidden whitespace-nowrap sm:inline-flex">
             Create Your Store
           </ButtonLink>
           <MobileNav items={primary} loginHref={loginHref} registerHref={registerHref} />
@@ -146,9 +146,22 @@ export function MarketingFooter({
             ))}
           </nav>
         </div>
-        <div className="mt-12 flex flex-col gap-2 border-t border-white/10 pt-6 text-xs sm:flex-row sm:justify-between">
+        <div className="mt-12 flex flex-col gap-2 border-t border-white/10 pt-6 text-xs sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} Ecomesta. All rights reserved.</p>
-          <p>Built for selling in Bangladesh · Prices in BDT</p>
+          <nav aria-label="Legal">
+            <ul className="flex flex-wrap gap-x-4 gap-y-2">
+              {LEGAL_NAV.map((item) => (
+                <li key={item.href}>
+                  <Link
+                    href={marketingHref(siteOrigin, item.href)}
+                    className="underline-offset-4 hover:text-white hover:underline"
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
         </div>
       </div>
     </footer>

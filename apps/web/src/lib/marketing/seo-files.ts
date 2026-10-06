@@ -68,11 +68,14 @@ function escapeXml(value: string): string {
 
 type ChangeFrequency = 'weekly' | 'monthly' | 'yearly';
 
+const LEGAL_PATHS = new Set(['/privacy-policy', '/terms', '/refund-policy', '/cookie-policy']);
+
 /** Relative weight and expected update cadence for each kind of marketing page. */
 export function sitemapHints(path: string): { priority: string; changeFrequency: ChangeFrequency } {
   if (path === '/') return { priority: '1.0', changeFrequency: 'weekly' };
   if (path === '/blog') return { priority: '0.6', changeFrequency: 'weekly' };
   if (path.startsWith('/blog/')) return { priority: '0.5', changeFrequency: 'yearly' };
+  if (LEGAL_PATHS.has(path)) return { priority: '0.3', changeFrequency: 'yearly' };
   if (path === '/about' || path === '/contact') {
     return { priority: '0.5', changeFrequency: 'yearly' };
   }

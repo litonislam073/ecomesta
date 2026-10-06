@@ -4,6 +4,7 @@ export interface NavItem {
 }
 
 export const PRIMARY_NAV: NavItem[] = [
+  { href: '/', label: 'Home' },
   { href: '/features', label: 'Features' },
   { href: '/payments', label: 'Payments' },
   { href: '/shipping', label: 'Shipping' },
@@ -61,6 +62,13 @@ export const FOOTER_NAV: { heading: string; items: NavItem[] }[] = [
       { href: '/contact', label: 'Contact' },
     ],
   },
+];
+
+export const LEGAL_NAV: NavItem[] = [
+  { href: '/privacy-policy', label: 'Privacy Policy' },
+  { href: '/terms', label: 'Terms & Conditions' },
+  { href: '/refund-policy', label: 'Refund Policy' },
+  { href: '/cookie-policy', label: 'Cookie Policy' },
 ];
 
 /** Joins a marketing-site path onto its origin ('' keeps links relative). */

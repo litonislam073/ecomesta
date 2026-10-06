@@ -11,6 +11,7 @@ import { GoogleSignIn } from '@/components/auth/google-sign-in';
 import { PasswordRules, meetsPasswordRules } from '@/components/auth/password-rules';
 import { billingCycleDefinition } from '@ecomesta/utils';
 import { useAuth } from '@/lib/auth-context';
+import { marketingSiteUrl } from '@/lib/marketing-site';
 import { readPlanSelection, safeNextPath, withPlanSelection } from '@/lib/plan-selection';
 import { usePublicPlans } from '@/lib/subscription-context';
 
@@ -40,6 +41,9 @@ function validate(values: Record<Field, string>): FieldErrors {
   }
   return errors;
 }
+
+const LEGAL_LINK_CLASSES =
+  'rounded-sm font-medium text-[var(--color-accent)] underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]';
 
 export default function RegisterPage() {
   const { register, loginWithGoogle, user, loading } = useAuth();
@@ -251,6 +255,17 @@ export default function RegisterPage() {
         </Button>
         <p className="text-center text-sm text-[var(--color-muted)]">
           Next, you&apos;ll name your store and choose its web address.
+        </p>
+        <p className="text-center text-xs leading-relaxed text-[var(--color-muted)]">
+          By creating an account, you agree to our{' '}
+          <a href={`${marketingSiteUrl()}/terms`} className={LEGAL_LINK_CLASSES}>
+            Terms &amp; Conditions
+          </a>{' '}
+          and{' '}
+          <a href={`${marketingSiteUrl()}/privacy-policy`} className={LEGAL_LINK_CLASSES}>
+            Privacy Policy
+          </a>
+          .
         </p>
       </form>
 
