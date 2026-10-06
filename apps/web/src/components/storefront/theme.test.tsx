@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import type { PublicStore, PublicStoreTheme } from '@ecomesta/types';
 import { AnnouncementBar } from '@/components/storefront/announcement-bar';
 import { FeaturedCategories } from '@/components/storefront/featured-categories';
@@ -239,6 +239,41 @@ describe('storefront chrome with theme config', () => {
       'href',
       '/products?store=alpha',
     );
+  });
+
+  function renderHeader(menuItems: { label: string; href: string }[]) {
+    const withMenu: PublicStoreTheme = {
+      ...theme,
+      configuration: { ...theme.configuration, header: { ...theme.configuration.header, menuItems } },
+    };
+    render(
+      <ThemeProvider theme={withMenu}>
+        <CartProvider storeId="store-1" storeSlug="alpha" currency="USD">
+          <StorefrontHeader store={store} />
+        </CartProvider>
+      </ThemeProvider>,
+    );
+    return screen.getByRole('navigation', { name: 'Primary' });
+  }
+
+  it('puts Home first in the primary menu when the theme menu leaves it out', () => {
+    const nav = renderHeader([
+      { label: 'Shop', href: '/products' },
+      { label: 'Categories', href: '/categories' },
+    ]);
+    const links = within(nav).getAllByRole('link');
+    expect(links.map((link) => link.textContent)).toEqual(['Home', 'Shop', 'Categories']);
+    expect(links[0]).toHaveAttribute('href', '/?store=alpha');
+    // usePathname() is '/', so Home is the current page.
+    expect(links[0]).toHaveClass('font-semibold');
+  });
+
+  it('keeps the merchant’s own home link instead of adding a second one', () => {
+    const nav = renderHeader([
+      { label: 'Shop', href: '/products' },
+      { label: 'হোম', href: '/' },
+    ]);
+    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Shop', 'হোম']);
   });
 
   it('renders footer copy, links, and payment icons from config', () => {

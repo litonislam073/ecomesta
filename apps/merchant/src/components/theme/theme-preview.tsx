@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from 'react';
 import type { StoreThemeConfig } from '@ecomesta/types';
+import { withHomeMenuItem } from '@ecomesta/utils';
 import { themeCssVariables, validColor } from '@/components/theme/theme-utils';
 
 /**
@@ -24,7 +25,8 @@ export function ThemePreview({
   const sections = config.homepage?.sections ?? [];
 
   const brandName = branding.brandName?.trim() || storeName;
-  const menuItems = header.menuItems ?? [];
+  // Matches the storefront, which always shows Home first.
+  const menuItems = withHomeMenuItem(header.menuItems ?? []);
   const layout = header.layout ?? 'classic';
   const alignment = hero.alignment ?? 'left';
   const alignmentClass =

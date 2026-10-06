@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import type { PublicStore, ThemeMenuItem } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
+import { withHomeMenuItem } from '@ecomesta/utils';
 import { CartDrawer } from '@/components/cart-drawer';
 import { useStoreThemeConfig } from '@/components/storefront/theme-provider';
 import { useCart } from '@/lib/cart';
@@ -26,7 +27,7 @@ export function StorefrontHeader({ store }: { store: PublicStore }) {
   const header = config.header ?? {};
   const brandName = branding.brandName?.trim() || store.name;
   const logoUrl = branding.logoUrl ?? store.logoUrl;
-  const menu = header.menuItems?.length ? header.menuItems : DEFAULT_MENU;
+  const menu = withHomeMenuItem(header.menuItems?.length ? header.menuItems : DEFAULT_MENU);
   const showCart = header.showCart !== false;
   const layout = header.layout ?? 'classic';
 

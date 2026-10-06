@@ -4,6 +4,7 @@
 
 export * from './billing.js';
 export * from './theme-fonts.js';
+export * from './theme-menu.js';
 
 export function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
