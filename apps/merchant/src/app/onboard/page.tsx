@@ -1,6 +1,5 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
-import { AuthSplit } from '@/components/auth/auth-layout';
 import { OnboardingShell } from '@/components/onboarding/onboarding-shell';
 import { LoadingState } from '@/components/ui/loading-state';
 import OnboardForm from './onboard-form';
@@ -11,24 +10,21 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+/** Full-page store setup: the form uses the whole width, no marketing column. */
 export default function OnboardRoute() {
   return (
     <OnboardingShell>
-      <AuthSplit
-        eyebrow="Store setup"
-        heading="Your online store is one step away."
-        description="Name your store and choose its web address. Products, payments and delivery options are managed from your dashboard."
-        points={[
-          'Pay for your plan in the last step: your store goes live as soon as we confirm the payment',
-          'Your storefront: an online store at its own web address',
-          'Products & orders: manage products, inventory and orders in one place',
-          'Payments & delivery: Cash on Delivery, SSLCommerz and Stripe, with delivery charges by area',
-        ]}
-      >
-        <Suspense fallback={<LoadingState label="Loading store setup" />}>
-          <OnboardForm />
-        </Suspense>
-      </AuthSplit>
+      <section className="relative isolate">
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_left,rgba(1,135,240,0.10),transparent_55%),radial-gradient(ellipse_at_bottom_right,rgba(3,165,129,0.08),transparent_50%)]"
+        />
+        <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:py-14">
+          <Suspense fallback={<LoadingState label="Loading store setup" />}>
+            <OnboardForm />
+          </Suspense>
+        </div>
+      </section>
     </OnboardingShell>
   );
 }
