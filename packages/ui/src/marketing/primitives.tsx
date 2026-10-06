@@ -51,7 +51,7 @@ export function CheckList({ items, className = '' }: { items: string[]; classNam
           <svg
             aria-hidden="true"
             viewBox="0 0 20 20"
-            className="mt-1 h-4 w-4 shrink-0 text-[var(--color-accent)]"
+            className="mt-1 h-4 w-4 shrink-0 text-[var(--brand-green,var(--color-accent))]"
             fill="none"
             stroke="currentColor"
             strokeWidth="2.2"

@@ -25,7 +25,7 @@ function StepIndicator({ state }: { state: ProvisioningStepState }) {
   if (state === 'current') {
     return (
       <span className="relative flex h-6 w-6 shrink-0 items-center justify-center">
-        <span className="absolute inset-0 rounded-full border-2 border-[#cfe3dc] border-t-[var(--color-accent)] motion-safe:animate-spin" />
+        <span className="absolute inset-0 rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-accent)] motion-safe:animate-spin" />
         <span className="h-2 w-2 rounded-full bg-[var(--color-accent)]" />
       </span>
     );
@@ -72,7 +72,7 @@ export function ProvisioningBar({ steps }: { steps: ProvisioningStep[] }) {
   const done = steps.filter((step) => step.state === 'done').length;
   const share = steps.length ? Math.round((done / steps.length) * 100) : 0;
   return (
-    <div aria-hidden="true" className="h-1.5 w-full overflow-hidden rounded-full bg-[#e4ebe8]">
+    <div aria-hidden="true" className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-border)]">
       <div
         className="h-full rounded-full bg-[var(--color-accent)] motion-safe:transition-[width] motion-safe:duration-500"
         style={{ width: `${Math.max(share, 6)}%` }}

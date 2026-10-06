@@ -100,7 +100,7 @@ export function MarketingFooter({
   contactEmail,
 }: MarketingLinks & { contactEmail?: string | null }) {
   return (
-    <footer className="border-t border-[var(--color-border)] bg-[#10231e] text-[#c9d6d1]">
+    <footer className="border-t border-[var(--color-border)] bg-[var(--brand-navy)] text-[var(--brand-on-navy)]">
       <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
         <div className="grid gap-10 lg:grid-cols-[1.2fr_3fr]">
           <div>
@@ -166,7 +166,7 @@ export function MarketingShell({
   current?: MarketingCurrentPage;
 }) {
   return (
-    <div className="flex min-h-screen flex-col overflow-x-clip bg-[#fbfaf7] text-[var(--color-ink)]">
+    <div className="ecomesta-brand flex min-h-screen flex-col overflow-x-clip bg-[var(--brand-paper)] text-[var(--color-ink)]">
       <MarketingHeader {...links} current={current} />
       <main id="main-content" className="flex-1">
         {children}

@@ -133,20 +133,20 @@ export function CtaSection({
   return (
     <section aria-labelledby="cta-heading" className="py-16 sm:py-20">
       <Container>
-        <div className="relative overflow-hidden rounded-2xl bg-[#10231e] px-6 py-12 text-center sm:px-12">
+        <div className="relative overflow-hidden rounded-2xl bg-[var(--brand-navy)] px-6 py-12 text-center sm:px-12">
           <div
             aria-hidden="true"
             className="em-drift pointer-events-none absolute inset-0 opacity-60"
             style={{
               background:
-                'radial-gradient(circle at 15% 20%, rgba(52,168,140,0.35), transparent 45%), radial-gradient(circle at 85% 90%, rgba(212,160,90,0.25), transparent 40%)',
+                'radial-gradient(circle at 15% 20%, rgba(3,165,129,0.35), transparent 45%), radial-gradient(circle at 85% 90%, rgba(1,135,240,0.35), transparent 40%)',
             }}
           />
           <FadeUp className="relative">
             <h2 id="cta-heading" className="font-display text-3xl tracking-tight text-white sm:text-4xl">
               {title}
             </h2>
-            <p className="mx-auto mt-4 max-w-xl text-lg text-[#c9d6d1]">{description}</p>
+            <p className="mx-auto mt-4 max-w-xl text-lg text-[var(--brand-on-navy)]">{description}</p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               <ButtonLink href={registerUrl()} cta="create-store-cta-band">
                 Create Your Store
@@ -176,7 +176,7 @@ export function PageHero({
   children?: React.ReactNode;
 }) {
   return (
-    <section className="border-b border-[var(--color-border)] bg-gradient-to-b from-[#eef5f2] to-[#fbfaf7]">
+    <section className="border-b border-[var(--color-border)] bg-gradient-to-b from-[var(--brand-tint)] to-[var(--brand-paper)]">
       <Container className="py-12 sm:py-16">
         {crumbs ? <Breadcrumbs crumbs={crumbs} /> : null}
         <FadeUp on="load" as="p" distance={12} className="mt-6 text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-accent)]">

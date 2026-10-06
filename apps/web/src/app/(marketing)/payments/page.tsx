@@ -62,7 +62,7 @@ export default function PaymentsPage() {
           </FadeUp>
           <FadeUp delay={0.06} className="mt-8 overflow-x-auto rounded-xl border border-[var(--color-border)]">
             <table className="w-full min-w-[560px] text-left text-sm">
-              <thead className="bg-[#f3f6f5] text-[var(--color-ink)]">
+              <thead className="bg-[var(--brand-tint)] text-[var(--color-ink)]">
                 <tr>
                   <th scope="col" className="px-4 py-3 font-semibold">Option</th>
                   <th scope="col" className="px-4 py-3 font-semibold">Best for</th>

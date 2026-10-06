@@ -58,7 +58,7 @@ export function AiSupportLauncher() {
             setLoaded(true);
             setOpen(true);
           }}
-          className="fixed bottom-4 right-4 z-[60] inline-flex h-12 items-center gap-2 rounded-full bg-[#0f3d30] pl-3 pr-4 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(15,61,48,0.35)] transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f3d30] sm:bottom-6 sm:right-6"
+          className="fixed bottom-4 right-4 z-[60] inline-flex h-12 items-center gap-2 rounded-full bg-[var(--brand-navy)] pl-3 pr-4 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(2,40,87,0.35)] transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-navy)] sm:bottom-6 sm:right-6"
         >
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15">
             <ChatIcon className="h-[18px] w-[18px]" />

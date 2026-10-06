@@ -47,7 +47,7 @@ function ReplyText({ text }: { text: string }) {
           splitInline(value).map((part, i) => {
             const content = part.bold ? <strong>{part.text}</strong> : part.text;
             return part.href ? (
-              <a key={i} href={part.href} className="font-medium text-[#0f6b4f] underline underline-offset-2 hover:text-[#0f3d30]">
+              <a key={i} href={part.href} className="font-medium text-[var(--color-accent)] underline underline-offset-2 hover:text-[var(--color-accent-hover)]">
                 {content}
               </a>
             ) : (
@@ -69,7 +69,7 @@ function ReplyText({ text }: { text: string }) {
 }
 
 const fieldClass =
-  'w-full rounded-lg border border-[#d5ddd9] bg-white px-3 py-2 text-sm text-[#14211c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#145240]';
+  'w-full rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]';
 
 /** Asked once per tab before the first message: name and phone are required, email is optional. */
 function StartChatForm({
@@ -109,7 +109,7 @@ function StartChatForm({
 
   const field = (key: keyof VisitorDetails, label: string, props: Partial<ComponentProps<'input'>>, inputRef?: Ref<HTMLInputElement>) => (
     <div>
-      <label className="block text-xs font-medium text-[#4d5b55]">
+      <label className="block text-xs font-medium text-[var(--color-muted)]">
         {label}
         <input
           {...props}
@@ -131,12 +131,12 @@ function StartChatForm({
   );
 
   return (
-    <form onSubmit={submit} noValidate aria-labelledby={`${formId}-title`} className="space-y-3 rounded-2xl border border-[#d5ddd9] bg-white p-4 shadow-sm">
+    <form onSubmit={submit} noValidate aria-labelledby={`${formId}-title`} className="space-y-3 rounded-2xl border border-[var(--color-border)] bg-white p-4 shadow-sm">
       <div>
-        <p id={`${formId}-title`} className="text-sm font-semibold text-[#14211c]">
+        <p id={`${formId}-title`} className="text-sm font-semibold text-[var(--color-ink)]">
           Start a chat
         </p>
-        <p className="mt-0.5 text-xs text-[#6b7a74]">Tell us who you are so our team can follow up if needed.</p>
+        <p className="mt-0.5 text-xs text-[var(--color-muted)]">Tell us who you are so our team can follow up if needed.</p>
         {notice ? <p className="mt-2 rounded-lg bg-[#fdf3ee] px-2.5 py-1.5 text-xs text-[#7a3218]">{notice}</p> : null}
       </div>
       {field('name', 'Your name', { autoComplete: 'name', required: true, maxLength: 100 }, nameRef)}
@@ -150,7 +150,7 @@ function StartChatForm({
       <button
         type="submit"
         disabled={busy}
-        className="w-full rounded-lg bg-[#145240] px-3 py-2.5 text-sm font-semibold text-white hover:bg-[#0f3d30] disabled:opacity-60"
+        className="w-full rounded-lg bg-[var(--color-accent)] px-3 py-2.5 text-sm font-semibold text-white hover:bg-[var(--color-accent-hover)] disabled:opacity-60"
       >
         {busy ? 'Starting…' : 'Start chat'}
       </button>
@@ -181,7 +181,7 @@ function HandoffForm({
 
   if (entry.handoffResult) {
     return (
-      <div role="status" className="mt-2 rounded-xl border border-[#cfe3da] bg-[#f1f9f5] p-3 text-sm text-[#0f3d30]">
+      <div role="status" className="mt-2 rounded-xl border border-[var(--brand-tint-strong)] bg-[var(--brand-green-tint)] p-3 text-sm text-[var(--brand-navy)]">
         Sent to our support team (reference #{entry.handoffResult.reference}).{' '}
         {entry.handoffResult.email
           ? `We will reply to ${entry.handoffResult.email}.`
@@ -215,15 +215,15 @@ function HandoffForm({
 
   const input = fieldClass;
   return (
-    <form onSubmit={submit} noValidate aria-labelledby={`${formId}-title`} className="mt-2 space-y-2 rounded-xl border border-[#d5ddd9] bg-white p-3">
-      <p id={`${formId}-title`} className="text-sm font-semibold text-[#14211c]">
+    <form onSubmit={submit} noValidate aria-labelledby={`${formId}-title`} className="mt-2 space-y-2 rounded-xl border border-[var(--color-border)] bg-white p-3">
+      <p id={`${formId}-title`} className="text-sm font-semibold text-[var(--color-ink)]">
         Contact our support team
       </p>
-      <label className="block text-xs font-medium text-[#4d5b55]">
+      <label className="block text-xs font-medium text-[var(--color-muted)]">
         Name
         <input className={`${input} mt-1`} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
       </label>
-      <label className="block text-xs font-medium text-[#4d5b55]">
+      <label className="block text-xs font-medium text-[var(--color-muted)]">
         Phone number
         <input
           className={`${input} mt-1`}
@@ -234,7 +234,7 @@ function HandoffForm({
           autoComplete="tel"
         />
       </label>
-      <label className="block text-xs font-medium text-[#4d5b55]">
+      <label className="block text-xs font-medium text-[var(--color-muted)]">
         Email (optional)
         <input
           className={`${input} mt-1`}
@@ -245,7 +245,7 @@ function HandoffForm({
           autoComplete="email"
         />
       </label>
-      <label className="block text-xs font-medium text-[#4d5b55]">
+      <label className="block text-xs font-medium text-[var(--color-muted)]">
         How can we help?
         <textarea className={`${input} mt-1 min-h-20 resize-y`} value={message} maxLength={2000} onChange={(e) => setMessage(e.target.value)} />
       </label>
@@ -268,7 +268,7 @@ function HandoffForm({
       <button
         type="submit"
         disabled={busy}
-        className="w-full rounded-lg bg-[#145240] px-3 py-2 text-sm font-semibold text-white hover:bg-[#0f3d30] disabled:opacity-60"
+        className="w-full rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-semibold text-white hover:bg-[var(--color-accent-hover)] disabled:opacity-60"
       >
         {busy ? 'Sending…' : 'Send to support'}
       </button>
@@ -432,9 +432,9 @@ export function AiSupportPanel({ open, onClose }: { open: boolean; onClose: () =
           onClose();
         }
       }}
-      className="fixed inset-0 z-[60] flex flex-col bg-white sm:inset-auto sm:bottom-6 sm:right-6 sm:h-[min(620px,calc(100vh-3rem))] sm:w-[390px] sm:overflow-hidden sm:rounded-2xl sm:border sm:border-[#d5ddd9] sm:shadow-[0_24px_60px_rgba(15,40,32,0.22)]"
+      className="fixed inset-0 z-[60] flex flex-col bg-white sm:inset-auto sm:bottom-6 sm:right-6 sm:h-[min(620px,calc(100vh-3rem))] sm:w-[390px] sm:overflow-hidden sm:rounded-2xl sm:border sm:border-[var(--color-border)] sm:shadow-[0_24px_60px_rgba(2,40,87,0.22)]"
     >
-      <header className="flex items-center gap-3 bg-gradient-to-r from-[#0f3d30] to-[#1b6b53] px-4 py-3 text-white">
+      <header className="flex items-center gap-3 bg-gradient-to-r from-[var(--brand-navy)] to-[var(--brand-blue-deep)] px-4 py-3 text-white">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15">
           <ChatIcon className="h-5 w-5" />
         </span>
@@ -443,7 +443,7 @@ export function AiSupportPanel({ open, onClose }: { open: boolean; onClose: () =
             Ecomesta Support
           </h2>
           <p className="flex items-center gap-1.5 truncate text-xs text-white/75">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#7ee2b0]" aria-hidden="true" />
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--brand-on-navy-accent)]" aria-hidden="true" />
             Online · English &amp; বাংলা
           </p>
         </div>
@@ -475,8 +475,8 @@ export function AiSupportPanel({ open, onClose }: { open: boolean; onClose: () =
         </button>
       </header>
 
-      <div ref={logRef} role="log" aria-live="polite" aria-label="Conversation" className="flex-1 space-y-3 overflow-y-auto bg-[#f6f8f7] px-4 py-4">
-        <div className="max-w-[88%] rounded-2xl rounded-tl-md bg-white px-3.5 py-2.5 text-sm leading-relaxed text-[#14211c] shadow-sm">
+      <div ref={logRef} role="log" aria-live="polite" aria-label="Conversation" className="flex-1 space-y-3 overflow-y-auto bg-[var(--brand-paper)] px-4 py-4">
+        <div className="max-w-[88%] rounded-2xl rounded-tl-md bg-white px-3.5 py-2.5 text-sm leading-relaxed text-[var(--color-ink)] shadow-sm">
           <p>
             {visitor ? `Hi ${visitor.name.split(/\s+/)[0]}! ` : 'Hi! '}Welcome to Ecomesta. How can we help with your online store today? You
             can write in English, বাংলা or Banglish.
@@ -492,7 +492,7 @@ export function AiSupportPanel({ open, onClose }: { open: boolean; onClose: () =
                 key={question}
                 type="button"
                 onClick={() => submit(question)}
-                className="rounded-full border border-[#cfe3da] bg-white px-3 py-1.5 text-xs font-medium text-[#145240] hover:bg-[#eef6f2]"
+                className="rounded-full border border-[var(--brand-tint-strong)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--color-accent)] hover:bg-[var(--brand-tint)]"
               >
                 {question}
               </button>
@@ -503,13 +503,13 @@ export function AiSupportPanel({ open, onClose }: { open: boolean; onClose: () =
         {entries.map((entry, index) =>
           entry.role === 'user' ? (
             <div key={entry.id} className="flex justify-end">
-              <p className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-tr-md bg-[#145240] px-3.5 py-2.5 text-sm text-white">
+              <p className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-tr-md bg-[var(--color-accent)] px-3.5 py-2.5 text-sm text-white">
                 {entry.content}
               </p>
             </div>
           ) : (
             <div key={entry.id} className="max-w-[92%]">
-              <div className="break-words rounded-2xl rounded-tl-md bg-white px-3.5 py-2.5 text-sm leading-relaxed text-[#14211c] shadow-sm">
+              <div className="break-words rounded-2xl rounded-tl-md bg-white px-3.5 py-2.5 text-sm leading-relaxed text-[var(--color-ink)] shadow-sm">
                 {typingReply?.id === entry.id ? (
                   // Screen readers get the reply once, when typing has finished.
                   <div aria-hidden="true" data-typing="">
@@ -536,7 +536,7 @@ export function AiSupportPanel({ open, onClose }: { open: boolean; onClose: () =
         {pending && !typing ? (
           <div className="inline-flex items-center gap-1 rounded-2xl rounded-tl-md bg-white px-4 py-3 shadow-sm" role="status" aria-label="Ecomesta Support is typing">
             {[0, 1, 2].map((dot) => (
-              <span key={dot} className="h-2 w-2 animate-bounce rounded-full bg-[#7a9a8c]" style={{ animationDelay: `${dot * 150}ms` }} />
+              <span key={dot} className="h-2 w-2 animate-bounce rounded-full bg-[var(--color-muted)]" style={{ animationDelay: `${dot * 150}ms` }} />
             ))}
           </div>
         ) : null}
@@ -563,7 +563,7 @@ export function AiSupportPanel({ open, onClose }: { open: boolean; onClose: () =
             event.preventDefault();
             submit(draft);
           }}
-          className="border-t border-[#e3e9e6] bg-white px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3"
+          className="border-t border-[var(--color-border)] bg-white px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3"
         >
           <div className="flex items-end gap-2">
             <label className="sr-only" htmlFor={`${titleId}-input`}>
@@ -578,20 +578,20 @@ export function AiSupportPanel({ open, onClose }: { open: boolean; onClose: () =
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={onKeyDown}
               placeholder="Ask about Ecomesta…"
-              className="max-h-32 min-h-[44px] flex-1 resize-none rounded-xl border border-[#d5ddd9] px-3 py-2.5 text-base text-[#14211c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#145240] sm:text-sm"
+              className="max-h-32 min-h-[44px] flex-1 resize-none rounded-xl border border-[var(--color-border)] px-3 py-2.5 text-base text-[var(--color-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] sm:text-sm"
             />
             <button
               type="submit"
               disabled={pending || !draft.trim()}
               aria-label="Send message"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#145240] text-white hover:bg-[#0f3d30] disabled:opacity-40"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] disabled:opacity-40"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-5 w-5" aria-hidden="true">
                 <path d="M5 12h13M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
           </div>
-          <p className="mt-1.5 text-[11px] text-[#6b7a74]">
+          <p className="mt-1.5 text-[11px] text-[var(--color-muted)]">
             Never share passwords or payment details in this chat.
             {draft.length > MAX_MESSAGE_CHARS - 150 ? ` ${MAX_MESSAGE_CHARS - draft.length} characters left.` : ''}
           </p>

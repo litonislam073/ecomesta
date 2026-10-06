@@ -155,7 +155,7 @@ export function MarketingHome() {
           className="em-drift pointer-events-none absolute inset-0"
           style={{
             background:
-              'radial-gradient(ellipse 70% 55% at 10% 0%, rgba(15,107,92,0.14), transparent 70%), radial-gradient(ellipse 45% 40% at 100% 100%, rgba(196,140,70,0.12), transparent 70%)',
+              'radial-gradient(ellipse 70% 55% at 10% 0%, rgba(1,135,240,0.14), transparent 70%), radial-gradient(ellipse 45% 40% at 100% 100%, rgba(3,165,129,0.14), transparent 70%)',
           }}
         />
         <Container className="relative grid items-center gap-14 py-16 sm:py-20 lg:grid-cols-[1.05fr_1fr] lg:py-24">
@@ -197,7 +197,7 @@ export function MarketingHome() {
             <FadeUp on="load" as="ul" delay={0.3} distance={12} className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[var(--color-muted)]">
               {['Cash on Delivery', 'SSLCommerz payments', 'Division–district–upazila delivery'].map((item) => (
                 <li key={item} className="flex items-center gap-2">
-                  <svg aria-hidden="true" viewBox="0 0 20 20" className="h-4 w-4 text-[var(--color-accent)]" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <svg aria-hidden="true" viewBox="0 0 20 20" className="h-4 w-4 text-[var(--brand-green)]" fill="none" stroke="currentColor" strokeWidth="2.2">
                     <path d="M4 10.5l4 4 8-9" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   {item}
@@ -244,7 +244,7 @@ export function MarketingHome() {
           </FadeUp>
           <StaggerContainer as="ul" className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((feature) => (
-              <StaggerItem as="li" key={feature.title} className="em-hover-lift flex flex-col rounded-xl border border-[var(--color-border)] bg-[#fbfaf7] p-6">
+              <StaggerItem as="li" key={feature.title} className="em-hover-lift flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--brand-paper)] p-6">
                 <IconBadge name={feature.icon} />
                 <h3 className="mt-4 text-lg font-semibold">{feature.title}</h3>
                 <p className="mt-2 text-[var(--color-muted)]">{feature.body}</p>
@@ -290,7 +290,7 @@ export function MarketingHome() {
         </Container>
       </section>
 
-      <section aria-labelledby="shipping-heading" className="border-y border-[var(--color-border)] bg-[#eef5f2] py-20">
+      <section aria-labelledby="shipping-heading" className="border-y border-[var(--color-border)] bg-[var(--brand-tint)] py-20">
         <Container className="grid items-center gap-12 lg:grid-cols-2">
           <FadeLeft>
             <SectionHeader
@@ -324,7 +324,7 @@ export function MarketingHome() {
             <ol className="mt-4 space-y-2">
               {['Division', 'District', 'Upazila', 'Shipping zone', 'Shipping method', 'Shipping rate'].map((step, index, all) => (
                 <li key={step}>
-                  <div className="flex items-center gap-3 rounded-lg border border-[var(--color-border)] bg-[#fbfaf7] px-4 py-2.5">
+                  <div className="flex items-center gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--brand-paper)] px-4 py-2.5">
                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-accent)] text-xs font-bold text-white">
                       {index + 1}
                     </span>

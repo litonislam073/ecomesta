@@ -55,7 +55,7 @@ export function PricingPlans({
         <div className="relative grid grid-cols-3 gap-1 rounded-xl border border-[var(--color-border)] bg-white p-1">
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute inset-y-1 left-1 rounded-lg bg-[#10231e] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+            className="pointer-events-none absolute inset-y-1 left-1 rounded-lg bg-[var(--brand-navy)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
             style={{
               width: 'calc((100% - 1rem) / 3)',
               transform: `translateX(calc(${cycleIndex} * (100% + 0.25rem)))`,
@@ -71,7 +71,7 @@ export function PricingPlans({
                 className={`relative flex min-h-12 cursor-pointer flex-col items-center justify-center rounded-lg px-1 py-1.5 text-center text-sm transition-colors duration-200 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--color-accent)] ${
                   checked
                     ? 'font-semibold text-white'
-                    : 'text-[var(--color-ink)] hover:bg-[#eef5f2]'
+                    : 'text-[var(--color-ink)] hover:bg-[var(--brand-tint)]'
                 }`}
               >
                 <input
@@ -88,7 +88,7 @@ export function PricingPlans({
                 />
                 <span>{option.label}</span>
                 {option.discountPercent > 0 ? (
-                  <span className={`text-xs transition-colors duration-200 ${checked ? 'text-[#b9e4d3]' : 'text-[var(--color-accent)]'}`}>
+                  <span className={`text-xs transition-colors duration-200 ${checked ? 'text-[var(--brand-on-navy-accent)]' : 'text-[var(--brand-green-text)]'}`}>
                     Save {option.discountPercent}%
                   </span>
                 ) : null}

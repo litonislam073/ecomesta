@@ -13,7 +13,8 @@ export function GET() {
           flexDirection: 'column',
           justifyContent: 'space-between',
           padding: '72px',
-          background: 'linear-gradient(135deg, #10231e 0%, #0f6b5c 100%)',
+          // Logo colours: navy #022857 into the icon's blue #0156b6.
+          background: 'linear-gradient(135deg, #022857 0%, #0156b6 100%)',
           color: '#ffffff',
           fontFamily: 'sans-serif',
         }}
@@ -25,7 +26,7 @@ export function GET() {
               height: '64px',
               borderRadius: '16px',
               background: '#ffffff',
-              color: '#0f6b5c',
+              color: '#03a581',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -41,7 +42,7 @@ export function GET() {
           <div style={{ fontSize: '64px', fontWeight: 700, lineHeight: 1.1, maxWidth: '980px' }}>
             Build and manage your online store in Bangladesh
           </div>
-          <div style={{ fontSize: '28px', color: '#c9e4dc' }}>
+          <div style={{ fontSize: '28px', color: '#c9d6ea' }}>
             Products · Inventory · Orders · Payments · Delivery zones
           </div>
         </div>

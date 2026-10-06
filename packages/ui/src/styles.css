@@ -11,3 +11,35 @@
   --font-sans: "Source Sans 3", "Segoe UI", sans-serif;
   --font-display: "Fraunces", Georgia, serif;
 }
+
+/*
+ * Ecomesta brand palette, taken from the logo: navy #022857 ("Ecome"), blue
+ * #0187f0 → #0156b6 (icon), green #03a581 ("sta"). Applied only inside
+ * `.ecomesta-brand` — the platform website and the sign-up pages — so merchant
+ * storefronts keep their own theme colours.
+ * Text colours meet WCAG AA on white: navy 14.5:1, deep blue 7:1, the darker
+ * green 5.3:1. The logo green itself (3.1:1) is for icons, marks and fills.
+ */
+.ecomesta-brand {
+  --color-bg: #f5f8fc;
+  --color-surface: #ffffff;
+  --color-ink: #022857;
+  --color-muted: #52617a;
+  --color-accent: #0156b6;
+  --color-accent-hover: #034592;
+  --color-border: #dbe3ee;
+
+  --brand-navy: #022857;
+  --brand-navy-deep: #011b3d;
+  --brand-blue: #0187f0;
+  --brand-blue-deep: #0156b6;
+  --brand-green: #03a581;
+  --brand-green-text: #027a60;
+  --brand-paper: #f8fafd;
+  --brand-tint: #eef4fc;
+  --brand-tint-strong: #e3edfb;
+  --brand-green-tint: #e6f6f1;
+  /* Light text on the navy sections. */
+  --brand-on-navy: #c9d6ea;
+  --brand-on-navy-accent: #7fe0c4;
+}

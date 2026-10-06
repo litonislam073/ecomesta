@@ -9,7 +9,7 @@ const LINK_CLASSES =
 export function OnboardingShell({ children }: { children: ReactNode }) {
   const site = marketingSiteUrl();
   return (
-    <div className="flex min-h-screen flex-col overflow-x-clip bg-[#fbfaf7] text-[var(--color-ink)]">
+    <div className="ecomesta-brand flex min-h-screen flex-col overflow-x-clip bg-[var(--brand-paper)] text-[var(--color-ink)]">
       <header className="border-b border-[var(--color-border)] bg-white/90">
         <a
           href="#main-content"

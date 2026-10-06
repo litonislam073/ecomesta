@@ -9,7 +9,7 @@ const ORDERS = [
 
 const TONES = {
   amber: 'bg-[#fdf3e1] text-[#8a5a14]',
-  green: 'bg-[#e3f3ec] text-[#11694f]',
+  green: 'bg-[var(--brand-green-tint)] text-[var(--brand-green-text)]',
 } as const;
 
 const NAV = ['Dashboard', 'Products', 'Inventory', 'Orders', 'Customers', 'Payments', 'Shipping', 'Themes'];
@@ -21,23 +21,23 @@ const NAV = ['Dashboard', 'Products', 'Inventory', 'Orders', 'Customers', 'Payme
 export function DashboardPreview() {
   return (
     <figure className="relative mx-auto w-full max-w-[640px]">
-      <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white shadow-[0_24px_60px_-20px_rgba(16,35,30,0.35)]">
-        <div className="flex items-center gap-2 border-b border-[var(--color-border)] bg-[#f6f8f7] px-4 py-2.5">
-          <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-[#e5e7e6]" />
-          <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-[#e5e7e6]" />
-          <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-[#e5e7e6]" />
+      <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white shadow-[0_24px_60px_-20px_rgba(2,40,87,0.35)]">
+        <div className="flex items-center gap-2 border-b border-[var(--color-border)] bg-[var(--brand-paper)] px-4 py-2.5">
+          <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-[var(--color-border)]" />
+          <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-[var(--color-border)]" />
+          <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-[var(--color-border)]" />
           <span className="ml-3 truncate rounded-md bg-white px-3 py-0.5 text-[11px] text-[var(--color-muted)]">
             Merchant dashboard
           </span>
         </div>
         <div className="grid grid-cols-[112px_1fr] sm:grid-cols-[132px_1fr]">
-          <div className="border-r border-[var(--color-border)] bg-[#fafbfa] px-2 py-3">
+          <div className="border-r border-[var(--color-border)] bg-[var(--brand-paper)] px-2 py-3">
             <p className="px-2 font-display text-sm font-semibold">Your Store</p>
             <ul className="mt-3 space-y-0.5 text-[11px] text-[var(--color-muted)]">
               {NAV.map((item) => (
                 <li
                   key={item}
-                  className={`rounded-md px-2 py-1.5 ${item === 'Orders' ? 'bg-[#e3f0ec] font-semibold text-[var(--color-accent)]' : ''}`}
+                  className={`rounded-md px-2 py-1.5 ${item === 'Orders' ? 'bg-[var(--brand-tint-strong)] font-semibold text-[var(--color-accent)]' : ''}`}
                 >
                   {item}
                 </li>
@@ -59,7 +59,7 @@ export function DashboardPreview() {
                   <span className={`ml-auto rounded px-1.5 py-0.5 font-semibold sm:ml-0 ${TONES[order.paymentTone]}`}>
                     {order.payment}
                   </span>
-                  <span className="rounded bg-[#eef1f0] px-1.5 py-0.5 text-[var(--color-ink)]">{order.status}</span>
+                  <span className="rounded bg-[var(--brand-tint)] px-1.5 py-0.5 text-[var(--color-ink)]">{order.status}</span>
                 </li>
               ))}
             </ul>
