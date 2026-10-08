@@ -6,7 +6,9 @@ import type {
 } from '@ecomesta/types';
 import { FeaturedCategories } from '@/components/storefront/featured-categories';
 import { FeaturedProducts } from '@/components/storefront/featured-products';
+import { ContentSection, homeSections } from '@/components/storefront/content-sections';
 import { HeroSection } from '@/components/storefront/hero-section';
+import { ShopEaseHome } from '@/components/storefront/shopease/shopease-home';
 import { StorefrontProviders } from '@/components/storefront-providers';
 import {
   STORE_UNAVAILABLE_METADATA,
@@ -21,7 +23,8 @@ import {
   storeMetadataBase,
 } from '@/lib/store-resolver';
 import { NOINDEX, resolveStoreSeo, storeOgLocale, storePageRobots } from '@/lib/store-seo';
-import { fetchPublicTheme } from '@/lib/theme';
+import { fetchStoreTheme } from '@/lib/theme-server';
+import { googleVerification } from '@/lib/tracking';
 import type { Metadata } from 'next';
 
 function pickFeatured<T extends { id: string }>(
@@ -56,7 +59,22 @@ async function loadHome(store: PublicStore, config: StoreThemeConfig) {
     }>(`/public/stores/${store.slug}/categories?tree=true`),
   ]);
 
+  // The deal of the day may feature a product outside the newest few.
+  const dealProductId = config.homepage?.sections?.find((section) => section.type === 'deal_of_day')?.productId;
+  let dealProduct: PublicProductCard | null = null;
+  if (dealProductId && !products.data.items.some((item) => item.id === dealProductId)) {
+    try {
+      const found = await publicGet<{ success: true; data: { items: PublicProductCard[] } }>(
+        `/public/stores/${store.slug}/products?limit=1&ids=${encodeURIComponent(dealProductId)}`,
+      );
+      dealProduct = found.data.items[0] ?? null;
+    } catch {
+      dealProduct = null;
+    }
+  }
+
   return {
+    dealProduct,
     products: pickFeatured(products.data.items, featuredProductIds, 8),
     categories: pickFeatured(
       categories.data.items,
@@ -86,7 +104,7 @@ export async function storefrontHomeMetadata(
 ): Promise<Metadata> {
   try {
     const { store, storeSlug } = await requirePublicStore(searchParams);
-    const { configuration } = await fetchPublicTheme(storeSlug);
+    const { configuration } = await fetchStoreTheme(storeSlug);
     const branding = configuration.branding ?? {};
     const seo = resolveStoreSeo(store, configuration);
     const url = storeCanonicalUrl('/', storeSlug);
@@ -98,6 +116,7 @@ export async function storefrontHomeMetadata(
       metadataBase: storeMetadataBase(storeSlug),
       alternates: url ? { canonical: url } : undefined,
       robots: storePageRobots(store, url),
+      ...googleVerification(store),
       icons: branding.faviconUrl
         ? { icon: branding.faviconUrl }
         : store.faviconUrl
@@ -133,8 +152,8 @@ export async function StorefrontHome({
     throw err;
   }
   const { store, storeSlug } = resolved;
-  const theme = await fetchPublicTheme(storeSlug);
-  const { products, categories } = await loadHome(store, theme.configuration);
+  const theme = await fetchStoreTheme(storeSlug);
+  const { products, categories, dealProduct } = await loadHome(store, theme.configuration);
 
   const categoriesSection = sectionSettings(
     theme.configuration,
@@ -144,6 +163,26 @@ export async function StorefrontHome({
     theme.configuration,
     'featured_products',
   );
+
+  if (theme.theme?.slug === 'shopease') {
+    return (
+      <StorefrontProviders store={store} theme={theme}>
+        <ShopEaseHome
+          store={store}
+          storeSlug={storeSlug}
+          config={theme.configuration}
+          products={products}
+          categories={categories}
+          showCategories={categoriesSection.enabled}
+          showProducts={productsSection.enabled}
+          categoriesTitle={categoriesSection.title}
+          productsTitle={productsSection.title}
+          sections={homeSections(theme.configuration)}
+          dealProduct={dealProduct}
+        />
+      </StorefrontProviders>
+    );
+  }
 
   return (
     <StorefrontProviders store={store} theme={theme}>
@@ -159,21 +198,29 @@ export async function StorefrontHome({
           }
         />
 
-        {categoriesSection.enabled ? (
-          <FeaturedCategories
-            categories={categories}
-            storeSlug={storeSlug}
-            title={categoriesSection.title ?? 'Categories'}
-          />
-        ) : null}
-
-        {productsSection.enabled ? (
-          <FeaturedProducts
-            products={products}
-            storeSlug={storeSlug}
-            title={productsSection.title ?? 'Latest products'}
-          />
-        ) : null}
+        {homeSections(theme.configuration).map((section, index) =>
+          section.type === 'featured_categories' ? (
+            categoriesSection.enabled ? (
+              <FeaturedCategories
+                key={section.type}
+                categories={categories}
+                storeSlug={storeSlug}
+                title={categoriesSection.title ?? 'Categories'}
+              />
+            ) : null
+          ) : section.type === 'featured_products' ? (
+            productsSection.enabled ? (
+              <FeaturedProducts
+                key={section.type}
+                products={products}
+                storeSlug={storeSlug}
+                title={productsSection.title ?? 'Latest products'}
+              />
+            ) : null
+          ) : (
+            <ContentSection key={section.id ?? index} section={section} index={index} storeSlug={storeSlug} />
+          ),
+        )}
       </div>
     </StorefrontProviders>
   );

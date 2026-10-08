@@ -205,6 +205,77 @@ describe('Media gallery (e2e)', () => {
     await remove(A, storeLogo.id).expect(200);
   });
 
+  it("refuses an upload past the plan's storage (counting the whole business) and accepts it once space is freed", async () => {
+    const GB = 1024 * 1024 * 1024;
+    // A is on Business (5 GB). Fill it to 100 bytes under the limit; an int column cannot hold 5 GB in one row.
+    const sizes = [2_000_000_000, 2_000_000_000, 5 * GB - 4_000_000_000 - 100];
+    const filler = await Promise.all(
+      sizes.map((size, i) =>
+        prisma.media.create({
+          data: { storeId: A.id, url: `https://example.invalid/fill-${i}`, key: `test/fill-${suffix}-${i}`, filename: `fill-${i}.png`, mimeType: 'image/png', size },
+          select: { id: true },
+        }),
+      ),
+    );
+    try {
+      const before = await prisma.media.count({ where: { storeId: A.id } });
+      const refused = await upload(A, pngImage(64, 64, `full-${suffix}`), 'general').expect(403);
+      expect(refused.body.error.code).toBe('PLAN_UPGRADE_REQUIRED');
+      expect(refused.body.error.message).toMatch(/includes 5 GB of storage and you have used 5\.00 GB/);
+      expect(await prisma.media.count({ where: { storeId: A.id } })).toBe(before);
+      // Product image uploads count against the same storage.
+      await http()
+        .post(`/api/v1/stores/${A.id}/products/${A.productId}/image`)
+        .set(auth(A.token))
+        .attach('file', pngImage(64, 64, `full-p-${suffix}`), { filename: 'p.png', contentType: 'application/octet-stream' })
+        .expect(403);
+      // Another business is not affected.
+      await upload(B, pngImage(64, 64, `other-${suffix}`), 'general').expect(201);
+    } finally {
+      await prisma.media.deleteMany({ where: { id: { in: filler.map((row) => row.id) } } });
+    }
+    await upload(A, pngImage(64, 64, `freed-${suffix}`), 'general').expect(201);
+  });
+
+  it('applies the chosen plan while its sign-up payment still waits for approval (no subscription yet)', async () => {
+    const reg = await http()
+      .post('/api/v1/auth/register')
+      .send({ email: `gal.pending.${suffix}@example.com`, password: 'SecurePass1', firstName: 'P', lastName: 'N' })
+      .expect(201);
+    const P: Store = { key: 'p', token: reg.body.data.accessToken, id: '', slug: `gal-p-${suffix}`, productId: '' };
+    P.id = (
+      await http()
+        .post('/api/v1/onboarding/store')
+        .set(auth(P.token))
+        .send(withPayment({ planSlug: 'starter', businessName: 'Gallery pending', tenantSlug: `${P.slug}-t`, storeName: 'Gallery pending', storeSlug: P.slug }))
+        .expect(201)
+    ).body.data.store.id;
+    const tenantId = (await prisma.store.findUniqueOrThrow({ where: { id: P.id } })).tenantId;
+    expect(await prisma.subscription.count({ where: { tenantId } })).toBe(0);
+
+    // Starter storage: 1 GB.
+    const filler = await prisma.media.create({
+      data: { storeId: P.id, url: 'https://example.invalid/fill-p', key: `test/fill-p-${suffix}`, filename: 'fill.png', mimeType: 'image/png', size: 1024 * 1024 * 1024 - 10 },
+      select: { id: true },
+    });
+    try {
+      const refused = await upload(P, pngImage(64, 64, `pending-${suffix}`), 'general').expect(403);
+      expect(refused.body.error.message).toMatch(/includes 1 GB of storage/);
+    } finally {
+      await prisma.media.delete({ where: { id: filler.id } });
+    }
+    await upload(P, pngImage(64, 64, `pending-ok-${suffix}`), 'general').expect(201);
+
+    // Starter products: 25.
+    const make = (i: number) =>
+      http()
+        .post(`/api/v1/stores/${P.id}/products`)
+        .set(auth(P.token))
+        .send({ name: `Pending ${i}`, slug: `pending-${i}-${suffix}`, basePrice: '10.00', trackInventory: false });
+    for (let i = 1; i <= 25; i += 1) await make(i).expect(201);
+    expect((await make(26).expect(403)).body.error.message).toMatch(/up to 25 products/);
+  });
+
   it('keeps stores apart', async () => {
     const bImg = (await upload(B, pngImage(300, 300, `b-${suffix}`), 'general').expect(201)).body.data;
     expect((await list(A).expect(200)).body.data.items.map((i: { id: string }) => i.id)).not.toContain(bImg.id);

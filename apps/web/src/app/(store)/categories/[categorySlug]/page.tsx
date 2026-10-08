@@ -14,7 +14,7 @@ import {
   storeMetadataBase,
 } from '@/lib/store-resolver';
 import { resolvePageSeo, storeOgLocale, storePageRobots } from '@/lib/store-seo';
-import { fetchPublicTheme } from '@/lib/theme';
+import { fetchStoreTheme } from '@/lib/theme-server';
 
 export async function generateMetadata({
   params,
@@ -27,7 +27,7 @@ export async function generateMetadata({
     const { store } = await requirePublicStore(searchParams);
     const result = await fetchPublicCategory(store.slug, params.categorySlug);
     const category = result.data;
-    const configuration = await fetchPublicTheme(store.slug)
+    const configuration = await fetchStoreTheme(store.slug)
       .then((theme) => theme.configuration)
       .catch(() => null);
     const seo = resolvePageSeo({

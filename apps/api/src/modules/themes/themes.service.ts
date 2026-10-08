@@ -8,6 +8,8 @@ import { Prisma, StoreRole, type StoreTheme, type Theme } from '@prisma/client';
 import type { Request } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PlanEntitlementsService } from '../billing/plan-entitlements.service';
+import { ThemeAccessService, isPremiumTheme } from './theme-access.service';
+import { ThemePurchasesService } from './theme-purchases.service';
 import { RedisService } from '../../redis/redis.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
@@ -42,6 +44,8 @@ export class ThemesService {
     private readonly audit: AuditService,
     private readonly redis: RedisService,
     private readonly entitlements: PlanEntitlementsService,
+    private readonly themeAccess: ThemeAccessService,
+    private readonly purchases: ThemePurchasesService,
   ) {}
 
   async getStoreTheme(userId: string, storeId: string) {
@@ -54,6 +58,7 @@ export class ThemesService {
   async listThemes(userId: string, storeId: string) {
     await this.authorization.assertStoreAccess(userId, storeId);
     await this.ensureBuiltInThemes();
+    const store = await this.requireStore(storeId);
 
     const [themes, selected, live] = await Promise.all([
       this.prisma.theme.findMany({
@@ -67,15 +72,35 @@ export class ThemesService {
       this.findLiveStoreTheme(storeId),
     ]);
 
+    const [access, latest] = await Promise.all([
+      this.themeAccess.accessFor(store.tenantId, themes),
+      this.purchases.latestForTenant(store.tenantId),
+    ]);
+
     return {
       success: true as const,
       data: {
-        items: themes.map((theme) => ({
-          ...this.toThemeDto(theme),
-          description: theme.description,
-          selected: theme.id === selected?.themeId,
-          live: theme.id === live?.theme.id,
-        })),
+        items: themes.map((theme) => {
+          const purchase = latest.get(theme.id);
+          return {
+            ...this.toThemeDto(theme),
+            description: theme.description,
+            selected: theme.id === selected?.themeId,
+            live: theme.id === live?.theme.id,
+            premium: isPremiumTheme(theme),
+            priceBdt: theme.priceBdt?.toFixed(2) ?? null,
+            access: access.get(theme.id) ?? 'locked',
+            /** Latest payment for a premium theme (e.g. to explain a rejection). */
+            purchase: purchase
+              ? {
+                  status: purchase.status,
+                  rejectionReason: purchase.rejectionReason,
+                  transactionId: purchase.transactionId,
+                  createdAt: purchase.createdAt.toISOString(),
+                }
+              : null,
+          };
+        }),
         meta: { total: themes.length },
       },
     };
@@ -115,9 +140,12 @@ export class ThemesService {
       // Only the default theme is included in every plan.
       const target = await this.prisma.theme.findUnique({
         where: { id: dto.themeId },
-        select: { slug: true },
+        select: { id: true, slug: true, name: true, priceBdt: true },
       });
-      if (target && target.slug !== DEFAULT_THEME_SLUG) {
+      if (target && isPremiumTheme(target)) {
+        // Premium themes: Business, or bought by the business.
+        await this.themeAccess.assertPremiumUsable(store.tenantId, target);
+      } else if (target && target.slug !== DEFAULT_THEME_SLUG) {
         await this.entitlements.assertFeature(storeId, 'allThemes');
       }
     }
@@ -201,6 +229,8 @@ export class ThemesService {
     const storeTheme = await this.prisma.$transaction(async (tx) => {
       await this.lockStoreThemes(tx, storeId);
       const current = await this.requireActiveStoreTheme(storeId, tx);
+      // A premium theme can only go live while the business may use it.
+      await this.themeAccess.assertPremiumUsable(store.tenantId, current.theme, tx);
       const draft = this.draftOf(current);
 
       const previousLive = await tx.storeTheme.findFirst({
@@ -445,6 +475,7 @@ export class ThemesService {
           description: definition.description,
           previewImageUrl: definition.previewImageUrl,
           configuration: definition.configuration as Prisma.InputJsonValue,
+          priceBdt: definition.priceBdt,
           active: true,
         },
       });

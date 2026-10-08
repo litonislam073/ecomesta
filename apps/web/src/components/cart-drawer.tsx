@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { useEffect } from 'react';
 import { Button } from '@ecomesta/ui';
 import { useCart } from '@/lib/cart';
 import { formatMoney, multiplyMoney } from '@/lib/money';
@@ -22,6 +23,16 @@ export function CartDrawer() {
     storeSlug,
   } = useCart();
   const storeQ = storeParam ?? storeSlug;
+
+  // Escape closes the drawer, like any modal dialog.
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDrawerOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [drawerOpen, setDrawerOpen]);
 
   if (!drawerOpen) {
     return null;

@@ -170,6 +170,7 @@ async function main(): Promise<void> {
         description: theme.description,
         previewImageUrl: theme.previewImageUrl,
         configuration: theme.configuration as Prisma.InputJsonValue,
+        priceBdt: theme.priceBdt,
         active: true,
       },
       create: {
@@ -179,6 +180,7 @@ async function main(): Promise<void> {
         description: theme.description,
         previewImageUrl: theme.previewImageUrl,
         configuration: theme.configuration as Prisma.InputJsonValue,
+        priceBdt: theme.priceBdt,
         active: true,
       },
     });

@@ -139,6 +139,11 @@ export default function SettingsOverviewPage() {
               }
             />
             <OverviewCard
+              href="/dashboard/settings/couriers"
+              title="Couriers"
+              lines={['Steadfast parcel booking and tracking']}
+            />
+            <OverviewCard
               href="/dashboard/settings/domains"
               title="Domains"
               lines={[summary?.domains.primaryHostname ?? 'Storefront addresses']}
@@ -149,6 +154,20 @@ export default function SettingsOverviewPage() {
               lines={[
                 settings.seoTitle ?? 'Using store name as title',
                 settings.seoIndexingEnabled ? 'Visible to search engines' : 'Hidden from search engines',
+              ]}
+            />
+            <OverviewCard
+              href="/dashboard/settings/tracking"
+              title="Marketing & tracking"
+              lines={[
+                [
+                  settings.metaPixelId ? 'Facebook Pixel' : null,
+                  settings.gtmContainerId ? 'Tag Manager' : null,
+                  settings.ga4MeasurementId ? 'Analytics' : null,
+                  settings.googleSiteVerification ? 'Search Console' : null,
+                ]
+                  .filter(Boolean)
+                  .join(', ') || 'Facebook Pixel, Google Analytics, Tag Manager, Search Console',
               ]}
             />
             <OverviewCard

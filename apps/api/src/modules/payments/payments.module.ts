@@ -33,6 +33,7 @@ import { TestPaymentProvider } from './providers/test/test-payment.provider';
   ],
   exports: [
     PaymentsService,
+    PaymentSecretsCryptoService,
     PaymentOrchestrationService,
     PaymentProviderConfigService,
     PaymentProviderRegistry,

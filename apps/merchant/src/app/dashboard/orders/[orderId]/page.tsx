@@ -13,6 +13,7 @@ import type {
 import { Button } from '@ecomesta/ui';
 import { StatusBadge } from '@/components/catalog/status-badge';
 import { StoreScoped } from '@/components/catalog/store-scoped';
+import { CourierBookingPanel, CourierShipmentCard, isActiveShipment } from '@/components/couriers/order-courier';
 import { OrderTimeline } from '@/components/order-timeline';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
@@ -23,6 +24,7 @@ import { useToast } from '@/components/ui/toast';
 import { ApiError, api } from '@/lib/api-client';
 import { humanApiError } from '@/lib/catalog-utils';
 import { useCanManageStore } from '@/lib/permissions';
+import { ORDERS_VIEWED_EVENT } from '@/lib/new-orders';
 import { useStoreContext } from '@/lib/store-context';
 
 const ORDER_NEXT: Partial<Record<OrderStatus, OrderStatus[]>> = {
@@ -108,6 +110,20 @@ function OrderDetailContent() {
     void load();
   }, [load]);
 
+  // Opening an order marks it as seen for the whole team; the Orders badge drops by one.
+  const loadedId = order?.id ?? null;
+  useEffect(() => {
+    if (!selectedStoreId || !loadedId) return;
+    void (async () => {
+      try {
+        await api.post(`/stores/${selectedStoreId}/orders/${loadedId}/viewed`, {});
+        window.dispatchEvent(new Event(ORDERS_VIEWED_EVENT));
+      } catch {
+        /* the badge is a hint; viewing the order still works */
+      }
+    })();
+  }, [selectedStoreId, loadedId]);
+
   async function patchStatus(
     path: string,
     body: Record<string, string>,
@@ -189,6 +205,8 @@ function OrderDetailContent() {
   const shipping = order?.addresses.find((a) => a.type === 'SHIPPING');
   const billing = order?.addresses.find((a) => a.type === 'BILLING');
   const nextStatuses = order ? ORDER_NEXT[order.status] ?? [] : [];
+  // An open courier booking (booked, in progress or unconfirmed): it blocks cancelling and manual shipments.
+  const activeCourier = order?.shipments.find((s) => s.courierManaged && isActiveShipment(s)) ?? null;
   const nextPayments = order ? PAYMENT_NEXT[order.paymentStatus] ?? [] : [];
   const nextFulfillment = order
     ? FULFILLMENT_NEXT[order.fulfillmentStatus] ?? []
@@ -221,9 +239,16 @@ function OrderDetailContent() {
           ) : null}
         </div>
         {canWrite && order && nextStatuses.includes('CANCELLED') ? (
-          <Button variant="danger" onClick={() => setCancelOpen(true)} disabled={busy}>
-            Cancel order
-          </Button>
+          activeCourier ? (
+            <p className="max-w-xs text-sm text-[var(--color-muted)]" data-testid="cancel-blocked">
+              This order can’t be cancelled while its courier shipment is active. Cancel the parcel with the courier
+              first.
+            </p>
+          ) : (
+            <Button variant="danger" onClick={() => setCancelOpen(true)} disabled={busy}>
+              Cancel order
+            </Button>
+          )
         ) : null}
       </div>
 
@@ -238,7 +263,10 @@ function OrderDetailContent() {
               <p className="mt-2 text-sm">
                 {order.customer
                   ? formatPerson(order.customer.firstName, order.customer.lastName, 'Customer')
-                  : 'Guest'}
+                  : formatPerson(shipping?.firstName ?? null, shipping?.lastName ?? null, 'Guest')}
+                {!order.customer ? (
+                  <span className="ml-1.5 text-xs text-[var(--color-muted)]">· Guest checkout</span>
+                ) : null}
               </p>
               <p className="text-sm text-[var(--color-muted)]">
                 {order.customer?.email ?? shipping?.email ?? '—'}
@@ -527,7 +555,8 @@ function OrderDetailContent() {
           <section className="space-y-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-semibold">Shipments</h2>
-              {canWrite && order.status !== 'CANCELLED' ? (
+              {/* A courier booking owns the order's shipping: no manual shipment beside it (the API refuses too). */}
+              {canWrite && order.status !== 'CANCELLED' && !activeCourier ? (
                 <Button
                   type="button"
                   variant="secondary"
@@ -538,6 +567,13 @@ function OrderDetailContent() {
                 </Button>
               ) : null}
             </div>
+            {canWrite &&
+            selectedStoreId &&
+            !['CANCELLED', 'DRAFT', 'COMPLETED'].includes(order.status) &&
+            ['UNFULFILLED', 'PARTIALLY_FULFILLED'].includes(order.fulfillmentStatus) &&
+            !order.shipments.some(isActiveShipment) ? (
+              <CourierBookingPanel storeId={selectedStoreId} order={order} onBooked={() => void load()} />
+            ) : null}
             {order.shipments.length === 0 ? (
               <p className="text-sm text-[var(--color-muted)]">
                 No shipments yet.
@@ -555,6 +591,17 @@ function OrderDetailContent() {
                       key={s.id}
                       className="rounded-md border border-[var(--color-border)] p-3"
                     >
+                      {s.courierManaged && selectedStoreId ? (
+                        <CourierShipmentCard
+                          storeId={selectedStoreId}
+                          orderId={order.id}
+                          currency={order.currency}
+                          shipment={s}
+                          canWrite={canWrite}
+                          onChanged={() => void load()}
+                        />
+                      ) : (
+                      <>
                       <div className="flex flex-wrap justify-between gap-2">
                         <span>
                           {s.provider} · {s.status}
@@ -611,6 +658,8 @@ function OrderDetailContent() {
                           </Button>
                         </div>
                       ) : null}
+                      </>
+                      )}
                     </li>
                   );
                 })}

@@ -31,6 +31,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { ProductsModule } from './modules/products/products.module';
 import { PublicStorefrontModule } from './modules/public-storefront/public-storefront.module';
 import { ShipmentsModule } from './modules/shipments/shipments.module';
+import { CouriersModule } from './modules/couriers/couriers.module';
 import { ShippingModule } from './modules/shipping/shipping.module';
 import { StoresModule } from './modules/stores/stores.module';
 import { SupportModule } from './modules/support/support.module';
@@ -112,6 +113,7 @@ import { RedisModule } from './redis/redis.module';
     ShippingModule,
     PaymentsModule,
     ShipmentsModule,
+    CouriersModule,
     PublicStorefrontModule,
     ThemesModule,
     DomainsModule,

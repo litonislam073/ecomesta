@@ -56,7 +56,7 @@ export function MobileNav({
           open ? 'visible translate-y-0 opacity-100' : 'pointer-events-none invisible -translate-y-2 opacity-0'
         }`}
       >
-        <nav aria-label="Mobile" className="mx-auto max-w-6xl px-4 py-4 sm:px-6">
+        <nav aria-label="Mobile" className="mx-auto max-w-[1200px] px-4 py-4 sm:px-6">
           <ul className="space-y-1">
             {items.map((item) => (
               <li key={item.href}>

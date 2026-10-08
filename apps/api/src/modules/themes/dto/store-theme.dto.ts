@@ -454,3 +454,24 @@ export class UpdateStoreThemeDto {
   @IsObject()
   configuration?: Record<string, unknown>;
 }
+
+export class ThemePreviewSessionDto {
+  @ApiPropertyOptional({ description: 'Theme to preview; defaults to the selected theme' })
+  @IsOptional()
+  @IsUUID()
+  themeId?: string;
+
+  @ApiPropertyOptional({
+    type: () => ThemeConfigurationDto,
+    description: 'The full unsaved draft configuration to show',
+  })
+  @IsOptional()
+  @IsObject()
+  configuration?: Record<string, unknown>;
+
+  @ApiPropertyOptional({ description: 'Token of the open preview, to update it in place' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  token?: string;
+}

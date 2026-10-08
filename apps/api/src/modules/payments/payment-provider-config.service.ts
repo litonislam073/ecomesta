@@ -13,6 +13,7 @@ import type { Request } from 'express';
 import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MANUAL_PAYMENT_SELECT, assertStoreKeepsAPaymentOption } from './manual-payments';
 import { PlanEntitlementsService } from '../billing/plan-entitlements.service';
 import { PaymentSecretsCryptoService } from './crypto/payment-secrets-crypto.service';
 import {
@@ -91,6 +92,10 @@ export class PaymentProviderConfigService {
     const store = await this.requireStore(storeId);
     this.assertConfigurable(dto.provider);
     await this.assertPlanAllowsEnabling(storeId, dto.provider, dto.enabled);
+    if (dto.enabled === false) {
+      const manual = await this.prisma.store.findUniqueOrThrow({ where: { id: storeId }, select: MANUAL_PAYMENT_SELECT });
+      await assertStoreKeepsAPaymentOption(this.prisma, this.entitlements, storeId, { manual, disablingProvider: dto.provider });
+    }
 
     if (dto.secrets) {
       this.assertSecretsShape(dto.provider, dto.secrets);

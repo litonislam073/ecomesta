@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { trackBeginCheckout } from '@/lib/tracking';
 import type {
   BdLocationItem,
   PublicCheckoutConfirmation,
@@ -144,6 +145,16 @@ function OptionIcon({ name }: { name: IconName }) {
 }
 
 /** A selectable tile used for shipping and payment choices; the radio stays accessible. */
+/** The store's own payment instructions (bank details etc.), shown as plain text. */
+function PaymentDetails({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div role="note" className="-mt-1 rounded-xl border border-[var(--color-border)] bg-[#f7faf8] px-4 py-3 text-sm">
+      <p className="font-semibold text-[var(--color-ink)]">{title}</p>
+      <p className="mt-1 whitespace-pre-line text-[var(--color-ink)]">{children}</p>
+    </div>
+  );
+}
+
 function OptionTile({
   name,
   checked,
@@ -259,6 +270,21 @@ export function CheckoutForm({
     syncPrices,
   } = useCart();
 
+  // Marketing tags: the shopper started checkout (once per visit to the page).
+  const checkoutTracked = useRef(false);
+  useEffect(() => {
+    if (checkoutTracked.current || lines.length === 0) return;
+    checkoutTracked.current = true;
+    const items = lines.map((line) => ({
+      id: line.sku || line.productId,
+      name: line.productName,
+      variant: line.variantName,
+      price: Number(line.unitPrice),
+      quantity: line.quantity,
+    }));
+    trackBeginCheckout(items, items.reduce((sum, item) => sum + item.price * item.quantity, 0), currency);
+  }, [lines, currency]);
+
   const [contactName, setContactName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -281,6 +307,10 @@ export function CheckoutForm({
   const [onlineProviders, setOnlineProviders] = useState<
     PublicPaymentProvidersResponse['online']
   >([]);
+  // The store's own options it switched on (Cash on delivery, bank transfer, other); null until loaded.
+  const [offlineOptions, setOfflineOptions] = useState<
+    PublicPaymentProvidersResponse['offline'] | null
+  >(null);
   const [note, setNote] = useState('');
   const [couponDraft, setCouponDraft] = useState(couponCode ?? '');
   const [couponMessage, setCouponMessage] = useState<string | null>(null);
@@ -327,11 +357,13 @@ export function CheckoutForm({
         ]);
         if (cancelled) return;
         setOnlineProviders(providersResult.data.online ?? []);
+        setOfflineOptions(providersResult.data.offline ?? []);
         setDivisions(divisionsResult.data);
         setDistricts(districtsResult.data);
       } catch (err) {
         if (cancelled) return;
         setOnlineProviders([]);
+        setOfflineOptions(null);
         setDivisions([]);
         setDistricts([]);
         setShippingLoadError(
@@ -514,12 +546,37 @@ export function CheckoutForm({
     !quoteError &&
     (quote.shippingMethodId ?? '') === shippingMethodId;
 
-  useEffect(() => {
-    if (!codAllowedForMethod && paymentProvider === 'COD') {
-      setPaymentProvider('OTHER');
-      setPaymentMethod('BANK_TRANSFER');
+  // What the shopper can pay with right now, in display order. Before the
+  // store's options load, Cash on delivery is assumed (checkout re-checks).
+  const offlineOffered = useCallback(
+    (provider: string, method: string) =>
+      offlineOptions === null
+        ? provider === 'COD'
+        : offlineOptions.some((o) => o.provider === provider && o.method === method),
+    [offlineOptions],
+  );
+  const offlineDetails = (method: string) =>
+    offlineOptions?.find((o) => o.provider === 'OTHER' && o.method === method)?.details ?? null;
+  const paymentChoices = useMemo(() => {
+    const choices: { provider: PublicCheckoutPaymentProvider; method: PublicCheckoutPaymentMethod }[] = [];
+    if (offlineOffered('COD', 'CASH') && codAllowedForMethod) choices.push({ provider: 'COD', method: 'CASH' });
+    if (offlineOffered('OTHER', 'BANK_TRANSFER')) choices.push({ provider: 'OTHER', method: 'BANK_TRANSFER' });
+    if (offlineOffered('OTHER', 'OTHER')) choices.push({ provider: 'OTHER', method: 'OTHER' });
+    for (const provider of ['SSL_COMMERZ', 'STRIPE', 'TEST'] as const) {
+      if (onlineProviders.some((p) => p.provider === provider)) choices.push({ provider, method: 'CARD' });
     }
-  }, [codAllowedForMethod, paymentProvider]);
+    return choices;
+  }, [offlineOffered, onlineProviders, codAllowedForMethod]);
+  const paymentChoiceValid = paymentChoices.some(
+    (c) => c.provider === paymentProvider && c.method === paymentMethod,
+  );
+
+  // Keep the selection on something the store offers (e.g. COD off, or not for this delivery method).
+  useEffect(() => {
+    if (paymentChoiceValid || paymentChoices.length === 0) return;
+    setPaymentProvider(paymentChoices[0]!.provider);
+    setPaymentMethod(paymentChoices[0]!.method);
+  }, [paymentChoiceValid, paymentChoices]);
 
   async function applyCoupon() {
     setCouponMessage(null);
@@ -635,6 +692,10 @@ export function CheckoutForm({
     }
     if (paymentProvider === 'COD' && selectedShipping?.codAllowed === false) {
       setError('Cash on delivery is not available for this shipping method.');
+      return;
+    }
+    if (!paymentChoiceValid) {
+      setError('This store has no payment option for this order. Please contact the store.');
       return;
     }
     if (
@@ -977,6 +1038,12 @@ export function CheckoutForm({
           <StepHeading step={3} title="Payment" hint="All transactions are secure." />
           <fieldset className="grid gap-3">
             <legend className="sr-only">Payment method</legend>
+            {offlineOptions !== null && paymentChoices.length === 0 ? (
+              <p role="alert" className="rounded-xl border border-dashed border-[var(--color-border)] px-4 py-5 text-center text-sm text-[var(--color-muted)]">
+                No payment option is available for this delivery method. Please choose another delivery method or contact the store.
+              </p>
+            ) : null}
+            {offlineOffered('COD', 'CASH') ? (
             <OptionTile
               name="pay"
               checked={paymentProvider === 'COD' && paymentMethod === 'CASH'}
@@ -993,6 +1060,7 @@ export function CheckoutForm({
                   : 'Not available for the selected delivery method.'
               }
             />
+            ) : null}
             {hasOnline('SSL_COMMERZ') ? (
               <OptionTile
                 name="pay"
@@ -1034,28 +1102,38 @@ export function CheckoutForm({
                 description="Simulated payment for testing. No money is charged."
               />
             ) : null}
-            <OptionTile
-              name="pay"
-              checked={paymentProvider === 'OTHER' && paymentMethod === 'BANK_TRANSFER'}
-              onSelect={() => {
-                setPaymentProvider('OTHER');
-                setPaymentMethod('BANK_TRANSFER');
-              }}
-              icon="bank"
-              title="Bank transfer"
-              description="Transfer to the store’s bank account; the store confirms your payment."
-            />
-            <OptionTile
-              name="pay"
-              checked={paymentProvider === 'OTHER' && paymentMethod === 'OTHER'}
-              onSelect={() => {
-                setPaymentProvider('OTHER');
-                setPaymentMethod('OTHER');
-              }}
-              icon="store"
-              title="Other payment"
-              description="Arrange payment directly with the store."
-            />
+            {offlineOffered('OTHER', 'BANK_TRANSFER') ? (
+              <OptionTile
+                name="pay"
+                checked={paymentProvider === 'OTHER' && paymentMethod === 'BANK_TRANSFER'}
+                onSelect={() => {
+                  setPaymentProvider('OTHER');
+                  setPaymentMethod('BANK_TRANSFER');
+                }}
+                icon="bank"
+                title="Bank transfer"
+                description="Transfer to the store’s bank account; the store confirms your payment."
+              />
+            ) : null}
+            {paymentProvider === 'OTHER' && paymentMethod === 'BANK_TRANSFER' && offlineDetails('BANK_TRANSFER') ? (
+              <PaymentDetails title="Send your payment to">{offlineDetails('BANK_TRANSFER')}</PaymentDetails>
+            ) : null}
+            {offlineOffered('OTHER', 'OTHER') ? (
+              <OptionTile
+                name="pay"
+                checked={paymentProvider === 'OTHER' && paymentMethod === 'OTHER'}
+                onSelect={() => {
+                  setPaymentProvider('OTHER');
+                  setPaymentMethod('OTHER');
+                }}
+                icon="store"
+                title="Other payment"
+                description="Arrange payment directly with the store."
+              />
+            ) : null}
+            {paymentProvider === 'OTHER' && paymentMethod === 'OTHER' && offlineDetails('OTHER') ? (
+              <PaymentDetails title="How to pay">{offlineDetails('OTHER')}</PaymentDetails>
+            ) : null}
           </fieldset>
         </section>
       </div>

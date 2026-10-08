@@ -40,6 +40,9 @@ async function removeTestData(prisma: PrismaService) {
     await tx.subscription.deleteMany({ where: { tenantId: { in: tenantIds } } });
     await tx.storeTheme.deleteMany({ where: { storeId: { in: storeIds } } });
     await tx.domain.deleteMany({ where: { storeId: { in: storeIds } } });
+    // New stores start with ready-made shipping (see default-shipping.ts).
+    await tx.shippingMethod.deleteMany({ where: { storeId: { in: storeIds } } });
+    await tx.shippingZone.deleteMany({ where: { storeId: { in: storeIds } } });
     await tx.store.deleteMany({ where: { id: { in: storeIds } } });
     await tx.tenant.deleteMany({ where: { id: { in: tenantIds } } });
     await tx.user.deleteMany({ where: { id: { in: users.map((user) => user.id) } } });

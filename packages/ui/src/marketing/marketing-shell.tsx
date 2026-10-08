@@ -59,7 +59,7 @@ export function MarketingHeader({
       >
         Skip to content
       </a>
-      <div className="relative mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+      <div className="relative mx-auto flex h-16 max-w-[1200px] items-center justify-between gap-4 px-4 sm:px-6">
         <MarketingLogo href={marketingHref(siteOrigin, '/')} />
         <nav aria-label="Primary" className="hidden lg:block">
           <ul className="flex items-center gap-1">
@@ -101,7 +101,7 @@ export function MarketingFooter({
 }: MarketingLinks & { contactEmail?: string | null }) {
   return (
     <footer className="border-t border-[var(--color-border)] bg-[var(--brand-navy)] text-[var(--brand-on-navy)]">
-      <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+      <div className="mx-auto max-w-[1200px] px-4 py-14 sm:px-6">
         <div className="grid gap-10 lg:grid-cols-[1.2fr_3fr]">
           <div>
             <MarketingLogo href={marketingHref(siteOrigin, '/')} onDark />

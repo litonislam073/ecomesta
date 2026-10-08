@@ -25,6 +25,7 @@ export const ADMIN_NAV: NavSection[] = [
     title: 'Billing',
     items: [
       { href: '/dashboard/payments', label: 'Payments' },
+      { href: '/dashboard/theme-purchases', label: 'Theme purchases' },
       { href: '/dashboard/plans', label: 'Plans' },
       { href: '/dashboard/subscriptions', label: 'Subscriptions' },
     ],

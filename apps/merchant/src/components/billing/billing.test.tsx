@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ManualPaymentAccount, MerchantBillingPayment, MerchantSubscription, PublicPlan } from '@ecomesta/types';
 import { SubscriptionBanner, SuspendedScreen } from '@/components/billing/subscription-notices';
@@ -269,6 +269,12 @@ describe('Plan & billing page', () => {
     );
   }
 
+  /** The bar under the plans opens the payment as a dialog. */
+  async function openPayment(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(await screen.findByRole('button', { name: /Continue to payment/ }));
+    return screen.findByRole('dialog', { name: 'Pay for your plan' });
+  }
+
   it('shows the trial plan, end date and post-trial price with no payment due today', async () => {
     renderBilling(subscription());
     expect(await screen.findByText('Growth Plan')).toBeInTheDocument();
@@ -281,7 +287,39 @@ describe('Plan & billing page', () => {
     renderBilling(subscription({ status: 'EXPIRED', phase: 'SUSPENDED', amountDue: 999 }));
     expect(await screen.findByRole('link', { name: 'Pay & Reactivate' })).toHaveAttribute('href', '/dashboard/billing#pay');
     expect(screen.getByText('Amount due')).toBeInTheDocument();
-    expect(await screen.findByRole('heading', { name: 'Complete your payment' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Continue to payment/ })).toBeInTheDocument();
+  });
+
+  it('opens the payment straight away from a #pay link (Pay & Reactivate, reminders)', async () => {
+    window.history.replaceState(null, '', '/dashboard/billing#pay');
+    try {
+      renderBilling(subscription({ status: 'EXPIRED', phase: 'SUSPENDED', amountDue: 999 }));
+      const dialog = await screen.findByRole('dialog', { name: 'Pay for your plan' });
+      await waitFor(() => expect(within(dialog).getByRole('heading', { name: 'Pay for your plan' })).toHaveFocus());
+    } finally {
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
+  it('keeps the chosen plan in view and pays for it in a dialog that closes again', async () => {
+    const user = userEvent.setup();
+    renderBilling(subscription({ status: 'PAST_DUE', phase: 'GRACE' }));
+    const bar = await screen.findByRole('region', { name: 'Selected plan' });
+    expect(bar).toHaveTextContent('Growth · Monthly');
+    expect(bar).toHaveTextContent('৳999');
+    await user.click(screen.getByRole('radio', { name: /^Business/ }));
+    expect(bar).toHaveTextContent('Business · Monthly');
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    const dialog = await openPayment(user);
+    expect(dialog).toHaveTextContent('Business plan');
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(screen.getByRole('button', { name: /Continue to payment/ })).toHaveFocus());
+    await openPayment(user);
+    await user.click(screen.getByRole('button', { name: '← Back to plans' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(post).not.toHaveBeenCalled();
   });
 
   it('asks a business without a plan to pay for the plan chosen on the pricing page', async () => {
@@ -295,7 +333,7 @@ describe('Plan & billing page', () => {
     expect(screen.getByText(/Your store goes live as soon as we confirm the payment/)).toBeInTheDocument();
     // There is no free trial to start: the plan is paid for right here.
     expect(screen.queryByRole('button', { name: /Months Free|free trial/i })).not.toBeInTheDocument();
-    const panel = (await screen.findByRole('heading', { name: 'Complete your payment' })).closest('section')!;
+    const panel = await openPayment(userEvent.setup());
     expect(panel).toHaveTextContent('Business plan');
     expect(panel).toHaveTextContent('Amount৳10,795');
     expect(post).not.toHaveBeenCalled();
@@ -304,7 +342,7 @@ describe('Plan & billing page', () => {
   it('shows the wallet number and exact amount for the chosen plan and wallet', async () => {
     const user = userEvent.setup();
     renderBilling(subscription({ status: 'PAST_DUE', phase: 'GRACE' }));
-    const panel = (await screen.findByRole('heading', { name: 'Complete your payment' })).closest('section')!;
+    let panel = await openPayment(user);
     expect(panel).toHaveTextContent('Growth plan');
     expect(panel).toHaveTextContent('bKash number01309093407');
     expect(panel).toHaveTextContent('Amount৳999');
@@ -314,7 +352,11 @@ describe('Plan & billing page', () => {
     await user.click(screen.getByRole('radio', { name: /Upay/ }));
     expect(panel).toHaveTextContent('Upay number01318090622');
 
+    // The billing period is chosen on the page: close, switch to yearly, open again.
+    await user.click(screen.getByRole('button', { name: 'Close payment' }));
     await user.click(screen.getByRole('radio', { name: /Yearly/ }));
+    panel = await openPayment(user);
+    await user.click(within(panel).getByRole('radio', { name: /Upay/ }));
     expect(panel).toHaveTextContent('Amount৳8,991');
     expect(screen.getByRole('button', { name: /Submit ৳8,991 Upay payment/ })).toBeInTheDocument();
   });
@@ -322,7 +364,7 @@ describe('Plan & billing page', () => {
   it('checks the number and transaction ID before submitting', async () => {
     const user = userEvent.setup();
     renderBilling(subscription({ status: 'PAST_DUE', phase: 'GRACE' }));
-    await screen.findByRole('heading', { name: 'Complete your payment' });
+    await openPayment(user);
     await user.type(screen.getByLabelText('Your bKash number'), '12345');
     await user.type(screen.getByLabelText('Transaction ID'), 'ABC123XYZ');
     await user.click(screen.getByRole('button', { name: /Submit ৳999 bKash payment/ }));
@@ -341,7 +383,7 @@ describe('Plan & billing page', () => {
     const user = userEvent.setup();
     post.mockResolvedValue({ success: true, data: payment({ method: 'NAGAD', amount: 999 }) });
     renderBilling(subscription({ status: 'PAST_DUE', phase: 'GRACE' }));
-    await screen.findByRole('heading', { name: 'Complete your payment' });
+    await openPayment(user);
     await user.click(screen.getByRole('radio', { name: /Nagad/ }));
     await user.type(screen.getByLabelText('Your Nagad number'), '+880 1712-345678');
     await user.type(screen.getByLabelText('Transaction ID'), 'abc123xyz');
@@ -359,7 +401,8 @@ describe('Plan & billing page', () => {
       { token: 'token' },
     );
     expect(await screen.findByRole('heading', { name: 'Payment under review' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Complete your payment' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Continue to payment/ })).not.toBeInTheDocument();
     expect(screen.getByText('Under review')).toBeInTheDocument();
   });
 
@@ -367,7 +410,7 @@ describe('Plan & billing page', () => {
     renderBilling(subscription({}, { pendingPayment: payment() }), [payment()]);
     expect(await screen.findByRole('heading', { name: 'Payment under review' })).toBeInTheDocument();
     expect(screen.getByText(/We are checking your ৳999 bKash payment for the Growth plan/)).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Complete your payment' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Continue to payment/ })).not.toBeInTheDocument();
   });
 
   it('explains a rejected payment and lets the merchant pay again', async () => {
@@ -378,7 +421,7 @@ describe('Plan & billing page', () => {
       'No payment with this ID reached our number.',
     );
     expect(screen.getByText('Not confirmed')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Complete your payment' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Continue to payment/ })).toBeInTheDocument();
   });
 
   it('offers a free switch to a cheaper plan during the trial, but not an upgrade', async () => {
@@ -388,7 +431,7 @@ describe('Plan & billing page', () => {
       data: subscription({ plan: { name: 'Starter', slug: 'starter', monthlyPrice: 499, trialMonths: 2, limits: null } }),
     });
     renderBilling(subscription());
-    await screen.findByRole('heading', { name: 'Complete your payment' });
+    await screen.findByRole('button', { name: /Continue to payment/ });
 
     await user.click(screen.getByRole('radio', { name: /^Business/ }));
     expect(screen.queryByRole('button', { name: /Switch to Business now/ })).not.toBeInTheDocument();
@@ -405,7 +448,7 @@ describe('Plan & billing page', () => {
   it('lets a paid subscription renew or change plan by paying', async () => {
     renderBilling(subscription({ status: 'ACTIVE', phase: 'ACTIVE', endsAt: '2027-01-27T18:00:00.000Z' }));
     expect(await screen.findByText(/paid through January 28, 2027/)).toBeInTheDocument();
-    expect(await screen.findByRole('heading', { name: 'Complete your payment' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Continue to payment/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Switch to/ })).not.toBeInTheDocument();
   });
 });

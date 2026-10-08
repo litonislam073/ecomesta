@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import type { PublicProductDetail } from '@ecomesta/types';
 import { AddToCartPanel } from '@/components/add-to-cart-panel';
+import { TrackProductView } from '@/components/storefront/track-product-view';
 import { fetchPublicProduct } from '@/lib/catalog-lookup';
 import { PublicApiError } from '@/lib/public-api';
 import {
@@ -10,7 +11,7 @@ import {
   storeMetadataBase,
 } from '@/lib/store-resolver';
 import { resolvePageSeo, storeOgLocale, storePageRobots } from '@/lib/store-seo';
-import { fetchPublicTheme } from '@/lib/theme';
+import { fetchStoreTheme } from '@/lib/theme-server';
 
 export async function generateMetadata({
   params,
@@ -23,7 +24,7 @@ export async function generateMetadata({
     const { store } = await requirePublicStore(searchParams);
     const result = await fetchPublicProduct(store.slug, params.productSlug);
     const product = result.data;
-    const configuration = await fetchPublicTheme(store.slug)
+    const configuration = await fetchStoreTheme(store.slug)
       .then((theme) => theme.configuration)
       .catch(() => null);
     const seo = resolvePageSeo({
@@ -103,6 +104,7 @@ export default async function ProductDetailPage({
           ) : null}
         </div>
         <AddToCartPanel product={product} />
+        <TrackProductView id={product.id} sku={product.sku} name={product.name} price={product.price} currency={product.currency} />
         {product.description ? (
           <div className="prose prose-sm max-w-none text-[var(--color-ink)]">
             <h2 className="text-lg font-semibold">Description</h2>

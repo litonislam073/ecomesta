@@ -2,6 +2,8 @@ export type NavItem = {
   href: string;
   label: string;
   ready?: boolean;
+  /** Short highlight shown next to the label, e.g. "New". */
+  tag?: string;
   children?: NavItem[];
 };
 
@@ -20,8 +22,10 @@ export const SETTINGS_NAV: NavItem[] = [
   { href: '/dashboard/settings/notifications', label: 'Notifications', ready: true },
   { href: '/dashboard/settings/payments', label: 'Payments', ready: true },
   { href: '/dashboard/settings/shipping', label: 'Shipping', ready: true },
+  { href: '/dashboard/settings/couriers', label: 'Couriers', ready: true },
   { href: '/dashboard/settings/domains', label: 'Domains', ready: true },
   { href: '/dashboard/settings/seo', label: 'SEO', ready: true },
+  { href: '/dashboard/settings/tracking', label: 'Marketing & tracking', ready: true },
   { href: '/dashboard/settings/danger-zone', label: 'Danger zone', ready: true },
 ];
 
@@ -56,7 +60,7 @@ export const DASHBOARD_NAV: NavSection[] = [
   {
     title: 'Store',
     items: [
-      { href: '/dashboard/theme', label: 'Theme', ready: true },
+      { href: '/dashboard/theme', label: 'Theme', ready: true, tag: 'New' },
       { href: '/dashboard/gallery', label: 'Gallery', ready: true },
       { href: '/dashboard/domains', label: 'Domains', ready: true },
       { href: '/dashboard/shipping', label: 'Shipping', ready: true },

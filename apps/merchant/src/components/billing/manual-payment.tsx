@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useState, type FormEvent, type ReactNode } from 'react';
+import { useId, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 import type {
   ManualPaymentAccount,
   ManualPaymentMethod,
@@ -71,6 +71,36 @@ function CopyRow({ label, value, display }: { label: string; value: string; disp
   );
 }
 
+/** A small "label · value · Copy" line for the compact checkout. */
+function CompactCopy({ label, value, display }: { label: string; value: string; display?: string }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setCopied(false);
+    }
+  }
+  return (
+    <div className="flex items-center justify-between gap-3 py-2.5">
+      <div className="min-w-0">
+        <p className="text-xs text-[var(--color-muted)]">{label}</p>
+        <p className="truncate font-mono text-base font-semibold tracking-wide text-[var(--color-ink)]">{display ?? value}</p>
+      </div>
+      <button
+        type="button"
+        onClick={() => void copy()}
+        aria-label={`Copy ${label.toLowerCase()}`}
+        className="inline-flex h-8 shrink-0 items-center rounded-lg border border-[var(--color-border)] bg-white px-3 text-xs font-semibold text-[var(--color-ink)] hover:bg-[#f4f7f5] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+      >
+        {copied ? 'Copied ✓' : 'Copy'}
+      </button>
+    </div>
+  );
+}
+
 function StepTitle({ n, title }: { n: number; title: string }) {
   return (
     <h3 className="flex items-center gap-2.5 text-sm font-semibold text-[var(--color-ink)]">
@@ -80,6 +110,13 @@ function StepTitle({ n, title }: { n: number; title: string }) {
       {title}
     </h3>
   );
+}
+
+/** Something other than a plan, paid the same way (e.g. a premium theme). */
+export interface PaymentItem {
+  name: string;
+  detail: string;
+  amount: number;
 }
 
 /** What the merchant reports after paying by mobile wallet. */
@@ -109,9 +146,12 @@ export function ManualPaymentPanel({
   intro = 'Pay with bKash, Nagad, Rocket or Upay. Your plan activates as soon as our team confirms it.',
   submitLabel,
   footer,
+  variant = 'full',
+  item,
+  note = 'Our team checks every payment and emails you once it is confirmed.',
 }: {
-  plan: PublicPlan;
-  cycle: BillingCycleCode;
+  plan?: PublicPlan;
+  cycle?: BillingCycleCode;
   accounts: ManualPaymentAccount[];
   token: string | null;
   /** While trialing, the paid period starts when the trial ends. */
@@ -124,6 +164,12 @@ export function ManualPaymentPanel({
   /** Button text for the amount and wallet, e.g. "Pay ৳99 with bKash". */
   submitLabel?: (amount: string, wallet: string) => string;
   footer?: ReactNode;
+  /** `compact`: a short checkout for a dialog — no header, plan details or feature list. */
+  variant?: 'full' | 'compact';
+  /** Pay for this instead of `plan` (compact variant, with `onPay`). */
+  item?: PaymentItem;
+  /** The reassurance under the compact submit button. */
+  note?: string;
 }) {
   const formId = useId();
   const [method, setMethod] = useState<ManualPaymentMethod>(accounts[0]?.method ?? 'BKASH');
@@ -131,30 +177,42 @@ export function ManualPaymentPanel({
   const [transactionId, setTransactionId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Both fields are required: which one the last check rejected.
+  const [invalid, setInvalid] = useState<'sender' | 'transaction' | null>(null);
+  const senderRef = useRef<HTMLInputElement>(null);
+  const transactionRef = useRef<HTMLInputElement>(null);
+  const filled = senderNumber.trim() !== '' && transactionId.trim() !== '';
 
   const account = accounts.find((item) => item.method === method) ?? accounts[0];
-  const amount = plan.prices.find((price) => price.billingCycle === cycle)?.amount ?? plan.monthlyPrice;
-  const period = billingCycleDefinition(cycle);
+  const amount = item
+    ? item.amount
+    : (plan?.prices.find((price) => price.billingCycle === cycle)?.amount ?? plan?.monthlyPrice ?? 0);
+  const period = billingCycleDefinition(cycle ?? 'MONTHLY');
   const brand = WALLET_BRANDS[method];
   const label = METHOD_LABELS[method];
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
+    setInvalid(null);
     const digits = senderNumber.replace(/[\s\-()]/g, '').replace(/^\+?88/, '');
     if (!/^01[3-9]\d{8}$/.test(digits)) {
       setError(`Enter the 11-digit ${label} number you paid from, e.g. 01712345678.`);
+      setInvalid('sender');
+      senderRef.current?.focus();
       return;
     }
     if (!/^[A-Za-z0-9]{6,30}$/.test(transactionId.replace(/\s+/g, ''))) {
       setError('Enter the transaction ID from your payment confirmation message.');
+      setInvalid('transaction');
+      transactionRef.current?.focus();
       return;
     }
     setSubmitting(true);
     try {
       if (onPay) {
         await onPay({ method, senderNumber: digits, transactionId });
-      } else {
+      } else if (plan && cycle) {
         const result = await api.post<{ success: true; data: MerchantBillingPayment }>(
           '/billing/payments',
           { planSlug: plan.slug, billingCycle: cycle, method, senderNumber: digits, transactionId },
@@ -173,6 +231,165 @@ export function ManualPaymentPanel({
 
   if (!account) return null;
 
+  const submitText = submitting
+    ? 'Submitting…'
+    : submitLabel
+      ? submitLabel(formatBdt(amount), label)
+      : `Submit ${formatBdt(amount)} ${label} payment`;
+  // The asterisk is drawn by CSS so it never becomes part of the field's name.
+  const requiredMark = "after:ml-0.5 after:text-[#c0392b] after:content-['*']";
+  const fieldClass = (bad: boolean) =>
+    `h-11 w-full rounded-lg border bg-white px-3 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] ${
+      bad ? 'border-[#d9534f]' : 'border-[var(--color-border)]'
+    }`;
+  const senderProps = {
+    ref: senderRef,
+    type: 'tel',
+    inputMode: 'tel' as const,
+    autoComplete: 'tel',
+    placeholder: '01XXXXXXXXX',
+    required: true,
+    'aria-required': true,
+    'aria-invalid': invalid === 'sender' || undefined,
+    value: senderNumber,
+    onChange: (e: ChangeEvent<HTMLInputElement>) => {
+      setSenderNumber(e.target.value);
+      if (invalid === 'sender') setInvalid(null);
+    },
+    className: fieldClass(invalid === 'sender'),
+  };
+  const transactionProps = {
+    ref: transactionRef,
+    type: 'text',
+    autoCapitalize: 'characters',
+    spellCheck: false,
+    required: true,
+    'aria-required': true,
+    'aria-invalid': invalid === 'transaction' || undefined,
+    value: transactionId,
+    onChange: (e: ChangeEvent<HTMLInputElement>) => {
+      setTransactionId(e.target.value.toUpperCase());
+      if (invalid === 'transaction') setInvalid(null);
+    },
+    className: `${fieldClass(invalid === 'transaction')} font-mono uppercase tracking-wide placeholder:font-sans placeholder:normal-case placeholder:tracking-normal`,
+  };
+  const requiredHint = filled ? null : (
+    <p className="text-center text-xs text-[var(--color-muted)]">
+      Enter your {label} number and the transaction ID to submit.
+    </p>
+  );
+  const errorNote = error ? (
+    <p role="alert" className="rounded-lg border border-[#f1c9b8] bg-[#fdf3ee] px-3 py-2 text-sm text-[#a3441f]">
+      {error}
+    </p>
+  ) : null;
+
+  if (variant === 'compact') {
+    return (
+      <form onSubmit={onSubmit} noValidate aria-label="Payment" className="space-y-5">
+        <div className="flex items-center justify-between gap-4 rounded-xl bg-[#f6faf8] px-4 py-3">
+          <div className="min-w-0">
+            <p className="font-semibold text-[var(--color-ink)]">{item ? item.name : `${plan?.name} plan`}</p>
+            <p className="text-sm text-[var(--color-muted)]">
+              {item ? (
+                item.detail
+              ) : (
+                <>
+                  {period.label} billing
+                  {period.discountPercent > 0 ? ` · save ${period.discountPercent}%` : ''}
+                </>
+              )}
+            </p>
+          </div>
+          <p className="shrink-0 text-2xl font-bold tracking-tight text-[var(--color-ink)]">{formatBdt(amount)}</p>
+        </div>
+        {trialEndsAt ? (
+          <p className="rounded-lg bg-[#f6faf8] px-3 py-2 text-sm text-[var(--color-ink)]">
+            Your free trial continues. The paid period starts on {formatBillingDate(trialEndsAt)}.
+          </p>
+        ) : null}
+
+        <fieldset>
+          <legend className="text-sm font-semibold text-[var(--color-ink)]">1. Pay with</legend>
+          <div className="mt-2 grid grid-cols-4 gap-2">
+            {accounts.map((item) => {
+              const checked = item.method === method;
+              const itemBrand = WALLET_BRANDS[item.method];
+              return (
+                <label
+                  key={item.method}
+                  className={`flex cursor-pointer flex-col items-center gap-1 rounded-xl border-2 px-1 py-2 text-xs font-semibold text-[var(--color-ink)] transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--color-accent)] ${
+                    checked ? '' : 'border-[var(--color-border)] bg-white hover:border-[#c9d6d0]'
+                  }`}
+                  style={checked ? { borderColor: itemBrand.color, backgroundColor: itemBrand.tint } : undefined}
+                >
+                  <input
+                    type="radio"
+                    name={`${formId}-method`}
+                    className="sr-only"
+                    checked={checked}
+                    onChange={() => {
+                      setMethod(item.method);
+                      setError(null);
+                    }}
+                  />
+                  <WalletMark method={item.method} size="sm" />
+                  {item.label}
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
+
+        <div>
+          <p className="text-sm font-semibold text-[var(--color-ink)]">
+            2. Send money{' '}
+            <span className="font-normal text-[var(--color-muted)]">
+              · use “{account.transferType}” in {label}
+            </span>
+          </p>
+          <div className="mt-2 divide-y divide-white rounded-xl px-4 py-1" style={{ backgroundColor: brand.tint }}>
+            <CompactCopy label={`${label} number`} value={account.number} />
+            <CompactCopy label="Amount" value={String(amount)} display={formatBdt(amount)} />
+          </div>
+        </div>
+
+        <div>
+          <p className="text-sm font-semibold text-[var(--color-ink)]">3. Confirm your payment</p>
+          <div className="mt-2 grid gap-3 sm:grid-cols-2">
+            <label className="block space-y-1 text-sm">
+              <span className={`text-[var(--color-muted)] ${requiredMark}`}>Your {label} number</span>
+              <input {...senderProps} />
+            </label>
+            <label className="block space-y-1 text-sm">
+              <span className={`text-[var(--color-muted)] ${requiredMark}`}>Transaction ID</span>
+              <input {...transactionProps} placeholder="From the SMS" />
+            </label>
+          </div>
+        </div>
+
+        {errorNote}
+
+        <div className="space-y-3">
+          <button
+            type="submit"
+            disabled={submitting || !filled}
+            className="flex h-12 w-full items-center justify-center rounded-xl text-base font-semibold text-white shadow-sm transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+            style={{ backgroundColor: brand.color }}
+          >
+            {submitText}
+          </button>
+          {requiredHint}
+          <p className="text-center text-xs text-[var(--color-muted)]">
+            <span aria-hidden="true">🔒 </span>{note}
+          </p>
+          {footer}
+        </div>
+      </form>
+    );
+  }
+
+  if (!plan) return null;
   return (
     <section
       id="pay"
@@ -280,28 +497,12 @@ export function ManualPaymentPanel({
             <StepTitle n={3} title="Tell us about your payment" />
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block space-y-1.5 text-sm">
-                <span className="font-medium text-[var(--color-ink)]">Your {label} number</span>
-                <input
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel"
-                  placeholder="01XXXXXXXXX"
-                  value={senderNumber}
-                  onChange={(e) => setSenderNumber(e.target.value)}
-                  className="h-11 w-full rounded-lg border border-[var(--color-border)] bg-white px-3 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
-                />
+                <span className={`font-medium text-[var(--color-ink)] ${requiredMark}`}>Your {label} number</span>
+                <input {...senderProps} />
               </label>
               <label className="block space-y-1.5 text-sm">
-                <span className="font-medium text-[var(--color-ink)]">Transaction ID</span>
-                <input
-                  type="text"
-                  autoCapitalize="characters"
-                  spellCheck={false}
-                  placeholder="e.g. 9BK7XY12QZ"
-                  value={transactionId}
-                  onChange={(e) => setTransactionId(e.target.value.toUpperCase())}
-                  className="h-11 w-full rounded-lg border border-[var(--color-border)] bg-white px-3 font-mono text-base uppercase tracking-wide focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
-                />
+                <span className={`font-medium text-[var(--color-ink)] ${requiredMark}`}>Transaction ID</span>
+                <input {...transactionProps} placeholder="e.g. 9BK7XY12QZ" />
               </label>
             </div>
             <p className="text-xs text-[var(--color-muted)]">
@@ -309,24 +510,17 @@ export function ManualPaymentPanel({
             </p>
           </div>
 
-          {error ? (
-            <p role="alert" className="rounded-lg border border-[#f1c9b8] bg-[#fdf3ee] px-3 py-2 text-sm text-[#a3441f]">
-              {error}
-            </p>
-          ) : null}
+          {errorNote}
 
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || !filled}
             className="flex h-12 w-full items-center justify-center rounded-xl text-base font-semibold text-white shadow-md transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
             style={{ backgroundColor: brand.color }}
           >
-            {submitting
-              ? 'Submitting…'
-              : submitLabel
-                ? submitLabel(formatBdt(amount), label)
-                : `Submit ${formatBdt(amount)} ${label} payment`}
+            {submitText}
           </button>
+          {requiredHint}
           {footer}
         </form>
       </div>

@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   Injectable,
   NotFoundException,
   UnprocessableEntityException,
@@ -11,6 +12,7 @@ import {
   ShippingProvider,
   StoreRole,
   type Shipment,
+  type ShipmentEvent,
 } from '@prisma/client';
 import type { Request } from 'express';
 import { AuditService } from '../audit/audit.service';
@@ -18,6 +20,7 @@ import { AuthorizationService } from '../authorization/authorization.service';
 import { assertShipmentStatusTransition } from '../payments/payment-transitions';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateShipmentDto, UpdateShipmentDto } from './dto/shipment.dto';
+import { findActiveCourierShipment, isShippedLike, syncOrderFulfillment } from './shipment-fulfillment';
 
 /**
  * Relationship (Phase 11):
@@ -59,6 +62,16 @@ export class ShipmentsService {
     const status = dto.status ?? ShipmentStatus.PENDING;
     const now = new Date();
     const shipment = await this.prisma.$transaction(async (tx) => {
+      // Same order lock as courier booking, so a manual shipment and a courier
+      // booking for one order can never both be created.
+      await tx.$queryRaw`SELECT id FROM orders WHERE id = ${orderId}::uuid AND store_id = ${storeId}::uuid FOR UPDATE`;
+      const courier = await findActiveCourierShipment(tx, storeId, orderId);
+      if (courier) {
+        throw new ConflictException({
+          message: 'This order already has an active courier shipment. Use it (Sync status) instead of creating another shipment.',
+          error: 'SHIPMENT_ALREADY_EXISTS',
+        });
+      }
       const created = await tx.shipment.create({
         data: {
           storeId,
@@ -66,11 +79,11 @@ export class ShipmentsService {
           provider: dto.provider ?? ShippingProvider.MANUAL,
           status,
           trackingNumber: dto.trackingNumber?.trim() || null,
-          shippedAt: this.isShippedLike(status) ? now : null,
+          shippedAt: isShippedLike(status) ? now : null,
           deliveredAt: status === ShipmentStatus.DELIVERED ? now : null,
         },
       });
-      const fulfillmentChanged = await this.syncOrderFulfillment(
+      const fulfillmentChanged = await syncOrderFulfillment(
         tx,
         storeId,
         orderId,
@@ -128,6 +141,18 @@ export class ShipmentsService {
     };
   }
 
+  async get(userId: string, storeId: string, orderId: string, shipmentId: string) {
+    await this.authorization.assertStoreAccess(userId, storeId);
+    const shipment = await this.prisma.shipment.findFirst({
+      where: { id: shipmentId, storeId, orderId },
+      include: { events: { orderBy: { occurredAt: 'desc' }, take: 50 } },
+    });
+    if (!shipment) {
+      throw new NotFoundException('Shipment not found');
+    }
+    return { success: true as const, data: { ...this.toDto(shipment), events: shipment.events.map(toEventDto) } };
+  }
+
   async update(
     userId: string,
     storeId: string,
@@ -144,9 +169,14 @@ export class ShipmentsService {
 
     const updated = await this.prisma.$transaction(async (tx) => {
       const locked = await tx.$queryRaw<
-        { id: string; status: ShipmentStatus; tracking_number: string | null }[]
+        {
+          id: string;
+          status: ShipmentStatus;
+          tracking_number: string | null;
+          provider_reference: string | null;
+        }[]
       >`
-        SELECT id, status, tracking_number
+        SELECT id, status, tracking_number, provider_reference
         FROM shipments
         WHERE id = ${shipmentId}::uuid
           AND store_id = ${storeId}::uuid
@@ -156,6 +186,13 @@ export class ShipmentsService {
       const row = locked[0];
       if (!row) {
         throw new NotFoundException('Shipment not found');
+      }
+      // A courier booking's status and tracking come from the courier (Sync status).
+      if (row.provider_reference) {
+        throw new ConflictException({
+          message: 'This shipment is managed by the courier. Use "Sync status" to refresh it.',
+          error: 'SHIPMENT_MANAGED_BY_COURIER',
+        });
       }
 
       const data: Prisma.ShipmentUpdateInput = {};
@@ -178,12 +215,12 @@ export class ShipmentsService {
         assertShipmentStatusTransition(row.status, dto.status);
         data.status = dto.status;
         const now = new Date();
-        if (this.isShippedLike(dto.status) && !this.isShippedLike(row.status)) {
+        if (isShippedLike(dto.status) && !isShippedLike(row.status)) {
           data.shippedAt = now;
         }
         if (dto.status === ShipmentStatus.DELIVERED) {
           data.deliveredAt = now;
-          if (!this.isShippedLike(row.status)) {
+          if (!isShippedLike(row.status)) {
             data.shippedAt = now;
           }
         }
@@ -196,7 +233,7 @@ export class ShipmentsService {
 
       let fulfillmentChanged = false;
       if (dto.status !== undefined) {
-        fulfillmentChanged = await this.syncOrderFulfillment(
+        fulfillmentChanged = await syncOrderFulfillment(
           tx,
           storeId,
           orderId,
@@ -265,42 +302,6 @@ export class ShipmentsService {
     return { success: true as const, data: this.toDto(updated.shipment) };
   }
 
-  private isShippedLike(status: ShipmentStatus): boolean {
-    return (
-      status === ShipmentStatus.SHIPPED ||
-      status === ShipmentStatus.IN_TRANSIT ||
-      status === ShipmentStatus.DELIVERED
-    );
-  }
-
-  /** @returns true when order fulfillment was advanced */
-  private async syncOrderFulfillment(
-    tx: Prisma.TransactionClient,
-    storeId: string,
-    orderId: string,
-    shipmentStatus: ShipmentStatus,
-  ): Promise<boolean> {
-    if (!this.isShippedLike(shipmentStatus)) {
-      return false;
-    }
-    const order = await tx.order.findFirst({
-      where: { id: orderId, storeId },
-      select: { fulfillmentStatus: true },
-    });
-    if (!order) return false;
-    if (
-      order.fulfillmentStatus === FulfillmentStatus.UNFULFILLED ||
-      order.fulfillmentStatus === FulfillmentStatus.PARTIALLY_FULFILLED
-    ) {
-      await tx.order.update({
-        where: { id: orderId },
-        data: { fulfillmentStatus: FulfillmentStatus.FULFILLED },
-      });
-      return true;
-    }
-    return false;
-  }
-
   private async requireStore(storeId: string) {
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
@@ -334,8 +335,35 @@ export class ShipmentsService {
       shippedAt: shipment.shippedAt,
       deliveredAt: shipment.deliveredAt,
       metadata: shipment.metadata,
+      ...courierFields(shipment),
       createdAt: shipment.createdAt,
       updatedAt: shipment.updatedAt,
     };
   }
+}
+
+/** Courier booking details safe to show the merchant (no credentials, no internal ids). */
+export function courierFields(shipment: Shipment) {
+  return {
+    courierManaged: shipment.providerReference !== null,
+    /** in_progress | unconfirmed | confirmed | released (null for manual shipments). */
+    courierBooking: shipment.providerReference
+      ? ((shipment.metadata as { booking?: string } | null)?.booking ?? null)
+      : null,
+    providerShipmentId: shipment.providerShipmentId,
+    providerStatus: shipment.providerStatus,
+    codAmount: shipment.codAmount?.toFixed(2) ?? null,
+    weightKg: shipment.weightKg?.toString() ?? null,
+    lastSyncedAt: shipment.lastSyncedAt,
+  };
+}
+
+export function toEventDto(event: ShipmentEvent) {
+  return {
+    id: event.id,
+    providerStatus: event.providerStatus,
+    status: event.status,
+    message: event.message,
+    occurredAt: event.occurredAt,
+  };
 }

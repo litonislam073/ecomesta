@@ -12,6 +12,7 @@ import { Prisma, StoreRole } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import type { Request } from 'express';
 import type { MediaItem, MediaUsage } from '@ecomesta/types';
+import { PlanEntitlementsService } from '../billing/plan-entitlements.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
@@ -66,6 +67,7 @@ export class MediaLibraryService {
     private readonly authorization: AuthorizationService,
     private readonly audit: AuditService,
     private readonly config: ConfigService,
+    private readonly entitlements: PlanEntitlementsService,
   ) {}
 
   /**
@@ -105,6 +107,7 @@ export class MediaLibraryService {
       keyPrefix: string;
     },
   ): Promise<MediaRow> {
+    await this.entitlements.assertStorageCapacity(tx, input.storeId, input.file.buffer.length);
     const id = randomUUID();
     return tx.media.create({
       data: {

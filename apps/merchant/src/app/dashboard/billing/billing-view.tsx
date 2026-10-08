@@ -1,15 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { ManualPaymentAccount, MerchantBillingPayment, MerchantSubscription } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
-import { formatBdt, formatBillingDate, PAYMENT_GRACE_DAYS } from '@ecomesta/utils';
+import { billingCycleDefinition, formatBdt, formatBillingDate, PAYMENT_GRACE_DAYS } from '@ecomesta/utils';
 import {
   ManualPaymentPanel,
   PaymentHistory,
   PendingPaymentNotice,
 } from '@/components/billing/manual-payment';
+import { PaymentDialog } from '@/components/billing/payment-dialog';
 import { CycleSwitch, PlanCards } from '@/components/billing/plan-cards';
 import { defaultSelection } from '@/components/billing/plan-picker';
 import { PaymentCta, cycleLabel, priceAfterTrial } from '@/components/billing/subscription-notices';
@@ -98,10 +99,14 @@ export default function BillingView() {
   const [payments, setPayments] = useState<MerchantBillingPayment[]>([]);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
+  // The payment opens as a dialog over the plans, from the bar under them.
+  const [paying, setPaying] = useState(false);
+  const payHeadingRef = useRef<HTMLHeadingElement>(null);
 
   const sub = data?.subscription ?? null;
   const pending = data?.pendingPayment ?? null;
   const canManage = Boolean(data?.canManage);
+  const canPayNow = Boolean(data && canManage && !pending && selection && accounts && accounts.length > 0);
 
   useEffect(() => {
     if (!plans || selection) return;
@@ -154,7 +159,33 @@ export default function BillingView() {
     }
   }
 
+  useEffect(() => {
+    if (paying) payHeadingRef.current?.focus({ preventScroll: true });
+  }, [paying]);
+
+  // "Pay & Reactivate" and the payment reminders link to #pay. Arriving with it
+  // opens the payment once; on this page the link scrolls to the bar (id="pay").
+  const openedFromLink = useRef(false);
+  useEffect(() => {
+    if (!canPayNow) return;
+    if (!openedFromLink.current && window.location.hash === '#pay') {
+      openedFromLink.current = true;
+      setPaying(true);
+    }
+    const onHash = () => {
+      if (window.location.hash === '#pay') setPaying(true);
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, [canPayNow]);
+
+  function closePayment() {
+    setPaying(false);
+    window.setTimeout(() => document.getElementById('billing-continue-to-payment')?.focus(), 0);
+  }
+
   function onPaymentSubmitted(payment: MerchantBillingPayment) {
+    setPaying(false);
     if (data) setData({ ...data, pendingPayment: payment });
     setPayments((current) => [payment, ...current]);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -171,6 +202,10 @@ export default function BillingView() {
     currentPlan !== null &&
     selectedPlan.monthlyPrice <= currentPlan.monthlyPrice &&
     (selection.plan !== sub.plan.slug || selection.cycle !== sub.billingCycle);
+  const canPay = Boolean(data && canManage && !pending && selectedPlan && selection && accounts && accounts.length > 0);
+  const amount = selectedPlan && selection
+    ? selectedPlan.prices.find((price) => price.billingCycle === selection.cycle)?.amount ?? selectedPlan.monthlyPrice
+    : 0;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -218,8 +253,8 @@ export default function BillingView() {
               </h2>
               <p className="text-sm text-[var(--color-muted)]">
                 {sub
-                  ? 'Pick a plan and billing period, then pay below. Plan changes take effect once your payment is confirmed.'
-                  : 'Pick a plan and billing period, then pay below. Your store goes live as soon as we confirm the payment.'}
+                  ? 'Pick a plan and billing period, then continue to payment. Plan changes take effect once your payment is confirmed.'
+                  : 'Pick a plan and billing period, then continue to payment. Your store goes live as soon as we confirm the payment.'}
               </p>
             </div>
             <CycleSwitch
@@ -265,15 +300,66 @@ export default function BillingView() {
         <p className="text-sm text-[var(--color-muted)]">Only the account owner or an admin can pay for the plan.</p>
       ) : null}
 
-      {data && canManage && !pending && selectedPlan && selection && accounts && accounts.length > 0 ? (
-        <ManualPaymentPanel
-          plan={selectedPlan}
-          cycle={selection.cycle}
-          accounts={accounts}
-          token={accessToken}
-          trialEndsAt={sub?.phase === 'TRIAL' ? sub.trialEndsAt : null}
-          onSubmitted={onPaymentSubmitted}
-        />
+      {canPay && selectedPlan && selection ? (
+        // Stays in view at the bottom of the screen while the plans are on it.
+        <div id="pay" className="sticky bottom-4 z-20 scroll-mb-4">
+          <div
+            role="region"
+            aria-label="Selected plan"
+            className="flex flex-col gap-3 rounded-2xl border border-[var(--color-accent)]/30 bg-white/95 p-4 shadow-[0_16px_40px_-12px_rgba(16,40,32,0.35)] backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-6"
+          >
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">Selected plan</p>
+              <p className="mt-0.5 flex flex-wrap items-baseline gap-x-2 text-[var(--color-ink)]">
+                <span className="text-base font-semibold">
+                  {selectedPlan.name} · {billingCycleDefinition(selection.cycle).label}
+                </span>
+                <span className="text-2xl font-bold tracking-tight">{formatBdt(amount)}</span>
+              </p>
+            </div>
+            <Button
+              id="billing-continue-to-payment"
+              type="button"
+              className="h-12 rounded-xl px-7 text-base font-semibold"
+              onClick={() => setPaying(true)}
+            >
+              Continue to payment →
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {paying && canPay && selectedPlan && selection && accounts ? (
+        <PaymentDialog
+          active
+          title="Pay for your plan"
+          headingRef={payHeadingRef}
+          onClose={closePayment}
+          subtitle={
+            sub
+              ? 'Your plan changes as soon as our team confirms the payment.'
+              : 'Your store goes live as soon as our team confirms the payment.'
+          }
+        >
+          <ManualPaymentPanel
+            plan={selectedPlan}
+            cycle={selection.cycle}
+            accounts={accounts}
+            token={accessToken}
+            trialEndsAt={sub?.phase === 'TRIAL' ? sub.trialEndsAt : null}
+            onSubmitted={onPaymentSubmitted}
+            variant="compact"
+            footer={
+              <button
+                type="button"
+                onClick={closePayment}
+                className="w-full rounded-sm text-center text-sm font-semibold text-[var(--color-accent)] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+              >
+                ← Back to plans
+              </button>
+            }
+          />
+        </PaymentDialog>
       ) : null}
 
       {data ? <PaymentHistory payments={payments} /> : null}

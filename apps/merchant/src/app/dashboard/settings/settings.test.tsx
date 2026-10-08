@@ -13,6 +13,7 @@ import NotificationSettingsPage from '@/app/dashboard/settings/notifications/pag
 import ShippingSettingsPage from '@/app/dashboard/settings/shipping/page';
 import DomainSettingsPage from '@/app/dashboard/settings/domains/page';
 import SeoSettingsPage from '@/app/dashboard/settings/seo/page';
+import TrackingSettingsPage from '@/app/dashboard/settings/tracking/page';
 import DangerZoneSettingsPage from '@/app/dashboard/settings/danger-zone/page';
 import { SidebarNav } from '@/components/dashboard/sidebar-nav';
 import { ApiError } from '@/lib/api-client';
@@ -76,6 +77,11 @@ const baseSettings: StoreSettings = {
   locale: 'en-BD',
   checkoutRequirePhone: false,
   checkoutAllowOrderNotes: true,
+  paymentCodEnabled: true,
+  paymentBankTransferEnabled: true,
+  paymentBankTransferDetails: null,
+  paymentOtherEnabled: true,
+  paymentOtherDetails: null,
   allowCustomerCancellation: false,
   seoTitle: 'Alpha handmade goods',
   seoDescription: null,
@@ -84,6 +90,10 @@ const baseSettings: StoreSettings = {
   ogDescription: null,
   ogImageUrl: null,
   seoIndexingEnabled: true,
+  metaPixelId: null,
+  gtmContainerId: null,
+  ga4MeasurementId: null,
+  googleSiteVerification: null,
   fixed: {
     guestCheckout: true,
     requireEmail: true,
@@ -156,7 +166,7 @@ describe('Merchant settings', () => {
         'aria-current',
         'page',
       );
-      expect(screen.getByRole('link', { name: 'Theme' })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: 'Theme New' })).toHaveAttribute(
         'href',
         '/dashboard/theme',
       );
@@ -476,6 +486,62 @@ describe('Merchant settings', () => {
       await waitFor(() =>
         expect(pushToast).toHaveBeenCalledWith('ogImageUrl must be an http(s) URL', 'error'),
       );
+    });
+  });
+
+  describe('Marketing & tracking', () => {
+    it('saves Pixel, Tag Manager and Analytics IDs and the Search Console code from a pasted tag', async () => {
+      api.patch.mockResolvedValue({ success: true, data: baseSettings });
+      const user = userEvent.setup();
+      render(<TrackingSettingsPage />);
+      await user.type(await findLoaded('Pixel ID'), '123456789012345');
+      await user.type(screen.getByLabelText('Container ID'), 'GTM-ABC1234');
+      await user.type(screen.getByLabelText('Measurement ID'), 'G-ABC123XYZ9');
+      const tag = screen.getByLabelText('Verification tag');
+      await user.click(tag);
+      await user.paste('<meta name="google-site-verification" content="AbC-123_xyzVerificationCode" />');
+      expect(screen.getByText('Code found: AbC-123_xyzVerificationCode')).toBeInTheDocument();
+      // The store address to verify, from the store's domains.
+      expect(screen.getByText('https://shop.alpha.com/')).toBeInTheDocument();
+      expect(screen.getAllByText('Not set up')).toHaveLength(4);
+
+      await user.click(screen.getByRole('button', { name: 'Save changes' }));
+      await waitFor(() =>
+        expect(api.patch).toHaveBeenCalledWith(
+          '/stores/store-1/settings',
+          expect.objectContaining({
+            metaPixelId: '123456789012345',
+            gtmContainerId: 'GTM-ABC1234',
+            ga4MeasurementId: 'G-ABC123XYZ9',
+            googleSiteVerification: '<meta name="google-site-verification" content="AbC-123_xyzVerificationCode" />',
+          }),
+        ),
+      );
+    });
+
+    it('refuses scripts and wrong IDs before saving', async () => {
+      const user = userEvent.setup();
+      render(<TrackingSettingsPage />);
+      await user.type(await findLoaded('Pixel ID'), '<script>');
+      expect(screen.getByText(/The Pixel ID is a number/)).toBeInTheDocument();
+      await user.type(screen.getByLabelText('Measurement ID'), 'UA-1234-1');
+      expect(screen.getByText(/Use the measurement ID that starts with G-/)).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Save changes' }));
+      expect(api.patch).not.toHaveBeenCalled();
+    });
+
+    it('shows what is connected and the events the store sends', async () => {
+      mockLoad({ ...baseSettings, metaPixelId: '123456789012345', ga4MeasurementId: 'G-ABC123XYZ9' });
+      render(<TrackingSettingsPage />);
+      await findLoaded('Pixel ID');
+      expect(screen.getAllByText('Connected')).toHaveLength(2);
+      for (const event of ['PageView', 'ViewContent', 'AddToCart', 'InitiateCheckout', 'Purchase', 'purchase']) {
+        expect(screen.getByText(event)).toBeInTheDocument();
+      }
+    });
+
+    it('is listed in the settings menu', () => {
+      expect(SETTINGS_NAV.some((item) => item.href === '/dashboard/settings/tracking')).toBe(true);
     });
   });
 });

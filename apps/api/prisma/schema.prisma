@@ -255,6 +255,8 @@ model User {
   emailDeliveries          EmailDelivery[]
   billingPaymentsSubmitted BillingPayment[] @relation("BillingPaymentSubmittedBy")
   billingPaymentsReviewed  BillingPayment[] @relation("BillingPaymentReviewedBy")
+  themePurchasesSubmitted  ThemePurchase[]  @relation("ThemePurchaseSubmittedBy")
+  themePurchasesReviewed   ThemePurchase[]  @relation("ThemePurchaseReviewedBy")
 
   @@index([status])
   @@index([platformRole])
@@ -315,6 +317,7 @@ model Tenant {
   memberships     TenantUser[]
   subscriptions   Subscription[]
   billingPayments BillingPayment[]
+  themePurchases  ThemePurchase[]
   auditLogs       AuditLog[]
   notifications   Notification[]
 
@@ -349,6 +352,14 @@ model Store {
   checkoutRequirePhone          Boolean      @default(false) @map("checkout_require_phone")
   /// Public checkout drops customer notes when false.
   checkoutAllowOrderNotes       Boolean      @default(true) @map("checkout_allow_order_notes")
+  /// Offline payment options the store offers at checkout (Settings → Payment providers → Manual payments).
+  paymentCodEnabled             Boolean      @default(true) @map("payment_cod_enabled")
+  paymentBankTransferEnabled    Boolean      @default(true) @map("payment_bank_transfer_enabled")
+  /// Bank account details shown to shoppers who choose bank transfer.
+  paymentBankTransferDetails    String?      @map("payment_bank_transfer_details")
+  paymentOtherEnabled           Boolean      @default(true) @map("payment_other_enabled")
+  /// Instructions shown to shoppers who choose "Other payment".
+  paymentOtherDetails           String?      @map("payment_other_details")
   /// Guests may cancel unpaid, unfulfilled PENDING/CONFIRMED orders from order tracking.
   allowCustomerCancellation     Boolean      @default(false) @map("allow_customer_cancellation")
   /// Storefront SEO (plain text; rendered through framework metadata only).
@@ -359,6 +370,11 @@ model Store {
   ogDescription                 String?      @map("og_description") @db.VarChar(320)
   ogImageUrl                    String?      @map("og_image_url") @db.VarChar(2048)
   seoIndexingEnabled            Boolean      @default(true) @map("seo_indexing_enabled")
+  /// Marketing & tracking (IDs only; the storefront builds the scripts).
+  metaPixelId                   String?      @map("meta_pixel_id") @db.VarChar(20)
+  gtmContainerId                String?      @map("gtm_container_id") @db.VarChar(20)
+  ga4MeasurementId              String?      @map("ga4_measurement_id") @db.VarChar(20)
+  googleSiteVerification        String?      @map("google_site_verification") @db.VarChar(100)
   /// Monotonic counter used to allocate human order numbers (EM-100001…).
   orderSequence                 Int          @default(100000) @map("order_sequence")
   /// Set once when the optional sample catalog is imported; never cleared.
@@ -384,6 +400,8 @@ model Store {
   shippingMethods        ShippingMethod[]
   shippingZones          ShippingZone[]
   shipments              Shipment[]
+  shipmentEvents         ShipmentEvent[]
+  courierConnections     CourierConnection[]
   coupons                Coupon[]
   media                  Media[]
   storeThemes            StoreTheme[]
@@ -687,6 +705,8 @@ model Order {
   /// Snapshot of coupon code applied at purchase (null if none).
   couponCode         String?             @map("coupon_code") @db.Citext
   customerNote       String?             @map("customer_note")
+  /// When someone on the store's team first opened the order; null = new (counted in the Orders badge).
+  merchantViewedAt   DateTime?           @map("merchant_viewed_at")
   internalNote       String?             @map("internal_note")
   /// Customer-safe cancellation explanation (never use for internal merchant notes).
   cancelReason       String?             @map("cancel_reason") @db.VarChar(500)
@@ -985,25 +1005,78 @@ model ShippingMethod {
 }
 
 model Shipment {
-  id             String           @id @default(uuid()) @db.Uuid
-  storeId        String           @map("store_id") @db.Uuid
-  orderId        String           @map("order_id") @db.Uuid
-  provider       ShippingProvider @default(MANUAL)
-  trackingNumber String?          @map("tracking_number")
-  status         ShipmentStatus   @default(PENDING)
-  shippedAt      DateTime?        @map("shipped_at")
-  deliveredAt    DateTime?        @map("delivered_at")
-  metadata       Json?
-  createdAt      DateTime         @default(now()) @map("created_at")
-  updatedAt      DateTime         @updatedAt @map("updated_at")
+  id                 String           @id @default(uuid()) @db.Uuid
+  storeId            String           @map("store_id") @db.Uuid
+  orderId            String           @map("order_id") @db.Uuid
+  provider           ShippingProvider @default(MANUAL)
+  trackingNumber     String?          @map("tracking_number")
+  status             ShipmentStatus   @default(PENDING)
+  shippedAt          DateTime?        @map("shipped_at")
+  deliveredAt        DateTime?        @map("delivered_at")
+  metadata           Json?
+  /// Courier bookings only (null for manual shipments) ---------------------
+  /// The courier's id for the parcel (Steadfast `consignment_id`).
+  providerShipmentId String?          @map("provider_shipment_id")
+  /// Reference sent to the courier (Steadfast `invoice`); set before the booking call.
+  providerReference  String?          @map("provider_reference")
+  /// Last raw status reported by the courier (e.g. Steadfast `delivery_status`).
+  providerStatus     String?          @map("provider_status")
+  /// Cash the courier collects, computed server-side from the order.
+  codAmount          Decimal?         @map("cod_amount") @db.Decimal(12, 2)
+  weightKg           Decimal?         @map("weight_kg") @db.Decimal(8, 3)
+  lastSyncedAt       DateTime?        @map("last_synced_at")
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
 
-  store Store @relation(fields: [storeId], references: [id], onDelete: Restrict)
-  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  store  Store           @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  order  Order           @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  events ShipmentEvent[]
 
+  // Partial unique indexes in migration 20261007090000_courier_integration:
+  // one active courier booking per order; unique (provider, provider_shipment_id)
+  // and (provider, provider_reference).
   @@index([storeId])
   @@index([orderId])
   @@index([storeId, status])
   @@map("shipments")
+}
+
+/// Courier status history for a shipment (raw provider status + normalised status).
+model ShipmentEvent {
+  id             String          @id @default(uuid()) @db.Uuid
+  shipmentId     String          @map("shipment_id") @db.Uuid
+  storeId        String          @map("store_id") @db.Uuid
+  providerStatus String?         @map("provider_status")
+  /// Null when the courier status has no safe Ecomesta equivalent.
+  status         ShipmentStatus?
+  message        String?         @db.VarChar(500)
+  occurredAt     DateTime        @default(now()) @map("occurred_at")
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  store    Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId, occurredAt])
+  @@index([storeId])
+  @@map("shipment_events")
+}
+
+/// A store's account with a courier service. Disconnecting deletes the row.
+model CourierConnection {
+  id                   String           @id @default(uuid()) @db.Uuid
+  storeId              String           @map("store_id") @db.Uuid
+  provider             ShippingProvider
+  /// AES-256-GCM ciphertext of the provider credentials (never returned via API).
+  encryptedCredentials String           @map("encrypted_credentials")
+  /// Non-secret settings safe to show the merchant (pickup details, default weight).
+  publicConfig         Json?            @map("public_config")
+  createdAt            DateTime         @default(now()) @map("created_at")
+  updatedAt            DateTime         @updatedAt @map("updated_at")
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, provider])
+  @@map("courier_connections")
 }
 
 // ---------------------------------------------------------------------------
@@ -1095,10 +1168,13 @@ model Theme {
   previewImageUrl String?  @map("preview_image_url")
   configuration   Json?
   active          Boolean  @default(true)
+  /// Premium theme price in BDT (one-time, per business); null = not sold separately.
+  priceBdt        Decimal? @map("price_bdt") @db.Decimal(12, 2)
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   storeThemes StoreTheme[]
+  purchases   ThemePurchase[]
 
   @@map("themes")
 }
@@ -1372,4 +1448,37 @@ model EmailDelivery {
   @@index([eventType])
   @@index([createdAt])
   @@map("email_deliveries")
+}
+
+/// A business buying a premium theme by mobile wallet. The theme unlocks for
+/// every store of the business when a Super Admin approves the payment.
+model ThemePurchase {
+  id                String               @id @default(uuid()) @db.Uuid
+  tenantId          String               @map("tenant_id") @db.Uuid
+  themeId           String               @map("theme_id") @db.Uuid
+  /// Server price of the theme at submission.
+  amount            Decimal              @db.Decimal(12, 2)
+  currency          String               @default("BDT")
+  method            ManualPaymentMethod
+  payToNumber       String               @map("pay_to_number")
+  senderNumber      String               @map("sender_number")
+  transactionId     String               @map("transaction_id") @db.Citext
+  status            BillingPaymentStatus @default(PENDING)
+  submittedByUserId String               @map("submitted_by_user_id") @db.Uuid
+  reviewedByUserId  String?              @map("reviewed_by_user_id") @db.Uuid
+  reviewedAt        DateTime?            @map("reviewed_at")
+  rejectionReason   String?              @map("rejection_reason")
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+
+  tenant      Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  theme       Theme  @relation(fields: [themeId], references: [id], onDelete: Restrict)
+  submittedBy User   @relation("ThemePurchaseSubmittedBy", fields: [submittedByUserId], references: [id], onDelete: Restrict)
+  reviewedBy  User?  @relation("ThemePurchaseReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  /// A wallet transaction ID can only ever be claimed once.
+  @@unique([method, transactionId])
+  @@index([tenantId])
+  @@index([status, createdAt])
+  @@map("theme_purchases")
 }

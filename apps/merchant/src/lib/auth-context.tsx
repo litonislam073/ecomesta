@@ -67,6 +67,31 @@ function refreshAccessTokenOnce(): Promise<string | null> {
   return refreshInFlight;
 }
 
+/**
+ * A non-secret "this browser was signed in" flag (no token, no user data). The
+ * sign-in and sign-up pages use it to decide whether to wait for the session
+ * check: without it they show the form at once instead of a loading state.
+ */
+const SESSION_HINT_KEY = 'ecomesta_signed_in';
+
+function setSessionHint(signedIn: boolean) {
+  try {
+    if (signedIn) window.localStorage.setItem(SESSION_HINT_KEY, '1');
+    else window.localStorage.removeItem(SESSION_HINT_KEY);
+  } catch {
+    /* storage unavailable: the pages simply show the form */
+  }
+}
+
+/** True when this browser was signed in last time; the session check decides for sure. */
+export function hasSessionHint(): boolean {
+  try {
+    return typeof window !== 'undefined' && window.localStorage.getItem(SESSION_HINT_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -75,7 +100,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearSession = useCallback(() => {
     setAccessToken(null);
     setUser(null);
+    setSessionHint(false);
   }, []);
+
+  useEffect(() => {
+    if (user) setSessionHint(true);
+  }, [user]);
 
   useEffect(() => {
     configureApiClient({

@@ -5,6 +5,7 @@ import {
   THEME_BORDER_RADII,
   THEME_HEADER_LAYOUTS,
   THEME_HERO_ALIGNMENTS,
+  THEME_HERO_BADGE_MODES,
   THEME_LIMITS,
   THEME_SECTION_TYPES,
   THEME_SOCIAL_NETWORKS,
@@ -289,6 +290,10 @@ function normalizeHero(input: Record<string, unknown>): ThemeHeroConfig {
       ['imageUrl', optionalUrl],
       ['alignment', (v, p) => oneOf(v, p, THEME_HERO_ALIGNMENTS)],
       ['overlayOpacity', (v, p) => num(v, p, 0, 1)],
+      ['badgeMode', (v, p) => oneOf(v, p, THEME_HERO_BADGE_MODES)],
+      ['badgeTop', (v, p) => text(v, p, 20)],
+      ['badgeMain', (v, p) => text(v, p, 12)],
+      ['badgeBottom', (v, p) => text(v, p, 20)],
     ],
     'hero',
   );
@@ -306,6 +311,8 @@ function normalizeIdList(value: unknown, path: string): string[] {
   );
   return Array.from(new Set(items));
 }
+
+const SECTION_ID_PATTERN = /^[A-Za-z0-9-]{1,40}$/;
 
 function normalizeSections(
   value: unknown,
@@ -327,6 +334,31 @@ function normalizeSections(
     }
     if (entry.enabled !== undefined && entry.enabled !== null) {
       parsed.enabled = bool(entry.enabled, `${path}[${index}].enabled`);
+    }
+    const at = `${path}[${index}]`;
+    if (entry.id !== undefined && entry.id !== null) {
+      const id = text(entry.id, `${at}.id`, 40);
+      if (!SECTION_ID_PATTERN.test(id)) fail(`${at}.id`, 'must be letters, digits or dashes');
+      parsed.id = id;
+    }
+    // Sections are always written as a whole list, so an empty optional value
+    // simply leaves the key out.
+    const optional = (key: 'text' | 'buttonLabel' | 'buttonHref' | 'imageUrl', read: (v: unknown, p: string) => string) => {
+      const value = entry[key];
+      if (value === undefined || value === null || (typeof value === 'string' && value.trim() === '')) return;
+      parsed[key] = read(value, `${at}.${key}`);
+    };
+    optional('text', (v, p) => text(v, p, THEME_LIMITS.description));
+    optional('buttonLabel', (v, p) => text(v, p, THEME_LIMITS.label));
+    optional('buttonHref', url);
+    optional('imageUrl', url);
+    if (entry.productId !== undefined && entry.productId !== null && entry.productId !== '') {
+      const id = text(entry.productId, `${at}.productId`, 36);
+      if (!UUID_PATTERN.test(id)) fail(`${at}.productId`, 'must be a UUID');
+      parsed.productId = id.toLowerCase();
+    }
+    if (entry.showCountdown !== undefined && entry.showCountdown !== null) {
+      parsed.showCountdown = bool(entry.showCountdown, `${at}.showCountdown`);
     }
     return parsed;
   });

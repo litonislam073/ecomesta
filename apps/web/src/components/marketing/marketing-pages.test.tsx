@@ -182,9 +182,12 @@ describe('hub and static pages', () => {
     expectSingleH1(<AboutPage />);
   });
 
-  it('shows the contact email only when configured', () => {
+  it('always offers the contact form, and shows the contact email only when configured', () => {
     render(<ContactPage />);
-    expect(screen.getByText(/being set up/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Send us a message' })).toBeInTheDocument();
+    expect(screen.getByRole('form', { name: 'Contact form' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'What happens next' })).toBeInTheDocument();
+    expect(screen.queryByText(/being set up/i)).toBeNull();
     expect(screen.queryByRole('link', { name: /@/ })).toBeNull();
     cleanup();
 

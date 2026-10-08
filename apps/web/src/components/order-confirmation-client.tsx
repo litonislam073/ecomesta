@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
+import { trackPurchase } from '@/lib/tracking';
 import { useRouter } from 'next/navigation';
 import type { PublicOrderConfirmationDetail } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
@@ -46,6 +47,20 @@ export function OrderConfirmationClient({
     try {
       const order = await lookupPublicOrder(storeSlug, reference, contact);
       rememberOrderContact(storeSlug, reference, contact);
+      if (order.status !== 'CANCELLED') {
+        trackPurchase(
+          order.publicReference,
+          order.items.map((item) => ({
+            id: item.sku || item.productName,
+            name: item.productName,
+            variant: item.variantName,
+            price: Number(item.unitPrice),
+            quantity: item.quantity,
+          })),
+          Number(order.total),
+          order.currency,
+        );
+      }
       setState({ kind: 'ready', order, contact });
       return true;
     } catch (err) {

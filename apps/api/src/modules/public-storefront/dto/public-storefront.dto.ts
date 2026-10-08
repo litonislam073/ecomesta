@@ -1,4 +1,7 @@
 import {
+  ArrayMaxSize,
+  IsArray,
+  IsUUID,
   IsIn,
   IsInt,
   IsOptional,
@@ -66,6 +69,18 @@ export class ListPublicProductsQueryDto {
   @IsOptional()
   @Transform(({ value }: { value: unknown }) => value === true || value === 'true')
   inStock?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Only these products (comma-separated ids, at most 24), e.g. the theme deal of the day',
+  })
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.split(',').map((id) => id.trim()).filter(Boolean) : value,
+  )
+  @IsArray()
+  @ArrayMaxSize(24)
+  @IsUUID('all', { each: true })
+  ids?: string[];
 }
 
 export class ListPublicCategoriesQueryDto {

@@ -121,6 +121,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
 
+/** The store context, or null outside a StoreProvider (for optional extras such as badges). */
+export function useOptionalStoreContext() {
+  return useContext(StoreContext);
+}
+
 export function useStoreContext() {
   const ctx = useContext(StoreContext);
   if (!ctx) {

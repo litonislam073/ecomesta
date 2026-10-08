@@ -19,6 +19,7 @@ import {
   shouldSkipPath,
   trustProxyEnabled,
 } from '@/lib/domain-routing';
+import { THEME_PREVIEW_HEADER, THEME_PREVIEW_QUERY, readThemePreviewToken } from '@/lib/theme-preview';
 
 const COOKIE_OPTIONS = {
   path: '/',
@@ -38,6 +39,14 @@ function forwardedHeaders(
   const headers = new Headers(request.headers);
   headers.delete(STORE_SLUG_HEADER);
   headers.delete(CANONICAL_HOST_HEADER);
+  headers.delete(THEME_PREVIEW_HEADER);
+  // The theme editor's preview: only a well-formed token from the URL is passed on.
+  const previewToken = store
+    ? readThemePreviewToken(request.nextUrl.searchParams.get(THEME_PREVIEW_QUERY))
+    : null;
+  if (previewToken) {
+    headers.set(THEME_PREVIEW_HEADER, previewToken);
+  }
   if (store) {
     headers.set(STORE_SLUG_HEADER, store.slug);
     if (store.canonicalHostname) {

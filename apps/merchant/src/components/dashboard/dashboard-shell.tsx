@@ -11,6 +11,7 @@ import { StoreSelector } from '@/components/dashboard/store-selector';
 import { ViewStoreLink } from '@/components/dashboard/view-store-link';
 import { LoadingState } from '@/components/ui/loading-state';
 import { confirmLeave } from '@/lib/leave-guard';
+import { badgeText, useNewOrdersCount } from '@/lib/new-orders';
 import { useAuth } from '@/lib/auth-context';
 import { SubscriptionProvider, useSubscription } from '@/lib/subscription-context';
 
@@ -48,6 +49,8 @@ function DashboardFrame({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const newOrders = useNewOrdersCount();
+  const navBadges = { '/dashboard/orders': newOrders };
 
   useEffect(() => {
     if (!loading && !user) {
@@ -106,7 +109,7 @@ function DashboardFrame({ children }: { children: ReactNode }) {
             </Link>
             <p className="mt-1 px-3 text-xs text-[var(--color-muted)]">Merchant</p>
             <div className="mt-8 flex-1 overflow-y-auto pb-6">
-              <SidebarNav />
+              <SidebarNav badges={navBadges} />
             </div>
           </div>
         </aside>
@@ -126,6 +129,12 @@ function DashboardFrame({ children }: { children: ReactNode }) {
                   onClick={() => setMobileOpen((open) => !open)}
                 >
                   Menu
+                  {newOrders > 0 ? (
+                    <span className="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-[#d92d20] px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">
+                      {badgeText(newOrders)}
+                      <span className="sr-only"> new orders</span>
+                    </span>
+                  ) : null}
                 </Button>
                 <StoreSelector />
                 <ViewStoreLink />
@@ -169,7 +178,7 @@ function DashboardFrame({ children }: { children: ReactNode }) {
               id="mobile-sidebar"
               className="border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-4 lg:hidden"
             >
-              <SidebarNav onNavigate={() => setMobileOpen(false)} />
+              <SidebarNav badges={navBadges} onNavigate={() => setMobileOpen(false)} />
             </div>
           ) : null}
 

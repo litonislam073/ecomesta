@@ -34,6 +34,7 @@ export function StorefrontHeader({ store }: { store: PublicStore }) {
   return (
     <>
       <header
+        data-theme-section="header"
         className={`border-b border-[var(--color-border)] bg-[var(--color-surface)]/90 backdrop-blur ${
           header.sticky ? 'sticky top-0 z-40' : ''
         }`}

@@ -12,6 +12,7 @@ import { moneyToString, parseMoney } from '../../common/utils/catalog.util';
 import { RedisRateLimitService } from '../../common/rate-limit/redis-rate-limit.service';
 import { clientIp } from '../../common/utils/request-host.util';
 import { PrismaService } from '../../prisma/prisma.service';
+import { offlineOptionAllowed } from '../payments/manual-payments';
 import { CouponValidationService } from '../coupons/coupon-validation.service';
 import { OrdersService } from '../orders/orders.service';
 import { OrderTimelineService } from '../orders/order-timeline.service';
@@ -78,6 +79,13 @@ export class PublicCheckoutService {
     // how they look the order up later: every storefront order needs one.
     if (!shippingAddress.phone?.trim()) {
       throw new BadRequestException('A phone number is required to place this order');
+    }
+    // The store's own (offline) options can be switched off in Payment providers.
+    if (!offlineOptionAllowed(store, dto.paymentProvider, dto.paymentMethod)) {
+      throw new UnprocessableEntityException({
+        message: 'This payment option is not available for this store. Choose another way to pay.',
+        error: 'PAYMENT_OPTION_UNAVAILABLE',
+      });
     }
     const customerNote = store.checkoutAllowOrderNotes ? dto.customerNote : undefined;
     const useShippingForBilling =

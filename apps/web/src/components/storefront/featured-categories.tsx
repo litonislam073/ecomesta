@@ -16,7 +16,7 @@ export function FeaturedCategories({
   }
 
   return (
-    <section className="space-y-4">
+    <section data-theme-section="featured_categories" className="space-y-4">
       <h2 className="text-2xl font-semibold">{title}</h2>
       <ul className="flex flex-wrap gap-3">
         {categories.map((category) => (

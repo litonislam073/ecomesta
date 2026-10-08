@@ -13,9 +13,10 @@ export interface DefaultPlan {
 }
 
 /**
- * Ecomesta's plans. Keep in sync with the
- * `20261001090000_manual_billing_payments` migration, which sets the same
- * values on existing databases.
+ * Ecomesta's plans. Keep in sync with the migrations that set the same values
+ * on existing databases: `20261001090000_manual_billing_payments` and
+ * `20261007120000_plan_storage_limits` (product and storage limits) and
+ * `20261008090000_premium_themes` (premium themes on Business).
  */
 export const DEFAULT_PLANS: readonly DefaultPlan[] = [
   {
@@ -27,19 +28,23 @@ export const DEFAULT_PLANS: readonly DefaultPlan[] = [
     sortOrder: 1,
     features: [
       'Online store on your own Ecomesta web address',
-      'Up to 50 products with variants and categories',
+      'Up to 25 products with variants and categories',
+      '1 GB storage',
       'Orders, customers and inventory in one dashboard',
       'Cash on Delivery checkout',
       'Default storefront theme',
     ],
     limits: {
-      maxProducts: 50,
+      maxProducts: 25,
+      storageMb: 1024,
       customDomain: false,
       onlinePayments: false,
       stripe: false,
       coupons: false,
       deliveryZones: false,
       allThemes: false,
+      premiumThemes: false,
+      marketingTracking: false,
     },
   },
   {
@@ -51,20 +56,25 @@ export const DEFAULT_PLANS: readonly DefaultPlan[] = [
     sortOrder: 2,
     features: [
       'Everything in Starter',
-      'Up to 500 products',
+      'Up to 100 products',
+      '3 GB storage',
       'Connect your own domain',
       'Online payments with SSLCommerz (bKash, Nagad, cards)',
       'Discount coupons and Bangladesh delivery zones',
       'All storefront themes',
+      'Facebook Pixel, Google Analytics & Tag Manager',
     ],
     limits: {
-      maxProducts: 500,
+      maxProducts: 100,
+      storageMb: 3072,
       customDomain: true,
       onlinePayments: true,
       stripe: false,
       coupons: true,
       deliveryZones: true,
       allThemes: true,
+      premiumThemes: false,
+      marketingTracking: true,
     },
   },
   {
@@ -77,17 +87,22 @@ export const DEFAULT_PLANS: readonly DefaultPlan[] = [
     features: [
       'Everything in Growth',
       'Unlimited products',
+      '5 GB storage',
       'Stripe for international card payments',
       'Priority support',
+      'Premium themes included',
     ],
     limits: {
       maxProducts: null,
+      storageMb: 5120,
       customDomain: true,
       onlinePayments: true,
       stripe: true,
       coupons: true,
       deliveryZones: true,
       allThemes: true,
+      premiumThemes: true,
+      marketingTracking: true,
     },
   },
 ];

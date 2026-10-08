@@ -49,16 +49,21 @@ export function readPlanLimits(configuration: Prisma.JsonValue | null): PlanLimi
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const limits = raw as Record<string, unknown>;
   const flag = (key: string) => limits[key] === true;
-  const maxProducts = limits.maxProducts;
+  const count = (key: string) => {
+    const value = limits[key];
+    return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null;
+  };
   return {
-    maxProducts:
-      typeof maxProducts === 'number' && Number.isInteger(maxProducts) && maxProducts >= 0 ? maxProducts : null,
+    maxProducts: count('maxProducts'),
+    storageMb: count('storageMb'),
     customDomain: flag('customDomain'),
     onlinePayments: flag('onlinePayments'),
     stripe: flag('stripe'),
     coupons: flag('coupons'),
     deliveryZones: flag('deliveryZones'),
     allThemes: flag('allThemes'),
+    premiumThemes: flag('premiumThemes'),
+    marketingTracking: flag('marketingTracking'),
   };
 }
 

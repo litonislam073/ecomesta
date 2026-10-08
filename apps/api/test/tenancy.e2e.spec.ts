@@ -91,6 +91,9 @@ describe('Tenancy (e2e)', () => {
 
     const tenantIds = [tenantAId, tenantBId].filter(Boolean);
     if (tenantIds.length > 0) {
+      // New stores start with ready-made shipping (see default-shipping.ts).
+      await prisma.shippingMethod.deleteMany({ where: { store: { tenantId: { in: tenantIds } } } });
+      await prisma.shippingZone.deleteMany({ where: { store: { tenantId: { in: tenantIds } } } });
       await prisma.store.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // Sign-up payments and the plan they started belong to the tenant.
       await prisma.billingPayment.deleteMany({ where: { tenantId: { in: tenantIds } } });

@@ -8,12 +8,16 @@ import {
 } from './theme-cache';
 import { asStoreThemeConfig } from './theme-config.normalizer';
 import { LIVE_STORE_THEME_ORDER, liveStoreThemeWhere } from './theme-live';
+import { ThemeAccessService, canUseTheme, isPremiumTheme } from './theme-access.service';
+import { ThemePreviewService } from './theme-preview.service';
 import { DEFAULT_THEME_SLUG, StoreThemeConfig } from './theme-config.types';
 
 export interface PublicStoreThemePayload {
   theme: { slug: string; name: string } | null;
   publishedAt: string | null;
   configuration: StoreThemeConfig;
+  /** Set only for the theme editor's unsaved-draft preview. */
+  preview?: boolean;
 }
 
 @Injectable()
@@ -22,10 +26,18 @@ export class PublicThemesService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly storefront: PublicStorefrontService,
+    private readonly themeAccess: ThemeAccessService,
+    private readonly previews: ThemePreviewService,
   ) {}
 
-  async getPublishedTheme(storeSlug: string) {
+  /** `previewToken`: the theme editor's draft preview; ignored when unknown or expired. */
+  async getPublishedTheme(storeSlug: string, previewToken?: string) {
     const store = await this.storefront.requireActiveStore(storeSlug);
+
+    if (previewToken) {
+      const preview = await this.previews.publicPayload(store.id, previewToken);
+      if (preview) return { success: true as const, data: preview };
+    }
 
     const cached = await this.readCache(store.id);
     if (cached) {
@@ -51,14 +63,22 @@ export class PublicThemesService {
       select: {
         publishedConfiguration: true,
         publishedAt: true,
-        theme: { select: { slug: true, name: true } },
+        theme: { select: { id: true, slug: true, name: true, priceBdt: true } },
+        store: { select: { tenantId: true } },
       },
     });
+
+    // A premium theme the business may no longer use (plan changed, payment
+    // rejected) is not served: the store falls back to the default theme.
+    const locked =
+      storeTheme !== null &&
+      isPremiumTheme(storeTheme.theme) &&
+      !canUseTheme(await this.themeAccess.accessForTheme(storeTheme.store.tenantId, storeTheme.theme));
 
     // Nothing published yet: the default theme with an empty configuration,
     // which the storefront renders with its packaged defaults. An unpublished
     // selection is never used here.
-    if (!storeTheme) {
+    if (!storeTheme || locked) {
       const fallback = await this.prisma.theme.findFirst({
         where: { slug: DEFAULT_THEME_SLUG },
         select: { slug: true, name: true },
@@ -71,7 +91,7 @@ export class PublicThemesService {
     }
 
     return {
-      theme: storeTheme.theme,
+      theme: { slug: storeTheme.theme.slug, name: storeTheme.theme.name },
       publishedAt: storeTheme.publishedAt?.toISOString() ?? null,
       configuration:
         storeTheme.publishedConfiguration === null

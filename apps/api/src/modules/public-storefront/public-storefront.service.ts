@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { PlanEntitlementsService } from '../billing/plan-entitlements.service';
 import {
   Prisma,
   ProductStatus,
@@ -16,6 +17,7 @@ import {
   parseMoney,
 } from '../../common/utils/catalog.util';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MANUAL_PAYMENT_SELECT } from '../payments/manual-payments';
 import { BillingAccessService } from '../billing/billing-access.service';
 import {
   ListPublicCategoriesQueryDto,
@@ -27,11 +29,20 @@ export class PublicStorefrontService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly billingAccess: BillingAccessService,
+    private readonly entitlements: PlanEntitlementsService,
   ) {}
 
   async getStore(storeSlug: string) {
     const store = await this.requireActiveStore(storeSlug);
-    return { success: true as const, data: this.toStoreDto(store) };
+    const dto = this.toStoreDto(store);
+    // A business that moved to a plan without marketing & tracking keeps its
+    // IDs (so an upgrade restores them) but the storefront stops loading tags.
+    const { tenantId } = await this.prisma.store.findUniqueOrThrow({ where: { id: store.id }, select: { tenantId: true } });
+    const limits = await this.entitlements.limitsForTenant(tenantId);
+    if (limits && !limits.marketingTracking) {
+      dto.tracking = { metaPixelId: null, gtmContainerId: null, ga4MeasurementId: null, googleSiteVerification: null };
+    }
+    return { success: true as const, data: dto };
   }
 
   async listCategories(storeSlug: string, query: ListPublicCategoriesQueryDto) {
@@ -85,6 +96,10 @@ export class PublicStorefrontService {
 
     if (categoryId) {
       where.categories = { some: { categoryId } };
+    }
+
+    if (query.ids?.length) {
+      where.id = { in: query.ids };
     }
 
     if (query.search?.trim()) {
@@ -261,6 +276,7 @@ export class PublicStorefrontService {
         address: true,
         checkoutRequirePhone: true,
         checkoutAllowOrderNotes: true,
+        ...MANUAL_PAYMENT_SELECT,
         allowCustomerCancellation: true,
         seoTitle: true,
         seoDescription: true,
@@ -269,6 +285,10 @@ export class PublicStorefrontService {
         ogDescription: true,
         ogImageUrl: true,
         seoIndexingEnabled: true,
+        metaPixelId: true,
+        gtmContainerId: true,
+        ga4MeasurementId: true,
+        googleSiteVerification: true,
       },
     });
 
@@ -336,6 +356,13 @@ export class PublicStorefrontService {
         ogDescription: store.ogDescription,
         ogImageUrl: store.ogImageUrl,
         indexingEnabled: store.seoIndexingEnabled,
+      },
+      /** The merchant's own marketing tags; IDs only, already validated. */
+      tracking: {
+        metaPixelId: store.metaPixelId,
+        gtmContainerId: store.gtmContainerId,
+        ga4MeasurementId: store.ga4MeasurementId,
+        googleSiteVerification: store.googleSiteVerification,
       },
     };
   }

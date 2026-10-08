@@ -189,6 +189,28 @@ describe('Orders UI', () => {
     expect(screen.getAllByText('Guest').length).toBeGreaterThan(0);
   });
 
+  it("shows a guest order's shopper by name and marks orders nobody has opened", async () => {
+    api.get.mockResolvedValue({
+      success: true,
+      data: {
+        items: [
+          { ...sampleOrder, id: 'ord-new', orderNumber: 'EM-100009', viewed: false, contact: { name: 'Rahima Akter', phone: '01811222333', email: null } },
+          { ...sampleOrder, id: 'ord-old', orderNumber: 'EM-100008', viewed: true, contact: { name: 'Karim Mia', phone: '01711000000', email: null } },
+        ],
+        meta: { total: 2, page: 1, limit: 20, totalPages: 1 },
+      },
+    });
+    render(<OrdersPage />);
+    const fresh = (await screen.findByRole('link', { name: 'EM-100009' })).closest('tr')!;
+    expect(fresh).toHaveTextContent('Rahima Akter');
+    expect(fresh).toHaveTextContent('· Guest');
+    expect(fresh).toHaveTextContent('01811222333');
+    expect(within(fresh).getByText('New')).toBeInTheDocument();
+    const seen = screen.getByRole('link', { name: 'EM-100008' }).closest('tr')!;
+    expect(seen).toHaveTextContent('Karim Mia');
+    expect(within(seen).queryByText('New')).toBeNull();
+  });
+
   it('shows empty orders state', async () => {
     api.get.mockResolvedValue({
       success: true,
@@ -209,6 +231,8 @@ describe('Orders UI', () => {
     render(<OrderDetailPage />);
     expect(await screen.findByText('EM-100001')).toBeInTheDocument();
     expect(screen.getByText('Widget')).toBeInTheDocument();
+    // Opening the order marks it as seen for the team (the Orders badge drops by one).
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/stores/store-1/orders/ord-1/viewed', {}));
     expect(screen.getByText(/grand total/i).parentElement).toHaveTextContent('25.00');
 
     await user.selectOptions(
@@ -251,6 +275,41 @@ describe('Orders UI', () => {
       );
     });
     expect(pushToast).toHaveBeenCalledWith('Order cancelled.', 'success');
+  });
+
+  it('with an active courier shipment: no manual Create shipment and no Cancel order', async () => {
+    api.get.mockResolvedValue({
+      success: true,
+      data: {
+        ...sampleOrder,
+        shipments: [
+          {
+            id: 'ship-1',
+            provider: 'STEADFAST',
+            trackingNumber: 'TRK123',
+            status: 'LABEL_CREATED',
+            shippedAt: null,
+            deliveredAt: null,
+            createdAt: '2026-10-07T00:00:00Z',
+            updatedAt: '2026-10-07T00:00:00Z',
+            courierManaged: true,
+            courierBooking: 'confirmed',
+            providerShipmentId: '1424107',
+            providerStatus: 'in_review',
+            codAmount: '20.00',
+            weightKg: '0.5',
+            lastSyncedAt: '2026-10-07T00:00:00Z',
+          },
+        ],
+      },
+    });
+    render(<OrderDetailPage />);
+    await screen.findByText('EM-100001');
+    expect(screen.getByText('TRK123')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^create shipment$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /cancel order/i })).not.toBeInTheDocument();
+    expect(screen.getByTestId('cancel-blocked')).toHaveTextContent(/active/);
+    expect(screen.getByRole('button', { name: 'Sync status' })).toBeInTheDocument();
   });
 
   it('applies sort and shipping filters on list search', async () => {

@@ -60,7 +60,7 @@ export function FooterSection({
   );
   return (
     <Card title="Footer" description="Footer copy, links, and social profiles.">
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4">
         <TextField
           label="Footer tagline"
           value={value.tagline ?? ''}
@@ -74,7 +74,7 @@ export function FooterSection({
           disabled={disabled}
           onChange={(copyright) => onChange({ ...value, copyright })}
         />
-        <div className="md:col-span-2">
+        <div>
           <ToggleField
             label="Show payment icons"
             checked={value.showPaymentIcons ?? false}
@@ -84,7 +84,7 @@ export function FooterSection({
             }
           />
         </div>
-        <div className="md:col-span-2">
+        <div>
           <MenuItemsField
             label="Footer menu"
             items={value.menuItems ?? []}
@@ -92,7 +92,7 @@ export function FooterSection({
             onChange={(menuItems) => onChange({ ...value, menuItems })}
           />
         </div>
-        <div className="md:col-span-2">
+        <div>
           <TextAreaField
             label="Social links"
             hint={`One per line as "network | https://…". Networks: ${SOCIAL_NETWORKS.join(', ')}.`}

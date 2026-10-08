@@ -21,7 +21,7 @@ export function AnnouncementBar({
   };
 
   return (
-    <div role="region" aria-label="Announcement" style={style}>
+    <div role="region" aria-label="Announcement" style={style} data-theme-section="announcement">
       <div className="mx-auto max-w-6xl px-4 py-2 text-center text-sm">
         {announcement.href ? (
           <Link

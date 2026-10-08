@@ -10,6 +10,8 @@ import type { Request } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { BillingService } from '../billing/billing.service';
+import { readPlanLimits } from '../billing/plan-catalog';
+import { createDefaultShipping } from '../shipping/default-shipping';
 import {
   BillingPaymentsService,
   billingPaymentConflict,
@@ -88,6 +90,11 @@ export class OnboardingService {
             role: StoreRole.STORE_MANAGER,
             status: MembershipStatus.ACTIVE,
           },
+        });
+
+        // Ready-made delivery charges the merchant can edit or delete.
+        await createDefaultShipping(tx, store.id, {
+          zones: readPlanLimits(plan.configuration)?.deliveryZones ?? false,
         });
 
         const payment = await this.payments.createPending(tx, {

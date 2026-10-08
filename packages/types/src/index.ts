@@ -285,6 +285,10 @@ export interface OrderListItem {
   couponCode?: string | null;
   itemCount: number;
   customer: OrderCustomerRef | null;
+  /** Who to contact, from the order's delivery (or billing) address — set for guest checkouts too. */
+  contact: { name: string | null; phone: string | null; email: string | null } | null;
+  /** False until someone on the store's team opens the order (the Orders badge counts these). */
+  viewed: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -447,7 +451,8 @@ export interface PublicOnlinePaymentProvider {
 }
 
 export interface PublicPaymentProvidersResponse {
-  offline: { provider: string; method: string }[];
+  /** The store's own options that are switched on; `details` = bank details / instructions. */
+  offline: { provider: string; method: string; details?: string | null }[];
   online: PublicOnlinePaymentProvider[];
 }
 
@@ -537,11 +542,64 @@ export interface OrderPaymentRef {
   updatedAt: string;
 }
 
-export interface OrderShipmentRef {
+/** Courier booking fields on a shipment (all null / false for manual shipments). */
+export interface ShipmentCourierFields {
+  /** True when a courier booked it: status and tracking come from the courier ("Sync status"). */
+  courierManaged: boolean;
+  /**
+   * Courier booking state: `in_progress` (booking call running), `unconfirmed`
+   * (the courier's answer was lost — no tracking yet), `confirmed`, `released`
+   * (merchant marked it not booked). Null for manual shipments.
+   */
+  courierBooking: 'in_progress' | 'unconfirmed' | 'confirmed' | 'released' | null;
+  providerShipmentId: string | null;
+  /** Raw courier status, e.g. Steadfast `in_review`. */
+  providerStatus: string | null;
+  /** Cash the courier collects, computed by the server from the order. */
+  codAmount: string | null;
+  weightKg: string | null;
+  lastSyncedAt: string | null;
+}
+
+export interface OrderShipmentRef extends Partial<ShipmentCourierFields> {
   id: string;
   provider: string;
   trackingNumber: string | null;
   status: string;
+  shippedAt: string | null;
+  deliveredAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CourierConnectionStatus = 'CONNECTED' | 'NOT_CONNECTED';
+
+/** A courier the store can connect. Credentials are write-only and never returned. */
+export interface CourierConnectionInfo {
+  provider: string;
+  name: string;
+  status: CourierConnectionStatus;
+  supportsCancellation: boolean;
+  credentialsSaved: boolean;
+  pickupName: string | null;
+  pickupPhone: string | null;
+  pickupAddress: string | null;
+  defaultWeightKg: number | null;
+  connectedAt: string | null;
+  updatedAt: string | null;
+}
+
+/** A courier-booked shipment as returned by the booking and sync endpoints. */
+export interface CourierShipment extends ShipmentCourierFields {
+  id: string;
+  orderId: string;
+  provider: string;
+  courierName: string;
+  trackingNumber: string | null;
+  /** Public tracking page; null when the courier documents none (Steadfast). */
+  trackingUrl: string | null;
+  status: string;
+  supportsCancellation: boolean;
   shippedAt: string | null;
   deliveredAt: string | null;
   createdAt: string;
@@ -622,6 +680,20 @@ export interface PublicStore {
   };
   allowCustomerCancellation?: boolean;
   seo?: PublicStoreSeo;
+  /** The merchant's marketing tags (IDs only). */
+  tracking?: StoreTracking;
+}
+
+/** Marketing & tracking a merchant sets up for their storefront. */
+export interface StoreTracking {
+  /** Meta (Facebook) Pixel ID, digits. */
+  metaPixelId: string | null;
+  /** Google Tag Manager container, e.g. GTM-ABC1234. */
+  gtmContainerId: string | null;
+  /** Google Analytics 4 measurement ID, e.g. G-ABC123XYZ9. */
+  ga4MeasurementId: string | null;
+  /** Google Search Console HTML-tag verification code. */
+  googleSiteVerification: string | null;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -644,6 +716,12 @@ export interface StoreSettings {
   locale: string;
   checkoutRequirePhone: boolean;
   checkoutAllowOrderNotes: boolean;
+  /** Offline payment options shown at checkout (Payment providers → Manual payments). */
+  paymentCodEnabled: boolean;
+  paymentBankTransferEnabled: boolean;
+  paymentBankTransferDetails: string | null;
+  paymentOtherEnabled: boolean;
+  paymentOtherDetails: string | null;
   allowCustomerCancellation: boolean;
   seoTitle: string | null;
   seoDescription: string | null;
@@ -652,6 +730,10 @@ export interface StoreSettings {
   ogDescription: string | null;
   ogImageUrl: string | null;
   seoIndexingEnabled: boolean;
+  metaPixelId: string | null;
+  gtmContainerId: string | null;
+  ga4MeasurementId: string | null;
+  googleSiteVerification: string | null;
   fixed: {
     guestCheckout: boolean;
     requireEmail: boolean;
@@ -677,6 +759,11 @@ export type UpdateStoreSettingsInput = Partial<
     | 'defaultLanguage'
     | 'checkoutRequirePhone'
     | 'checkoutAllowOrderNotes'
+    | 'paymentCodEnabled'
+    | 'paymentBankTransferEnabled'
+    | 'paymentBankTransferDetails'
+    | 'paymentOtherEnabled'
+    | 'paymentOtherDetails'
     | 'allowCustomerCancellation'
     | 'seoTitle'
     | 'seoDescription'
@@ -685,6 +772,10 @@ export type UpdateStoreSettingsInput = Partial<
     | 'ogDescription'
     | 'ogImageUrl'
     | 'seoIndexingEnabled'
+    | 'metaPixelId'
+    | 'gtmContainerId'
+    | 'ga4MeasurementId'
+    | 'googleSiteVerification'
   >
 > & { expectedUpdatedAt?: string };
 
@@ -978,6 +1069,8 @@ export interface PublicPlan {
 export interface PlanLimits {
   /** Products across all of the business's stores; `null` is unlimited. */
   maxProducts: number | null;
+  /** Storage for uploaded images across all of the business's stores, in MB; `null` is unlimited. */
+  storageMb: number | null;
   customDomain: boolean;
   /** SSLCommerz online payments (bKash, Nagad, cards). */
   onlinePayments: boolean;
@@ -986,6 +1079,10 @@ export interface PlanLimits {
   deliveryZones: boolean;
   /** Every storefront theme; otherwise only the default theme. */
   allThemes: boolean;
+  /** Premium themes without buying them separately (Business). */
+  premiumThemes: boolean;
+  /** Facebook Pixel, Google Tag Manager, Google Analytics and Search Console (Growth, Business). */
+  marketingTracking: boolean;
 }
 
 export type ManualPaymentMethod = 'BKASH' | 'NAGAD' | 'ROCKET' | 'UPAY';
@@ -1324,10 +1421,13 @@ export interface AdminAuditLog {
 export type ThemeBorderRadius = 'none' | 'sm' | 'md' | 'lg' | 'full';
 export type ThemeHeaderLayout = 'classic' | 'centered' | 'minimal';
 export type ThemeHeroAlignment = 'left' | 'center' | 'right';
+export type ThemeHeroBadgeMode = 'auto' | 'custom' | 'hidden';
 export type ThemeSectionType =
   | 'featured_categories'
   | 'featured_products'
   | 'rich_text'
+  | 'image_banner'
+  | 'deal_of_day'
   | 'custom';
 export type ThemeSocialNetwork =
   | 'facebook'
@@ -1353,6 +1453,18 @@ export interface ThemeHomepageSection {
   type: ThemeSectionType;
   title?: string;
   enabled?: boolean;
+  /** Content sections (rich text, image banner) may appear more than once: a stable id per instance. */
+  id?: string;
+  /** Body text (plain text; line breaks kept). */
+  text?: string;
+  buttonLabel?: string;
+  buttonHref?: string;
+  /** Image banner background. */
+  imageUrl?: string;
+  /** Deal of the day: the product to feature; unset = the biggest current discount. */
+  productId?: string;
+  /** Deal of the day: show the countdown to midnight. */
+  showCountdown?: boolean;
 }
 
 /** Closed config schema — unknown keys are stripped by the API on write. */
@@ -1400,6 +1512,12 @@ export interface StoreThemeConfig {
     imageUrl?: string;
     alignment?: ThemeHeroAlignment;
     overlayOpacity?: number;
+    /** Offer badge on the hero image (ShopEase): the store's best discount, custom text, or none. */
+    badgeMode?: ThemeHeroBadgeMode;
+    /** Custom badge lines, e.g. "UP TO" / "50%" / "OFF". */
+    badgeTop?: string;
+    badgeMain?: string;
+    badgeBottom?: string;
   };
   homepage?: {
     featuredCategories?: string[];
@@ -1435,6 +1553,45 @@ export interface ThemeListItem extends ThemeSummary {
   selected: boolean;
   /** The theme the public storefront currently shows. */
   live: boolean;
+  /** Paid theme: included in plans with `premiumThemes`, otherwise bought once. */
+  premium?: boolean;
+  /** One-time price in BDT ("999.00"), null for free themes. */
+  priceBdt?: string | null;
+  /** Whether this business may use the theme. */
+  access?: ThemeAccess;
+  /** The latest payment for a premium theme, e.g. to explain a rejection. */
+  purchase?: {
+    status: BillingPaymentStatus;
+    rejectionReason: string | null;
+    transactionId: string;
+    createdAt: string;
+  } | null;
+}
+
+/** free: everyone · included: in the plan · owned: bought · pending: payment under review · locked: buy or upgrade. */
+export type ThemeAccess = 'free' | 'included' | 'owned' | 'pending' | 'locked';
+
+/** A premium theme payment as the merchant sees it. */
+export interface ThemePurchase {
+  id: string;
+  theme: { id: string; slug: string; name: string };
+  amount: string;
+  currency: string;
+  method: ManualPaymentMethod;
+  senderNumber: string;
+  transactionId: string;
+  status: BillingPaymentStatus;
+  rejectionReason: string | null;
+  createdAt: string;
+}
+
+/** A premium theme payment in the Super Admin review queue. */
+export interface AdminThemePurchase extends ThemePurchase {
+  payToNumber: string;
+  tenant: { id: string; name: string; slug: string };
+  submittedBy: { email: string; firstName: string | null; lastName: string | null } | null;
+  reviewedBy: { email: string } | null;
+  reviewedAt: string | null;
 }
 
 /**
@@ -1467,6 +1624,8 @@ export interface PublicStoreTheme {
   theme: { slug: string; name: string } | null;
   publishedAt: string | null;
   configuration: StoreThemeConfig;
+  /** The theme editor's unsaved draft (preview frame only). */
+  preview?: boolean;
 }
 
 // ---------------------------------------------------------------------------

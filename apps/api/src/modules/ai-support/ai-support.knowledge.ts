@@ -52,7 +52,7 @@ function platformFacts(): KnowledgeChunk[] {
       id: 'fact-plan-features',
       title: 'What each plan includes',
       path: '/pricing',
-      text: 'Starter: online store on an Ecomesta web address, up to 50 products, orders, customers and inventory, Cash on Delivery checkout, the default storefront theme. Growth: everything in Starter plus up to 500 products, connecting your own domain, online payments with SSLCommerz, discount coupons, Bangladesh delivery zones and all storefront themes. Business: everything in Growth plus unlimited products, Stripe for international card payments and priority support. Live prices come from the pricing tool.',
+      text: 'Starter: online store on an Ecomesta web address, up to 25 products, 1 GB storage for images, orders, customers and inventory, Cash on Delivery checkout, the default storefront theme. Growth: everything in Starter plus up to 100 products, 3 GB storage, connecting your own domain, online payments with SSLCommerz, discount coupons, Bangladesh delivery zones and all storefront themes. Business: everything in Growth plus unlimited products, 5 GB storage, Stripe for international card payments and priority support. Live prices come from the pricing tool.',
     },
     {
       id: 'fact-store-checkout',

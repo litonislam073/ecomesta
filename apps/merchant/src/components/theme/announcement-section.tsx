@@ -27,8 +27,8 @@ export function AnnouncementSection({
       title="Announcement bar"
       description="Optional strip above the header for shipping or promo notices."
     >
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="md:col-span-2">
+      <div className="grid gap-4">
+        <div>
           <ToggleField
             label="Show announcement bar"
             checked={value.enabled ?? false}
@@ -38,7 +38,7 @@ export function AnnouncementSection({
         </div>
         <TextField
           label="Announcement text"
-          className="md:col-span-2"
+         
           value={value.text ?? ''}
           disabled={disabled}
           onChange={(text) => onChange({ ...value, text })}
@@ -50,7 +50,7 @@ export function AnnouncementSection({
           disabled={disabled}
           onChange={(href) => onChange({ ...value, href })}
         />
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4">
           <ColorField
             label="Background color"
             value={value.backgroundColor}

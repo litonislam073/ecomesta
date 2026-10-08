@@ -19,6 +19,7 @@ import { moneyToString } from '../../common/utils/catalog.util';
 import { AuditService } from '../audit/audit.service';
 import { BillingAccessService } from '../billing/billing-access.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MANUAL_PAYMENT_SELECT, offlinePaymentOptions } from './manual-payments';
 import { assertPaymentRecordStatusTransition } from './payment-transitions';
 import { PlanEntitlementsService } from '../billing/plan-entitlements.service';
 import { StoreDomainResolver } from '../domains/store-domain.resolver';
@@ -69,14 +70,7 @@ export class PaymentOrchestrationService {
     return {
       success: true as const,
       data: {
-        offline: [
-          { provider: PaymentProvider.COD, method: PaymentMethod.CASH },
-          {
-            provider: PaymentProvider.OTHER,
-            method: PaymentMethod.BANK_TRANSFER,
-          },
-          { provider: PaymentProvider.OTHER, method: PaymentMethod.OTHER },
-        ],
+        offline: offlinePaymentOptions(store),
         online,
       },
     };
@@ -1022,7 +1016,7 @@ export class PaymentOrchestrationService {
         // Suspended tenants are not publicly operable even if the store row is ACTIVE.
         tenant: { status: TenantStatus.ACTIVE },
       },
-      select: { id: true, slug: true, tenantId: true, currency: true },
+      select: { id: true, slug: true, tenantId: true, currency: true, ...MANUAL_PAYMENT_SELECT },
     });
     if (!store) {
       await this.billingAccess.throwIfSuspended({ slug: storeSlug });

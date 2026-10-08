@@ -12,7 +12,7 @@ export class ApiError extends Error {
   }
 }
 
-export type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 type TokenGetter = () => string | null;
 type UnauthorizedHandler = () => void;
@@ -151,6 +151,8 @@ export const api = {
     apiRequest<T>(path, { method: 'POST', body, ...init }),
   patch: <T>(path: string, body?: unknown, init?: { token?: string | null }) =>
     apiRequest<T>(path, { method: 'PATCH', body, ...init }),
+  put: <T>(path: string, body?: unknown, init?: { token?: string | null }) =>
+    apiRequest<T>(path, { method: 'PUT', body, ...init }),
   delete: <T>(path: string, init?: { token?: string | null }) =>
     apiRequest<T>(path, { method: 'DELETE', ...init }),
   upload: <T>(path: string, form: FormData, init?: { token?: string | null }) =>

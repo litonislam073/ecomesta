@@ -249,6 +249,79 @@ describe('Merchant store settings (e2e)', () => {
   });
 
   describe('PATCH /stores/:storeId/settings', () => {
+    it('marketing & tracking is Growth/Business only: Starter cannot set IDs, may clear them, and the store stops loading them', async () => {
+      await http().patch(settingsUrl()).set(auth(owner)).send({ metaPixelId: '123456789012345' }).expect(200);
+      const sub = await prisma.subscription.findFirstOrThrow({ where: { tenantId }, orderBy: { createdAt: 'desc' } });
+      const starter = await prisma.subscriptionPlan.findUniqueOrThrow({ where: { slug: 'starter' } });
+      const before = sub.planId;
+      await prisma.subscription.update({ where: { id: sub.id }, data: { planId: starter.id } });
+      try {
+        const refused = await http().patch(settingsUrl()).set(auth(owner)).send({ ga4MeasurementId: 'G-ABC123XYZ9' }).expect(403);
+        expect(refused.body.error.code).toBe('PLAN_UPGRADE_REQUIRED');
+        expect(refused.body.error.message).toMatch(/Marketing & tracking is not included in your plan/);
+
+        const store = await prisma.store.findUniqueOrThrow({ where: { id: storeId } });
+        if (store.status === 'ACTIVE') {
+          const pub = await http().get(`/api/v1/public/stores/${storeSlug}`).expect(200);
+          expect(pub.body.data.tracking.metaPixelId).toBeNull();
+        }
+        // Still saved (an upgrade brings it back), and it can be removed.
+        expect((await http().get(settingsUrl()).set(auth(owner)).expect(200)).body.data.metaPixelId).toBe('123456789012345');
+        await http().patch(settingsUrl()).set(auth(owner)).send({ metaPixelId: '' }).expect(200);
+      } finally {
+        await prisma.subscription.update({ where: { id: sub.id }, data: { planId: before } });
+      }
+    });
+
+    it('saves marketing & tracking IDs, accepts the whole Search Console tag, and clears them', async () => {
+      const res = await http()
+        .patch(settingsUrl())
+        .set(auth(owner))
+        .send({
+          metaPixelId: ' 123456789012345 ',
+          gtmContainerId: 'gtm-abc1234',
+          ga4MeasurementId: 'g-abc123xyz9',
+          googleSiteVerification: '<meta name="google-site-verification" content="AbC-123_xyzVerificationCode" />',
+        })
+        .expect(200);
+      expect(res.body.data).toMatchObject({
+        metaPixelId: '123456789012345',
+        gtmContainerId: 'GTM-ABC1234',
+        ga4MeasurementId: 'G-ABC123XYZ9',
+        googleSiteVerification: 'AbC-123_xyzVerificationCode',
+      });
+
+      const store = await prisma.store.findUniqueOrThrow({ where: { id: storeId } });
+      if (store.status === 'ACTIVE') {
+        const pub = await http().get(`/api/v1/public/stores/${storeSlug}`).expect(200);
+        expect(pub.body.data.tracking).toEqual({
+          metaPixelId: '123456789012345',
+          gtmContainerId: 'GTM-ABC1234',
+          ga4MeasurementId: 'G-ABC123XYZ9',
+          googleSiteVerification: 'AbC-123_xyzVerificationCode',
+        });
+      }
+
+      // Scripts are never accepted: only IDs.
+      for (const bad of [
+        { metaPixelId: '<script>alert(1)</script>' },
+        { metaPixelId: 'abc' },
+        { gtmContainerId: 'GTM-<x>' },
+        { gtmContainerId: 'UA-12345-1' },
+        { ga4MeasurementId: 'UA-12345-1' },
+        { googleSiteVerification: '"><script>' },
+      ]) {
+        await http().patch(settingsUrl()).set(auth(owner)).send(bad).expect(400);
+      }
+
+      const cleared = await http()
+        .patch(settingsUrl())
+        .set(auth(owner))
+        .send({ metaPixelId: '', gtmContainerId: null, ga4MeasurementId: '  ', googleSiteVerification: '' })
+        .expect(200);
+      expect(cleared.body.data).toMatchObject({ metaPixelId: null, gtmContainerId: null, ga4MeasurementId: null, googleSiteVerification: null });
+    });
+
     it('updates general, contact, checkout, order and SEO settings and persists them', async () => {
       const res = await http()
         .patch(settingsUrl())

@@ -54,7 +54,7 @@ export function AuthSplit({
         aria-hidden="true"
         className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_left,rgba(1,135,240,0.12),transparent_55%),radial-gradient(ellipse_at_bottom_right,rgba(3,165,129,0.10),transparent_50%)]"
       />
-      <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:py-16">
+      <div className="mx-auto w-full max-w-[1200px] px-4 py-8 sm:px-6 sm:py-12 lg:py-16">
         <div className="grid overflow-hidden rounded-3xl border border-[var(--color-border)] bg-white shadow-[0_1px_2px_rgba(2,40,87,0.06),0_24px_56px_-24px_rgba(2,40,87,0.28)] lg:grid-cols-[minmax(0,1fr)_minmax(0,30rem)]">
           <div className="relative isolate order-2 overflow-hidden bg-gradient-to-br from-[var(--brand-navy-deep)] via-[var(--brand-navy)] to-[var(--brand-blue-deep)] px-6 py-10 text-white sm:px-10 lg:order-1 lg:px-12 lg:py-14">
             <div

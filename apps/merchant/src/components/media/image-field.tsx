@@ -59,17 +59,17 @@ export function ImageField({
   }
 
   return (
-    <div className="space-y-2 md:col-span-2" role="group" aria-labelledby={`${noteId}-label`}>
+    <div className="space-y-2" role="group" aria-labelledby={`${noteId}-label`}>
       <p id={`${noteId}-label`} className="text-sm font-medium">
         {label}
       </p>
       <p id={noteId} className="text-xs text-[var(--color-muted)]">
         {note ?? IMAGE_GUIDES[purpose].note}
       </p>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+      <div className="flex flex-col gap-3">
         <div
           className={`flex shrink-0 items-center justify-center overflow-hidden rounded-md border border-[var(--color-border)] bg-[#f3f7f5] ${
-            previewShape === 'wide' ? 'aspect-[12/5] w-full sm:w-60' : 'aspect-square w-24'
+            previewShape === 'wide' ? 'aspect-[12/5] w-full' : 'aspect-square w-24'
           }`}
         >
           {src ? (

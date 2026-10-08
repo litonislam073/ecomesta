@@ -23,7 +23,7 @@ export function HeaderSection({
 }) {
   return (
     <Card title="Header" description="Layout and navigation for the storefront header.">
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4">
         <SelectField
           label="Header layout"
           value={value.layout ?? 'classic'}
@@ -51,7 +51,7 @@ export function HeaderSection({
             onChange={(showCart) => onChange({ ...value, showCart })}
           />
         </div>
-        <div className="md:col-span-2">
+        <div>
           <MenuItemsField
             label="Header menu"
             items={value.menuItems ?? []}

@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { trackAddToCart } from '@/lib/tracking';
 import { addMoney, multiplyMoney } from '@/lib/money';
 
 export type CartLine = {
@@ -121,6 +122,16 @@ export function CartProvider({
   const addItem = useCallback(
     (line: Omit<CartLine, 'quantity'> & { quantity?: number }) => {
       const qty = Math.max(1, line.quantity ?? 1);
+      trackAddToCart(
+        {
+          id: line.sku || line.productId,
+          name: line.productName,
+          variant: line.variantName,
+          price: Number(line.unitPrice),
+          quantity: qty,
+        },
+        currency,
+      );
       setState((prev) => {
         if (prev.storeId !== storeId) {
           return {

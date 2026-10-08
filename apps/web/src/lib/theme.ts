@@ -140,10 +140,17 @@ export function themeCssVariables(
 /** Theming must never break a storefront, so failures fall back to defaults. */
 export async function fetchPublicTheme(
   storeSlug: string,
+  /** The theme editor's preview token: the API then returns the unsaved draft. */
+  previewToken?: string | null,
 ): Promise<PublicStoreTheme> {
   try {
+    // Not cached here: the API keeps the published theme in Redis and clears
+    // it on publish, so a published change shows on the next page load.
     const result = await publicGet<{ success: true; data: PublicStoreTheme }>(
-      `/public/stores/${encodeURIComponent(storeSlug)}/theme`,
+      `/public/stores/${encodeURIComponent(storeSlug)}/theme${
+        previewToken ? `?preview=${encodeURIComponent(previewToken)}` : ''
+      }`,
+      { fresh: true },
     );
     return result.data;
   } catch {

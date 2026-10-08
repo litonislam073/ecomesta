@@ -14,6 +14,7 @@
     "dev:web": "pnpm --filter @ecomesta/web dev",
     "dev:merchant": "pnpm --filter @ecomesta/merchant dev",
     "dev:admin": "pnpm --filter @ecomesta/admin dev",
+    "dev:warmup": "node scripts/dev-warmup.mjs",
     "build": "pnpm -r --filter \"@ecomesta/types\" --filter \"@ecomesta/utils\" --filter \"@ecomesta/ui\" run build && pnpm -r --filter \"@ecomesta/api\" --filter \"@ecomesta/web\" --filter \"@ecomesta/merchant\" --filter \"@ecomesta/admin\" run build",
     "build:packages": "pnpm -r --filter \"@ecomesta/types\" --filter \"@ecomesta/utils\" --filter \"@ecomesta/ui\" run build",
     "lint": "pnpm -r run lint",

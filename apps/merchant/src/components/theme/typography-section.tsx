@@ -21,7 +21,7 @@ export function TypographySection({
       title="Typography"
       description="Font families are limited to a whitelist the storefront can load safely."
     >
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4">
         <SelectField
           label="Heading font"
           value={value.headingFont ?? 'System'}

@@ -10,7 +10,8 @@ import {
 import { PublicApiError } from '@/lib/public-api';
 import { fetchPublicStore, resolveStoreSlug, storeCanonicalUrl } from '@/lib/store-resolver';
 import { NOINDEX, metaDescription, resolveStoreSeo, storePageRobots } from '@/lib/store-seo';
-import { fetchPublicTheme } from '@/lib/theme';
+import { fetchStoreTheme } from '@/lib/theme-server';
+import { googleVerification } from '@/lib/tracking';
 
 /**
  * Defaults for every storefront page: the merchant's brand (never the platform's)
@@ -27,6 +28,7 @@ export async function generateMetadata(): Promise<Metadata> {
       title: { template: '%s', default: store.name },
       description: metaDescription(resolveStoreSeo(store, null).description),
       ...(robots ? { robots } : {}),
+      ...googleVerification(store),
     };
   } catch (err) {
     return isStoreUnavailableError(err) ? STORE_UNAVAILABLE_METADATA : { robots: NOINDEX };
@@ -46,7 +48,7 @@ export default async function StoreLayout({ children }: { children: ReactNode })
   try {
     const [store, theme] = await Promise.all([
       fetchPublicStore(storeSlug),
-      fetchPublicTheme(storeSlug),
+      fetchStoreTheme(storeSlug),
     ]);
     return (
       <StorefrontProviders store={store} theme={theme}>

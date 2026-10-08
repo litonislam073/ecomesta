@@ -213,6 +213,9 @@ describe('Public storefront (e2e)', () => {
       await prisma.storeUser.deleteMany({
         where: { storeId: { in: storeIds } },
       });
+      // New stores start with ready-made shipping (see default-shipping.ts).
+      await prisma.shippingMethod.deleteMany({ where: { storeId: { in: storeIds } } });
+      await prisma.shippingZone.deleteMany({ where: { storeId: { in: storeIds } } });
       await prisma.store.deleteMany({ where: { id: { in: storeIds } } });
     }
     if (tenantId) {
@@ -245,6 +248,18 @@ describe('Public storefront (e2e)', () => {
     expect(res.body.data.currency).toBeDefined();
     expect(res.body.data).not.toHaveProperty('tenantId');
     expect(res.body.data).not.toHaveProperty('orderSequence');
+    // Only the merchant's tracking IDs are public (none set here).
+    expect(res.body.data.tracking).toEqual({ metaPixelId: null, gtmContainerId: null, ga4MeasurementId: null, googleSiteVerification: null });
+  });
+
+  it('publishes the merchant’s tracking IDs for the storefront', async () => {
+    await prisma.store.update({ where: { slug: storeSlug }, data: { metaPixelId: '123456789012345', ga4MeasurementId: 'G-TEST12345' } });
+    try {
+      const res = await request(app.getHttpServer()).get(`/api/v1/public/stores/${storeSlug}`).expect(200);
+      expect(res.body.data.tracking).toMatchObject({ metaPixelId: '123456789012345', ga4MeasurementId: 'G-TEST12345', gtmContainerId: null });
+    } finally {
+      await prisma.store.update({ where: { slug: storeSlug }, data: { metaPixelId: null, ga4MeasurementId: null } });
+    }
   });
 
   it('hides inactive stores', async () => {
@@ -284,6 +299,20 @@ describe('Public storefront (e2e)', () => {
     expect(byCat.body.data.items.some((p: { slug: string }) => p.slug === productSlug)).toBe(
       true,
     );
+  });
+
+  it('filters by product ids (theme deal of the day) and still hides drafts', async () => {
+    const http = () => request(app.getHttpServer());
+    const all = (await http().get(`/api/v1/public/stores/${storeSlug}/products`).expect(200)).body.data.items as { id: string; slug: string }[];
+    const active = all.find((p) => p.slug === productSlug)!;
+    const draft = await prisma.product.findFirstOrThrow({ where: { slug: draftProductSlug } });
+    const byIds = await http()
+      .get(`/api/v1/public/stores/${storeSlug}/products?ids=${active.id},${draft.id}`)
+      .expect(200);
+    expect(byIds.body.data.items.map((p: { id: string }) => p.id)).toEqual([active.id]);
+    await http().get(`/api/v1/public/stores/${storeSlug}/products?ids=not-a-uuid`).expect(400);
+    const tooMany = Array.from({ length: 25 }, () => active.id).join(',');
+    await http().get(`/api/v1/public/stores/${storeSlug}/products?ids=${tooMany}`).expect(400);
   });
 
   it('returns product detail and hides draft/archived/wrong-store', async () => {

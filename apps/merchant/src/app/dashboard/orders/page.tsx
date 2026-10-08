@@ -30,7 +30,8 @@ function customerLabel(order: OrderListItem): string {
       .join(' ');
     return name || order.customer.email || order.customer.phone || 'Customer';
   }
-  return 'Guest';
+  // Guest checkout: the name and contact are on the order's delivery address.
+  return order.contact?.name || order.contact?.phone || order.contact?.email || 'Guest';
 }
 
 type SortPreset = 'newest' | 'oldest' | 'highest' | 'lowest';
@@ -343,22 +344,39 @@ function OrdersContent() {
               {items.map((order) => (
                 <tr
                   key={order.id}
-                  className="border-b border-[var(--color-border)] last:border-b-0"
+                  className={`border-b border-[var(--color-border)] last:border-b-0 ${
+                    order.viewed === false ? 'bg-[#fff8f6]' : ''
+                  }`}
                 >
                   <td className="px-4 py-3">
                     <Link
-                      className="font-medium text-[var(--color-accent)] hover:underline"
+                      className={`text-[var(--color-accent)] hover:underline ${
+                        order.viewed === false ? 'font-bold' : 'font-medium'
+                      }`}
                       href={`/dashboard/orders/${order.id}`}
                     >
                       {order.orderNumber}
                     </Link>
+                    {order.viewed === false ? (
+                      <span className="ml-2 rounded-full bg-[#d92d20] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                        New
+                      </span>
+                    ) : null}
                     {order.shippingMethodName ? (
                       <p className="text-xs text-[var(--color-muted)]">
                         {order.shippingMethodName}
                       </p>
                     ) : null}
                   </td>
-                  <td className="px-4 py-3">{customerLabel(order)}</td>
+                  <td className="px-4 py-3">
+                    {customerLabel(order)}
+                    {!order.customer ? (
+                      <span className="ml-1.5 text-xs text-[var(--color-muted)]">· Guest</span>
+                    ) : null}
+                    {!order.customer && order.contact?.name && order.contact.phone ? (
+                      <p className="text-xs text-[var(--color-muted)]">{order.contact.phone}</p>
+                    ) : null}
+                  </td>
                   <td className="px-4 py-3">
                     {new Date(order.createdAt).toLocaleString()}
                   </td>

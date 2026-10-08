@@ -10,7 +10,7 @@ import { authErrorMessage, isValidEmail } from '@/components/auth/auth-errors';
 import { GoogleSignIn } from '@/components/auth/google-sign-in';
 import { PasswordRules, meetsPasswordRules } from '@/components/auth/password-rules';
 import { billingCycleDefinition } from '@ecomesta/utils';
-import { useAuth } from '@/lib/auth-context';
+import { hasSessionHint, useAuth } from '@/lib/auth-context';
 import { marketingSiteUrl } from '@/lib/marketing-site';
 import { readPlanSelection, safeNextPath, withPlanSelection } from '@/lib/plan-selection';
 import { usePublicPlans } from '@/lib/subscription-context';
@@ -47,6 +47,10 @@ const LEGAL_LINK_CLASSES =
 
 export default function RegisterPage() {
   const { register, loginWithGoogle, user, loading } = useAuth();
+  // Read after mount: the server cannot see this browser's storage, and the
+  // first render must match it. Null until then.
+  const [expectSession, setExpectSession] = useState<boolean | null>(null);
+  useEffect(() => setExpectSession(hasSessionHint()), []);
   const router = useRouter();
   const searchParams = useSearchParams();
   const selection = readPlanSelection(searchParams);
@@ -149,10 +153,12 @@ export default function RegisterPage() {
     );
   }
 
-  if (loading || user) {
+  if (user || expectSession === null || (loading && expectSession)) {
     return (
       <LoadingState
-        label={user ? 'Opening your workspace' : 'Checking signed-in session'}
+        label={
+          user ? 'Opening your workspace' : expectSession === null ? 'Loading registration' : 'Checking signed-in session'
+        }
       />
     );
   }

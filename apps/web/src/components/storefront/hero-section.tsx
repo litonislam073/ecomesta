@@ -37,6 +37,7 @@ export function HeroSection({
 
   return (
     <section
+      data-theme-section="hero"
       className="relative overflow-hidden border border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-14 md:px-10"
       style={{ borderRadius: 'var(--theme-radius, 1rem)' }}
     >

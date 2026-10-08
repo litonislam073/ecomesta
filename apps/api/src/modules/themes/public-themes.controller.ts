@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Header, Param, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PublicThemesService } from './public-themes.service';
 
@@ -11,7 +11,8 @@ export class PublicThemesController {
   @ApiOperation({
     summary: 'Published storefront theme configuration (ACTIVE stores only)',
   })
-  getTheme(@Param('storeSlug') storeSlug: string) {
-    return this.publicThemes.getPublishedTheme(storeSlug);
+  @Header('Cache-Control', 'no-store')
+  getTheme(@Param('storeSlug') storeSlug: string, @Query('preview') preview?: string) {
+    return this.publicThemes.getPublishedTheme(storeSlug, typeof preview === 'string' ? preview : undefined);
   }
 }

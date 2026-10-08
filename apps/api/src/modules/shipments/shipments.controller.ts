@@ -55,6 +55,17 @@ export class ShipmentsController {
     return this.shipmentsService.list(user.userId, storeId, orderId);
   }
 
+  @Get(':shipmentId')
+  @ApiOperation({ summary: 'Get a shipment with its courier status history' })
+  get(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Param('orderId', ParseUUIDPipe) orderId: string,
+    @Param('shipmentId', ParseUUIDPipe) shipmentId: string,
+  ) {
+    return this.shipmentsService.get(user.userId, storeId, orderId, shipmentId);
+  }
+
   @Patch(':shipmentId')
   @ApiOperation({ summary: 'Update a shipment (status/tracking)' })
   update(

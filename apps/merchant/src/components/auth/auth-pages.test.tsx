@@ -10,6 +10,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/lib/auth-context', () => ({
+  hasSessionHint: () => false,
   useAuth: () => ({ login: vi.fn(), register: vi.fn(), user: null, loading: false }),
 }));
 

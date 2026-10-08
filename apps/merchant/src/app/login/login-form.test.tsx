@@ -11,9 +11,10 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-const authState: { user: unknown; loading: boolean } = { user: null, loading: false };
+const authState: { user: unknown; loading: boolean; signedInBefore: boolean } = { user: null, loading: false, signedInBefore: false };
 
 vi.mock('@/lib/auth-context', () => ({
+  hasSessionHint: () => authState.signedInBefore,
   useAuth: () => ({
     login,
     user: authState.user,
@@ -45,6 +46,7 @@ describe('Login form', () => {
     replace.mockReset();
     authState.user = null;
     authState.loading = false;
+    authState.signedInBefore = false;
   });
 
   afterEach(() => {
@@ -63,8 +65,16 @@ describe('Login form', () => {
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/dashboard'));
   });
 
-  it('shows a checking state instead of the form while the session is verified', () => {
+  it('shows the form at once to a new visitor while the session check runs', () => {
     authState.loading = true;
+    render(<LoginPage />);
+    expect(screen.getByLabelText('Email')).toBeInTheDocument();
+    expect(screen.queryByText('Checking signed-in session')).toBeNull();
+  });
+
+  it('shows a checking state instead of the form while a returning session is verified', () => {
+    authState.loading = true;
+    authState.signedInBefore = true;
     render(<LoginPage />);
     expect(screen.getByRole('status')).toHaveTextContent('Checking signed-in session');
     expect(screen.queryByLabelText('Email')).toBeNull();

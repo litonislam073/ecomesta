@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { StoreTheme, ThemeListItem } from '@ecomesta/types';
 import ThemePage from '@/app/dashboard/theme/page';
@@ -153,6 +153,12 @@ function mockLoad() {
   });
 }
 
+/** Theme settings tab → Theme: the list of themes (switch or buy). */
+async function openThemeList(user = userEvent.setup()) {
+  await user.click(await screen.findByRole('tab', { name: 'Theme settings' }));
+  await user.click(screen.getByRole('button', { name: /^Theme: / }));
+}
+
 describe('Theme customizer', () => {
   beforeEach(() => {
     canManage = true;
@@ -162,26 +168,40 @@ describe('Theme customizer', () => {
     api.patch.mockReset();
   });
 
-  it('renders theme sections and the live preview from the draft config', async () => {
+  it('opens as a Shopify-style editor: sections list, settings panels and a preview', async () => {
     mockLoad();
+    const user = userEvent.setup();
     render(<ThemePage />);
 
-    expect(
-      await screen.findByRole('heading', { name: /^theme$/i }),
-    ).toBeInTheDocument();
-    // The page heading is visible while LoadingState is up — wait for the form.
-    expect(await screen.findByLabelText('Brand name')).toHaveValue('Alpha Goods');
-    expect(screen.getByRole('heading', { name: 'Branding' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Typography' })).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { name: 'Announcement bar' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Header' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Hero' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Homepage' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Footer' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'SEO' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /^theme$/i })).toBeInTheDocument();
+    // The page heading is visible while LoadingState is up — wait for the editor.
+    const sidebar = await screen.findByRole('complementary', { name: 'Theme settings' });
+    expect(within(sidebar).getByRole('tab', { name: 'Sections', selected: true })).toBeInTheDocument();
+    for (const name of ['Announcement bar', 'Header', 'Hero banner', 'Picks', 'Footer']) {
+      expect(within(sidebar).getByRole('button', { name: new RegExp(`^${name}`) })).toBeInTheDocument();
+    }
+    // Only the products block is listed in the draft: categories can be added back.
+    await user.click(within(sidebar).getByRole('button', { name: 'Add section' }));
+    expect(screen.getByRole('menuitem', { name: /^Categories/ })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /^Rich text/ })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /^Image banner/ })).toBeInTheDocument();
+    await user.keyboard('{Escape}');
 
+    // A section opens its settings; Back returns to the list.
+    await user.click(within(sidebar).getByRole('button', { name: /^Hero banner/ }));
+    expect(screen.getByRole('heading', { name: 'Hero' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Headline')).toHaveValue('Shop the new arrivals');
+    await user.click(screen.getByRole('button', { name: 'Back to sections' }));
+
+    await user.click(within(sidebar).getByRole('tab', { name: 'Theme settings' }));
+    for (const name of ['Logo & brand', 'Colors', 'Typography', 'SEO']) {
+      expect(within(sidebar).getByRole('button', { name })).toBeInTheDocument();
+    }
+    await user.click(within(sidebar).getByRole('button', { name: 'Logo & brand' }));
+    expect(screen.getByRole('heading', { name: 'Logo & brand' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Brand name')).toHaveValue('Alpha Goods');
+
+    // No live storefront preview in tests: the simple preview renders the draft.
     const preview = screen.getByRole('region', { name: 'Storefront preview' });
     expect(preview).toHaveTextContent('Free shipping over $50');
     expect(preview).toHaveTextContent('Shop the new arrivals');
@@ -270,6 +290,7 @@ describe('Theme customizer', () => {
     const user = userEvent.setup();
     render(<ThemePage />);
 
+    await openThemeList(user);
     await user.click(await screen.findByRole('button', { name: 'Edit Minimal' }));
     await waitFor(() =>
       expect(api.patch).toHaveBeenCalledWith('/stores/store-1/theme', {
@@ -920,6 +941,7 @@ describe('Theme customizer: unsaved changes (TE-04)', () => {
     const user = userEvent.setup();
     render(<ThemePage />);
     await editHeadline(user, 'Unsaved on Default');
+    await openThemeList(user);
     await user.click(screen.getByRole('button', { name: 'Edit Minimal' }));
     expect(screen.getByRole('dialog', { name: /discard unsaved theme changes/i })).toHaveTextContent(
       /live storefront is not affected/i,
@@ -941,6 +963,7 @@ describe('Theme customizer: unsaved changes (TE-04)', () => {
     const user = userEvent.setup();
     render(<ThemePage />);
     await screen.findByLabelText('Brand name');
+    await openThemeList(user);
     await user.click(screen.getByRole('button', { name: 'Edit Minimal' }));
     expect(screen.getByLabelText('Headline')).toBeDisabled();
     finishSwitch({ success: true, data: storeTheme });
@@ -953,6 +976,7 @@ describe('Theme customizer: unsaved changes (TE-04)', () => {
     const user = userEvent.setup();
     render(<ThemePage />);
     await screen.findByLabelText('Brand name');
+    await openThemeList(user);
     await user.click(screen.getByRole('button', { name: 'Edit Minimal' }));
     await waitFor(() => expect(api.patch).toHaveBeenCalledWith('/stores/store-1/theme', { themeId: 'theme-minimal' }));
     expect(screen.queryByRole('dialog', { name: /discard/i })).toBeNull();

@@ -13,7 +13,7 @@ export function FeaturedProducts({
   title?: string;
 }) {
   return (
-    <section className="space-y-4">
+    <section data-theme-section="featured_products" className="space-y-4">
       <div className="flex items-end justify-between gap-4">
         <h2 className="text-2xl font-semibold">{title}</h2>
         <Link

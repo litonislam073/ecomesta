@@ -15,6 +15,7 @@ import type { ManualPaymentAccount } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
 import { AuthField, FormAlert } from '@/components/auth/auth-fields';
 import { ManualPaymentPanel, type WalletPaymentInput } from '@/components/billing/manual-payment';
+import { PaymentDialog } from '@/components/billing/payment-dialog';
 import { PlanPicker, defaultSelection } from '@/components/billing/plan-picker';
 import { SetupProgress } from '@/components/onboarding/onboarding-shell';
 import {
@@ -286,6 +287,11 @@ export default function OnboardForm({
   const [error, setError] = useState<{ title?: string; message: string } | null>(null);
   const [phase, setPhase] = useState<Phase>('form');
   const [step, setStep] = useState<Step>('details');
+  // The plan is offered only once the store details are complete.
+  const [storeConfirmed, setStoreConfirmed] = useState(false);
+  const [focusPlan, setFocusPlan] = useState(false);
+  const [focusPayment, setFocusPayment] = useState(false);
+  const [returnFocus, setReturnFocus] = useState(false);
   const [accounts, setAccounts] = useState<ManualPaymentAccount[] | null>(null);
   const [accountsError, setAccountsError] = useState<string | null>(null);
   const [provisioned, setProvisioned] = useState<{ name: string; url: string | null }>({
@@ -297,6 +303,8 @@ export default function OnboardForm({
   const hardRedirect = useRef(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const alertRef = useRef<HTMLDivElement>(null);
+  const planHeadingRef = useRef<HTMLHeadingElement>(null);
+  const paymentHeadingRef = useRef<HTMLHeadingElement>(null);
 
   const hasStore = Boolean(user && user.memberships.stores.length > 0);
   // While provisioning, this component owns navigation; the new membership
@@ -339,6 +347,27 @@ export default function OnboardForm({
   useEffect(() => {
     if (phase === 'creating' || phase === 'completed') headingRef.current?.focus();
   }, [phase]);
+
+  useEffect(() => {
+    if (!focusPlan) return;
+    // The store details are hidden now: start the plan screen from the top.
+    window.scrollTo?.({ top: 0 });
+    planHeadingRef.current?.focus({ preventScroll: true });
+    setFocusPlan(false);
+  }, [focusPlan]);
+
+  useEffect(() => {
+    if (!focusPayment || step !== 'payment') return;
+    paymentHeadingRef.current?.focus({ preventScroll: true });
+    setFocusPayment(false);
+  }, [focusPayment, step]);
+
+  // Closing the payment dialog returns focus to the button that opened it.
+  useEffect(() => {
+    if (!returnFocus || step !== 'details') return;
+    document.getElementById('continue-to-payment')?.focus();
+    setReturnFocus(false);
+  }, [returnFocus, step]);
 
   const openDashboard = useCallback(() => {
     if (hardRedirect.current) {
@@ -410,11 +439,22 @@ export default function OnboardForm({
     }
   }
 
-  /** Step 1 → 2: the details are checked here; the API checks them again with the payment. */
+  /**
+   * Store details → plan → payment. The details are checked before the plan is
+   * shown and again before payment; the API checks them once more with the payment.
+   */
   function onContinue(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    if (showFieldErrors(validate())) return;
+    if (showFieldErrors(validate())) {
+      setStoreConfirmed(false);
+      return;
+    }
+    if (!storeConfirmed) {
+      setStoreConfirmed(true);
+      setFocusPlan(true);
+      return;
+    }
     if (!accessToken) {
       setError({ message: SESSION_EXPIRED });
       return;
@@ -425,7 +465,7 @@ export default function OnboardForm({
     }
     setStep('payment');
     void loadAccounts();
-    window.scrollTo?.({ top: 0 });
+    setFocusPayment(true);
   }
 
   /** Step 2: the payment creates the store (offline until the payment is confirmed). */
@@ -463,7 +503,9 @@ export default function OnboardForm({
       if (mapped.payment) throw new Error(mapped.message);
       setError({ title: CREATE_FAILED_TITLE, message: mapped.message });
       setStep('details');
-      if (!showFieldErrors(mapped.fieldErrors)) setPendingFocus('alert');
+      // A field problem reopens the store details; anything else stays on the plan screen.
+      if (showFieldErrors(mapped.fieldErrors)) setStoreConfirmed(false);
+      else setPendingFocus('alert');
       return;
     }
 
@@ -480,6 +522,14 @@ export default function OnboardForm({
     setPhase('completed');
   }
 
+  /** Back from the plan screen to the store details (what was typed is kept). */
+  function editStoreDetails() {
+    setStep('details');
+    setStoreConfirmed(false);
+    setPendingFocus('businessName');
+    window.scrollTo?.({ top: 0 });
+  }
+
   function onSignOut() {
     setSigningOut(true);
     void logout().then(() => router.replace('/login'));
@@ -487,45 +537,52 @@ export default function OnboardForm({
 
   const summaryName = storeName.trim() || businessName.trim();
   const chosenPlan = planChoice ? plans?.find((plan) => plan.slug === planChoice.plan) ?? null : null;
-  const paymentView =
+  // While paying, the details and plan above are locked; "Back" unlocks them.
+  const locked = step === 'payment';
+  const closePayment = () => {
+    setStep('details');
+    setReturnFocus(true);
+  };
+  const paymentSection =
     step === 'payment' && planChoice && chosenPlan ? (
-      <div>
-        <SetupProgress current="payment" />
-        <p className="mt-6 text-sm font-semibold text-[var(--color-accent)]">Step 3 of 3 · Payment</p>
-        <h1 className="mt-2 font-display text-3xl tracking-tight text-[var(--color-ink)]">Pay for your plan</h1>
-        <p className="mt-2 text-[var(--color-muted)]">
-          Your store <span className="font-medium text-[var(--color-ink)]">{summaryName}</span> is created as soon as
-          you submit your payment. It goes live for customers once our team confirms the payment.
-        </p>
-        <div className="mt-6">
-          {accounts ? (
-            <ManualPaymentPanel
-              plan={chosenPlan}
-              cycle={planChoice.cycle}
-              accounts={accounts}
-              token={accessToken}
-              trialEndsAt={null}
-              onPay={createStore}
-              heading="Last step: pay for your plan"
-              intro="Send the payment with bKash, Nagad, Rocket or Upay, then tell us your number and the transaction ID."
-              submitLabel={(amount) => `I've paid ${amount} — create my store`}
-              footer={
-                <button
-                  type="button"
-                  onClick={() => setStep('details')}
-                  className="w-full rounded-sm text-center text-sm font-semibold text-[var(--color-accent)] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
-                >
-                  ← Back to store details
-                </button>
-              }
-            />
-          ) : accountsError ? (
-            <FormAlert title="Payment details unavailable" message={accountsError} />
-          ) : (
-            <StatusMessage title="Loading payment details…" />
-          )}
-        </div>
-      </div>
+      <PaymentDialog
+        active={!provisioning}
+        title="Pay for your plan"
+        headingRef={paymentHeadingRef}
+        onClose={closePayment}
+        subtitle={
+          <>
+            Your store <span className="font-medium text-[var(--color-ink)]">{summaryName}</span> is created as soon as
+            you pay.
+          </>
+        }
+      >
+        {accounts ? (
+          <ManualPaymentPanel
+            plan={chosenPlan}
+            cycle={planChoice.cycle}
+            accounts={accounts}
+            token={accessToken}
+            trialEndsAt={null}
+            onPay={createStore}
+            submitLabel={(amount) => `I've paid ${amount} — create my store`}
+            variant="compact"
+            footer={
+              <button
+                type="button"
+                onClick={closePayment}
+                className="w-full rounded-sm text-center text-sm font-semibold text-[var(--color-accent)] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+              >
+                ← Back to plan
+              </button>
+            }
+          />
+        ) : accountsError ? (
+          <FormAlert title="Payment details unavailable" message={accountsError} />
+        ) : (
+          <StatusMessage title="Loading payment details…" />
+        )}
+      </PaymentDialog>
     ) : null;
 
   if (signingOut) {
@@ -537,207 +594,247 @@ export default function OnboardForm({
   if (!provisioning && hasStore) {
     return <StatusPanel title="You already have a store" detail="Opening your dashboard…" />;
   }
-  if (provisioning || paymentView) {
-    // The payment step keeps its place in the tree while the store is created,
-    // so a refused payment comes back with what was typed and the error.
-    return (
-      <SetupCard>
-        {provisioning ? (
-          <ProvisioningPanel
-            phase={phase as Exclude<Phase, 'form'>}
-            storeName={provisioned.name}
-            storeUrl={provisioned.url}
-            headingRef={headingRef}
-            onOpenDashboard={openDashboard}
-          />
-        ) : null}
-        {/* Only while the request runs; after success the payment step is done. */}
-        {paymentView && (!provisioning || phase === 'creating') ? (
-          <div hidden={provisioning}>{paymentView}</div>
-        ) : null}
-      </SetupCard>
-    );
-  }
-  if (!user) {
-    return <StatusPanel title="Checking your account..." />;
-  }
 
-
-
+  // The page keeps its place in the tree while the store is created, so a
+  // refused payment comes back with what was typed and the error. After
+  // success the payment step is done and the page is dropped.
   return (
-    <SetupCard wide>
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between lg:gap-12">
-        <div className="max-w-xl">
-          <p className="text-sm font-semibold text-[var(--color-accent)]">Step 2 of 3 · Store details</p>
-          <h1 className="mt-2 font-display text-3xl tracking-tight text-[var(--color-ink)] sm:text-4xl">
-            Let&apos;s set up your store
-          </h1>
-          <p className="mt-2 text-[var(--color-muted)]">
-            Add a few details about your business to get your Ecomesta store ready.
+    <SetupCard wide={!provisioning}>
+      {provisioning ? (
+        <ProvisioningPanel
+          phase={phase as Exclude<Phase, 'form'>}
+          storeName={provisioned.name}
+          storeUrl={provisioned.url}
+          headingRef={headingRef}
+          onOpenDashboard={openDashboard}
+        />
+      ) : null}
+      {!provisioning || (phase === 'creating' && paymentSection) ? (
+        <div hidden={provisioning}>
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between lg:gap-12">
+            <div className="max-w-xl">
+              <p className="text-sm font-semibold text-[var(--color-accent)]">
+                {storeConfirmed ? 'Step 3 of 3 · Plan & payment' : 'Step 2 of 3 · Store details'}
+              </p>
+              <h1 className="mt-2 font-display text-3xl tracking-tight text-[var(--color-ink)] sm:text-4xl">
+                {storeConfirmed ? 'Choose your plan' : <>Let&apos;s set up your store</>}
+              </h1>
+              <p className="mt-2 text-[var(--color-muted)]">
+                {storeConfirmed
+                  ? 'Pick a plan, then pay for it. Your store is created as soon as you submit the payment.'
+                  : 'Add a few details about your business to get your Ecomesta store ready.'}
+              </p>
+            </div>
+            <div className="w-full lg:max-w-md">
+              <SetupProgress current={storeConfirmed ? 'payment' : 'store'} />
+            </div>
+          </div>
+
+          <form
+            className="mt-8 space-y-8 border-t border-[var(--color-border)] pt-8"
+            onSubmit={onContinue}
+            noValidate
+          >
+            {/* Store details first; then they make way for the plan and payment. */}
+            {!storeConfirmed ? (
+              <>
+                <section aria-labelledby="store-heading" className="space-y-5">
+                  <h2 id="store-heading" className="font-semibold text-[var(--color-ink)]">
+                    Your store
+                  </h2>
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <AuthField
+                      id={FIELD_IDS.businessName}
+                      label="Business name"
+                      name="businessName"
+                      autoComplete="organization"
+                      required
+                      maxLength={120}
+                      value={businessName}
+                      error={fieldErrors.businessName}
+                      hint="Your company or brand name."
+                      onChange={(e) => {
+                        setBusinessName(e.target.value);
+                        clearFieldError('businessName');
+                      }}
+                    />
+                    <AuthField
+                      id={FIELD_IDS.storeName}
+                      label="Store name"
+                      name="storeName"
+                      autoComplete="off"
+                      maxLength={120}
+                      placeholder={businessName.trim() || undefined}
+                      value={storeName}
+                      error={fieldErrors.storeName}
+                      hint="This is the name customers will see on your storefront. Leave blank to use your business name."
+                      onChange={(e) => {
+                        setStoreName(e.target.value);
+                        clearFieldError('storeName');
+                      }}
+                    />
+                  </div>
+                  <AuthField
+                    id={FIELD_IDS.storeSlug}
+                    label="Store URL"
+                    name="storeSlug"
+                    autoComplete="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    required
+                    placeholder="your-store"
+                    value={storeSlug}
+                    error={fieldErrors.storeSlug}
+                    hint={
+                      <>
+                        Lowercase letters, numbers and hyphens.
+                        {previewUrl ? (
+                          <span className="mt-1 block break-all">
+                            Your store address: <span className="font-medium text-[var(--color-ink)]">{previewUrl}</span>
+                          </span>
+                        ) : null}
+                      </>
+                    }
+                    onChange={(e) => {
+                      setStoreSlugInput(sanitizeSlugInput(e.target.value));
+                      clearFieldError('storeSlug');
+                    }}
+                    onBlur={() => {
+                      if (storeSlugInput !== null) setStoreSlugInput(slugify(storeSlugInput));
+                    }}
+                  />
+
+                  <details
+                    open={advancedOpen}
+                    onToggle={(e) => setAdvancedOpen(e.currentTarget.open)}
+                    className="group rounded-lg border border-[var(--color-border)] px-4 py-3"
+                  >
+                    <summary className="cursor-pointer select-none rounded-sm text-sm font-semibold text-[var(--color-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]">
+                      Advanced settings <span className="font-normal text-[var(--color-muted)]">(optional)</span>
+                    </summary>
+                    <div className="mt-3">
+                      <AuthField
+                        id={FIELD_IDS.tenantSlug}
+                        label="Account ID"
+                        name="tenantSlug"
+                        autoComplete="off"
+                        autoCapitalize="none"
+                        spellCheck={false}
+                        maxLength={64}
+                        value={tenantSlug}
+                        error={fieldErrors.tenantSlug}
+                        hint="Identifies your business account inside Ecomesta. Customers never see it. It matches your store URL unless you change it."
+                        onChange={(e) => {
+                          setTenantSlugInput(sanitizeSlugInput(e.target.value, TENANT_SLUG_MAX));
+                          clearFieldError('tenantSlug');
+                        }}
+                        onBlur={() => {
+                          if (tenantSlugInput !== null) setTenantSlugInput(slugify(tenantSlugInput, TENANT_SLUG_MAX));
+                        }}
+                      />
+                    </div>
+                  </details>
+                </section>
+
+                <div className="space-y-5">
+                  {error ? (
+                    <div ref={alertRef} tabIndex={-1} className="rounded-lg focus:outline-none">
+                      <FormAlert title={error.title} message={error.message} />
+                    </div>
+                  ) : null}
+                  <div className="flex justify-end">
+                    <Button type="submit" className="h-11 w-full rounded-lg text-base font-semibold sm:w-auto sm:min-w-48">
+                      Continue
+                    </Button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:gap-12">
+                {plans && plans.length > 0 && planChoice ? (
+                  <section aria-labelledby="plan-heading" className="space-y-3">
+                    <div>
+                      <h2
+                        id="plan-heading"
+                        ref={planHeadingRef}
+                        tabIndex={-1}
+                        className="scroll-mt-6 font-semibold text-[var(--color-ink)] focus:outline-none"
+                      >
+                        Your plan
+                      </h2>
+                      <p className="text-sm text-[var(--color-muted)]">
+                        You pay for it in the next step. Your store goes live as soon as we confirm the payment.
+                      </p>
+                    </div>
+                    <fieldset disabled={locked} className="m-0 min-w-0 border-0 p-0">
+                      <PlanPicker plans={plans} value={planChoice} onChange={setPlanChoice} idPrefix="onboard" />
+                    </fieldset>
+                  </section>
+                ) : null}
+
+                <div className="space-y-5 lg:col-start-2">
+                  <section aria-labelledby="setup-summary" className="rounded-lg bg-[var(--brand-tint)] px-4 py-3 text-sm">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <h2 id="setup-summary" className="font-semibold text-[var(--color-ink)]">
+                        Summary
+                      </h2>
+                      {locked ? null : (
+                        <button
+                          type="button"
+                          onClick={editStoreDetails}
+                          className="rounded-sm text-sm font-semibold text-[var(--color-accent)] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+                        >
+                          Edit store details
+                        </button>
+                      )}
+                    </div>
+                    <dl className="mt-2 grid grid-cols-3 gap-x-4 gap-y-2">
+                      <SummaryItem wide label="Store name" value={summaryName || 'Not set yet'} />
+                      <SummaryItem
+                        wide
+                        label="Store URL"
+                        value={finalStoreSlug ? (previewUrl ?? finalStoreSlug) : 'Not set yet'}
+                      />
+                      <SummaryItem label="Country" value="Bangladesh" />
+                      <SummaryItem label="Currency" value="BDT" />
+                      <SummaryItem label="Timezone" value="Asia/Dhaka" />
+                    </dl>
+                    <p className="mt-2 text-xs text-[var(--color-muted)]">
+                      Country, currency and timezone are the current platform defaults for new stores.
+                    </p>
+                  </section>
+
+                  {error ? (
+                    <div ref={alertRef} tabIndex={-1} className="rounded-lg focus:outline-none">
+                      <FormAlert title={error.title} message={error.message} />
+                    </div>
+                  ) : null}
+
+                  {locked ? null : (
+                    <Button id="continue-to-payment" type="submit" className="h-11 w-full rounded-lg text-base font-semibold">
+                      Continue to payment
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </form>
+
+          {paymentSection}
+
+          <p className="mt-8 border-t border-[var(--color-border)] pt-5 text-center text-sm text-[var(--color-muted)]">
+            Signed in as <span className="break-all font-medium text-[var(--color-ink)]">{user?.email}</span>
+            {' · '}
+            <button
+              type="button"
+              onClick={onSignOut}
+              className="rounded-sm font-semibold text-[var(--color-accent)] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+            >
+              Sign out
+            </button>
           </p>
         </div>
-        <div className="w-full lg:max-w-md">
-          <SetupProgress current="store" />
-        </div>
-      </div>
-
-      <form
-        className="mt-8 grid gap-8 border-t border-[var(--color-border)] pt-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:gap-12"
-        onSubmit={onContinue}
-        noValidate
-      >
-        <div className="space-y-5">
-          <h2 className="font-semibold text-[var(--color-ink)]">Your store</h2>
-          <AuthField
-            id={FIELD_IDS.businessName}
-            label="Business name"
-            name="businessName"
-            autoComplete="organization"
-            required
-            maxLength={120}
-            value={businessName}
-            error={fieldErrors.businessName}
-            hint="Your company or brand name."
-            onChange={(e) => {
-              setBusinessName(e.target.value);
-              clearFieldError('businessName');
-            }}
-          />
-          <AuthField
-            id={FIELD_IDS.storeName}
-            label="Store name"
-            name="storeName"
-            autoComplete="off"
-            maxLength={120}
-            placeholder={businessName.trim() || undefined}
-            value={storeName}
-            error={fieldErrors.storeName}
-            hint="This is the name customers will see on your storefront. Leave blank to use your business name."
-            onChange={(e) => {
-              setStoreName(e.target.value);
-              clearFieldError('storeName');
-            }}
-          />
-          <AuthField
-            id={FIELD_IDS.storeSlug}
-            label="Store URL"
-            name="storeSlug"
-            autoComplete="off"
-            autoCapitalize="none"
-            spellCheck={false}
-            required
-            placeholder="your-store"
-            value={storeSlug}
-            error={fieldErrors.storeSlug}
-            hint={
-              <>
-                Lowercase letters, numbers and hyphens.
-                {previewUrl ? (
-                  <span className="mt-1 block break-all">
-                    Your store address: <span className="font-medium text-[var(--color-ink)]">{previewUrl}</span>
-                  </span>
-                ) : null}
-              </>
-            }
-            onChange={(e) => {
-              setStoreSlugInput(sanitizeSlugInput(e.target.value));
-              clearFieldError('storeSlug');
-            }}
-            onBlur={() => {
-              if (storeSlugInput !== null) setStoreSlugInput(slugify(storeSlugInput));
-            }}
-          />
-
-          <details
-            open={advancedOpen}
-            onToggle={(e) => setAdvancedOpen(e.currentTarget.open)}
-            className="group rounded-lg border border-[var(--color-border)] px-4 py-3"
-          >
-            <summary className="cursor-pointer select-none rounded-sm text-sm font-semibold text-[var(--color-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]">
-              Advanced settings <span className="font-normal text-[var(--color-muted)]">(optional)</span>
-            </summary>
-            <div className="mt-3">
-              <AuthField
-                id={FIELD_IDS.tenantSlug}
-                label="Account ID"
-                name="tenantSlug"
-                autoComplete="off"
-                autoCapitalize="none"
-                spellCheck={false}
-                maxLength={64}
-                value={tenantSlug}
-                error={fieldErrors.tenantSlug}
-                hint="Identifies your business account inside Ecomesta. Customers never see it. It matches your store URL unless you change it."
-                onChange={(e) => {
-                  setTenantSlugInput(sanitizeSlugInput(e.target.value, TENANT_SLUG_MAX));
-                  clearFieldError('tenantSlug');
-                }}
-                onBlur={() => {
-                  if (tenantSlugInput !== null) setTenantSlugInput(slugify(tenantSlugInput, TENANT_SLUG_MAX));
-                }}
-              />
-            </div>
-          </details>
-        </div>
-
-        <div className="space-y-5 lg:border-l lg:border-[var(--color-border)] lg:pl-12">
-          {plans && plans.length > 0 && planChoice ? (
-            <section aria-labelledby="plan-heading" className="space-y-3">
-              <div>
-                <h2 id="plan-heading" className="font-semibold text-[var(--color-ink)]">
-                  Your plan
-                </h2>
-                <p className="text-sm text-[var(--color-muted)]">
-                  You pay for it in the next step. Your store goes live as soon as we confirm the payment.
-                </p>
-              </div>
-              <PlanPicker plans={plans} value={planChoice} onChange={setPlanChoice} idPrefix="onboard" />
-            </section>
-          ) : null}
-
-          <section aria-labelledby="setup-summary" className="rounded-lg bg-[var(--brand-tint)] px-4 py-3 text-sm">
-            <h2 id="setup-summary" className="font-semibold text-[var(--color-ink)]">
-              Summary
-            </h2>
-            <dl className="mt-2 grid grid-cols-3 gap-x-4 gap-y-2">
-              <SummaryItem wide label="Store name" value={summaryName || 'Not set yet'} />
-              <SummaryItem
-                wide
-                label="Store URL"
-                value={finalStoreSlug ? (previewUrl ?? finalStoreSlug) : 'Not set yet'}
-              />
-              <SummaryItem label="Country" value="Bangladesh" />
-              <SummaryItem label="Currency" value="BDT" />
-              <SummaryItem label="Timezone" value="Asia/Dhaka" />
-            </dl>
-            <p className="mt-2 text-xs text-[var(--color-muted)]">
-              Country, currency and timezone are the current platform defaults for new stores.
-            </p>
-          </section>
-
-          {error ? (
-            <div ref={alertRef} tabIndex={-1} className="rounded-lg focus:outline-none">
-              <FormAlert title={error.title} message={error.message} />
-            </div>
-          ) : null}
-
-          <Button type="submit" className="h-11 w-full rounded-lg text-base font-semibold">
-            Continue to payment
-          </Button>
-        </div>
-      </form>
-
-      <p className="mt-8 border-t border-[var(--color-border)] pt-5 text-center text-sm text-[var(--color-muted)]">
-        Signed in as <span className="break-all font-medium text-[var(--color-ink)]">{user.email}</span>
-        {' · '}
-        <button
-          type="button"
-          onClick={onSignOut}
-          className="rounded-sm font-semibold text-[var(--color-accent)] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
-        >
-          Sign out
-        </button>
-      </p>
+      ) : null}
     </SetupCard>
   );
 }

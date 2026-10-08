@@ -91,10 +91,15 @@ function mockApi() {
 }
 
 const continueButton = () => screen.getByRole('button', { name: 'Continue to payment' });
+/** Store details → plan: the plan is offered only after the details are complete. */
+const storeContinue = () => screen.getByRole('button', { name: 'Continue' });
 const payButton = () => screen.getByRole('button', { name: /create my store/ });
 
 /** Store details → payment step → the payment that creates the store. */
 async function payAndCreate(user: ReturnType<typeof userEvent.setup>, { double = false } = {}) {
+  // After a refused attempt the store step is already done and the plan is on screen.
+  const next = screen.queryByRole('button', { name: 'Continue' });
+  if (next) await user.click(next);
   await screen.findByRole('radio', { name: /Starter/ });
   await user.click(continueButton());
   await user.type(await screen.findByLabelText('Your bKash number'), '01712345678');
@@ -154,7 +159,6 @@ describe('Onboard form', () => {
     renderForm();
 
     await user.type(await screen.findByLabelText('Business name'), 'Demo Shop BD');
-    await screen.findByRole('radio', { name: /Starter/ });
     await payAndCreate(user);
 
     await waitFor(() => {
@@ -191,16 +195,23 @@ describe('Onboard form', () => {
     post.mockResolvedValue({ success: true, data: {} });
     renderForm();
 
+    await user.type(await screen.findByLabelText('Business name'), 'Demo Shop BD');
+    await user.click(storeContinue());
     expect(await screen.findByRole('radio', { name: /Growth/ })).toBeChecked();
     expect(screen.getByRole('radio', { name: /Yearly/ })).toBeChecked();
     expect(screen.getByText('৳2,691 / year')).toBeInTheDocument();
     expect(screen.getByText(/You pay for it in the next step/)).toBeInTheDocument();
     expect(screen.queryByText(/months free|free trial/i)).toBeNull();
 
-    await user.type(screen.getByLabelText('Business name'), 'Demo Shop BD');
     await user.click(continueButton());
     // Payment is the last step: the amount comes from the chosen plan and period.
-    expect(await screen.findByRole('heading', { level: 1, name: 'Pay for your plan' })).toBeInTheDocument();
+    // Payment opens as a new section below the plan, on the same page.
+    const payment = await screen.findByRole('heading', { level: 2, name: 'Pay for your plan' });
+    await waitFor(() => expect(payment).toHaveFocus());
+    expect(screen.getByRole('heading', { level: 1, name: 'Choose your plan' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Business name')).toBeNull();
+    expect(screen.getByRole('radio', { name: /Growth/ })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Continue to payment' })).toBeNull();
     const progress = screen.getByRole('list', { name: 'Setup progress' });
     expect(within(progress).getAllByRole('listitem')[2]).toHaveAttribute('aria-current', 'step');
     expect(screen.getByText('Growth plan')).toBeInTheDocument();
@@ -227,7 +238,6 @@ describe('Onboard form', () => {
     );
     renderForm();
     await user.type(await screen.findByLabelText('Business name'), 'Demo Shop');
-    await screen.findByRole('radio', { name: /Starter/ });
     await payAndCreate(user);
 
     expect(await screen.findByRole('alert')).toHaveTextContent('This transaction ID has already been submitted');
@@ -251,10 +261,82 @@ describe('Onboard form', () => {
     const user = userEvent.setup();
     renderForm();
     await user.type(await screen.findByLabelText('Business name'), 'Demo Shop');
+    await user.click(storeContinue());
     await screen.findByRole('radio', { name: /Starter/ });
     await user.click(continueButton());
-    await user.click(await screen.findByRole('button', { name: '← Back to store details' }));
+    // Back closes the payment section and unlocks the plan.
+    await user.click(await screen.findByRole('button', { name: '← Back to plan' }));
+    expect(screen.getByRole('radio', { name: /Starter/ })).toBeEnabled();
+    expect(screen.queryByRole('heading', { name: 'Pay for your plan' })).toBeNull();
+    expect(continueButton()).toBeEnabled();
+    // "Edit store details" brings the details back with what was typed.
+    await user.click(screen.getByRole('button', { name: 'Edit store details' }));
     expect(screen.getByLabelText('Business name')).toHaveValue('Demo Shop');
+    await waitFor(() => expect(screen.getByLabelText('Business name')).toHaveFocus());
+    expect(screen.queryByRole('heading', { name: 'Your plan' })).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: "Let's set up your store" })).toBeInTheDocument();
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('opens the payment as a dialog over the plan, closed by Escape or the close button', async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await user.type(await screen.findByLabelText('Business name'), 'Demo Shop');
+    await user.click(storeContinue());
+    await screen.findByRole('radio', { name: /Starter/ });
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    await user.click(continueButton());
+    const dialog = await screen.findByRole('dialog', { name: 'Pay for your plan' });
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    await waitFor(() => expect(within(dialog).getByRole('heading', { name: 'Pay for your plan' })).toHaveFocus());
+    expect(await within(dialog).findByLabelText('Your bKash number')).toBeInTheDocument();
+    expect(document.body.style.overflow).toBe('hidden');
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.body.style.overflow).toBe('');
+    await waitFor(() => expect(continueButton()).toHaveFocus());
+    expect(screen.getByRole('radio', { name: /Starter/ })).toBeEnabled();
+
+    await user.click(continueButton());
+    await user.click(await screen.findByRole('button', { name: 'Close payment' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('needs both the wallet number and the transaction ID before the payment can be submitted', async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await user.type(await screen.findByLabelText('Business name'), 'Demo Shop');
+    await user.click(storeContinue());
+    await screen.findByRole('radio', { name: /Starter/ });
+    await user.click(continueButton());
+
+    const number = await screen.findByLabelText('Your bKash number');
+    const trx = screen.getByLabelText('Transaction ID');
+    expect(number).toBeRequired();
+    expect(trx).toBeRequired();
+    expect(payButton()).toBeDisabled();
+    expect(screen.getByText('Enter your bKash number and the transaction ID to submit.')).toBeInTheDocument();
+
+    await user.type(number, '01712345678');
+    expect(payButton()).toBeDisabled();
+    await user.type(trx, '   ');
+    expect(payButton()).toBeDisabled();
+
+    await user.clear(trx);
+    await user.type(trx, 'TRX12345');
+    expect(payButton()).toBeEnabled();
+    expect(screen.queryByText('Enter your bKash number and the transaction ID to submit.')).toBeNull();
+
+    // A wrong number is marked and focused, and nothing is sent.
+    await user.clear(number);
+    await user.type(number, '12345');
+    await user.click(payButton());
+    expect(await screen.findByRole('alert')).toHaveTextContent(/11-digit bKash number/);
+    expect(number).toHaveAttribute('aria-invalid', 'true');
+    await waitFor(() => expect(number).toHaveFocus());
     expect(post).not.toHaveBeenCalled();
   });
 
@@ -272,7 +354,7 @@ describe('Onboard form', () => {
     renderForm();
 
     await user.type(screen.getByLabelText('Business name'), 'বাংলা দোকান');
-    await user.click(continueButton());
+    await user.click(storeContinue());
 
     expect(post).not.toHaveBeenCalled();
     expect(screen.getByLabelText('Store URL')).toHaveAccessibleDescription(/latin letters or numbers/i);
@@ -328,7 +410,7 @@ describe('Onboard form', () => {
     const user = userEvent.setup();
     renderForm();
     await user.type(screen.getByLabelText('Store name'), 'A');
-    await user.click(continueButton());
+    await user.click(storeContinue());
 
     const business = screen.getByLabelText('Business name');
     expect(business).toHaveAttribute('aria-invalid', 'true');
@@ -368,7 +450,7 @@ describe('Onboard form', () => {
     await user.type(screen.getByLabelText('Business name'), 'Demo Shop');
     await user.clear(screen.getByLabelText('Store URL'));
     await user.type(screen.getByLabelText('Store URL'), 'a');
-    await user.click(continueButton());
+    await user.click(storeContinue());
     expect(screen.getByLabelText('Store URL')).toHaveAttribute('aria-invalid', 'true');
     expect(post).not.toHaveBeenCalled();
   });
@@ -408,7 +490,7 @@ describe('Onboard form', () => {
     await user.tab();
     expect(slug).toHaveValue(tooLong);
 
-    await user.click(continueButton());
+    await user.click(storeContinue());
     expect(slug).toHaveAttribute('aria-invalid', 'true');
     expect(slug).toHaveAccessibleDescription(/Store URL must be 63 characters or fewer\./);
     await waitFor(() => expect(slug).toHaveFocus());
@@ -445,13 +527,41 @@ describe('Onboard form', () => {
     );
   });
 
+  it('offers the plan only after the store details are complete', async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await screen.findByLabelText('Business name');
+    await waitFor(() => expect(get).toHaveBeenCalledWith('/public/plans', expect.anything()));
+    expect(screen.queryByRole('heading', { name: 'Your plan' })).toBeNull();
+    expect(screen.queryByRole('radio')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Continue to payment' })).toBeNull();
+
+    // Incomplete details: the plan stays hidden and the first problem is focused.
+    await user.click(storeContinue());
+    expect(screen.getByLabelText('Business name')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.queryByRole('heading', { name: 'Your plan' })).toBeNull();
+
+    await user.type(screen.getByLabelText('Business name'), 'Demo Shop');
+    await user.click(storeContinue());
+    const heading = await screen.findByRole('heading', { name: 'Your plan' });
+    await waitFor(() => expect(heading).toHaveFocus());
+    expect(screen.getByRole('radio', { name: /Starter/ })).toBeChecked();
+    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
+    expect(continueButton()).toBeEnabled();
+    // The store details make way for the plan and payment.
+    expect(screen.queryByLabelText('Business name')).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Choose your plan' })).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Summary' })).getByText('Demo Shop')).toBeInTheDocument();
+    expect(post).not.toHaveBeenCalled();
+  });
+
   it('shows the setup summary with platform defaults', async () => {
     const user = userEvent.setup();
     renderForm();
-    const summary = screen.getByRole('region', { name: 'Summary' });
-    expect(within(summary).getAllByText('Not set yet')).toHaveLength(2);
     await user.type(screen.getByLabelText('Business name'), 'Demo Shop');
     await user.type(screen.getByLabelText('Store name'), 'Demo Store');
+    await user.click(storeContinue());
+    const summary = await screen.findByRole('region', { name: 'Summary' });
     expect(within(summary).getByText('Demo Store')).toBeInTheDocument();
     expect(within(summary).getByText('http://localhost:3000/?store=demo-shop')).toBeInTheDocument();
     expect(within(summary).getByText('Bangladesh')).toBeInTheDocument();
@@ -485,7 +595,8 @@ describe('Onboard form', () => {
     );
     expect(screen.getByLabelText('Store URL')).toHaveAttribute('aria-invalid', 'true');
     expect(screen.queryByText(/tenant slug/i)).toBeNull();
-    expect(continueButton()).toBeEnabled();
+    // A field problem reopens the store details.
+    expect(storeContinue()).toBeEnabled();
   });
 
   it('maps a conflict on an edited account ID to that field', async () => {
@@ -645,10 +756,13 @@ describe('Onboard form', () => {
       expect(alert).toHaveTextContent("We couldn't create your store");
       expect(alert).toHaveTextContent('Unable to create your store right now. Please try again.');
       expect(alert).not.toHaveTextContent(/relation|stores/);
-      expect(screen.getByLabelText('Business name')).toHaveValue('Fresh Fashion');
+      // Not a field problem: back on the plan screen, with the details kept.
+      expect(within(screen.getByRole('region', { name: 'Summary' })).getByText('Fresh Fashion')).toBeInTheDocument();
       expect(continueButton()).toBeEnabled();
       expect(reloadProfile).not.toHaveBeenCalled();
       await waitFor(() => expect(alert.parentElement).toHaveFocus());
+      await user.click(screen.getByRole('button', { name: 'Edit store details' }));
+      expect(screen.getByLabelText('Business name')).toHaveValue('Fresh Fashion');
     });
 
     it('returns a duplicate store URL to the form and focuses that field', async () => {
@@ -742,7 +856,8 @@ describe('Onboard route', () => {
     const { container } = render(<OnboardRoute />);
     await user.type(screen.getByLabelText('Business name'), 'Demo Shop');
     expect(screen.getByLabelText('Store URL')).not.toHaveAccessibleDescription(/https?:\/\//);
-    expect(within(screen.getByRole('region', { name: 'Summary' })).getByText('demo-shop')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(within(await screen.findByRole('region', { name: 'Summary' })).getByText('demo-shop')).toBeInTheDocument();
     expect(container.innerHTML).not.toMatch(/\?store=/);
   });
 

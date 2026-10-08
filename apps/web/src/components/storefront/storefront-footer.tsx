@@ -20,7 +20,7 @@ export function StorefrontFooter({ store }: { store: PublicStore }) {
   const contact = store.contact ?? { email: null, phone: null, address: null };
 
   return (
-    <footer className="mt-auto border-t border-[var(--color-border)] bg-[var(--color-surface)]">
+    <footer data-theme-section="footer" className="mt-auto border-t border-[var(--color-border)] bg-[var(--color-surface)]">
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-8 text-sm text-[var(--color-muted)]">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>

@@ -36,6 +36,9 @@ async function removeTestData(prisma: PrismaService) {
     await tx.product.deleteMany({ where: { storeId: { in: storeIds } } });
     await tx.subscription.deleteMany({ where: { tenantId: { in: tenantIds } } });
     await tx.storeTheme.deleteMany({ where: { storeId: { in: storeIds } } });
+    // New stores start with ready-made shipping (see default-shipping.ts).
+    await tx.shippingMethod.deleteMany({ where: { storeId: { in: storeIds } } });
+    await tx.shippingZone.deleteMany({ where: { storeId: { in: storeIds } } });
     await tx.store.deleteMany({ where: { id: { in: storeIds } } });
     await tx.tenant.deleteMany({ where: { id: { in: tenantIds } } });
     await tx.user.deleteMany({ where: { id: { in: userIds } } });
@@ -301,9 +304,13 @@ describe('Plans, entitlements and manual billing payments (e2e)', () => {
       expect(bySlug.starter!.prices.map((p) => p.amount)).toEqual([99, 535, 891]);
       expect(bySlug.growth!.prices.map((p) => p.amount)).toEqual([299, 1615, 2691]);
       expect(bySlug.business!.prices.map((p) => p.amount)).toEqual([699, 3775, 6291]);
-      expect(bySlug.starter!.limits).toMatchObject({ maxProducts: 50, coupons: false, customDomain: false });
-      expect(bySlug.growth!.limits).toMatchObject({ maxProducts: 500, coupons: true, stripe: false });
-      expect(bySlug.business!.limits).toMatchObject({ maxProducts: null, stripe: true });
+      expect(bySlug.starter!.limits).toMatchObject({ maxProducts: 25, storageMb: 1024, coupons: false, customDomain: false });
+      expect(bySlug.growth!.limits).toMatchObject({ maxProducts: 100, storageMb: 3072, coupons: true, stripe: false });
+      expect(bySlug.business!.limits).toMatchObject({ maxProducts: null, storageMb: 5120, stripe: true });
+      const features = (slug: string) => (res.body.data as { slug: string; features: string[] }[]).find((p) => p.slug === slug)!.features;
+      expect(features('starter')).toEqual(expect.arrayContaining(['Up to 25 products with variants and categories', '1 GB storage']));
+      expect(features('growth')).toEqual(expect.arrayContaining(['Up to 100 products', '3 GB storage']));
+      expect(features('business')).toEqual(expect.arrayContaining(['Unlimited products', '5 GB storage']));
     });
   });
 
@@ -343,16 +350,16 @@ describe('Plans, entitlements and manual billing payments (e2e)', () => {
         .expect(403);
     });
 
-    it('allows up to 50 products and refuses the 51st', async () => {
+    it('allows up to 25 products and refuses the 26th', async () => {
       const make = (i: number) =>
         request(server())
           .post(`/api/v1/stores/${starter.storeId}/products`)
           .set(bearer(starter))
           .send({ name: `Item ${i}`, slug: `item-${i}-${suffix}`, basePrice: '10.00', trackInventory: false });
-      for (let i = 1; i <= 50; i += 1) await make(i).expect(201);
-      const refused = await make(51).expect(403);
-      expect(refused.body.error.message).toMatch(/up to 50 products and you have 50/);
-      expect(await prisma.product.count({ where: { storeId: starter.storeId } })).toBe(50);
+      for (let i = 1; i <= 25; i += 1) await make(i).expect(201);
+      const refused = await make(26).expect(403);
+      expect(refused.body.error.message).toMatch(/up to 25 products and you have 25/);
+      expect(await prisma.product.count({ where: { storeId: starter.storeId } })).toBe(25);
     });
 
     it('hides an online provider the plan does not include from shoppers', async () => {

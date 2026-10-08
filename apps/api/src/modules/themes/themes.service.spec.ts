@@ -33,6 +33,7 @@ describe('ThemesService draft/publish separation', () => {
     version: '1.0.0',
     description: null,
     previewImageUrl: null,
+    priceBdt: null,
     configuration: DEFAULT_THEME_CONFIGURATION as never,
     active: true,
     createdAt: new Date(),
@@ -98,12 +99,16 @@ describe('ThemesService draft/publish separation', () => {
     };
     const audit = { log: jest.fn() };
     const entitlements = { assertFeature: jest.fn() };
+    const themeAccess = { assertPremiumUsable: jest.fn(), accessFor: jest.fn(async () => new Map()) };
+    const purchases = { latestForTenant: jest.fn(async () => new Map()) };
     const service = new ThemesService(
       prisma as never,
       authorization as never,
       audit as never,
       redis as never,
       entitlements as never,
+      themeAccess as never,
+      purchases as never,
     );
     return { service, prisma, tx, del, audit, entitlements };
   }

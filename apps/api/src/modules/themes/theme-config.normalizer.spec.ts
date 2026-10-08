@@ -171,3 +171,77 @@ describe('font whitelist (TE-06)', () => {
     ).toThrow(BadRequestException);
   });
 });
+
+describe('homepage content sections', () => {
+  const sections = (list: unknown[]) =>
+    normalizeThemeConfiguration({ homepage: { sections: list } }).homepage?.sections;
+
+  it('keeps rich text and image banner content, dropping empty optional fields', () => {
+    expect(
+      sections([
+        { type: 'rich_text', id: 'about-1', title: 'About us', text: 'Line one\nLine two', buttonLabel: '', enabled: true },
+        {
+          type: 'image_banner',
+          id: 'banner-2',
+          title: 'Eid sale',
+          imageUrl: 'https://cdn.example/eid.jpg',
+          buttonLabel: 'Shop',
+          buttonHref: '/products',
+        },
+      ]),
+    ).toEqual([
+      { type: 'rich_text', id: 'about-1', title: 'About us', text: 'Line one\nLine two', enabled: true },
+      {
+        type: 'image_banner',
+        id: 'banner-2',
+        title: 'Eid sale',
+        imageUrl: 'https://cdn.example/eid.jpg',
+        buttonLabel: 'Shop',
+        buttonHref: '/products',
+      },
+    ]);
+  });
+
+  it('keeps the deal of the day settings', () => {
+    expect(
+      sections([
+        { type: 'deal_of_day', title: 'Flash sale', productId: '11111111-1111-4111-8111-11111111111A', showCountdown: false },
+        { type: 'deal_of_day', productId: '' },
+      ]),
+    ).toEqual([
+      { type: 'deal_of_day', title: 'Flash sale', productId: '11111111-1111-4111-8111-11111111111a', showCountdown: false },
+      { type: 'deal_of_day' },
+    ]);
+    expect(() => sections([{ type: 'deal_of_day', productId: 'abc' }])).toThrow(BadRequestException);
+    expect(() => sections([{ type: 'deal_of_day', showCountdown: 'yes' }])).toThrow(BadRequestException);
+  });
+
+  it('refuses markup, unsafe links and odd ids', () => {
+    expect(() => sections([{ type: 'rich_text', text: '<b>hi</b>' }])).toThrow(BadRequestException);
+    expect(() => sections([{ type: 'image_banner', imageUrl: 'javascript:alert(1)' }])).toThrow(BadRequestException);
+    expect(() => sections([{ type: 'image_banner', buttonHref: '//evil.example' }])).toThrow(BadRequestException);
+    expect(() => sections([{ type: 'rich_text', id: 'a b' }])).toThrow(BadRequestException);
+    expect(() => sections([{ type: 'rich_text', text: 'x'.repeat(1001) }])).toThrow(BadRequestException);
+  });
+});
+
+describe('hero offer badge', () => {
+  const hero = (input: Record<string, unknown>) => normalizeThemeConfiguration({ hero: input }).hero;
+
+  it('keeps the mode and the three short lines', () => {
+    expect(hero({ badgeMode: 'custom', badgeTop: 'EID', badgeMain: '50%', badgeBottom: 'OFF' })).toEqual({
+      badgeMode: 'custom',
+      badgeTop: 'EID',
+      badgeMain: '50%',
+      badgeBottom: 'OFF',
+    });
+    expect(hero({ badgeMode: 'hidden' })).toEqual({ badgeMode: 'hidden' });
+  });
+
+  it('refuses unknown modes, long lines and markup', () => {
+    expect(() => hero({ badgeMode: 'blink' })).toThrow(BadRequestException);
+    expect(() => hero({ badgeMain: 'x'.repeat(13) })).toThrow(BadRequestException);
+    expect(() => hero({ badgeTop: 'y'.repeat(21) })).toThrow(BadRequestException);
+    expect(() => hero({ badgeBottom: '<b>' })).toThrow(BadRequestException);
+  });
+});

@@ -78,6 +78,17 @@ log_format ecomesta_edge '$edge_client_ip trusted=$edge_trusted last_hop=$xff_la
                          'peer=$remote_addr [$time_local] "$request_method $uri $server_protocol" '
                          '$status $body_bytes_sent $request_time host=$host "$http_user_agent"';
 
+# Theme editor preview: storefront pages opened with ?theme_preview=… may be
+# framed by the merchant dashboard only; every other page stays SAMEORIGIN.
+map $arg_theme_preview $storefront_frame_options {
+    ""      "SAMEORIGIN";
+    default "";
+}
+map $arg_theme_preview $storefront_frame_ancestors {
+    ""      "";
+    default "frame-ancestors 'self' https://merchant.${PLATFORM_ROOT_DOMAIN}";
+}
+
 map $http_upgrade $connection_upgrade {
     default upgrade;
     ''      '';
@@ -131,7 +142,7 @@ server {
     access_log /var/log/nginx/access.log ecomesta_edge;
     if ($edge_trusted = 0) { return 403; }
 
-    include /etc/nginx/snippets/security-headers.conf;
+    include /etc/nginx/snippets/storefront-security-headers.conf;
     include /etc/nginx/snippets/deny-hidden.conf;
     include /etc/nginx/shared-snippets/storefront.conf;
 }
@@ -143,7 +154,7 @@ server {
     access_log /var/log/nginx/access.log ecomesta_edge;
     if ($edge_trusted = 0) { return 403; }
 
-    include /etc/nginx/snippets/security-headers.conf;
+    include /etc/nginx/snippets/storefront-security-headers.conf;
     include /etc/nginx/snippets/deny-hidden.conf;
     include /etc/nginx/shared-snippets/storefront.conf;
 }

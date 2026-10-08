@@ -175,7 +175,7 @@ describe('AI support agent (e2e)', () => {
       fake.queue(reply('The Growth plan is ৳2,691 per year.'));
       await chat([
         { role: 'user', content: 'What is the Growth plan?' },
-        { role: 'assistant', content: 'Growth is for growing businesses: up to 500 products, own domain and SSLCommerz.' },
+        { role: 'assistant', content: 'Growth is for growing businesses: up to 100 products, own domain and SSLCommerz.' },
         { role: 'user', content: 'How much yearly?' },
       ]).expect(200);
       const sent = fake.requests[0]!.messages.slice(1, -1);

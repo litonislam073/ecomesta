@@ -3,11 +3,19 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { DASHBOARD_NAV, isNavItemActive } from '@/lib/nav';
+import { badgeText } from '@/lib/new-orders';
 
 const linkBase =
   'flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]';
 
-export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+export function SidebarNav({
+  onNavigate,
+  badges = {},
+}: {
+  onNavigate?: () => void;
+  /** Counts shown next to links, by href (e.g. new orders on Orders). */
+  badges?: Record<string, number>;
+}) {
   const pathname = usePathname() ?? '';
 
   return (
@@ -36,6 +44,25 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                     }`}
                   >
                     <span>{item.label}</span>
+                    {item.tag ? (
+                      <span
+                        className={`ml-2 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none tracking-wide ${
+                          active ? 'bg-white text-[var(--color-accent)]' : 'bg-[#e3f4ec] text-[#13684a]'
+                        }`}
+                      >
+                        {item.tag}
+                      </span>
+                    ) : null}
+                    {badges[item.href] ? (
+                      <span
+                        className={`ml-2 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-bold leading-none ${
+                          active ? 'bg-white text-[var(--color-accent)]' : 'bg-[#d92d20] text-white'
+                        }`}
+                      >
+                        {badgeText(badges[item.href]!)}
+                        <span className="sr-only"> new</span>
+                      </span>
+                    ) : null}
                     {!item.ready ? (
                       <span
                         className={`text-[10px] uppercase tracking-wide ${

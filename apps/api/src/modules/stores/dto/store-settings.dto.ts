@@ -48,6 +48,29 @@ const trimToNull = ({ value }: { value: unknown }) => {
 };
 
 const isProvided = (_: object, value: unknown) => value !== undefined;
+
+/** Tracking IDs: only the ID is stored; the storefront builds the official snippet. */
+export const META_PIXEL_ID_PATTERN = /^\d{8,20}$/;
+export const GTM_CONTAINER_ID_PATTERN = /^GTM-[A-Z0-9]{4,12}$/;
+export const GA4_MEASUREMENT_ID_PATTERN = /^G-[A-Z0-9]{4,16}$/;
+export const GOOGLE_SITE_VERIFICATION_PATTERN = /^[A-Za-z0-9_-]{10,100}$/;
+
+/** Trimmed and upper-cased (GTM-… / G-…), empty = clear. */
+const trimUpperToNull = ({ value }: { value: unknown }) => {
+  const trimmed = trimToNull({ value });
+  return typeof trimmed === 'string' ? trimmed.toUpperCase() : trimmed;
+};
+
+/**
+ * Search Console gives a whole tag: <meta name="google-site-verification" content="…" />.
+ * Merchants may paste either that tag or just the code.
+ */
+export const siteVerificationCode = ({ value }: { value: unknown }) => {
+  const trimmed = trimToNull({ value });
+  if (typeof trimmed !== 'string') return trimmed;
+  const fromTag = /content\s*=\s*["']([^"']+)["']/i.exec(trimmed);
+  return fromTag ? fromTag[1]!.trim() : trimmed;
+};
 const isPresent = (_: object, value: unknown) => value !== undefined && value !== null;
 
 /**
@@ -119,6 +142,37 @@ export class UpdateStoreSettingsDto {
   @IsBoolean()
   checkoutAllowOrderNotes?: boolean;
 
+  @ApiPropertyOptional({ description: 'Offer Cash on delivery at checkout' })
+  @ValidateIf(isProvided)
+  @IsBoolean()
+  paymentCodEnabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'Offer bank transfer at checkout' })
+  @ValidateIf(isProvided)
+  @IsBoolean()
+  paymentBankTransferEnabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'Bank account details shown to shoppers who choose bank transfer' })
+  @Transform(trimToNull)
+  @ValidateIf(isPresent)
+  @IsString()
+  @MaxLength(1000)
+  @Matches(NO_MARKUP, { message: NO_MARKUP_MESSAGE('paymentBankTransferDetails') })
+  paymentBankTransferDetails?: string | null;
+
+  @ApiPropertyOptional({ description: 'Offer "Other payment" at checkout' })
+  @ValidateIf(isProvided)
+  @IsBoolean()
+  paymentOtherEnabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'Instructions shown to shoppers who choose "Other payment"' })
+  @Transform(trimToNull)
+  @ValidateIf(isPresent)
+  @IsString()
+  @MaxLength(500)
+  @Matches(NO_MARKUP, { message: NO_MARKUP_MESSAGE('paymentOtherDetails') })
+  paymentOtherDetails?: string | null;
+
   @ApiPropertyOptional({
     description: 'Let guests cancel unpaid, unfulfilled PENDING/CONFIRMED orders',
   })
@@ -187,6 +241,39 @@ export class UpdateStoreSettingsDto {
   @ValidateIf(isProvided)
   @IsBoolean()
   seoIndexingEnabled?: boolean;
+
+  @ApiPropertyOptional({ nullable: true, description: 'Meta (Facebook) Pixel ID, digits only' })
+  @Transform(trimToNull)
+  @ValidateIf(isPresent)
+  @IsString()
+  @Matches(META_PIXEL_ID_PATTERN, { message: 'Enter the Pixel ID: only digits, e.g. 123456789012345' })
+  metaPixelId?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, description: 'Google Tag Manager container ID, e.g. GTM-ABC123' })
+  @Transform(trimUpperToNull)
+  @ValidateIf(isPresent)
+  @IsString()
+  @Matches(GTM_CONTAINER_ID_PATTERN, { message: 'Enter the container ID, e.g. GTM-ABC1234' })
+  gtmContainerId?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, description: 'Google Analytics 4 measurement ID, e.g. G-ABC123XYZ' })
+  @Transform(trimUpperToNull)
+  @ValidateIf(isPresent)
+  @IsString()
+  @Matches(GA4_MEASUREMENT_ID_PATTERN, { message: 'Enter the measurement ID, e.g. G-ABC123XYZ9' })
+  ga4MeasurementId?: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Google Search Console HTML-tag code (the meta tag itself is accepted too)',
+  })
+  @Transform(siteVerificationCode)
+  @ValidateIf(isPresent)
+  @IsString()
+  @Matches(GOOGLE_SITE_VERIFICATION_PATTERN, {
+    message: 'Paste the google-site-verification tag or its code from Search Console',
+  })
+  googleSiteVerification?: string | null;
 }
 
 export function localeForLanguage(language: StoreLanguage): string {

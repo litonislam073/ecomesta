@@ -220,6 +220,14 @@ export class EnvironmentVariables {
     message: 'GOOGLE_CLIENT_ID must look like 1234-abc.apps.googleusercontent.com',
   })
   GOOGLE_CLIENT_ID?: string;
+
+  /**
+   * Steadfast Courier API base URL. Unset = the official https://portal.packzy.com/api/v1.
+   * Only for pointing tests or a staging setup at another endpoint; merchants cannot change it.
+   */
+  @IsOptional()
+  @IsUrl({ require_tld: false, require_protocol: true })
+  STEADFAST_BASE_URL?: string;
 }
 
 /** Optional settings where an empty `KEY=` line in an env file means "not set". */
@@ -242,6 +250,7 @@ const EMPTY_MEANS_UNSET = [
   'OPENAI_MODEL',
   'AI_SUPPORT_DAILY_REQUEST_LIMIT',
   'AI_SUPPORT_RETENTION_DAYS',
+  'STEADFAST_BASE_URL',
 ];
 
 export function validateEnv(rawConfig: Record<string, unknown>): EnvironmentVariables {
@@ -442,6 +451,9 @@ function assertProductionEmail(env: EnvironmentVariables): void {
   }
   if (env.EMAIL_PREVIEW_DIR?.trim()) {
     fail('EMAIL_PREVIEW_DIR must not be set in production');
+  }
+  if (env.STEADFAST_BASE_URL) {
+    assertPublicHttpsUrl('STEADFAST_BASE_URL', env.STEADFAST_BASE_URL);
   }
   if (env.EMAIL_PROVIDER_MODE !== 'smtp') {
     return;

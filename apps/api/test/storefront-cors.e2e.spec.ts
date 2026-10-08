@@ -129,6 +129,9 @@ describe('Storefront CORS (e2e)', () => {
         await prisma.auditLog.deleteMany({ where: { storeId: { in: storeIds } } });
         await prisma.emailDelivery.deleteMany({ where: { storeId: { in: storeIds } } });
         await prisma.storeUser.deleteMany({ where: { storeId: { in: storeIds } } });
+        // New stores start with ready-made shipping (see default-shipping.ts).
+        await prisma.shippingMethod.deleteMany({ where: { storeId: { in: storeIds } } });
+        await prisma.shippingZone.deleteMany({ where: { storeId: { in: storeIds } } });
         await prisma.store.deleteMany({ where: { id: { in: storeIds } } });
       }
       if (tenantIds.length > 0) {

@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -50,6 +51,26 @@ export class OrdersController {
     @Query() query: ListOrdersQueryDto,
   ) {
     return this.ordersService.list(user.userId, storeId, query);
+  }
+
+  @Get('unviewed-count')
+  @ApiOperation({ summary: 'Orders nobody on the team has opened yet (the Orders badge)' })
+  unviewedCount(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+  ) {
+    return this.ordersService.unviewedCount(user.userId, storeId);
+  }
+
+  @Post(':orderId/viewed')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Mark an order as seen by the store team' })
+  markViewed(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Param('orderId', ParseUUIDPipe) orderId: string,
+  ) {
+    return this.ordersService.markViewed(user.userId, storeId, orderId);
   }
 
   @Get(':orderId')

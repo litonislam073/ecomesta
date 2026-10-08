@@ -14,6 +14,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { BillingAccessService } from '../billing/billing-access.service';
+import { PlanEntitlementsService } from '../billing/plan-entitlements.service';
+import { createDefaultShipping } from '../shipping/default-shipping';
 import { EmailService } from '../email/email.service';
 import { CreateStoreDto } from './dto/create-store.dto';
 import {
@@ -29,6 +31,7 @@ export class StoresService {
     private readonly authorization: AuthorizationService,
     private readonly audit: AuditService,
     private readonly billingAccess: BillingAccessService,
+    private readonly entitlements: PlanEntitlementsService,
     private readonly email: EmailService,
   ) {}
 
@@ -68,6 +71,10 @@ export class StoresService {
             status: MembershipStatus.ACTIVE,
           },
         });
+
+        // Ready-made delivery charges the merchant can edit or delete.
+        const limits = await this.entitlements.limitsForTenant(tenantId, tx);
+        await createDefaultShipping(tx, store.id, { zones: limits?.deliveryZones ?? true });
 
         const owner = await tx.user.findUniqueOrThrow({
           where: { id: userId },

@@ -12,6 +12,8 @@ import {
 import type { Request } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { PlanEntitlementsService } from '../billing/plan-entitlements.service';
+import { MANUAL_PAYMENT_SELECT, assertStoreKeepsAPaymentOption } from '../payments/manual-payments';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { StoreDomainResolver } from '../domains/store-domain.resolver';
 import { LIVE_STORE_THEME_ORDER, liveStoreThemeWhere } from '../themes/theme-live';
@@ -38,6 +40,7 @@ const SETTINGS_SELECT = {
   faviconUrl: true,
   checkoutRequirePhone: true,
   checkoutAllowOrderNotes: true,
+  ...MANUAL_PAYMENT_SELECT,
   allowCustomerCancellation: true,
   seoTitle: true,
   seoDescription: true,
@@ -46,6 +49,10 @@ const SETTINGS_SELECT = {
   ogDescription: true,
   ogImageUrl: true,
   seoIndexingEnabled: true,
+  metaPixelId: true,
+  gtmContainerId: true,
+  ga4MeasurementId: true,
+  googleSiteVerification: true,
   createdAt: true,
   updatedAt: true,
   tenant: { select: { name: true } },
@@ -63,6 +70,11 @@ const FIELD_GROUPS = {
   locale: 'general',
   checkoutRequirePhone: 'checkout',
   checkoutAllowOrderNotes: 'checkout',
+  paymentCodEnabled: 'payments',
+  paymentBankTransferEnabled: 'payments',
+  paymentBankTransferDetails: 'payments',
+  paymentOtherEnabled: 'payments',
+  paymentOtherDetails: 'payments',
   allowCustomerCancellation: 'orders',
   seoTitle: 'seo',
   seoDescription: 'seo',
@@ -71,6 +83,10 @@ const FIELD_GROUPS = {
   ogDescription: 'seo',
   ogImageUrl: 'seo',
   seoIndexingEnabled: 'seo',
+  metaPixelId: 'tracking',
+  gtmContainerId: 'tracking',
+  ga4MeasurementId: 'tracking',
+  googleSiteVerification: 'tracking',
 } as const;
 
 type EditableField = keyof typeof FIELD_GROUPS;
@@ -87,6 +103,7 @@ export class StoreSettingsService {
     private readonly prisma: PrismaService,
     private readonly authorization: AuthorizationService,
     private readonly audit: AuditService,
+    private readonly entitlements: PlanEntitlementsService,
     private readonly domains: StoreDomainResolver,
   ) {}
 
@@ -121,6 +138,26 @@ export class StoreSettingsService {
 
     if (changedFields.length === 0) {
       return { success: true as const, data: this.toDto(current, true) };
+    }
+
+    // Marketing & tracking is a Growth/Business feature. Clearing an ID is
+    // always allowed (e.g. after a downgrade).
+    if (
+      changedFields.some(
+        (field) => FIELD_GROUPS[field] === 'tracking' && requested[field] !== null && requested[field] !== undefined,
+      )
+    ) {
+      await this.entitlements.assertFeature(storeId, 'marketingTracking');
+    }
+
+    if (changedFields.some((field) => FIELD_GROUPS[field] === 'payments')) {
+      await assertStoreKeepsAPaymentOption(this.prisma, this.entitlements, storeId, {
+        manual: {
+          paymentCodEnabled: requested.paymentCodEnabled ?? current.paymentCodEnabled,
+          paymentBankTransferEnabled: requested.paymentBankTransferEnabled ?? current.paymentBankTransferEnabled,
+          paymentOtherEnabled: requested.paymentOtherEnabled ?? current.paymentOtherEnabled,
+        },
+      });
     }
 
     const data: Prisma.StoreUpdateManyMutationInput = {};
@@ -283,6 +320,11 @@ export class StoreSettingsService {
     }
     copy('checkoutRequirePhone', dto.checkoutRequirePhone);
     copy('checkoutAllowOrderNotes', dto.checkoutAllowOrderNotes);
+    copy('paymentCodEnabled', dto.paymentCodEnabled);
+    copy('paymentBankTransferEnabled', dto.paymentBankTransferEnabled);
+    copy('paymentBankTransferDetails', dto.paymentBankTransferDetails);
+    copy('paymentOtherEnabled', dto.paymentOtherEnabled);
+    copy('paymentOtherDetails', dto.paymentOtherDetails);
     copy('allowCustomerCancellation', dto.allowCustomerCancellation);
     copy('seoTitle', dto.seoTitle);
     copy('seoDescription', dto.seoDescription);
@@ -295,6 +337,10 @@ export class StoreSettingsService {
     copy('ogDescription', dto.ogDescription);
     copy('ogImageUrl', dto.ogImageUrl);
     copy('seoIndexingEnabled', dto.seoIndexingEnabled);
+    copy('metaPixelId', dto.metaPixelId);
+    copy('gtmContainerId', dto.gtmContainerId);
+    copy('ga4MeasurementId', dto.ga4MeasurementId);
+    copy('googleSiteVerification', dto.googleSiteVerification);
     return values;
   }
 
@@ -362,6 +408,11 @@ export class StoreSettingsService {
       locale: store.locale,
       checkoutRequirePhone: store.checkoutRequirePhone,
       checkoutAllowOrderNotes: store.checkoutAllowOrderNotes,
+      paymentCodEnabled: store.paymentCodEnabled,
+      paymentBankTransferEnabled: store.paymentBankTransferEnabled,
+      paymentBankTransferDetails: store.paymentBankTransferDetails,
+      paymentOtherEnabled: store.paymentOtherEnabled,
+      paymentOtherDetails: store.paymentOtherDetails,
       allowCustomerCancellation: store.allowCustomerCancellation,
       seoTitle: store.seoTitle,
       seoDescription: store.seoDescription,
@@ -370,6 +421,10 @@ export class StoreSettingsService {
       ogDescription: store.ogDescription,
       ogImageUrl: store.ogImageUrl,
       seoIndexingEnabled: store.seoIndexingEnabled,
+      metaPixelId: store.metaPixelId,
+      gtmContainerId: store.gtmContainerId,
+      ga4MeasurementId: store.ga4MeasurementId,
+      googleSiteVerification: store.googleSiteVerification,
       /** Behaviour the platform enforces for every store today. */
       fixed: {
         guestCheckout: true,

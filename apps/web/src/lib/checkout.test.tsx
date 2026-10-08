@@ -90,6 +90,10 @@ function mockCheckoutApis(
       codAllowed: false,
     },
   ],
+  offline: { provider: string; method: string; details?: string | null }[] = [
+    { provider: 'COD', method: 'CASH' },
+    { provider: 'OTHER', method: 'BANK_TRANSFER' },
+  ],
 ) {
   getMock.mockImplementation(async (path: string) => {
     const p = String(path);
@@ -97,10 +101,7 @@ function mockCheckoutApis(
       return {
         success: true,
         data: {
-          offline: [
-            { provider: 'COD', method: 'CASH' },
-            { provider: 'OTHER', method: 'BANK_TRANSFER' },
-          ],
+          offline,
           online: [],
         },
       };
@@ -251,6 +252,54 @@ describe('CheckoutForm', () => {
     await waitFor(() => {
       expect(screen.getByRole('radio', { name: /Cash on delivery/i })).toBeDisabled();
     });
+  });
+
+  it("offers only the payment options the store switched on (Cash on delivery only)", async () => {
+    mockCheckoutApis(undefined, [{ provider: 'COD', method: 'CASH' }]);
+    seedCart();
+    const { CheckoutForm } = await import('@/components/checkout-form');
+    render(
+      <CartProvider storeId="s1" storeSlug="alpha" currency="BDT">
+        <CheckoutForm />
+      </CartProvider>,
+    );
+    expect(await screen.findByRole('radio', { name: /Cash on delivery/i })).toBeChecked();
+    await waitFor(() => expect(screen.queryByRole('radio', { name: /Bank transfer/i })).toBeNull());
+    expect(screen.queryByRole('radio', { name: /Other payment/i })).toBeNull();
+  });
+
+  it("shows the store's bank details when the shopper picks bank transfer", async () => {
+    mockCheckoutApis(undefined, [
+      { provider: 'COD', method: 'CASH' },
+      { provider: 'OTHER', method: 'BANK_TRANSFER', details: 'Dutch-Bangla Bank\nA/C 123 456 7890' },
+    ]);
+    seedCart();
+    const { CheckoutForm } = await import('@/components/checkout-form');
+    const user = userEvent.setup();
+    render(
+      <CartProvider storeId="s1" storeSlug="alpha" currency="BDT">
+        <CheckoutForm />
+      </CartProvider>,
+    );
+    await user.click(await screen.findByRole('radio', { name: /Bank transfer/i }));
+    const note = await screen.findByRole('note');
+    expect(note).toHaveTextContent('Send your payment to');
+    expect(note).toHaveTextContent('Dutch-Bangla Bank');
+    expect(note).toHaveTextContent('A/C 123 456 7890');
+  });
+
+  it('says so when the chosen delivery method leaves no way to pay (COD only, method without COD)', async () => {
+    mockCheckoutApis(undefined, [{ provider: 'COD', method: 'CASH' }]);
+    seedCart();
+    const { CheckoutForm } = await import('@/components/checkout-form');
+    const user = userEvent.setup();
+    render(
+      <CartProvider storeId="s1" storeSlug="alpha" currency="BDT">
+        <CheckoutForm />
+      </CartProvider>,
+    );
+    await user.click(await screen.findByRole('radio', { name: /Express No COD/i }));
+    expect(await screen.findByText(/No payment option is available for this delivery method/i)).toBeInTheDocument();
   });
 
   it('validates contact fields and supports billing same-as-shipping', async () => {

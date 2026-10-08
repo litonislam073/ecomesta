@@ -8,7 +8,7 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { AuthField, FormAlert, PasswordField, SecureNote } from '@/components/auth/auth-fields';
 import { authErrorMessage, isValidEmail } from '@/components/auth/auth-errors';
 import { GoogleSignIn } from '@/components/auth/google-sign-in';
-import { useAuth } from '@/lib/auth-context';
+import { hasSessionHint, useAuth } from '@/lib/auth-context';
 import { safeNextPath } from '@/lib/plan-selection';
 
 type FieldErrors = { email?: string; password?: string };
@@ -28,6 +28,10 @@ function validate(email: string, password: string): FieldErrors {
 
 export default function LoginPage() {
   const { login, loginWithGoogle, user, loading } = useAuth();
+  // Read after mount: the server cannot see this browser's storage, and the
+  // first render must match it. Null until then.
+  const [expectSession, setExpectSession] = useState<boolean | null>(null);
+  useEffect(() => setExpectSession(hasSessionHint()), []);
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = safeNextPath(searchParams.get('next'), '/dashboard');
@@ -95,12 +99,15 @@ export default function LoginPage() {
     }
   }
 
-  // While verifying an existing HttpOnly refresh session, do not flash the form
-  // (that can look like "Login auto-logs you in" without credential submit).
-  if (loading || user) {
+  // A browser that was signed in waits for the session check, so the form never
+  // flashes before the redirect. Anyone else gets the form at once while the
+  // check runs in the background (a session it finds still redirects).
+  if (user || expectSession === null || (loading && expectSession)) {
     return (
       <LoadingState
-        label={user ? 'Opening your workspace' : 'Checking signed-in session'}
+        label={
+          user ? 'Opening your workspace' : expectSession === null ? 'Loading sign in' : 'Checking signed-in session'
+        }
       />
     );
   }

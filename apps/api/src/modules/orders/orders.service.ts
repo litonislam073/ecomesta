@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
   UnprocessableEntityException,
@@ -14,6 +15,7 @@ import {
   Prisma,
   ShipmentStatus,
   StoreRole,
+  CustomerAddressType,
 } from '@prisma/client';
 import type { Request } from 'express';
 import {
@@ -47,6 +49,8 @@ import { BangladeshLocationsService } from '../shipping/bangladesh-locations.ser
 import { ShippingCalculationService } from '../shipping/shipping-calculation.service';
 import { ShippingQuoteService } from '../shipping/shipping-quote.service';
 import { CouponValidationService } from '../coupons/coupon-validation.service';
+import { courierFields } from '../shipments/shipments.service';
+import { findActiveCourierShipment } from '../shipments/shipment-fulfillment';
 
 type LockedInventory = {
   id: string;
@@ -342,6 +346,7 @@ export class OrdersService {
           },
           items: { select: { id: true, quantity: true } },
           _count: { select: { items: true } },
+          addresses: { select: { type: true, firstName: true, lastName: true, phone: true, email: true } },
         },
       }),
       this.prisma.order.count({ where }),
@@ -354,6 +359,27 @@ export class OrdersService {
         meta: pageMeta(total, page, limit),
       },
     };
+  }
+
+  /** Orders nobody on the store's team has opened yet (the Orders badge). */
+  async unviewedCount(userId: string, storeId: string) {
+    await this.authorization.assertStoreAccess(userId, storeId);
+    const count = await this.prisma.order.count({
+      where: { storeId, merchantViewedAt: null, status: { not: OrderStatus.DRAFT } },
+    });
+    return { success: true as const, data: { count } };
+  }
+
+  /** Marks an order as seen by the store's team; the first view counts, later ones change nothing. */
+  async markViewed(userId: string, storeId: string, orderId: string) {
+    await this.authorization.assertStoreAccess(userId, storeId);
+    const order = await this.prisma.order.findFirst({ where: { id: orderId, storeId }, select: { id: true } });
+    if (!order) throw new NotFoundException('Order not found');
+    await this.prisma.order.updateMany({
+      where: { id: orderId, storeId, merchantViewedAt: null },
+      data: { merchantViewedAt: new Date() },
+    });
+    return { success: true as const, data: { viewed: true } };
   }
 
   async getOne(userId: string, storeId: string, orderId: string) {
@@ -655,6 +681,16 @@ export class OrdersService {
     locked: NonNullable<Awaited<ReturnType<OrdersService['lockOrderRow']>>>,
     reason?: string | null,
   ) {
+    // A booked courier parcel cannot be recalled (Steadfast has no cancellation
+    // API): cancelling here would restock items the courier is still carrying.
+    const courier = await findActiveCourierShipment(tx, storeId, locked.id);
+    if (courier) {
+      throw new ConflictException({
+        message:
+          'This order has an active courier shipment and cannot be cancelled. Cancel the parcel with the courier first; you can cancel the order once the shipment is cancelled or returned.',
+        error: 'ORDER_HAS_ACTIVE_COURIER_SHIPMENT',
+      });
+    }
     // SF-01: an order holding captured or authorised money is never cancelled
     // into CANCELLED/PAID. The merchant records the refund (or voids the
     // authorisation) first; there is no automated refund.
@@ -1014,6 +1050,14 @@ export class OrdersService {
       } | null;
       items?: { id: string; quantity: number }[];
       _count?: { items: number };
+      merchantViewedAt?: Date | null;
+      addresses?: {
+        type: CustomerAddressType;
+        firstName: string | null;
+        lastName: string | null;
+        phone: string | null;
+        email: string | null;
+      }[];
     },
   ) {
     const itemCount =
@@ -1040,6 +1084,8 @@ export class OrdersService {
       couponCode: order.couponCode ?? null,
       itemCount,
       customer: order.customer,
+      contact: orderContact(order.addresses),
+      viewed: Boolean(order.merchantViewedAt),
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
     };
@@ -1126,10 +1172,25 @@ export class OrdersService {
         status: shipment.status,
         shippedAt: shipment.shippedAt,
         deliveredAt: shipment.deliveredAt,
+        ...courierFields(shipment),
         createdAt: shipment.createdAt,
         updatedAt: shipment.updatedAt,
       })),
       timeline,
     };
   }
+}
+
+/** Who to contact for an order: its delivery address, else its billing address. */
+function orderContact(
+  addresses:
+    | { type: CustomerAddressType; firstName: string | null; lastName: string | null; phone: string | null; email: string | null }[]
+    | undefined,
+): { name: string | null; phone: string | null; email: string | null } | null {
+  const address =
+    addresses?.find((a) => a.type === CustomerAddressType.SHIPPING) ??
+    addresses?.find((a) => a.type === CustomerAddressType.BILLING);
+  if (!address) return null;
+  const name = [address.firstName, address.lastName].filter((part) => part?.trim()).join(' ').trim();
+  return { name: name || null, phone: address.phone ?? null, email: address.email ?? null };
 }

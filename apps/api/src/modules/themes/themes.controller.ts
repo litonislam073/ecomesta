@@ -8,6 +8,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -16,7 +17,10 @@ import type { Request } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AccessTokenGuard } from '../auth/guards/access-token.guard';
 import type { AuthenticatedUser } from '../auth/types/auth.types';
-import { UpdateStoreThemeDto } from './dto/store-theme.dto';
+import { ThemePreviewSessionDto, UpdateStoreThemeDto } from './dto/store-theme.dto';
+import { PurchaseThemeDto } from './dto/theme-purchase.dto';
+import { ThemePreviewService } from './theme-preview.service';
+import { ThemePurchasesService } from './theme-purchases.service';
 import { ThemesService } from './themes.service';
 
 @ApiTags('themes')
@@ -24,7 +28,11 @@ import { ThemesService } from './themes.service';
 @UseGuards(AccessTokenGuard)
 @Controller({ path: 'stores/:storeId', version: '1' })
 export class ThemesController {
-  constructor(private readonly themes: ThemesService) {}
+  constructor(
+    private readonly themes: ThemesService,
+    private readonly purchases: ThemePurchasesService,
+    private readonly previews: ThemePreviewService,
+  ) {}
 
   @Get('themes')
   @ApiOperation({ summary: 'List installable themes with the selected flag' })
@@ -33,6 +41,19 @@ export class ThemesController {
     @Param('storeId', ParseUUIDPipe) storeId: string,
   ) {
     return this.themes.listThemes(user.userId, storeId);
+  }
+
+  @Post('themes/:themeId/purchase')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Buy a premium theme by mobile wallet (unlocks when a Super Admin approves)' })
+  purchaseTheme(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Param('themeId', ParseUUIDPipe) themeId: string,
+    @Body() dto: PurchaseThemeDto,
+    @Req() req: Request,
+  ) {
+    return this.purchases.purchase(user.userId, storeId, themeId, dto, req);
   }
 
   @Get('theme')
@@ -89,5 +110,18 @@ export class ThemesController {
     @Param('storeId', ParseUUIDPipe) storeId: string,
   ) {
     return this.themes.getPreview(user.userId, storeId);
+  }
+
+  @Put('theme/preview-session')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Show an unsaved draft on the real storefront (token-gated, expires after 2 hours)',
+  })
+  previewSession(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Body() dto: ThemePreviewSessionDto,
+  ) {
+    return this.previews.upsert(user.userId, storeId, dto);
   }
 }
