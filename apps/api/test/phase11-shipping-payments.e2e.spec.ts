@@ -245,9 +245,12 @@ describe('Phase 11 shipping + payments (e2e)', () => {
     const created = await request(app.getHttpServer())
       .post(`/api/v1/stores/${storeId}/orders/${orderId}/shipments`)
       .set('Authorization', `Bearer ${manager.token}`)
-      .send({ provider: 'MANUAL', status: 'PENDING' })
+      .send({ provider: 'PAPERFLY', status: 'PENDING', trackingNumber: 'PF-100200' })
       .expect(201);
     const shipmentId = created.body.data.id;
+    // Couriers without an API booking are recorded by hand with their tracking number.
+    expect(created.body.data.provider).toBe('PAPERFLY');
+    expect(created.body.data.trackingNumber).toBe('PF-100200');
 
     await request(app.getHttpServer())
       .patch(`/api/v1/stores/${storeId}/orders/${orderId}/shipments/${shipmentId}`)

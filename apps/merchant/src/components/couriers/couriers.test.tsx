@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { CourierConnectionInfo, OrderDetail, OrderShipmentRef } from '@ecomesta/types';
 import CourierSettingsPage from '@/app/dashboard/settings/couriers/page';
@@ -39,6 +39,13 @@ const notConnected: CourierConnectionInfo = {
   status: 'NOT_CONNECTED',
   supportsCancellation: false,
   credentialsSaved: false,
+  fields: [
+    { key: 'apiKey', label: 'API key', secret: true, required: true },
+    { key: 'secretKey', label: 'Secret key', secret: true, required: true },
+  ],
+  connectHelp: 'Copy the API key and secret key from your Steadfast merchant panel.',
+  locationSteps: [],
+  settings: {},
   pickupName: null,
   pickupPhone: null,
   pickupAddress: null,
@@ -74,7 +81,7 @@ describe('Settings → Couriers', () => {
     // Both keys are required to connect.
     await user.type(screen.getByLabelText('API key'), 'sf_key_12345678');
     await user.click(screen.getByRole('button', { name: 'Connect Steadfast' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(/both the API key and the secret key|API key and secret key/i);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Enter the Secret key.');
     expect(api.put).not.toHaveBeenCalled();
 
     await user.type(screen.getByLabelText('Secret key'), 'sf_secret_12345678');
@@ -84,14 +91,13 @@ describe('Settings → Couriers', () => {
 
     await waitFor(() =>
       expect(api.put).toHaveBeenCalledWith('/stores/store-1/couriers/STEADFAST', expect.objectContaining({
-        apiKey: 'sf_key_12345678',
-        secretKey: 'sf_secret_12345678',
+        credentials: { apiKey: 'sf_key_12345678', secretKey: 'sf_secret_12345678' },
         pickupName: 'Alpha Warehouse',
         defaultWeightKg: 0.5,
       })),
     );
     expect(await screen.findByText('Connected')).toBeInTheDocument();
-    expect(screen.getByText('Saved (hidden)')).toBeInTheDocument();
+    expect(screen.getAllByText('Saved (hidden)')).toHaveLength(2);
     expect(screen.queryByDisplayValue('sf_secret_12345678')).not.toBeInTheDocument();
   });
 
@@ -112,9 +118,42 @@ describe('Settings → Couriers', () => {
 
     await waitFor(() => expect(api.put).toHaveBeenCalled());
     const body = api.put.mock.calls[0]![1] as Record<string, unknown>;
-    expect(body).not.toHaveProperty('apiKey');
-    expect(body).not.toHaveProperty('secretKey');
+    expect(body).not.toHaveProperty('credentials');
     expect(body.defaultWeightKg).toBe(1);
+  });
+
+  it("connects Pathao with Pathao's own fields; saved non-secret values are shown, secrets are not", async () => {
+    const user = userEvent.setup();
+    const pathao: CourierConnectionInfo = {
+      ...notConnected,
+      provider: 'PATHAO',
+      name: 'Pathao',
+      fields: [
+        { key: 'clientId', label: 'Client ID', secret: false, required: true },
+        { key: 'clientSecret', label: 'Client secret', secret: true, required: true },
+        { key: 'storeId', label: 'Pathao store ID', secret: false, required: false, hint: 'Leave empty to use your first Pathao store.' },
+      ],
+      connectHelp: 'Open Developers API in the Pathao merchant panel.',
+    };
+    api.get.mockResolvedValue({ success: true, data: [pathao] });
+    api.put.mockResolvedValue({ success: true, data: { ...pathao, status: 'CONNECTED', credentialsSaved: true, settings: { clientId: 'cid-9', storeId: '4321' } } });
+    render(<CourierSettingsPage />);
+
+    expect(await screen.findByText(/Open Developers API in the Pathao merchant panel/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Connect Pathao' }));
+    expect(screen.getByLabelText('Client secret')).toHaveAttribute('type', 'password');
+    expect(screen.getByLabelText('Pathao store ID (optional)')).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Client ID'), 'cid-9');
+    await user.type(screen.getByLabelText('Client secret'), 'top-secret');
+    await user.click(screen.getByRole('button', { name: 'Connect Pathao' }));
+    await waitFor(() =>
+      expect(api.put).toHaveBeenCalledWith('/stores/store-1/couriers/PATHAO', expect.objectContaining({
+        credentials: { clientId: 'cid-9', clientSecret: 'top-secret' },
+      })),
+    );
+    expect(await screen.findByText('4321')).toBeInTheDocument();
+    expect(screen.getByText('cid-9')).toBeInTheDocument();
+    expect(screen.queryByText('top-secret')).not.toBeInTheDocument();
   });
 
   it('shows the server error when Steadfast rejects the keys', async () => {
@@ -194,6 +233,42 @@ describe('Order → courier booking', () => {
     await user.click(screen.getByRole('button', { name: 'Create shipment' }));
     await waitFor(() => expect(api.post).toHaveBeenCalledWith('/stores/store-1/orders/order-1/courier-shipments', { provider: 'STEADFAST', weightKg: 0.5 }));
     expect(onBooked).toHaveBeenCalled();
+  });
+
+  it("eCourier: picks each place in turn from eCourier's own lists, then books with them", async () => {
+    const user = userEvent.setup();
+    const ecourier: CourierConnectionInfo = {
+      ...connected,
+      provider: 'ECOURIER',
+      name: 'eCourier',
+      locationSteps: [
+        { key: 'city', label: 'City' },
+        { key: 'thana', label: 'Thana' },
+      ],
+    };
+    api.get.mockResolvedValue({ success: true, data: [ecourier] });
+    api.post.mockImplementation(async (url: string, body: { step?: string }) => {
+      if (!url.endsWith('/location-options')) return { success: true, data: {} };
+      return body.step === 'city'
+        ? { success: true, data: [{ value: 'Dhaka', label: 'Dhaka' }, { value: 'Khulna', label: 'Khulna' }] }
+        : { success: true, data: [{ value: 'Dhanmondi', label: 'Dhanmondi' }] };
+    });
+    // The order's city is Dhaka: it is picked for the merchant, then the thanas load.
+    render(<CourierBookingPanel storeId="store-1" order={{ ...baseOrder, addresses: [{ type: 'SHIPPING', city: 'Dhaka', postalCode: null, state: null }] } as unknown as OrderDetail} onBooked={vi.fn()} />);
+    const places = await screen.findByRole('group', { name: 'eCourier delivery location' });
+    await waitFor(() => expect(within(places).getByLabelText('City')).toHaveValue('Dhaka'));
+    expect(api.post).toHaveBeenCalledWith('/stores/store-1/couriers/ECOURIER/location-options', { step: 'thana', picked: { city: 'Dhaka' } });
+    expect(screen.getByRole('button', { name: 'Create shipment' })).toBeDisabled();
+
+    await user.selectOptions(await within(places).findByLabelText('Thana'), 'Dhanmondi');
+    await user.click(screen.getByRole('button', { name: 'Create shipment' }));
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith('/stores/store-1/orders/order-1/courier-shipments', {
+        provider: 'ECOURIER',
+        weightKg: 0.5,
+        location: { city: 'Dhaka', thana: 'Dhanmondi' },
+      }),
+    );
   });
 
   it('points to Settings → Couriers when no courier is connected', async () => {

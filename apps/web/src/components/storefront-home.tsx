@@ -23,7 +23,7 @@ import {
   storeMetadataBase,
 } from '@/lib/store-resolver';
 import { NOINDEX, resolveStoreSeo, storeOgLocale, storePageRobots } from '@/lib/store-seo';
-import { fetchStoreTheme } from '@/lib/theme-server';
+import { fetchStoreTheme, themePreviewToken } from '@/lib/theme-server';
 import { googleVerification } from '@/lib/tracking';
 import type { Metadata } from 'next';
 
@@ -42,7 +42,8 @@ function pickFeatured<T extends { id: string }>(
   return selected.length > 0 ? selected : items.slice(0, fallbackLimit);
 }
 
-async function loadHome(store: PublicStore, config: StoreThemeConfig) {
+/** Inside the theme editor's preview, catalog changes (e.g. a category image) show at once. */
+async function loadHome(store: PublicStore, config: StoreThemeConfig, preview = false) {
   const featuredProductIds = config.homepage?.featuredProducts ?? [];
   const limit = featuredProductIds.length > 0 ? 48 : 8;
 
@@ -52,11 +53,12 @@ async function loadHome(store: PublicStore, config: StoreThemeConfig) {
       data: { items: PublicProductCard[] };
     }>(
       `/public/stores/${store.slug}/products?limit=${limit}&sortBy=createdAt&sortOrder=desc`,
+      { fresh: preview },
     ),
     publicGet<{
       success: true;
       data: { items: PublicCategory[] };
-    }>(`/public/stores/${store.slug}/categories?tree=true`),
+    }>(`/public/stores/${store.slug}/categories?tree=true`, { fresh: preview }),
   ]);
 
   // The deal of the day may feature a product outside the newest few.
@@ -153,7 +155,7 @@ export async function StorefrontHome({
   }
   const { store, storeSlug } = resolved;
   const theme = await fetchStoreTheme(storeSlug);
-  const { products, categories, dealProduct } = await loadHome(store, theme.configuration);
+  const { products, categories, dealProduct } = await loadHome(store, theme.configuration, themePreviewToken() !== null);
 
   const categoriesSection = sectionSettings(
     theme.configuration,

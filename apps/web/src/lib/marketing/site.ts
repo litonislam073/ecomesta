@@ -55,9 +55,11 @@ export function absoluteUrl(path = '/'): string {
 export const registerUrl = () => merchantUrl('/register');
 export const loginUrl = () => merchantUrl('/login');
 
-export function contactEmail(): string | null {
-  const email = process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim();
-  return email || null;
+/** Ecomesta's support inbox, used for every support contact unless configured otherwise. */
+export const SUPPORT_EMAIL = 'support@ecomesta.com';
+
+export function contactEmail(): string {
+  return process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() || SUPPORT_EMAIL;
 }
 
 export function googleSiteVerification(): string | undefined {

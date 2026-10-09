@@ -51,6 +51,11 @@ export class CreateCategoryDto {
   @IsOptional()
   @IsUUID()
   parentId?: string | null;
+
+  @ApiPropertyOptional({ enum: ProductStatus, default: ProductStatus.ACTIVE })
+  @IsOptional()
+  @IsIn(Object.values(ProductStatus))
+  status?: ProductStatus;
 }
 
 export class UpdateCategoryDto {

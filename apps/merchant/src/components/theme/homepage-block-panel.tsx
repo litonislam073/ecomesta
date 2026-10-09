@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { StoreThemeConfig, ThemeHomepageSection } from '@ecomesta/types';
+import { CategoryImagesEditor } from '@/components/theme/category-images-editor';
 import { Card } from '@/components/ui/card';
 import { TextField, ToggleField } from '@/components/theme/theme-fields';
 import { api } from '@/lib/api-client';
@@ -98,7 +99,7 @@ export function patchHomeSection(
   return { ...homepage, sections: next };
 }
 
-type Option = { id: string; name: string; meta?: string };
+type Option = { id: string; name: string; meta?: string; imageUrl?: string | null };
 
 /** Loaded the first time the panel opens. */
 function useOptions(storeId: string | null, type: HomeBlockType, active: boolean) {
@@ -112,10 +113,14 @@ function useOptions(storeId: string | null, type: HomeBlockType, active: boolean
         ? `/stores/${storeId}/products?limit=100&status=ACTIVE`
         : `/stores/${storeId}/categories?limit=100`;
     Promise.resolve()
-      .then(() => api.get<{ success: true; data: { items: { id: string; name: string; sku?: string | null }[] } }>(path))
+      .then(() =>
+        api.get<{ success: true; data: { items: { id: string; name: string; sku?: string | null; imageUrl?: string | null }[] } }>(path),
+      )
       .then((result) => {
         if (cancelled) return;
-        setOptions(result.data.items.map((item) => ({ id: item.id, name: item.name, meta: item.sku ?? undefined })));
+        setOptions(
+          result.data.items.map((item) => ({ id: item.id, name: item.name, meta: item.sku ?? undefined, imageUrl: item.imageUrl ?? null })),
+        );
       })
       .catch(() => {
         if (!cancelled) setError(true);
@@ -124,7 +129,7 @@ function useOptions(storeId: string | null, type: HomeBlockType, active: boolean
       cancelled = true;
     };
   }, [storeId, type, active, options]);
-  return { options, error };
+  return { options, error, setOptions };
 }
 
 /** Settings of one homepage block: show/hide, heading, and what it features. */
@@ -135,6 +140,7 @@ export function HomepageBlockPanel({
   onChange,
   disabled,
   active = true,
+  onCatalogChange,
 }: {
   type: HomeBlockType;
   storeId: string | null;
@@ -143,12 +149,14 @@ export function HomepageBlockPanel({
   disabled?: boolean;
   /** Whether the panel is open (the list loads then). */
   active?: boolean;
+  /** A catalog change the preview should show (a category image saved). */
+  onCatalogChange?: () => void;
 }) {
   const block = HOME_BLOCKS[type];
   const section = effectiveHomeSections(value).find((item) => item.type === type);
   const idsKey = type === 'featured_products' ? 'featuredProducts' : 'featuredCategories';
   const selected = value[idsKey] ?? [];
-  const { options, error } = useOptions(storeId, type, active);
+  const { options, error, setOptions } = useOptions(storeId, type, active);
   const [query, setQuery] = useState('');
 
   const shown = useMemo(() => {
@@ -233,6 +241,21 @@ export function HomepageBlockPanel({
             </>
           )}
         </fieldset>
+        {type === 'featured_categories' && options && options.length > 0 ? (
+          <CategoryImagesEditor
+            storeId={storeId}
+            disabled={disabled}
+            // The homepage's categories first, in their order.
+            categories={[
+              ...selected.map((id) => options.find((option) => option.id === id)).filter((option): option is Option => Boolean(option)),
+              ...options.filter((option) => !selected.includes(option.id)),
+            ]}
+            onSaved={(id, imageUrl) => {
+              setOptions((items) => items?.map((item) => (item.id === id ? { ...item, imageUrl } : item)) ?? items);
+              onCatalogChange?.();
+            }}
+          />
+        ) : null}
       </div>
     </Card>
   );

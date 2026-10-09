@@ -6,7 +6,7 @@ import { AccessTokenGuard } from '../auth/guards/access-token.guard';
 import type { AuthenticatedUser } from '../auth/types/auth.types';
 import { CourierConnectionsService } from './courier-connections.service';
 import { CourierShipmentsService } from './courier-shipments.service';
-import { CreateCourierShipmentDto, UpsertCourierConnectionDto } from './dto/courier.dto';
+import { CourierLocationOptionsDto, CreateCourierShipmentDto, UpsertCourierConnectionDto } from './dto/courier.dto';
 
 @ApiTags('couriers')
 @ApiBearerAuth()
@@ -34,6 +34,18 @@ export class CouriersController {
     @Req() req: Request,
   ) {
     return this.connections.upsert(user.userId, storeId, provider, dto, req);
+  }
+
+  @Post('couriers/:provider/location-options')
+  @HttpCode(200)
+  @ApiOperation({ summary: "Choices for one of a connected courier's booking location steps (e.g. RedX area)" })
+  locationOptions(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Param('provider') provider: string,
+    @Body() dto: CourierLocationOptionsDto,
+  ) {
+    return this.connections.locationOptions(user.userId, storeId, provider, dto);
   }
 
   @Delete('couriers/:provider')

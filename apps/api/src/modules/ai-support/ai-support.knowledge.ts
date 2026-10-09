@@ -11,6 +11,7 @@ import {
   type ContentSection,
 } from '@ecomesta/utils/marketing-content';
 import { BILLING_CYCLES, PAYMENT_GRACE_DAYS } from '@ecomesta/utils';
+import { DEFAULT_PLANS } from '../billing/plan-defaults';
 
 /** One retrievable piece of Ecomesta knowledge. */
 export interface KnowledgeChunk {
@@ -52,7 +53,7 @@ function platformFacts(): KnowledgeChunk[] {
       id: 'fact-plan-features',
       title: 'What each plan includes',
       path: '/pricing',
-      text: 'Starter: online store on an Ecomesta web address, up to 25 products, 1 GB storage for images, orders, customers and inventory, Cash on Delivery checkout, the default storefront theme. Growth: everything in Starter plus up to 100 products, 3 GB storage, connecting your own domain, online payments with SSLCommerz, discount coupons, Bangladesh delivery zones and all storefront themes. Business: everything in Growth plus unlimited products, 5 GB storage, Stripe for international card payments and priority support. Live prices come from the pricing tool.',
+      text: `${DEFAULT_PLANS.map((plan) => `${plan.name}: ${plan.features.join(', ')}.`).join(' ')} Courier booking with Steadfast, Pathao, RedX, Paperfly and eCourier is available on every plan. Live prices come from the pricing tool.`,
     },
     {
       id: 'fact-store-checkout',
@@ -135,6 +136,37 @@ const SYNONYMS: Record<string, string[]> = {
   কাস্টমার: ['customer', 'customers'],
   ক্রেতা: ['customer', 'customers'],
   cod: ['cash', 'delivery', 'cod'],
+  steadfast: ['steadfast', 'courier', 'parcel'],
+  স্টেডফাস্ট: ['steadfast', 'courier'],
+  pathao: ['courier', 'pathao'],
+  redx: ['courier', 'redx'],
+  parcel: ['parcel', 'courier', 'steadfast'],
+  pixel: ['pixel', 'facebook', 'tracking'],
+  পিক্সেল: ['pixel', 'facebook', 'tracking'],
+  facebook: ['facebook', 'pixel'],
+  fb: ['facebook', 'pixel'],
+  ফেসবুক: ['facebook', 'pixel'],
+  analytics: ['analytics', 'google', 'tracking'],
+  ga4: ['analytics', 'google', 'measurement'],
+  gtm: ['tag', 'manager', 'google', 'container'],
+  console: ['search', 'console', 'verification'],
+  tracking: ['tracking', 'pixel', 'analytics'],
+  theme: ['theme', 'themes', 'editor', 'customize'],
+  thim: ['theme', 'themes'],
+  থিম: ['theme', 'themes', 'editor'],
+  shopease: ['shopease', 'premium', 'theme'],
+  premium: ['premium', 'shopease', 'theme'],
+  customize: ['customize', 'theme', 'editor'],
+  section: ['sections', 'homepage', 'theme'],
+  image: ['image', 'images', 'upload', 'gallery'],
+  chobi: ['image', 'images', 'upload'],
+  ছবি: ['image', 'images', 'upload'],
+  photo: ['image', 'images', 'upload'],
+  gallery: ['gallery', 'image', 'upload'],
+  category: ['category', 'categories'],
+  ক্যাটাগরি: ['category', 'categories'],
+  landing: ['landing', 'pages'],
+  trial: ['trial', 'free', 'sign'],
 };
 
 const STOP_WORDS = new Set([

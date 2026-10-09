@@ -5,6 +5,7 @@ import { CourierError, courierErrors } from '../../courier-errors';
 import type {
   CourierBooking,
   CourierCredentials,
+  CourierField,
   CourierProvider,
   CourierShipmentInput,
   CourierShipmentRef,
@@ -63,6 +64,12 @@ export class SteadfastCourierProvider implements CourierProvider {
   readonly code = ShippingProvider.STEADFAST;
   readonly displayName = NAME;
   readonly supportsCancellation = false;
+  readonly fields = [
+    { key: 'apiKey', label: 'API key', secret: true, required: true },
+    { key: 'secretKey', label: 'Secret key', secret: true, required: true },
+  ] as const satisfies readonly CourierField[];
+  readonly connectHelp = 'Copy the API key and secret key from the API section of your Steadfast merchant panel.';
+  readonly locationSteps = [];
   private readonly baseUrl: string;
 
   constructor(

@@ -25,8 +25,9 @@ const MANAGE: { icon: IconName; label: string; href: string }[] = [
   { icon: 'card', label: 'Payments', href: '/payments' },
   { icon: 'truck', label: 'Shipping', href: '/shipping' },
   { icon: 'users', label: 'Customers', href: '/features/customer-management' },
-  { icon: 'tag', label: 'Marketing', href: '/features/coupons' },
-  { icon: 'palette', label: 'Store Design', href: '/features/store-customization' },
+  { icon: 'tag', label: 'Coupons', href: '/features/coupons' },
+  { icon: 'chart', label: 'Tracking', href: '/features/marketing-tracking' },
+  { icon: 'palette', label: 'Themes', href: '/features/store-customization' },
 ];
 
 const FEATURES: { icon: IconName; title: string; body: string; points: string[]; href: string; linkLabel: string }[] = [
@@ -42,7 +43,7 @@ const FEATURES: { icon: IconName; title: string; body: string; points: string[];
     icon: 'box',
     title: 'Product Management',
     body: 'Manage products, categories, variants and inventory.',
-    points: ['Variants with their own price and stock', 'Draft, active and archived'],
+    points: ['Variants with their own price and stock', 'Product and category images'],
     href: '/features/product-management',
     linkLabel: 'Explore product management',
   },
@@ -50,7 +51,7 @@ const FEATURES: { icon: IconName; title: string; body: string; points: string[];
     icon: 'receipt',
     title: 'Order Management',
     body: 'Track orders from pending through fulfillment.',
-    points: ['Order, payment and fulfillment status', 'Shipments with tracking numbers'],
+    points: ['Order, payment and fulfillment status', 'Book courier parcels from the order'],
     href: '/features/order-management',
     linkLabel: 'See how orders flow',
   },
@@ -65,7 +66,7 @@ const FEATURES: { icon: IconName; title: string; body: string; points: string[];
   {
     icon: 'card',
     title: 'Payments',
-    body: 'Cash on Delivery, SSLCommerz, Stripe and a test provider.',
+    body: 'Cash on Delivery, bank transfer, SSLCommerz and Stripe.',
     points: ['Providers connected per store', 'Payments verified on the server'],
     href: '/payments',
     linkLabel: 'Compare payment options',
@@ -79,6 +80,14 @@ const FEATURES: { icon: IconName; title: string; body: string; points: string[];
     linkLabel: 'Plan your delivery zones',
   },
   {
+    icon: 'route',
+    title: 'Courier Booking',
+    body: 'Connect Steadfast, Pathao, RedX, Paperfly or eCourier and book parcels without leaving Ecomesta.',
+    points: ['Address, phone and COD amount sent for you', 'Delivery status refreshed from the order'],
+    href: '/shipping/bangladesh',
+    linkLabel: 'How courier booking works',
+  },
+  {
     icon: 'tag',
     title: 'Coupons',
     body: 'Percentage and fixed discounts with rules you control.',
@@ -87,12 +96,28 @@ const FEATURES: { icon: IconName; title: string; body: string; points: string[];
     linkLabel: 'Set up coupon codes',
   },
   {
+    icon: 'chart',
+    title: 'Marketing & Tracking',
+    body: 'Facebook Pixel, Google Tag Manager, Google Analytics 4 and Search Console.',
+    points: ['Paste an ID — no code', 'Add to cart and purchase events sent for you'],
+    href: '/features/marketing-tracking',
+    linkLabel: 'Measure your ads',
+  },
+  {
     icon: 'palette',
-    title: 'Store Customization',
-    body: 'Branding, typography, hero, header, footer and SEO settings.',
-    points: ['Draft, preview and publish', 'Two built-in themes'],
+    title: 'Themes & Live Editor',
+    body: 'Default, Minimal and the premium ShopEase theme, customized in a live editor.',
+    points: ['Add, hide and reorder homepage sections', 'Desktop, tablet and mobile preview'],
     href: '/features/store-customization',
     linkLabel: 'Customize your storefront',
+  },
+  {
+    icon: 'image',
+    title: 'Image Gallery',
+    body: 'Upload photos once and reuse them for products, categories, banners and your logo.',
+    points: ['JPEG, PNG or WebP uploads', '1–5 GB storage by plan'],
+    href: '/features/product-management',
+    linkLabel: 'Manage your catalog',
   },
   {
     icon: 'globe',
@@ -124,10 +149,10 @@ const PAYMENTS: { icon: IconName; title: string; body: string; href: string }[] 
     href: '/payments/online-payments',
   },
   {
-    icon: 'flask',
-    title: 'Test payments',
-    body: 'Try the complete online payment flow in development and staging without real money.',
-    href: '/payments/online-payments',
+    icon: 'bank',
+    title: 'Bank transfer',
+    body: 'Offer bank transfer or another offline option with your own instructions, and mark the payment once you receive it.',
+    href: '/payments/cash-on-delivery',
   },
 ];
 
@@ -135,8 +160,9 @@ const HOME_FAQ_QUESTIONS = [
   'What is Ecomesta?',
   'Does Ecomesta support Cash on Delivery?',
   'Can I use my own domain?',
+  'Can I book Steadfast courier from Ecomesta?',
+  'Can I add Facebook Pixel or Google Analytics?',
   'Do customers need an account?',
-  'Can I manage inventory?',
 ];
 
 export function MarketingHome() {
@@ -179,8 +205,8 @@ export function MarketingHome() {
               Build Your Online Store. Sell More. Manage Everything in One Place.
             </FadeUp>
             <FadeUp on="load" as="p" delay={0.12} className="mt-6 max-w-xl text-lg leading-relaxed text-[var(--color-muted)]">
-              Ecomesta helps Bangladesh businesses create and manage online stores with products,
-              inventory, orders, payments, shipping and customer management from one platform.
+              Ecomesta helps Bangladesh businesses create and manage online stores — products, orders,
+              payments, courier booking, themes and marketing tracking — from one platform.
             </FadeUp>
             <div className="mt-8 flex flex-wrap gap-3">
               <FadeUp on="load" as="span" delay={0.18} className="inline-flex">
@@ -195,7 +221,7 @@ export function MarketingHome() {
               </FadeUp>
             </div>
             <FadeUp on="load" as="ul" delay={0.3} distance={12} className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[var(--color-muted)]">
-              {['Cash on Delivery', 'SSLCommerz payments', 'Division–district–upazila delivery'].map((item) => (
+              {['Cash on Delivery', 'SSLCommerz payments', 'Steadfast, Pathao & RedX booking', 'Live theme editor'].map((item) => (
                 <li key={item} className="flex items-center gap-2">
                   <svg aria-hidden="true" viewBox="0 0 20 20" className="h-4 w-4 text-[var(--brand-green)]" fill="none" stroke="currentColor" strokeWidth="2.2">
                     <path d="M4 10.5l4 4 8-9" strokeLinecap="round" strokeLinejoin="round" />
@@ -216,7 +242,7 @@ export function MarketingHome() {
           <FadeUp as="h2" distance={12} id="manage-heading" className="text-center text-sm font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
             Manage your whole store from one platform
           </FadeUp>
-          <StaggerContainer as="ul" step={0.05} className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-9">
+          <StaggerContainer as="ul" step={0.05} className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-5">
             {MANAGE.map((item) => (
               <StaggerItem as="li" key={item.label}>
                 <Link
@@ -312,6 +338,7 @@ export function MarketingHome() {
                 'Free-shipping thresholds per method',
                 'Cash on Delivery allowed or blocked per method',
                 'Shipping details saved on every order',
+                'Courier parcels booked straight from the order',
               ]}
             />
             <div className="mt-8 flex flex-wrap gap-4">
@@ -358,9 +385,9 @@ export function MarketingHome() {
           </FadeUp>
           <StaggerContainer className="mt-10 grid gap-5 md:grid-cols-3">
             {[
-              { title: 'Brand', items: ['Logo and favicon', 'Brand colours', 'Typography', 'Announcement bar'] },
-              { title: 'Layout', items: ['Homepage hero', 'Featured products and categories', 'Navigation menu', 'Footer and social links'] },
-              { title: 'Reach', items: ['SEO title and description', 'Social share image', 'Free subdomain', 'Custom domain'] },
+              { title: 'Brand', items: ['Logo and favicon uploads', 'Brand colours', 'Typography', 'Announcement bar'] },
+              { title: 'Layout', items: ['Hero, categories with images and featured products', 'Deal of the day, rich text and image banners', 'Show, hide and reorder sections', 'Footer and social links'] },
+              { title: 'Reach', items: ['SEO title and description', 'Facebook Pixel and Google Analytics', 'Free subdomain', 'Custom domain'] },
             ].map((group) => (
               <StaggerItem key={group.title} className="em-hover-lift rounded-xl border border-[var(--color-border)] bg-white p-6">
                 <h3 className="font-semibold">{group.title}</h3>

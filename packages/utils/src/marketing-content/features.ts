@@ -23,7 +23,7 @@ export const FEATURE_PAGES: ContentPage[] = [
       {
         heading: 'From sign-up to first order',
         paragraphs: [
-          'After you register, a short onboarding step asks for your business name, store name and store address. Your store is created in Bangladeshi Taka with the Asia/Dhaka time zone, and you land in the merchant dashboard.',
+          'Sign up with your store name and store address, choose a plan and billing period, and pay for it with bKash, Nagad, Rocket or Upay in the last step. Your store is created right away in Bangladeshi Taka with the Asia/Dhaka time zone, so you can start adding products while the Ecomesta team confirms your payment — usually within a few hours. The store goes live for customers once the payment is confirmed.',
         ],
         flow: [
           'Create your store',
@@ -110,6 +110,7 @@ export const FEATURE_PAGES: ContentPage[] = [
       'Nested categories',
       'Draft, active and archived status',
       'Compare-at and cost prices',
+      'Product and category images uploaded from your computer',
     ],
     sections: [
       {
@@ -123,6 +124,13 @@ export const FEATURE_PAGES: ContentPage[] = [
         heading: 'Categories that match how you sell',
         paragraphs: [
           'Categories can be nested, so you can build a structure such as Fashion → Men → T-Shirts. A product can belong to more than one category, and active categories appear on your storefront for browsing.',
+          'Give a category a picture from the theme editor (Theme → Customize → Shop by category → Category images) and it appears on the category cards of your homepage.',
+        ],
+      },
+      {
+        heading: 'Product images and the gallery',
+        paragraphs: [
+          'Upload product photos (JPEG, PNG or WebP, up to 1.5 MB each) straight from your computer or phone. Every image you upload — for products, categories, your logo or banners — is kept in your store’s Gallery, so you can reuse it anywhere with “Choose from gallery”. Storage depends on your plan: 1 GB on Starter, 3 GB on Growth and 5 GB on Business.',
         ],
       },
       {
@@ -295,6 +303,13 @@ export const FEATURE_PAGES: ContentPage[] = [
         ],
       },
       {
+        heading: 'Book courier parcels from the order',
+        paragraphs: [
+          'Connect Steadfast, Pathao, RedX, Paperfly and eCourier once in Settings → Couriers with the API details from your courier account. Then book a parcel straight from an order: the customer’s name, phone, address, the items and the cash-on-delivery amount are sent for you, and the courier’s consignment or tracking ID is saved on the shipment. Refresh the delivery status from the order at any time.',
+          'Courier booking is available on every plan. RedX and eCourier ask for their own delivery area (eCourier: package, city, thana, post code and area), picked from the courier’s list when booking. Delivery Tiger, CarryBee and Karatoa Courier are not connected for direct booking yet — book with the courier as usual, then pick it on the order’s shipment and add the tracking number. Customers see the courier and tracking number on the order tracking page.',
+        ],
+      },
+      {
         heading: 'Cancellations done right',
         paragraphs: [
           'Cancel an open order with an optional reason that your customer can see. Cancelled items are returned to inventory automatically.',
@@ -320,9 +335,9 @@ export const FEATURE_PAGES: ContentPage[] = [
           'Yes. Customers enter their order reference and the email used at checkout on your store’s order tracking page — no account required.',
       },
       {
-        question: 'Are courier companies connected automatically?',
+        question: 'Are courier companies connected?',
         answer:
-          'Not at the moment. You book deliveries with your courier as usual and add the tracking number to the shipment in Ecomesta.',
+          'Steadfast, Pathao, RedX, Paperfly and eCourier are connected: add the API details from your courier account in Settings → Couriers, then book parcels and refresh their delivery status from each order. Delivery Tiger, CarryBee and Karatoa Courier are not connected for direct booking yet — book with them as usual, then choose the courier on the order’s shipment and add the tracking number.',
       },
       {
         question: 'Does cancelling an order restore stock?',
@@ -493,66 +508,155 @@ export const FEATURE_PAGES: ContentPage[] = [
   },
   {
     hub: 'features',
-    slug: 'store-customization',
-    name: 'Store Customization',
-    title: 'Customize Your Online Store Design | Ecomesta',
+    slug: 'marketing-tracking',
+    name: 'Marketing & Tracking',
+    title: 'Facebook Pixel & Google Analytics for Your Store | Ecomesta',
     description:
-      'Brand your storefront with your logo, colours and fonts, and set up the announcement bar, header, hero, homepage sections and footer — with draft and preview.',
-    eyebrow: 'Store customization',
-    h1: 'Make the storefront look like your brand',
+      'Connect Facebook Pixel, Google Tag Manager, Google Analytics 4 and Search Console to your Ecomesta store by pasting an ID — shopping events are sent for you.',
+    eyebrow: 'Marketing & tracking',
+    h1: 'Measure your ads and visitors without touching code',
     intro:
-      'Choose a theme, then adjust branding, layout and content from the dashboard. Work on a draft, preview it, and publish when you are happy — your live store stays untouched until then.',
-    summary: 'Branding, typography, hero, header, footer and SEO.',
+      'Paste your Pixel ID, Container ID or Measurement ID in Marketing → Marketing & tracking and Ecomesta installs the tags on your storefront. The shopping events your ads need are sent automatically.',
+    summary: 'Facebook Pixel, Google Tag Manager, GA4 and Search Console.',
     highlights: [
-      'Two built-in themes: Default and Minimal',
-      'Draft, preview and publish',
-      'Colours, fonts and logo',
-      'SEO title, description and share image',
+      'Facebook (Meta) Pixel',
+      'Google Tag Manager',
+      'Google Analytics 4',
+      'Google Search Console verification',
+      'Included on Growth and Business',
     ],
     sections: [
       {
-        heading: 'Branding',
+        heading: 'Four integrations, one page',
         bullets: [
-          'Brand name and tagline',
-          'Logo and favicon (by image URL)',
-          'Brand colours for buttons, text, backgrounds and borders',
-          'Corner radius for a softer or sharper look',
+          'Facebook Pixel — paste the Pixel ID (numbers only) from Meta Events Manager',
+          'Google Tag Manager — paste the Container ID (GTM-XXXXXXX)',
+          'Google Analytics 4 — paste the Measurement ID (G-XXXXXXXXXX)',
+          'Google Search Console — paste the verification tag or code to verify your store',
         ],
-      },
-      {
-        heading: 'Typography',
         paragraphs: [
-          'Pick heading and body fonts from a curated list and set the base font size for comfortable reading on phones and desktops.',
+          'Each card shows whether it is connected, with a short guide and a link to the vendor’s page. Remove an integration at any time.',
         ],
       },
       {
-        heading: 'Header, announcement bar and hero',
+        heading: 'Shopping events sent for you',
+        flow: ['Page view', 'View product', 'Add to cart', 'Begin checkout', 'Purchase'],
+        paragraphs: [
+          'Ecomesta sends these standard events to Facebook Pixel (PageView, ViewContent, AddToCart, InitiateCheckout, Purchase) and Google Analytics (page_view, view_item, add_to_cart, begin_checkout, purchase), with product and order values in BDT. A purchase is reported once per order.',
+        ],
+      },
+      {
+        heading: 'Which plans include it',
+        paragraphs: [
+          'Marketing & tracking is included on the Growth and Business plans. On Starter the page shows what is available and how to upgrade from Plan & billing.',
+        ],
+      },
+    ],
+    faqs: [
+      {
+        question: 'Can I add Facebook Pixel to my Ecomesta store?',
+        answer:
+          'Yes, on the Growth and Business plans. Open Marketing → Marketing & tracking, paste your Pixel ID and save. Page views, product views, add to cart, checkout and purchases are tracked automatically.',
+      },
+      {
+        question: 'Can I connect Google Analytics, Tag Manager or Search Console?',
+        answer:
+          'Yes, on Growth and Business. Paste your GA4 Measurement ID, Tag Manager Container ID or Search Console verification tag on the Marketing & tracking page.',
+      },
+      {
+        question: 'Do I need to edit code?',
+        answer: 'No. You only paste the IDs; Ecomesta adds the tags to every storefront page.',
+      },
+    ],
+    related: [
+      {
+        href: '/features/coupons',
+        label: 'Coupons',
+        description: 'Run discounts for your campaigns.',
+      },
+      {
+        href: '/features/store-customization',
+        label: 'Store customization',
+        description: 'Themes and the live editor.',
+      },
+      {
+        href: '/pricing',
+        label: 'Pricing',
+        description: 'Growth and Business plans.',
+      },
+    ],
+  },
+  {
+    hub: 'features',
+    slug: 'store-customization',
+    name: 'Store Customization',
+    title: 'Themes and Live Theme Editor for Your Online Store | Ecomesta',
+    description:
+      'Pick Default, Minimal or the premium ShopEase theme and customize it in a live editor: logo, colours, fonts, homepage sections you can reorder, and SEO.',
+    eyebrow: 'Themes & store design',
+    h1: 'Make the storefront look like your brand',
+    intro:
+      'Choose a theme from the theme library, then customize it in a live editor that shows your real store as you type. Work on a draft and publish when you are happy — your live store stays untouched until then.',
+    summary: 'Theme library, live theme editor, homepage sections and SEO.',
+    highlights: [
+      'Theme library: Default, Minimal and premium ShopEase',
+      'Live editor with desktop, tablet and mobile preview',
+      'Add, hide and reorder homepage sections',
+      'Upload images or choose them from your gallery',
+      'Draft, preview and publish',
+    ],
+    sections: [
+      {
+        heading: 'Theme library',
+        paragraphs: [
+          'Open Theme in the dashboard to see your active theme with its Customize button, and the other themes with an Activate button. Activating a theme puts it on your store right away, and you can switch back any time.',
+        ],
+        bullets: [
+          'Default — free on every plan',
+          'Minimal — a quieter, clean layout, included on Growth and Business',
+          'ShopEase — a premium theme with a bold hero, category cards and a deal of the day; included on Business, and available on other plans as a one-time purchase (price shown in the dashboard, paid with bKash, Nagad, Rocket or Upay and confirmed by the Ecomesta team)',
+          'Locked themes can be previewed in the editor before you upgrade or buy',
+        ],
+      },
+      {
+        heading: 'A live theme editor',
+        paragraphs: [
+          'The editor shows your real storefront next to the settings. Click any section in the preview to open its settings, switch between desktop, tablet and mobile, and move between the home page, all products, cart and order tracking pages.',
+        ],
+      },
+      {
+        heading: 'Homepage sections',
         bullets: [
           'Announcement bar for offers or delivery notices, with an optional link',
-          'Header layout (classic, centred or minimal), sticky header, search and cart visibility',
-          'Navigation menu links',
-          'Hero section with headline, subheadline, button and background image',
+          'Header layout (classic, centred or minimal), sticky header, search, cart and navigation menu',
+          'Hero with headline, text, button and background image; in ShopEase also a discount badge (automatic, custom text or hidden)',
+          'Categories row with your chosen categories and their images',
+          'Featured products, newest automatically or hand-picked',
+          'Deal of the day in ShopEase: heading, text, button, countdown and the product on offer',
+          'Rich text and image banner sections you can add more than once',
+          'Show, hide and reorder sections; footer tagline, menu, social links and payment icons',
         ],
       },
       {
-        heading: 'Homepage and footer',
+        heading: 'Branding and typography',
         bullets: [
-          'Featured categories and featured products on the homepage',
-          'Footer tagline, menu, copyright and social links',
-          'Optional payment icons in the footer',
+          'Brand name, tagline, logo and favicon — uploaded or chosen from your gallery',
+          'Brand colours for buttons, text, backgrounds and borders',
+          'Heading and body fonts from a curated list, and the base font size',
+          'Corner radius for a softer or sharper look',
         ],
       },
       {
         heading: 'SEO settings',
         paragraphs: [
-          'Set the title, description, keywords and social share image your store uses in search results and link previews.',
+          'Set the title, description, keywords and social share image your store uses in search results and in link previews on Facebook and WhatsApp.',
         ],
       },
       {
         heading: 'Safe publishing',
         flow: ['Edit draft', 'Preview', 'Publish'],
         paragraphs: [
-          'Changes are saved to a draft first. Preview the draft on your storefront, then publish — or reset to start over.',
+          'Changes are saved to a draft first. Preview the draft on your storefront, then publish — or reset to start over. Category images are the exception: they belong to the category, so they are saved at once and shown in every theme.',
         ],
       },
     ],
@@ -560,29 +664,39 @@ export const FEATURE_PAGES: ContentPage[] = [
       {
         question: 'Can I upload images directly?',
         answer:
-          'Logo, favicon and hero images are currently set by image URL. Direct uploads are not available yet.',
+          'Yes. Upload your logo, favicon, hero and banner images, product photos and category images from your computer or phone (JPEG, PNG or WebP, up to 1.5 MB). Every upload is kept in your store’s Gallery so you can reuse it, and you can still paste an image URL if you prefer.',
       },
       {
         question: 'Will editing the theme affect my live store immediately?',
         answer:
-          'No. You edit a draft and can preview it. Customers see the changes only after you publish.',
+          'No. You edit a draft and can preview it. Customers see the changes only after you publish. Category images are saved straight to the category and show at once.',
+      },
+      {
+        question: 'Which themes are included in my plan?',
+        answer:
+          'Starter includes the Default theme. Growth adds Minimal. Business includes every theme, including the premium ShopEase theme. On Starter or Growth you can buy a premium theme once from the Theme page.',
+      },
+      {
+        question: 'How do I add images to my categories?',
+        answer:
+          'Open Theme, click Customize, choose the Shop by category section and use Category images: pick a category, upload an image or choose one from your gallery, and save. The picture appears on the homepage category cards.',
       },
     ],
     related: [
+      {
+        href: '/features/marketing-tracking',
+        label: 'Marketing & tracking',
+        description: 'Connect Facebook Pixel and Google Analytics.',
+      },
       {
         href: '/features/custom-domain',
         label: 'Custom domain',
         description: 'Serve your store on your own domain.',
       },
       {
-        href: '/features/online-store',
-        label: 'Online store',
-        description: 'Everything included in the storefront.',
-      },
-      {
         href: '/pricing',
         label: 'Pricing',
-        description: 'How to get started today.',
+        description: 'Which themes each plan includes.',
       },
     ],
   },

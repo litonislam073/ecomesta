@@ -25,7 +25,6 @@ export const SETTINGS_NAV: NavItem[] = [
   { href: '/dashboard/settings/couriers', label: 'Couriers', ready: true },
   { href: '/dashboard/settings/domains', label: 'Domains', ready: true },
   { href: '/dashboard/settings/seo', label: 'SEO', ready: true },
-  { href: '/dashboard/settings/tracking', label: 'Marketing & tracking', ready: true },
   { href: '/dashboard/settings/danger-zone', label: 'Danger zone', ready: true },
 ];
 
@@ -55,7 +54,11 @@ export const DASHBOARD_NAV: NavSection[] = [
   },
   {
     title: 'Marketing',
-    items: [{ href: '/dashboard/coupons', label: 'Coupons', ready: true }],
+    items: [
+      { href: '/dashboard/coupons', label: 'Coupons', ready: true },
+      { href: '/dashboard/tracking', label: 'Marketing & tracking', ready: true },
+      { href: '/dashboard/landing-pages', label: 'Landing page', ready: false },
+    ],
   },
   {
     title: 'Store',

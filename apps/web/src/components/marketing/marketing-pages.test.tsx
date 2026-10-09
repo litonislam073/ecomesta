@@ -74,6 +74,7 @@ describe('content pages', () => {
         'custom-domain',
         'customer-management',
         'inventory-management',
+        'marketing-tracking',
         'online-store',
         'order-management',
         'order-tracking',
@@ -182,13 +183,14 @@ describe('hub and static pages', () => {
     expectSingleH1(<AboutPage />);
   });
 
-  it('always offers the contact form, and shows the contact email only when configured', () => {
+  it('always offers the contact form and the support email (support@ecomesta.com unless configured)', () => {
     render(<ContactPage />);
     expect(screen.getByRole('heading', { name: 'Send us a message' })).toBeInTheDocument();
     expect(screen.getByRole('form', { name: 'Contact form' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'What happens next' })).toBeInTheDocument();
     expect(screen.queryByText(/being set up/i)).toBeNull();
-    expect(screen.queryByRole('link', { name: /@/ })).toBeNull();
+    const support = screen.getByRole('heading', { name: 'Reach the Ecomesta team' }).closest('section')!;
+    expect(within(support).getByRole('link', { name: 'support@ecomesta.com' })).toHaveAttribute('href', 'mailto:support@ecomesta.com');
     cleanup();
 
     vi.stubEnv('NEXT_PUBLIC_CONTACT_EMAIL', 'hello@example.com');

@@ -5,13 +5,17 @@ import type { KnowledgeChunk } from './ai-support.knowledge';
 import { STYLE_HINT, type LanguageStyle } from './ai-support.language';
 import { SYSTEM_PROMPT_CANARY } from './ai-support.safety';
 
-/** One line per plan with every billing period, e.g. "Growth: ৳299/month, ৳1,615 per 6 months, ৳2,691/year". */
+/**
+ * One line per plan with every billing period, e.g. "Growth: ৳299/month, ৳1,615 per 6 months, ৳2,691/year",
+ * followed by what the plan includes (from the live plan, so answers follow plan changes).
+ */
 export function planSummary(plans: PublicPlan[]): string {
   if (plans.length === 0) return 'Plan prices are not available right now; use the pricing tool or point to /pricing.';
   return plans
     .map((plan) => {
       const price = (cycle: string) => plan.prices.find((p) => p.billingCycle === cycle)?.amount ?? plan.monthlyPrice;
-      return `- ${plan.name}: ${formatBdt(price('MONTHLY'))}/month, ${formatBdt(price('SEMI_ANNUAL'))} per 6 months (10% off), ${formatBdt(price('YEARLY'))}/year (25% off)${plan.tagline ? ` — ${plan.tagline}` : ''}`;
+      const line = `- ${plan.name}: ${formatBdt(price('MONTHLY'))}/month, ${formatBdt(price('SEMI_ANNUAL'))} per 6 months (10% off), ${formatBdt(price('YEARLY'))}/year (25% off)${plan.tagline ? ` — ${plan.tagline}` : ''}`;
+      return plan.features.length ? `${line}\n  Includes: ${plan.features.join('; ')}` : line;
     })
     .join('\n');
 }
@@ -49,7 +53,11 @@ ${indexableMarketingPaths().join(', ')}
 
 Facts
 - Only state things that come from these instructions or from tool results. If you do not know, say so honestly and offer human support. Never invent features, integrations, prices, statistics, reviews, guarantees or timelines.
-- Ecomesta has no direct bKash, Nagad or Rocket checkout integration for stores: shoppers can pay with those through SSLCommerz's payment page (Growth and Business plans). No courier integrations exist; merchants add tracking numbers manually. No AI features exist for merchants. There is no Facebook, Messenger or social media integration: Facebook sellers keep posting and chatting and share links to their Ecomesta product pages, where the order is placed.
+- Ecomesta has no direct bKash, Nagad or Rocket checkout integration for stores: shoppers can pay with those through SSLCommerz's payment page (Growth and Business plans). Stores can also offer Cash on Delivery and bank transfer or another offline option.
+- Couriers integrated on every plan: Steadfast, Pathao, RedX, Paperfly and eCourier. The merchant connects one in Settings → Couriers with the API details from their courier account (Steadfast: API key and secret key; Pathao: client ID, client secret, Pathao login email and password, optional store ID; RedX: Open API access token; Paperfly: username, password, API key and pickup thana/district; eCourier: user ID, API key and API secret), then books parcels from an order and refreshes the delivery status there. RedX bookings need the RedX delivery area, and eCourier bookings need the package, city, thana, post code and area, all picked from the courier's own lists. Delivery Tiger, CarryBee and Karatoa Courier have no direct booking yet: the merchant books with the courier as usual, then on the order creates a shipment, chooses that courier from the list and adds the tracking number; the customer sees the courier and tracking number on the order tracking page.
+- Marketing & tracking (Growth and Business plans): Facebook (Meta) Pixel, Google Tag Manager, Google Analytics 4 and Google Search Console, set up by pasting IDs in Marketing → Marketing & tracking; shopping events (page view, view product, add to cart, checkout, purchase) are sent automatically. There is no Facebook Shop, Messenger or social media posting integration: Facebook sellers keep posting and chatting and share links to their Ecomesta product pages, where the order is placed.
+- Themes: Default (all plans), Minimal (Growth and Business) and the premium ShopEase theme (included on Business; a one-time purchase on other plans). Merchants customize the active theme in a live theme editor (Theme → Customize) and publish when ready. Images are uploaded or chosen from the store's Gallery; category images are added in the theme editor's Shop by category section.
+- Landing pages are coming soon (not available yet). No AI features exist for merchants.
 - Merchants pay their own Ecomesta plan manually with bKash, Nagad, Rocket or Upay from Plan & billing in the dashboard; the team confirms it.
 - There is no free trial: a new merchant pays for the chosen plan in the last step of sign-up, and the store goes live once the team confirms the payment. After a paid period ends there is a ${PAYMENT_GRACE_DAYS}-day grace period.
 - Current plans (BDT):

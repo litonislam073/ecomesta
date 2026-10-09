@@ -58,7 +58,7 @@ export class CategoriesService {
           description: dto.description,
           imageUrl: dto.imageUrl,
           parentId: dto.parentId ?? null,
-          status: ProductStatus.ACTIVE,
+          status: dto.status ?? ProductStatus.ACTIVE,
         },
       });
 

@@ -21,7 +21,7 @@ import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { CLOSED_SHIPMENT_STATUSES, isShippedLike, syncOrderFulfillment } from '../shipments/shipment-fulfillment';
 import { courierFields } from '../shipments/shipments.service';
-import { CourierConnectionsService } from './courier-connections.service';
+import { CourierConnectionsService, cleanValues } from './courier-connections.service';
 import { courierFailure, CourierUnavailableError } from './courier-errors';
 import type { CourierBooking, CourierCredentials, CourierProvider, CourierStatusResult } from './courier-provider';
 import { CourierProviderRegistry } from './courier-provider.registry';
@@ -114,7 +114,11 @@ export class CourierShipmentsService {
     if (!store) throw new NotFoundException('Store not found');
     const order = await this.prisma.order.findFirst({
       where: { id: orderId, storeId },
-      include: { addresses: true, payments: { orderBy: { attemptNumber: 'desc' }, take: 1 } },
+      include: {
+        addresses: true,
+        items: { select: { productName: true, variantName: true, quantity: true } },
+        payments: { orderBy: { attemptNumber: 'desc' }, take: 1 },
+      },
     });
     if (!order) throw new NotFoundException('Order not found');
     const connection = await this.requireConnection(storeId, provider);
@@ -139,6 +143,8 @@ export class CourierShipmentsService {
     const recipientAddress = formatDeliveryAddress(address);
     if (!recipientAddress) throw notShippable('The delivery address is empty.');
     const weightKg = dto.weightKg ?? connection.publicConfig.defaultWeightKg ?? null;
+    // Checked before the booking is reserved, so bad input never leaves a half-made booking.
+    const location = cleanValues(dto.location, provider.locationSteps.map((step) => step.key), 120);
 
     // Reserve the booking under the order lock — or find the unconfirmed one to reconcile.
     const reserved = await this.prisma
@@ -203,8 +209,25 @@ export class CourierShipmentsService {
         recipientName,
         recipientPhone,
         recipientAddress,
+        addressLine: [address.addressLine1, address.addressLine2].map((part) => part?.trim()).filter(Boolean).join(', '),
+        districtName: address.districtName ?? address.city ?? null,
+        upazilaName: address.upazilaName ?? null,
+        postalCode: address.postalCode ?? null,
         codAmount,
+        orderTotal: order.grandTotal.toString(),
+        weightKg: weightKg === null ? null : Number(weightKg),
+        itemCount: order.items.reduce((sum, item) => sum + item.quantity, 0) || 1,
+        itemDescription: order.items
+          .map((item) => `${item.productName}${item.variantName ? ` (${item.variantName})` : ''} x${item.quantity}`)
+          .join(', ')
+          .slice(0, 250),
         note: dto.note?.trim() || undefined,
+        location,
+        pickup: {
+          name: connection.publicConfig.pickupName ?? null,
+          phone: connection.publicConfig.pickupPhone ?? null,
+          address: connection.publicConfig.pickupAddress ?? null,
+        },
       });
     } catch (err) {
       if (courierFailure(err)?.outcome === 'rejected') {

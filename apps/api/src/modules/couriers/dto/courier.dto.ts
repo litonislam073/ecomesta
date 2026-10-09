@@ -1,10 +1,19 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ShippingProvider } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsEnum, IsNumber, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { IsEnum, IsNumber, IsObject, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from 'class-validator';
 
-/** Connect or update a courier. Keys are write-only; omit both to keep the saved ones. */
+/** Connect or update a courier. Keys are write-only; omit them to keep the saved ones. */
 export class UpsertCourierConnectionDto {
+  @ApiPropertyOptional({
+    description: "The courier's connection fields by key (see `fields` on the courier). Secret values are write-only; omit a key to keep its saved value.",
+    type: 'object',
+    additionalProperties: { type: 'string' },
+  })
+  @IsOptional()
+  @IsObject()
+  credentials?: Record<string, string>;
+
   @ApiPropertyOptional({ description: 'Courier API key (write-only, never returned)' })
   @IsOptional()
   @IsString()
@@ -67,4 +76,27 @@ export class CreateCourierShipmentDto {
   @IsString()
   @MaxLength(250)
   note?: string;
+
+  @ApiPropertyOptional({
+    description: "Values picked for the courier's location steps (e.g. RedX area, eCourier city/thana/post code/area)",
+    type: 'object',
+    additionalProperties: { type: 'string' },
+  })
+  @IsOptional()
+  @IsObject()
+  location?: Record<string, string>;
+}
+
+/** Choices for one courier location step, given the values picked in earlier steps. */
+export class CourierLocationOptionsDto {
+  @ApiPropertyOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(40)
+  step!: string;
+
+  @ApiPropertyOptional({ type: 'object', additionalProperties: { type: 'string' } })
+  @IsOptional()
+  @IsObject()
+  picked?: Record<string, string>;
 }

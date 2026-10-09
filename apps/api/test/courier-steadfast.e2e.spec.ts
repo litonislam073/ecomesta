@@ -188,7 +188,12 @@ describe('Steadfast courier integration (e2e)', () => {
   describe('connecting Steadfast', () => {
     it('starts not connected', async () => {
       const res = await request(server()).get(`/api/v1/stores/${alpha.storeId}/couriers`).set(auth(alpha.token)).expect(200);
-      expect(res.body.data).toEqual([expect.objectContaining({ provider: 'STEADFAST', status: 'NOT_CONNECTED', supportsCancellation: false, credentialsSaved: false })]);
+      expect(res.body.data.map((c: { provider: string }) => c.provider)).toEqual(['STEADFAST', 'PATHAO', 'REDX', 'PAPERFLY', 'ECOURIER']);
+      expect(res.body.data[0]).toEqual(
+        expect.objectContaining({ provider: 'STEADFAST', status: 'NOT_CONNECTED', supportsCancellation: false, credentialsSaved: false, settings: {} }),
+      );
+      // What to enter is described by the API; nothing secret is ever echoed back.
+      expect(res.body.data[0].fields.map((f: { key: string }) => f.key)).toEqual(['apiKey', 'secretKey']);
     });
 
     it('refuses credentials Steadfast rejects, and saves nothing', async () => {

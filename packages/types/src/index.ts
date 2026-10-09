@@ -246,7 +246,17 @@ export type FulfillmentStatus =
   | 'CANCELLED';
 
 export type ShippingMethodType = 'FLAT' | 'WEIGHT_BASED' | 'FREE' | 'EXTERNAL';
-export type ShippingProvider = 'MANUAL' | 'PATHAO' | 'STEADFAST' | 'REDX' | 'OTHER';
+export type ShippingProvider =
+  | 'MANUAL'
+  | 'PATHAO'
+  | 'STEADFAST'
+  | 'REDX'
+  | 'OTHER'
+  | 'PAPERFLY'
+  | 'ECOURIER'
+  | 'DELIVERY_TIGER'
+  | 'CARRYBEE'
+  | 'KARATOA';
 export type ShipmentStatus =
   | 'PENDING'
   | 'LABEL_CREATED'
@@ -575,12 +585,41 @@ export interface OrderShipmentRef extends Partial<ShipmentCourierFields> {
 export type CourierConnectionStatus = 'CONNECTED' | 'NOT_CONNECTED';
 
 /** A courier the store can connect. Credentials are write-only and never returned. */
+/** One value a merchant enters to connect a courier. Secret values are write-only. */
+export interface CourierFieldInfo {
+  key: string;
+  label: string;
+  secret: boolean;
+  required: boolean;
+  hint?: string;
+  placeholder?: string;
+}
+
+/** A courier-side place picked when booking (RedX area; eCourier city, thana, post code, area). */
+export interface CourierLocationStepInfo {
+  key: string;
+  label: string;
+}
+
+export interface CourierOptionInfo {
+  value: string;
+  label: string;
+}
+
 export interface CourierConnectionInfo {
   provider: string;
   name: string;
   status: CourierConnectionStatus;
   supportsCancellation: boolean;
   credentialsSaved: boolean;
+  /** What to enter to connect, in order. */
+  fields: CourierFieldInfo[];
+  /** Where the merchant finds these values. */
+  connectHelp: string;
+  /** Places to pick when booking, in order; empty when the address is enough. */
+  locationSteps: CourierLocationStepInfo[];
+  /** Saved non-secret values (e.g. store ID, user name); secrets are never returned. */
+  settings: Record<string, string>;
   pickupName: string | null;
   pickupPhone: string | null;
   pickupAddress: string | null;

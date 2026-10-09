@@ -13,11 +13,11 @@ import NotificationSettingsPage from '@/app/dashboard/settings/notifications/pag
 import ShippingSettingsPage from '@/app/dashboard/settings/shipping/page';
 import DomainSettingsPage from '@/app/dashboard/settings/domains/page';
 import SeoSettingsPage from '@/app/dashboard/settings/seo/page';
-import TrackingSettingsPage from '@/app/dashboard/settings/tracking/page';
+import TrackingSettingsPage from '@/app/dashboard/tracking/page';
 import DangerZoneSettingsPage from '@/app/dashboard/settings/danger-zone/page';
 import { SidebarNav } from '@/components/dashboard/sidebar-nav';
 import { ApiError } from '@/lib/api-client';
-import { SETTINGS_NAV } from '@/lib/nav';
+import { DASHBOARD_NAV, SETTINGS_NAV } from '@/lib/nav';
 
 const pushToast = vi.fn();
 const routerPush = vi.fn();
@@ -540,8 +540,39 @@ describe('Merchant settings', () => {
       }
     });
 
-    it('is listed in the settings menu', () => {
-      expect(SETTINGS_NAV.some((item) => item.href === '/dashboard/settings/tracking')).toBe(true);
+    it('shows how many tags are connected, and removes one', async () => {
+      mockLoad({ ...baseSettings, metaPixelId: '123456789012345' });
+      api.patch.mockResolvedValue({ success: true, data: baseSettings });
+      const user = userEvent.setup();
+      render(<TrackingSettingsPage />);
+      await findLoaded('Pixel ID');
+      expect(screen.getByText('1 of 4 connected')).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Remove Facebook (Meta) Pixel' }));
+      expect(screen.getByLabelText('Pixel ID')).toHaveValue('');
+      await user.click(screen.getByRole('button', { name: 'Save changes' }));
+      await waitFor(() =>
+        expect(api.patch).toHaveBeenCalledWith('/stores/store-1/settings', expect.objectContaining({ metaPixelId: '' })),
+      );
+    });
+
+    it('explains where to find each ID, with a link to the tool', async () => {
+      render(<TrackingSettingsPage />);
+      await findLoaded('Pixel ID');
+      const pixel = screen.getByRole('region', { name: 'Facebook (Meta) Pixel' });
+      expect(within(pixel).getByText(/Where do I find it\?/)).toBeInTheDocument();
+      expect(within(pixel).getByRole('link', { name: /Open Events Manager/ })).toHaveAttribute(
+        'href',
+        'https://business.facebook.com/events_manager2',
+      );
+      const console = screen.getByRole('region', { name: 'Google Search Console' });
+      expect(within(console).getByRole('button', { name: 'Copy' })).toBeInTheDocument();
+    });
+
+    it('lives in the Marketing menu, not in Settings', () => {
+      const marketing = DASHBOARD_NAV.find((section) => section.title === 'Marketing')!;
+      expect(marketing.items.map((item) => item.label)).toEqual(['Coupons', 'Marketing & tracking', 'Landing page']);
+      expect(marketing.items[1]!.href).toBe('/dashboard/tracking');
+      expect(SETTINGS_NAV.some((item) => item.href.includes('tracking'))).toBe(false);
     });
   });
 });

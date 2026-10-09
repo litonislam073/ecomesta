@@ -247,6 +247,29 @@ describe('Orders UI', () => {
     });
   });
 
+  it('creates a shipment with the chosen courier and tracking number', async () => {
+    const user = userEvent.setup();
+    api.get.mockResolvedValue({ success: true, data: sampleOrder });
+    api.post.mockResolvedValue({ success: true, data: {} });
+
+    render(<OrderDetailPage />);
+    await screen.findByText('EM-100001');
+    const courier = screen.getByLabelText('Courier');
+    for (const name of ['Pathao Courier', 'RedX', 'Paperfly', 'eCourier', 'Delivery Tiger', 'CarryBee', 'Karatoa Courier']) {
+      expect(within(courier).getByRole('option', { name })).toBeInTheDocument();
+    }
+    await user.selectOptions(courier, 'PAPERFLY');
+    await user.type(screen.getByLabelText(/tracking number \(optional\)/i), 'PF-12345');
+    await user.click(screen.getByRole('button', { name: 'Create shipment' }));
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith('/stores/store-1/orders/ord-1/shipments', {
+        provider: 'PAPERFLY',
+        status: 'PENDING',
+        trackingNumber: 'PF-12345',
+      }),
+    );
+  });
+
   it('cancels an order with confirmation and optional reason', async () => {
     const user = userEvent.setup();
     api.get.mockResolvedValue({ success: true, data: sampleOrder });

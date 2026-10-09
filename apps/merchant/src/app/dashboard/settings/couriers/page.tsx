@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import type { CourierConnectionInfo } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
+import { SHIPMENT_COURIERS } from '@ecomesta/utils';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -14,8 +15,8 @@ import { humanApiError } from '@/lib/catalog-utils';
 import { useCanManageStore } from '@/lib/permissions';
 import { useStoreContext } from '@/lib/store-context';
 
-type Form = { apiKey: string; secretKey: string; pickupName: string; pickupPhone: string; pickupAddress: string; defaultWeightKg: string };
-const emptyForm: Form = { apiKey: '', secretKey: '', pickupName: '', pickupPhone: '', pickupAddress: '', defaultWeightKg: '' };
+type Form = { credentials: Record<string, string>; pickupName: string; pickupPhone: string; pickupAddress: string; defaultWeightKg: string };
+const emptyForm: Form = { credentials: {}, pickupName: '', pickupPhone: '', pickupAddress: '', defaultWeightKg: '' };
 
 export default function CourierSettingsPage() {
   const { selectedStoreId } = useStoreContext();
@@ -60,6 +61,31 @@ export default function CourierSettingsPage() {
               onChange={(next) => setCouriers((list) => list.map((c) => (c.provider === next.provider ? next : c)))}
             />
           ))}
+          <section
+            aria-labelledby="other-couriers"
+            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
+          >
+            <h2 id="other-couriers" className="font-semibold">
+              Other couriers
+            </h2>
+            <p className="mt-1 text-sm text-[var(--color-muted)]">
+              These couriers have no direct booking yet. Book with them as usual, then open the order, choose the
+              courier under Shipments and add the tracking number. Your customer sees the courier and tracking number
+              on the order tracking page.
+            </p>
+            <ul className="mt-3 flex flex-wrap gap-2">
+              {SHIPMENT_COURIERS.filter(
+                (courier) => !['MANUAL', 'OTHER'].includes(courier.code) && !couriers.some((c) => c.provider === courier.code),
+              ).map((courier) => (
+                <li
+                  key={courier.code}
+                  className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-1 text-sm"
+                >
+                  {courier.name}
+                </li>
+              ))}
+            </ul>
+          </section>
         </div>
       </SettingsGate>
     </div>
@@ -87,9 +113,10 @@ function CourierCard({
   const id = courier.provider.toLowerCase();
 
   function startEditing() {
-    // Saved keys are never sent back to the browser: the key fields always start empty.
+    // Saved secrets are never sent back to the browser: secret fields always start empty.
     setForm({
       ...emptyForm,
+      credentials: { ...courier.settings },
       pickupName: courier.pickupName ?? '',
       pickupPhone: courier.pickupPhone ?? '',
       pickupAddress: courier.pickupAddress ?? '',
@@ -101,17 +128,23 @@ function CourierCard({
 
   async function save(event: FormEvent) {
     event.preventDefault();
-    const apiKey = form.apiKey.trim();
-    const secretKey = form.secretKey.trim();
-    if (!connected && (!apiKey || !secretKey)) return setFormError('Enter the API key and secret key from your Steadfast account.');
-    if ((apiKey || secretKey) && !(apiKey && secretKey)) return setFormError('Enter both the API key and the secret key.');
+    const value = (key: string) => form.credentials[key]?.trim() ?? '';
+    // Connecting needs every required value; later, an empty secret keeps the saved one.
+    const missing = courier.fields.filter((field) => field.required && !value(field.key) && (!connected || !field.secret));
+    if (missing.length > 0) return setFormError(`Enter the ${missing.map((field) => field.label).join(', ')}.`);
+    // Only what changed is sent, so saving pickup details does not re-check the keys with the courier.
+    const credentials = Object.fromEntries(
+      courier.fields
+        .filter((field) => (field.secret ? value(field.key) !== '' : value(field.key) !== (courier.settings[field.key] ?? '')))
+        .map((field) => [field.key, value(field.key)]),
+    );
     const weight = form.defaultWeightKg.trim();
     if (weight && !(Number(weight) > 0 && Number(weight) <= 100)) return setFormError('Default weight must be between 0.01 and 100 kg.');
     setBusy(true);
     setFormError(null);
     try {
       const res = await api.put<{ success: true; data: CourierConnectionInfo }>(`/stores/${storeId}/couriers/${courier.provider}`, {
-        ...(apiKey ? { apiKey, secretKey } : {}),
+        ...(Object.keys(credentials).length > 0 ? { credentials } : {}),
         pickupName: form.pickupName,
         pickupPhone: form.pickupPhone,
         pickupAddress: form.pickupAddress,
@@ -153,7 +186,9 @@ function CourierCard({
       <div className="space-y-4 p-4">
         {connected && !editing ? (
           <dl className="divide-y divide-[var(--color-border)]">
-            <ReadOnlyRow label="API credentials" value="Saved (hidden)" />
+            {courier.fields.map((field) => (
+              <ReadOnlyRow key={field.key} label={field.label} value={field.secret ? 'Saved (hidden)' : courier.settings[field.key] || 'Not set'} />
+            ))}
             <ReadOnlyRow
               label="Pickup location"
               value={[courier.pickupName, courier.pickupPhone, courier.pickupAddress].filter(Boolean).join(' · ') || 'Not set'}
@@ -164,20 +199,38 @@ function CourierCard({
 
         {!connected && !editing ? (
           <p className="text-sm text-[var(--color-muted)]">
-            Book Steadfast parcels from an order and refresh their delivery status here. You need the API key and
-            secret key from your Steadfast merchant account.
+            Book {courier.name} parcels from an order and refresh their delivery status here. {courier.connectHelp}
           </p>
         ) : null}
 
         {editing ? (
           <form onSubmit={(e) => void save(e)} className="space-y-4" noValidate>
+            <p className="text-sm text-[var(--color-muted)]">{courier.connectHelp}</p>
             <div className="grid gap-4 md:grid-cols-2">
-              <Field id={`${id}-api-key`} label="API key" hint={connected ? 'Leave both keys empty to keep the saved ones.' : undefined}>
-                <Input id={`${id}-api-key`} type="password" autoComplete="off" spellCheck={false} value={form.apiKey} onChange={set('apiKey')} maxLength={200} />
-              </Field>
-              <Field id={`${id}-secret-key`} label="Secret key">
-                <Input id={`${id}-secret-key`} type="password" autoComplete="new-password" spellCheck={false} value={form.secretKey} onChange={set('secretKey')} maxLength={200} />
-              </Field>
+              {courier.fields.map((field) => (
+                <Field
+                  key={field.key}
+                  id={`${id}-${field.key}`}
+                  label={field.required ? field.label : `${field.label} (optional)`}
+                  hint={field.secret && connected ? 'Leave empty to keep the saved value.' : field.hint}
+                >
+                  <Input
+                    id={`${id}-${field.key}`}
+                    type={field.secret ? 'password' : 'text'}
+                    autoComplete={field.secret ? 'new-password' : 'off'}
+                    spellCheck={false}
+                    placeholder={field.placeholder}
+                    value={form.credentials[field.key] ?? ''}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setForm((f) => ({ ...f, credentials: { ...f.credentials, [field.key]: next } }));
+                    }}
+                    maxLength={300}
+                  />
+                </Field>
+              ))}
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
               <Field id={`${id}-pickup-name`} label="Pickup contact name">
                 <Input id={`${id}-pickup-name`} value={form.pickupName} onChange={set('pickupName')} maxLength={100} />
               </Field>
@@ -188,7 +241,11 @@ function CourierCard({
             <Field
               id={`${id}-pickup-address`}
               label="Pickup address"
-              hint="For your team. Steadfast collects from the pickup address set in your Steadfast account."
+              hint={
+                courier.provider === 'PAPERFLY'
+                  ? 'Paperfly picks up parcels from this address.'
+                  : `For your team. ${courier.name} picks up from the address set in your ${courier.name} account.`
+              }
             >
               <textarea id={`${id}-pickup-address`} className={textareaClass} rows={2} value={form.pickupAddress} onChange={set('pickupAddress')} maxLength={250} />
             </Field>
@@ -202,7 +259,7 @@ function CourierCard({
             ) : null}
             <div className="flex flex-wrap gap-2">
               <Button type="submit" disabled={busy}>
-                {busy ? 'Checking with Steadfast…' : connected ? 'Save' : `Connect ${courier.name}`}
+                {busy ? `Checking with ${courier.name}…` : connected ? 'Save' : `Connect ${courier.name}`}
               </Button>
               <Button type="button" variant="secondary" disabled={busy} onClick={() => setEditing(false)}>
                 Cancel
@@ -225,7 +282,7 @@ function CourierCard({
       <ConfirmDialog
         open={confirmDisconnect}
         title={`Disconnect ${courier.name}?`}
-        description="The saved API keys are deleted. Booked shipments keep their tracking history, but you can't book or refresh them until you connect again."
+        description="The saved API details are deleted. Booked shipments keep their tracking history, but you can't book or refresh them until you connect again."
         confirmLabel="Disconnect"
         danger
         safeDefault

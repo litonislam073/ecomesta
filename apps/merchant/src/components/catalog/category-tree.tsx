@@ -5,6 +5,7 @@ import type { Category } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
 import { SampleBadge } from '@/components/catalog/sample-badge';
 import { StatusBadge } from '@/components/catalog/status-badge';
+import { mediaSrc } from '@/lib/media';
 
 type TreeNode = Omit<Category, 'children'> & { children: TreeNode[] };
 
@@ -60,6 +61,21 @@ function TreeBranch({
             </button>
           ) : (
             <span className="inline-block w-5" aria-hidden />
+          )}
+          {node.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={mediaSrc(node.imageUrl) ?? undefined}
+              alt=""
+              className="h-9 w-9 shrink-0 rounded-md border border-[var(--color-border)] object-cover"
+            />
+          ) : (
+            <span
+              aria-hidden="true"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#f3f7f5] text-sm font-semibold text-[var(--color-muted)]"
+            >
+              {node.name.slice(0, 1).toUpperCase()}
+            </span>
           )}
           <div className="min-w-0">
             <p className="truncate font-medium">{node.name}</p>

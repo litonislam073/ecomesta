@@ -113,7 +113,12 @@ export function useThemePreviewSession({
     };
   }, [storeId, themeId, draft, enabled, allowed]);
 
-  return { token, status: allowed ? status : ('unavailable' as const), version, stale };
+  /** Re-renders the preview after a change outside the draft (e.g. a category image). */
+  const refresh = useCallback(() => {
+    if (tokenRef.current) setVersion((value) => value + 1);
+  }, []);
+
+  return { token, status: allowed ? status : ('unavailable' as const), version, stale, refresh };
 }
 
 /**

@@ -9,8 +9,10 @@ import type {
   OrderStatus,
   PaymentStatus,
   ShipmentStatus,
+  ShippingProvider,
 } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
+import { SHIPMENT_COURIERS, courierName } from '@ecomesta/utils';
 import { StatusBadge } from '@/components/catalog/status-badge';
 import { StoreScoped } from '@/components/catalog/store-scoped';
 import { CourierBookingPanel, CourierShipmentCard, isActiveShipment } from '@/components/couriers/order-courier';
@@ -78,6 +80,8 @@ function OrderDetailContent() {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [trackingDraft, setTrackingDraft] = useState('');
+  const [newCourier, setNewCourier] = useState<ShippingProvider>('MANUAL');
+  const [newTracking, setNewTracking] = useState('');
 
   const load = useCallback(async () => {
     if (!selectedStoreId || !orderId) {
@@ -160,10 +164,12 @@ function OrderDetailContent() {
     setBusy(true);
     try {
       await api.post(`/stores/${selectedStoreId}/orders/${orderId}/shipments`, {
-        provider: 'MANUAL',
+        provider: newCourier,
         status: 'PENDING',
+        ...(newTracking.trim() ? { trackingNumber: newTracking.trim() } : {}),
       });
       pushToast('Shipment created', 'success');
+      setNewTracking('');
       await load();
     } catch (err) {
       pushToast(humanApiError(err, 'Could not create shipment'), 'error');
@@ -556,17 +562,34 @@ function OrderDetailContent() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-semibold">Shipments</h2>
               {/* A courier booking owns the order's shipping: no manual shipment beside it (the API refuses too). */}
-              {canWrite && order.status !== 'CANCELLED' && !activeCourier ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={busy}
-                  onClick={() => void createShipment()}
-                >
+            </div>
+            {/* A courier booking owns the order's shipping: no manual shipment beside it (the API refuses too). */}
+            {canWrite && order.status !== 'CANCELLED' && !activeCourier ? (
+              <div className="flex flex-wrap items-end gap-2 rounded-md bg-[var(--color-bg)] p-3">
+                <label className="space-y-1 text-sm">
+                  <span className="text-xs text-[var(--color-muted)]">Courier</span>
+                  <Select value={newCourier} onChange={(e) => setNewCourier(e.target.value as ShippingProvider)}>
+                    {SHIPMENT_COURIERS.map((courier) => (
+                      <option key={courier.code} value={courier.code}>
+                        {courier.name}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+                <label className="space-y-1 text-sm">
+                  <span className="text-xs text-[var(--color-muted)]">Tracking number (optional)</span>
+                  <Input
+                    value={newTracking}
+                    onChange={(e) => setNewTracking(e.target.value)}
+                    placeholder="Consignment / tracking ID"
+                    maxLength={120}
+                  />
+                </label>
+                <Button type="button" variant="secondary" disabled={busy} onClick={() => void createShipment()}>
                   Create shipment
                 </Button>
-              ) : null}
-            </div>
+              </div>
+            ) : null}
             {canWrite &&
             selectedStoreId &&
             !['CANCELLED', 'DRAFT', 'COMPLETED'].includes(order.status) &&
@@ -604,7 +627,7 @@ function OrderDetailContent() {
                       <>
                       <div className="flex flex-wrap justify-between gap-2">
                         <span>
-                          {s.provider} · {s.status}
+                          {courierName(s.provider)} · {s.status}
                           {s.trackingNumber ? ` · ${s.trackingNumber}` : ''}
                         </span>
                       </div>

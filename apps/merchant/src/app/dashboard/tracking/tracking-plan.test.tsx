@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import type { PlanLimits } from '@ecomesta/types';
-import TrackingSettingsPage from '@/app/dashboard/settings/tracking/page';
+import TrackingSettingsPage from '@/app/dashboard/tracking/page';
 
 vi.mock('next/navigation', () => ({
-  usePathname: () => '/dashboard/settings/tracking',
+  usePathname: () => '/dashboard/tracking',
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
 }));
 

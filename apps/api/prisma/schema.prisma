@@ -135,6 +135,11 @@ enum ShippingProvider {
   STEADFAST
   REDX
   OTHER
+  PAPERFLY
+  ECOURIER
+  DELIVERY_TIGER
+  CARRYBEE
+  KARATOA
 }
 
 enum ShippingMethodType {

@@ -65,11 +65,11 @@ export function SidebarNav({
                     ) : null}
                     {!item.ready ? (
                       <span
-                        className={`text-[10px] uppercase tracking-wide ${
-                          active ? 'text-white/80' : 'text-[var(--color-muted)]'
+                        className={`ml-2 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none tracking-wide ${
+                          active ? 'bg-white text-[var(--color-accent)]' : 'bg-[#fff1d6] text-[#8a5a00]'
                         }`}
                       >
-                        Soon
+                        Coming soon
                       </span>
                     ) : null}
                   </Link>

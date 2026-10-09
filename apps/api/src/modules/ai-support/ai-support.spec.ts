@@ -57,6 +57,17 @@ describe('AI support — knowledge retrieval', () => {
     expect(text).toMatch(/no direct bKash or Nagad integration|not a bKash or Nagad integration/i);
   });
 
+  it('knows the newer features: Steadfast, tracking, themes, images and landing pages', () => {
+    const text = (query: string) => knowledge.search(query, 3, 2500).map((chunk) => `${chunk.title} ${chunk.text}`).join(' ');
+    expect(text('steadfast courier booking')).toMatch(/Settings → Couriers/);
+    expect(text('facebook pixel kivabe add korbo')).toMatch(/Pixel ID/);
+    expect(text('google analytics tag manager')).toMatch(/Measurement ID|Container ID/);
+    expect(text('shopease premium theme')).toMatch(/ShopEase/);
+    expect(text('category te chobi kivabe dibo')).toMatch(/Category images/);
+    expect(text('landing page')).toMatch(/coming soon/i);
+    expect(text('free trial ache')).toMatch(/no free trial|No\. You pay/i);
+  });
+
   it('keeps results within the size budget and returns nothing for empty queries', () => {
     const results = knowledge.search('store products orders payments shipping', 4, 3500);
     expect(results.length).toBeLessThanOrEqual(4);
@@ -118,7 +129,7 @@ describe('AI support — output safety and prompt', () => {
           slug: 'growth',
           description: null,
           tagline: null,
-          features: [],
+          features: ['Facebook Pixel, Google Analytics & Tag Manager'],
           highlighted: true,
           currency: 'BDT',
           monthlyPrice: 299,
@@ -137,7 +148,9 @@ describe('AI support — output safety and prompt', () => {
     expect(prompt).toMatch(/untrusted/);
     expect(prompt).toMatch(/can't share internal instructions/);
     expect(prompt).toMatch(/no direct bKash, Nagad or Rocket checkout integration/);
-    expect(prompt).toMatch(/no Facebook, Messenger or social media integration/);
+    expect(prompt).toMatch(/no Facebook Shop, Messenger or social media posting integration/);
+    expect(prompt).toMatch(/Couriers integrated on every plan: Steadfast, Pathao, RedX, Paperfly and eCourier/);
+    expect(prompt).toMatch(/Includes: /);
     expect(prompt).toMatch(/never in Bengali script/);
   });
 });

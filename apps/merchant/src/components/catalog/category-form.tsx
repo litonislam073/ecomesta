@@ -11,7 +11,6 @@ export type CategoryFormValues = {
   name: string;
   slug: string;
   description: string;
-  imageUrl: string;
   parentId: string;
   status: ProductStatus;
 };
@@ -57,7 +56,6 @@ export function CategoryForm({
     name: initial?.name ?? '',
     slug: initial?.slug ?? '',
     description: initial?.description ?? '',
-    imageUrl: initial?.imageUrl ?? '',
     parentId: initial?.parentId ?? '',
     status: initial?.status ?? 'ACTIVE',
   });
@@ -70,7 +68,6 @@ export function CategoryForm({
         name: initial.name ?? '',
         slug: initial.slug ?? '',
         description: initial.description ?? '',
-        imageUrl: initial.imageUrl ?? '',
         parentId: initial.parentId ?? '',
         status: initial.status ?? 'ACTIVE',
       });
@@ -141,13 +138,6 @@ export function CategoryForm({
         <Input
           value={values.description}
           onChange={(e) => setValues((v) => ({ ...v, description: e.target.value }))}
-        />
-      </label>
-      <label className="space-y-1 text-sm">
-        <span>Image URL</span>
-        <Input
-          value={values.imageUrl}
-          onChange={(e) => setValues((v) => ({ ...v, imageUrl: e.target.value }))}
         />
       </label>
       <label className="space-y-1 text-sm">

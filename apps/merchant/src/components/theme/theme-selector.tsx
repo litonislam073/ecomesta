@@ -5,6 +5,7 @@ import { Button } from '@ecomesta/ui';
 import { formatBdt } from '@ecomesta/utils';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
+import { ThemeThumbnail } from '@/components/theme/theme-thumbnail';
 
 /** A premium theme this business may not use (yet): it can be bought, not edited. */
 export function isLockedTheme(theme: ThemeListItem): boolean {
@@ -80,6 +81,9 @@ export function ThemeSelector({
                     : 'border-[var(--color-border)]'
                 }`}
               >
+                <div className="mb-3">
+                  <ThemeThumbnail theme={theme} />
+                </div>
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-medium text-[var(--color-ink)]">{theme.name}</p>

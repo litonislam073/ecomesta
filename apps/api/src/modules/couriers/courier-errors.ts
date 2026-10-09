@@ -50,7 +50,7 @@ export const courierErrors = {
     new CourierError(
       HttpStatus.UNPROCESSABLE_ENTITY,
       'COURIER_AUTH_FAILED',
-      `${courier} rejected the API credentials. Check the API key and secret key in Settings → Couriers.`,
+      `${courier} rejected the API credentials. Check them in Settings → Couriers.`,
     ),
   validation: (courier: string, detail: string, fields: string[]) =>
     new CourierError(HttpStatus.UNPROCESSABLE_ENTITY, 'COURIER_VALIDATION_FAILED', `${courier} could not accept this parcel: ${detail}`, fields),

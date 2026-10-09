@@ -223,6 +223,12 @@ describe('Categories UI', () => {
     });
   });
 
+  it('has no image option (category images are set in the theme editor)', () => {
+    render(<CategoryForm categories={[]} submitLabel="Create category" onSubmit={vi.fn()} />);
+    expect(screen.queryByText(/image/i)).toBeNull();
+    expect(screen.queryByRole('button', { name: /upload/i })).toBeNull();
+  });
+
   it('prevents selecting self or descendants as parent in the form', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
@@ -234,7 +240,6 @@ describe('Categories UI', () => {
           name: 'Electronics',
           slug: 'electronics',
           description: '',
-          imageUrl: '',
           parentId: '',
           status: 'ACTIVE',
         }}

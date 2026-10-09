@@ -49,7 +49,8 @@ export const SHIPPING_PAGES: ContentPage[] = [
       {
         heading: 'Working with couriers',
         paragraphs: [
-          'Ecomesta does not connect to courier APIs yet. Book deliveries with your courier as you do today, then add the tracking number to the order’s shipment so the customer can follow it.',
+          'Steadfast, Pathao, RedX, Paperfly and eCourier are connected: add the API details from your courier account in Settings → Couriers, then book a parcel from any order — the address, phone and cash-on-delivery amount are sent for you — and refresh its delivery status from the order.',
+          'Delivery Tiger, CarryBee and Karatoa Courier are not connected for direct booking yet: book deliveries as you do today, then choose the courier on the order’s shipment and add the tracking number so the customer can follow it.',
         ],
       },
     ],
@@ -62,7 +63,7 @@ export const SHIPPING_PAGES: ContentPage[] = [
       {
         question: 'Are Pathao, Steadfast or RedX integrated?',
         answer:
-          'No courier integrations are available at the moment. You add courier tracking numbers to shipments manually.',
+          'Yes, on every plan: connect Steadfast, Pathao or RedX (and Paperfly or eCourier) in Settings → Couriers with the API details from your courier account, and book parcels straight from your orders.',
       },
     ],
     related: [

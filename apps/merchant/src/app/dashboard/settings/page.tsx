@@ -157,20 +157,6 @@ export default function SettingsOverviewPage() {
               ]}
             />
             <OverviewCard
-              href="/dashboard/settings/tracking"
-              title="Marketing & tracking"
-              lines={[
-                [
-                  settings.metaPixelId ? 'Facebook Pixel' : null,
-                  settings.gtmContainerId ? 'Tag Manager' : null,
-                  settings.ga4MeasurementId ? 'Analytics' : null,
-                  settings.googleSiteVerification ? 'Search Console' : null,
-                ]
-                  .filter(Boolean)
-                  .join(', ') || 'Facebook Pixel, Google Analytics, Tag Manager, Search Console',
-              ]}
-            />
-            <OverviewCard
               href="/dashboard/theme"
               title="Theme"
               lines={[summary?.theme.name ?? 'Colours, fonts, logo and homepage']}

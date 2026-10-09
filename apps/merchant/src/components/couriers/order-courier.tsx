@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import type { CourierConnectionInfo, CourierShipment, OrderDetail, OrderShipmentRef } from '@ecomesta/types';
+import type { CourierConnectionInfo, CourierOptionInfo, CourierShipment, OrderDetail, OrderShipmentRef } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
+import { courierName } from '@ecomesta/utils';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Input } from '@/components/ui/input';
@@ -28,9 +29,9 @@ export function codPreview(order: OrderDetail): { amount: string | null; reason:
   if (order.paymentStatus === 'PAID') return { amount: '0.00', reason: 'Paid online — nothing to collect' };
   const latest = [...order.payments].sort((a, b) => (b.attemptNumber ?? 0) - (a.attemptNumber ?? 0) || b.createdAt.localeCompare(a.createdAt))[0];
   if (order.paymentStatus === 'PENDING' && latest?.provider === 'COD') {
-    // Steadfast collects whole taka only; the server refuses a total with paisa rather than rounding it.
+    // Couriers collect whole taka only; the server refuses a total with paisa rather than rounding it.
     if (!/^\d+(\.0+)?$/.test(order.grandTotal)) {
-      return { amount: null, reason: `Steadfast collects cash in whole taka only, and this order's total (${order.currency} ${order.grandTotal}) includes paisa. Ship this order manually instead.` };
+      return { amount: null, reason: `Couriers collect cash in whole taka only, and this order's total (${order.currency} ${order.grandTotal}) includes paisa. Ship this order manually instead.` };
     }
     return { amount: order.grandTotal, reason: 'Cash on delivery — order total' };
   }
@@ -57,6 +58,49 @@ export function CourierBookingPanel({ storeId, order, onBooked }: { storeId: str
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Places picked for the courier's location steps, and the choices loaded for each step. */
+  const [picked, setPicked] = useState<Record<string, string>>({});
+  const [choices, setChoices] = useState<Record<string, CourierOptionInfo[] | 'loading' | 'error'>>({});
+  const courier = couriers?.find((c) => c.provider === provider) ?? null;
+  const steps = courier?.locationSteps ?? [];
+
+  /** Loads one step's choices; picks the one matching the order's city or post code when there is exactly one. */
+  async function loadStep(index: number, pickedSoFar: Record<string, string>) {
+    const step = steps[index];
+    if (!step) return;
+    setChoices((all) => ({ ...all, [step.key]: 'loading' }));
+    try {
+      const res = await api.post<{ success: true; data: CourierOptionInfo[] }>(`/stores/${storeId}/couriers/${provider}/location-options`, {
+        step: step.key,
+        picked: pickedSoFar,
+      });
+      setChoices((all) => ({ ...all, [step.key]: res.data }));
+      const addresses = order.addresses ?? [];
+      const address = addresses.find((a) => a.type === 'SHIPPING') ?? addresses[0];
+      const hints = [address?.city, address?.state, address?.postalCode].filter(Boolean).map((h) => h!.trim().toLowerCase());
+      const matches = res.data.filter((option) => hints.includes(option.value.toLowerCase()) || hints.includes(option.label.toLowerCase()));
+      if (matches.length === 1) pick(index, matches[0]!.value, pickedSoFar);
+    } catch {
+      setChoices((all) => ({ ...all, [step.key]: 'error' }));
+    }
+  }
+
+  /** Picks a value; later steps are cleared and the next one loads. */
+  function pick(index: number, value: string, base = picked) {
+    const kept = Object.fromEntries(steps.slice(0, index).map((s) => [s.key, base[s.key] ?? '']).filter(([, v]) => v));
+    const next = value ? { ...kept, [steps[index]!.key]: value } : kept;
+    setPicked(next);
+    setChoices((all) => Object.fromEntries(Object.entries(all).filter(([key]) => steps.findIndex((s) => s.key === key) <= index)));
+    if (value && index + 1 < steps.length) void loadStep(index + 1, next);
+  }
+
+  // A new courier starts its location steps from the first one.
+  useEffect(() => {
+    setPicked({});
+    setChoices({});
+    if (steps.length > 0) void loadStep(0, {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [provider, couriers]);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,6 +133,7 @@ export function CourierBookingPanel({ storeId, order, onBooked }: { storeId: str
         provider,
         ...(w ? { weightKg: Number(w) } : {}),
         ...(note.trim() ? { note: note.trim() } : {}),
+        ...(steps.length > 0 ? { location: picked } : {}),
       });
       pushToast('Shipment booked with the courier', 'success');
       onBooked();
@@ -119,7 +164,15 @@ export function CourierBookingPanel({ storeId, order, onBooked }: { storeId: str
       <div className="grid gap-3 sm:grid-cols-[minmax(0,12rem)_minmax(0,8rem)_minmax(0,1fr)]">
         <label className="space-y-1 text-sm">
           <span className="text-xs text-[var(--color-muted)]">Courier</span>
-          <Select value={provider} onChange={(e) => setProvider(e.target.value)} disabled={busy}>
+          <Select
+            value={provider}
+            onChange={(e) => {
+              const next = couriers.find((c) => c.provider === e.target.value);
+              setProvider(e.target.value);
+              setWeight(next?.defaultWeightKg?.toString() ?? '');
+            }}
+            disabled={busy}
+          >
             {couriers.map((c) => (
               <option key={c.provider} value={c.provider}>
                 {c.name}
@@ -136,6 +189,34 @@ export function CourierBookingPanel({ storeId, order, onBooked }: { storeId: str
           <Input value={note} onChange={(e) => setNote(e.target.value)} maxLength={250} disabled={busy} />
         </label>
       </div>
+      {steps.length > 0 ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label={`${courier?.name ?? 'Courier'} delivery location`} role="group">
+          {steps.map((step, index) => {
+            const list = choices[step.key];
+            return (
+              <label key={step.key} className="space-y-1 text-sm">
+                <span className="text-xs text-[var(--color-muted)]">{step.label}</span>
+                <Select
+                  value={picked[step.key] ?? ''}
+                  disabled={busy || !Array.isArray(list)}
+                  onChange={(e) => pick(index, e.target.value)}
+                >
+                  <option value="">
+                    {list === 'loading' ? 'Loading…' : list === 'error' ? 'Could not load' : Array.isArray(list) ? (list.length ? 'Choose…' : 'Nothing to choose') : 'Choose the previous one first'}
+                  </option>
+                  {Array.isArray(list)
+                    ? list.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))
+                    : null}
+                </Select>
+              </label>
+            );
+          })}
+        </div>
+      ) : null}
       <p className="text-sm">
         <span className="text-[var(--color-muted)]">COD amount: </span>
         {cod.amount !== null ? (
@@ -150,7 +231,11 @@ export function CourierBookingPanel({ storeId, order, onBooked }: { storeId: str
           {error}
         </p>
       ) : null}
-      <Button type="button" disabled={busy || cod.amount === null || !provider} onClick={() => void book()}>
+      <Button
+        type="button"
+        disabled={busy || cod.amount === null || !provider || steps.some((step) => !picked[step.key])}
+        onClick={() => void book()}
+      >
         {busy ? 'Booking…' : 'Create shipment'}
       </Button>
     </div>
@@ -177,7 +262,7 @@ export function CourierShipmentCard({
   const [busy, setBusy] = useState(false);
   const [confirmRelease, setConfirmRelease] = useState(false);
   const booking = shipment.courierBooking ?? null;
-  const courier = shipment.provider === 'STEADFAST' ? 'Steadfast' : shipment.provider;
+  const courier = courierName(shipment.provider);
 
   async function act(path: 'sync' | 'release', fallback: string) {
     setBusy(true);

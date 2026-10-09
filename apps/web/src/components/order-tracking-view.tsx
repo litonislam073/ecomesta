@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { PublicOrderConfirmationDetail } from '@ecomesta/types';
+import { courierName } from '@ecomesta/utils';
 import { OrderTimeline } from '@/components/order-timeline';
 import { formatMoney } from '@/lib/money';
 import { contactProof, lookupPublicOrder, type OrderContact } from '@/lib/order-contact';
@@ -230,7 +231,7 @@ export function OrderTrackingView({
             {order.shipments.map((shipment, index) => (
               <li key={`${shipment.status}-${index}`}>
                 <p>
-                  {shipment.provider} · {shipment.status}
+                  {courierName(shipment.provider)} · {shipment.status}
                 </p>
                 {shipment.trackingNumber ? (
                   <p className="text-[var(--color-muted)]">

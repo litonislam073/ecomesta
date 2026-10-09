@@ -220,9 +220,16 @@ describe('Catalog (e2e)', () => {
     const b = await request(app.getHttpServer())
       .post(`/api/v1/stores/${storeBId}/categories`)
       .set('Authorization', `Bearer ${managerB.token}`)
-      .send({ name: 'Electronics B', slug: 'electronics' })
+      .send({
+        name: 'Electronics B',
+        slug: 'electronics',
+        imageUrl: 'https://cdn.example.com/electronics.jpg',
+        status: 'ACTIVE',
+      })
       .expect(201);
     categoryBId = b.body.data.id;
+    expect(b.body.data.imageUrl).toBe('https://cdn.example.com/electronics.jpg');
+    expect(b.body.data.status).toBe('ACTIVE');
   });
 
   it('rejects duplicate category slug in same store', async () => {
@@ -238,6 +245,12 @@ describe('Catalog (e2e)', () => {
       .post(`/api/v1/stores/${storeAId}/categories`)
       .set('Authorization', `Bearer ${managerA.token}`)
       .send({ name: 'Bad', slug: 'Bad Slug!' })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post(`/api/v1/stores/${storeAId}/categories`)
+      .set('Authorization', `Bearer ${managerA.token}`)
+      .send({ name: 'Bad', slug: 'bad-status', status: 'LIVE' })
       .expect(400);
 
     await request(app.getHttpServer())

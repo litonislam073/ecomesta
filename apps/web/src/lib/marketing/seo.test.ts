@@ -282,9 +282,16 @@ describe('content claims', () => {
       ALL_FAQS,
     ]);
     const sentences = text.split(/(?<=[.?!])\s+|","/);
-    const unsupported = /\b(bKash|Nagad|Rocket|Pathao|Steadfast|RedX)\b/i;
+    // Couriers without direct booking.
+    const unsupported = /\b(Delivery Tiger|CarryBee|Karatoa)\b/i;
     for (const sentence of sentences.filter((s) => unsupported.test(s))) {
       expect(sentence, sentence).toMatch(/\b(no|not)\b|\?$/i);
+    }
+    // bKash, Nagad and Rocket: shoppers pay with them only through SSLCommerz; merchants
+    // use them to pay Ecomesta for a plan or theme. Never a direct store checkout claim.
+    const wallets = /\b(bKash|Nagad|Rocket)\b/i;
+    for (const sentence of sentences.filter((s) => wallets.test(s))) {
+      expect(sentence, sentence).toMatch(/\b(no|not)\b|\?$|SSLCommerz|\bplan\b|Ecomesta team/i);
     }
   });
 

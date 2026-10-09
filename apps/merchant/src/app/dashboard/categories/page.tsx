@@ -20,6 +20,7 @@ import { Select } from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast';
 import { ApiError, api } from '@/lib/api-client';
 import { humanApiError } from '@/lib/catalog-utils';
+import { mediaSrc } from '@/lib/media';
 import { useCanManageStore } from '@/lib/permissions';
 import { useStoreContext } from '@/lib/store-context';
 
@@ -120,7 +121,6 @@ function CategoriesContent() {
         name: values.name.trim(),
         slug: values.slug,
         description: values.description.trim() || undefined,
-        imageUrl: values.imageUrl.trim() || undefined,
         parentId: values.parentId || null,
         status: values.status,
       });
@@ -142,7 +142,6 @@ function CategoriesContent() {
         name: values.name.trim(),
         slug: values.slug,
         description: values.description.trim() || null,
-        imageUrl: values.imageUrl.trim() || null,
         parentId: values.parentId || null,
         status: values.status,
       });
@@ -315,7 +314,6 @@ function CategoriesContent() {
               name: editing.name,
               slug: editing.slug,
               description: editing.description ?? '',
-              imageUrl: editing.imageUrl ?? '',
               parentId: editing.parentId ?? '',
               status: editing.status,
             }}
@@ -372,6 +370,21 @@ function CategoriesContent() {
                 >
                   <td className="px-4 py-3 font-medium">
                     <span className="inline-flex items-center gap-2">
+                      {cat.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={mediaSrc(cat.imageUrl) ?? undefined}
+                          alt=""
+                          className="h-9 w-9 shrink-0 rounded-md border border-[var(--color-border)] object-cover"
+                        />
+                      ) : (
+                        <span
+                          aria-hidden="true"
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#f3f7f5] text-sm font-semibold text-[var(--color-muted)]"
+                        >
+                          {cat.name.slice(0, 1).toUpperCase()}
+                        </span>
+                      )}
                       {cat.name}
                       {cat.isDemo ? <SampleBadge /> : null}
                     </span>
