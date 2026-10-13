@@ -37,6 +37,74 @@ const BADGE_MODES: {
   { value: "hidden", label: "Hidden", hint: "No badge on the picture." },
 ];
 
+const NEW_CARD = { label: "", title: "New card", imageUrl: "", href: "/products" };
+
+/** Kenakata's two picture cards beside the hero: text, link and picture for each. */
+function SideCardsFields({
+  storeId,
+  value,
+  onChange,
+  disabled,
+}: {
+  storeId: string | null;
+  value: Hero;
+  onChange: (patch: Hero) => void;
+  disabled?: boolean;
+}) {
+  const cards = value.cards ?? [];
+  const setCard = (index: number, patch: Partial<(typeof cards)[number]>) =>
+    onChange({ ...value, cards: cards.map((card, i) => (i === index ? { ...card, ...patch } : card)) });
+  return (
+    <fieldset className="space-y-4 rounded-md border border-[var(--color-border)] p-3">
+      <legend className="px-1 text-sm font-medium text-[var(--color-ink)]">Side cards</legend>
+      <p className="text-xs text-[var(--color-muted)]">
+        Up to two picture cards beside the hero. The demo pictures are placeholders — upload your own or choose from your gallery.
+        {value.cards === undefined ? " Without cards, your first two categories are shown." : ""}
+      </p>
+      {cards.map((card, index) => (
+        <div key={index} className="space-y-3 rounded-md bg-[var(--color-bg)] p-3" role="group" aria-label={`Side card ${index + 1}`}>
+          <TextField label="Small label" placeholder="Electronics" value={card.label ?? ""} disabled={disabled} onChange={(label) => setCard(index, { label })} />
+          <TextField label="Title" placeholder="Gadgets for everyday" value={card.title ?? ""} disabled={disabled} onChange={(title) => setCard(index, { title })} />
+          <TextField
+            label="Link"
+            hint="https URL or path starting with /"
+            value={card.href ?? ""}
+            disabled={disabled}
+            onChange={(href) => setCard(index, { href })}
+          />
+          <ImageField
+            label={`Card ${index + 1} picture`}
+            purpose="general"
+            storeId={storeId}
+            value={card.imageUrl ?? ""}
+            disabled={disabled}
+            onChange={(imageUrl) => setCard(index, { imageUrl })}
+            note="Shown on the right of the card. Square or portrait, about 600 × 600 px."
+          />
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange({ ...value, cards: cards.filter((_, i) => i !== index) })}
+            className="text-xs font-semibold text-[var(--color-danger)] hover:underline"
+          >
+            Remove card {index + 1}
+          </button>
+        </div>
+      ))}
+      {cards.length < 2 ? (
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => onChange({ ...value, cards: [...cards, { ...NEW_CARD }] })}
+          className="text-sm font-semibold text-[var(--color-accent)] hover:underline"
+        >
+          + Add a card
+        </button>
+      ) : null}
+    </fieldset>
+  );
+}
+
 /** ShopEase's round offer badge on the hero picture. */
 function OfferBadgeFields({
   value,
@@ -195,6 +263,9 @@ export function HeroSection({
           disabled={disabled}
           onChange={(overlayOpacity) => onChange({ ...value, overlayOpacity })}
         />
+        {themeSlug === "kenakata" ? (
+          <SideCardsFields storeId={storeId} value={value} onChange={onChange} disabled={disabled} />
+        ) : null}
         {themeSlug === "shopease" ? (
           <OfferBadgeFields
             value={value}

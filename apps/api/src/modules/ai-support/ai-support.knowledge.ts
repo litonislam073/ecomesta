@@ -47,7 +47,7 @@ function platformFacts(): KnowledgeChunk[] {
       id: 'fact-subscription-payment',
       title: 'How merchants pay for their Ecomesta plan',
       path: '/pricing',
-      text: 'Merchants pay their Ecomesta subscription from Plan & billing in the merchant dashboard by sending the plan price with bKash, Nagad, Rocket or Upay (Send Money) to the Ecomesta number shown there, then entering their own number and the transaction ID. The Ecomesta team checks each payment manually, usually within a few hours, and emails the merchant when the plan is active. This is only for paying Ecomesta itself — it is not a bKash or Nagad integration for a merchant’s customers.',
+      text: 'Merchants pay their Ecomesta subscription from Plan & billing in the merchant dashboard by sending the plan price with bKash, Nagad, Rocket or Upay (Send Money) to the Ecomesta number shown there, then entering their own number and the transaction ID. The Ecomesta team checks each payment manually, usually within a few hours, and emails the merchant when the plan is active. This is only for paying Ecomesta itself — it is not a bKash or Nagad integration for a merchant’s customers. When Ecomesta runs an offer, the merchant can enter its coupon code on the payment step ("Have a coupon code?") at sign-up or in Plan & billing; the lower amount is shown before paying, and that is the amount to send. A coupon may be limited to some plans, billing periods or dates, and usually works once per business.',
     },
     {
       id: 'fact-plan-features',

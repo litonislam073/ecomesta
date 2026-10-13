@@ -228,6 +228,8 @@ describe('Demo catalog import (e2e)', () => {
 
     expect(categories).toHaveLength(DEMO_CATEGORIES.length);
     expect(categories.every((c) => c.isDemo)).toBe(true);
+    // Each sample category starts with a picture (its first sample product's photo).
+    expect(categories.every((c) => c.imageUrl?.startsWith('/demo-catalog/'))).toBe(true);
     expect(products).toHaveLength(DEMO_PRODUCTS.length);
     expect(products.every((p) => p.isDemo && p.status === 'ACTIVE')).toBe(true);
     expect(products.every((p) => p.categories.length === 1)).toBe(true);

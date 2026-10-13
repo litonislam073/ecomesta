@@ -44,6 +44,12 @@ export class SubmitBillingPaymentDto extends SelectPlanDto {
   @IsString()
   @MaxLength(40)
   transactionId!: string;
+
+  @ApiPropertyOptional({ example: 'EID25', description: 'Super Admin coupon for this plan payment' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  couponCode?: string;
 }
 
 export class ListBillingPaymentsQueryDto {

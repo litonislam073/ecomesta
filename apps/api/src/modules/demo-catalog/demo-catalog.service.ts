@@ -15,6 +15,7 @@ import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { PlanEntitlementsService } from '../billing/plan-entitlements.service';
 import {
+  demoCategoryImageUrl,
   DEMO_CATEGORIES,
   DEMO_PRODUCTS,
   demoProductImageUrl,
@@ -123,6 +124,7 @@ export class DemoCatalogService {
           name: definition.name,
           slug: uniqueSlug(definition.slug, categorySlugs),
           description: definition.description,
+          imageUrl: demoCategoryImageUrl(definition),
           status: ProductStatus.ACTIVE,
           isDemo: true,
         },

@@ -13,6 +13,7 @@ import {
   ThemeBrandingConfig,
   ThemeFooterConfig,
   ThemeHeaderConfig,
+  ThemeHeroCard,
   ThemeHeroConfig,
   ThemeHomepageConfig,
   ThemeHomepageSection,
@@ -277,6 +278,23 @@ function normalizeHeader(input: Record<string, unknown>): ThemeHeaderConfig {
   );
 }
 
+/** Hero side cards: at most two, each with optional text, picture and link. */
+function normalizeHeroCards(value: unknown, path: string): ThemeHeroCard[] {
+  return array(value, path, 2).map((entry, index) => {
+    if (!isPlainObject(entry)) {
+      fail(`${path}[${index}]`, 'must be an object');
+    }
+    const at = `${path}[${index}]`;
+    const card: ThemeHeroCard = {};
+    // Empty fields are simply left out (the editor sends what the merchant cleared).
+    if (typeof entry.label === 'string' && entry.label.trim()) card.label = text(entry.label, `${at}.label`, THEME_LIMITS.label);
+    if (typeof entry.title === 'string' && entry.title.trim()) card.title = text(entry.title, `${at}.title`, THEME_LIMITS.label);
+    if (typeof entry.imageUrl === 'string' && entry.imageUrl.trim()) card.imageUrl = url(entry.imageUrl, `${at}.imageUrl`);
+    if (typeof entry.href === 'string' && entry.href.trim()) card.href = url(entry.href, `${at}.href`);
+    return card;
+  });
+}
+
 function normalizeHero(input: Record<string, unknown>): ThemeHeroConfig {
   return pick<ThemeHeroConfig>(
     input,
@@ -294,6 +312,7 @@ function normalizeHero(input: Record<string, unknown>): ThemeHeroConfig {
       ['badgeTop', (v, p) => text(v, p, 20)],
       ['badgeMain', (v, p) => text(v, p, 12)],
       ['badgeBottom', (v, p) => text(v, p, 20)],
+      ['cards', normalizeHeroCards],
     ],
     'hero',
   );

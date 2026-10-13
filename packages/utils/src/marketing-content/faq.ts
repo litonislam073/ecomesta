@@ -92,7 +92,7 @@ export const FAQ_GROUPS: FaqGroup[] = [
       {
         question: 'Can I customize my storefront?',
         answer:
-          'Yes. Pick a theme (Default, Minimal or the premium ShopEase) and customize it in a live editor: logo, colours, fonts, announcement bar, header, hero, homepage sections you can add, hide and reorder, footer and SEO — saved as a draft and published when you are ready.',
+          'Yes. Pick a theme (Default, Minimal, or the premium ShopEase or Kenakata) and customize it in a live editor: logo, colours, fonts, announcement bar, header, hero, homepage sections you can add, hide and reorder, footer and SEO — saved as a draft and published when you are ready.',
       },
       {
         question: 'Can I add Facebook Pixel or Google Analytics?',

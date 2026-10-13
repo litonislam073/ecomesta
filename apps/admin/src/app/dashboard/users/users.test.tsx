@@ -79,6 +79,13 @@ describe('Admin users', () => {
     api.patch.mockReset();
   });
 
+  it('opening Users clears the new-users counter', async () => {
+    api.get.mockResolvedValue({ success: true, data: { items: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } } });
+    api.post.mockResolvedValue({ success: true, data: { newUsers: 0, pendingPayments: 0, pendingThemePurchases: 0 } });
+    render(<AdminUsersPage />);
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/admin/badges/users-seen'));
+  });
+
   it('lists users with status and role columns', async () => {
     api.get.mockResolvedValue({
       success: true,

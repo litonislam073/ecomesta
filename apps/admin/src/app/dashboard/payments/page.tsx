@@ -12,6 +12,7 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { Pagination } from '@/components/ui/pagination';
 import { useToast } from '@/components/ui/toast';
 import { billingCycleLabel, buildQuery, formatDateTime, humanApiError } from '@/lib/admin-utils';
+import { refreshAdminBadges } from '@/lib/admin-badges';
 import { api } from '@/lib/api-client';
 
 const METHODS: Record<AdminBillingPayment['method'], { label: string; color: string }> = {
@@ -99,6 +100,12 @@ function PaymentCard({
         </div>
         <div className="text-right">
           <p className="text-2xl font-bold tracking-tight">{taka(payment.amount)}</p>
+          {payment.couponCode ? (
+            <p className="text-xs text-[var(--color-muted)]">
+              Coupon <span className="font-mono font-semibold">{payment.couponCode}</span> · −{taka(payment.discountAmount)}
+              {payment.listAmount !== null ? ` from ${taka(payment.listAmount)}` : ''}
+            </p>
+          ) : null}
           <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLE[payment.status]}`}>
             {payment.status === 'PENDING' ? 'Waiting for review' : payment.status === 'APPROVED' ? 'Approved' : 'Rejected'}
           </span>
@@ -232,6 +239,7 @@ export default function AdminPaymentsPage() {
     setBusy(true);
     try {
       await api.post(`/admin/billing-payments/${approving.id}/approve`);
+      refreshAdminBadges();
       pushToast(`Approved — ${approving.tenant.name} is now on ${approving.planName}.`, 'success');
       setApproving(null);
       await load();
@@ -245,6 +253,7 @@ export default function AdminPaymentsPage() {
   async function reject(payment: AdminBillingPayment, reason: string) {
     try {
       await api.post(`/admin/billing-payments/${payment.id}/reject`, { reason });
+      refreshAdminBadges();
       pushToast(`Rejected — ${payment.tenant.name} has been told why.`, 'success');
       await load();
     } catch (err) {

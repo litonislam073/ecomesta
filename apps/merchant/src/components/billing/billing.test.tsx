@@ -5,6 +5,7 @@ import type { ManualPaymentAccount, MerchantBillingPayment, MerchantSubscription
 import { SubscriptionBanner, SuspendedScreen } from '@/components/billing/subscription-notices';
 import { DashboardShell } from '@/components/dashboard/dashboard-shell';
 import BillingView from '@/app/dashboard/billing/billing-view';
+import { ApiError } from '@/lib/api-client';
 
 const get = vi.fn();
 const post = vi.fn();
@@ -109,6 +110,9 @@ function payment(overrides: Partial<MerchantBillingPayment> = {}): MerchantBilli
     planSlug: 'growth',
     billingCycle: 'MONTHLY',
     amount: 999,
+    listAmount: null,
+    discountAmount: 0,
+    couponCode: null,
     currency: 'BDT',
     method: 'BKASH',
     senderNumber: '01712345678',
@@ -404,6 +408,39 @@ describe('Plan & billing page', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.queryByRole('button', { name: /Continue to payment/ })).not.toBeInTheDocument();
     expect(screen.getByText('Under review')).toBeInTheDocument();
+  });
+
+  it('applies a coupon before paying: shows the lower amount and sends the code with the payment', async () => {
+    const user = userEvent.setup();
+    renderBilling(subscription({ status: 'PAST_DUE', phase: 'GRACE' }));
+    const panel = await openPayment(user);
+
+    post.mockRejectedValueOnce(new ApiError(400, 'BAD_REQUEST', 'This coupon code is not valid.'));
+    await user.click(within(panel).getByRole('button', { name: 'Have a coupon code?' }));
+    await user.type(within(panel).getByLabelText('Coupon code'), 'nope');
+    await user.click(within(panel).getByRole('button', { name: 'Apply' }));
+    expect(await within(panel).findByRole('alert')).toHaveTextContent('This coupon code is not valid.');
+    expect(panel).toHaveTextContent('Amount৳999');
+
+    post.mockResolvedValueOnce({ success: true, data: { code: 'EID25', description: 'Eid offer', listAmount: 999, discountAmount: 249, amount: 750 } });
+    await user.clear(within(panel).getByLabelText('Coupon code'));
+    await user.type(within(panel).getByLabelText('Coupon code'), 'eid25');
+    await user.click(within(panel).getByRole('button', { name: 'Apply' }));
+    expect(await within(panel).findByText(/applied — you save ৳249/)).toBeInTheDocument();
+    expect(post).toHaveBeenLastCalledWith('/billing/coupons/quote', { code: 'EID25', planSlug: 'growth', billingCycle: 'MONTHLY' }, { token: 'token' });
+    expect(panel).toHaveTextContent('Amount৳750');
+
+    post.mockResolvedValueOnce({ success: true, data: payment({ amount: 750, listAmount: 999, discountAmount: 249, couponCode: 'EID25' }) });
+    await user.type(screen.getByLabelText('Your bKash number'), '01712345678');
+    await user.type(screen.getByLabelText('Transaction ID'), 'ABC123XYZ');
+    await user.click(screen.getByRole('button', { name: /Submit ৳750 bKash payment/ }));
+    await waitFor(() =>
+      expect(post).toHaveBeenLastCalledWith(
+        '/billing/payments',
+        { planSlug: 'growth', billingCycle: 'MONTHLY', method: 'BKASH', senderNumber: '01712345678', transactionId: 'ABC123XYZ', couponCode: 'EID25' },
+        { token: 'token' },
+      ),
+    );
   });
 
   it('hides the payment form while a payment is under review', async () => {

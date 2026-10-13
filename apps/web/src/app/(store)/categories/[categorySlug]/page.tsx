@@ -6,6 +6,7 @@ import type {
   PublicProductCard,
 } from '@ecomesta/types';
 import { ProductCard } from '@/components/product-card';
+import { KenakataShop } from '@/components/storefront/kenakata/kenakata-shop';
 import { fetchPublicCategory } from '@/lib/catalog-lookup';
 import { publicGet, PublicApiError } from '@/lib/public-api';
 import {
@@ -78,6 +79,28 @@ export default async function CategoryPage({
       notFound();
     }
     throw err;
+  }
+
+  const theme = await fetchStoreTheme(store.slug).catch(() => null);
+  if (theme?.theme?.slug === 'kenakata') {
+    const page = typeof searchParams.page === 'string' && /^\d+$/.test(searchParams.page) ? searchParams.page : '1';
+    const [listed, categories] = await Promise.all([
+      publicGet<{ success: true; data: { items: PublicProductCard[]; meta: OffsetPageMeta } }>(
+        `/public/stores/${store.slug}/products?categorySlug=${encodeURIComponent(params.categorySlug)}&limit=12&page=${page}`,
+      ),
+      publicGet<{ success: true; data: { items: PublicCategory[] } }>(`/public/stores/${store.slug}/categories`),
+    ]);
+    return (
+      <KenakataShop
+        storeSlug={storeSlug}
+        title={category.name}
+        description={category.description}
+        items={listed.data.items}
+        meta={listed.data.meta}
+        categories={categories.data.items}
+        filters={{ q: '', category: category.slug, sort: 'createdAt:desc', minPrice: '', maxPrice: '', page }}
+      />
+    );
   }
 
   const products = await publicGet<{

@@ -2,10 +2,19 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { badgeText, useAdminBadges } from '@/lib/admin-badges';
 import { ADMIN_NAV } from '@/lib/nav';
+
+/** What each counter means, for screen readers. */
+const BADGE_MEANING: Record<string, string> = {
+  '/dashboard/users': 'new',
+  '/dashboard/payments': 'to review',
+  '/dashboard/theme-purchases': 'to review',
+};
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const badges = useAdminBadges();
 
   return (
     <nav aria-label="Platform admin" className="space-y-6">
@@ -32,6 +41,16 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                     }`}
                   >
                     <span>{item.label}</span>
+                    {badges[item.href] ? (
+                      <span
+                        className={`ml-2 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-bold leading-none ${
+                          active ? 'bg-white text-[var(--color-accent)]' : 'bg-[#d92d20] text-white'
+                        }`}
+                      >
+                        {badgeText(badges[item.href]!)}
+                        <span className="sr-only"> {BADGE_MEANING[item.href]}</span>
+                      </span>
+                    ) : null}
                   </Link>
                 </li>
               );

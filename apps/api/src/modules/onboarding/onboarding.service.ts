@@ -103,6 +103,7 @@ export class OnboardingService {
           plan,
           billingCycle: dto.billingCycle,
           prepared,
+          couponCode: dto.couponCode,
         });
 
         const owner = await tx.user.findUniqueOrThrow({

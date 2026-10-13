@@ -592,14 +592,14 @@ export const FEATURE_PAGES: ContentPage[] = [
     name: 'Store Customization',
     title: 'Themes and Live Theme Editor for Your Online Store | Ecomesta',
     description:
-      'Pick Default, Minimal or the premium ShopEase theme and customize it in a live editor: logo, colours, fonts, homepage sections you can reorder, and SEO.',
+      'Pick Default, Minimal or a premium theme (ShopEase, Kenakata) and customize it in a live editor: logo, colours, fonts, homepage sections you can reorder, and SEO.',
     eyebrow: 'Themes & store design',
     h1: 'Make the storefront look like your brand',
     intro:
       'Choose a theme from the theme library, then customize it in a live editor that shows your real store as you type. Work on a draft and publish when you are happy — your live store stays untouched until then.',
     summary: 'Theme library, live theme editor, homepage sections and SEO.',
     highlights: [
-      'Theme library: Default, Minimal and premium ShopEase',
+      'Theme library: Default, Minimal, and premium ShopEase and Kenakata',
       'Live editor with desktop, tablet and mobile preview',
       'Add, hide and reorder homepage sections',
       'Upload images or choose them from your gallery',
@@ -615,6 +615,7 @@ export const FEATURE_PAGES: ContentPage[] = [
           'Default — free on every plan',
           'Minimal — a quieter, clean layout, included on Growth and Business',
           'ShopEase — a premium theme with a bold hero, category cards and a deal of the day; included on Business, and available on other plans as a one-time purchase (price shown in the dashboard, paid with bKash, Nagad, Rocket or Upay and confirmed by the Ecomesta team)',
+          'Kenakata — a premium theme with a wide hero and category cards, deals and new arrivals, plus its own product, shop and cart pages; included on Business and sold on other plans the same way',
           'Locked themes can be previewed in the editor before you upgrade or buy',
         ],
       },
@@ -674,7 +675,7 @@ export const FEATURE_PAGES: ContentPage[] = [
       {
         question: 'Which themes are included in my plan?',
         answer:
-          'Starter includes the Default theme. Growth adds Minimal. Business includes every theme, including the premium ShopEase theme. On Starter or Growth you can buy a premium theme once from the Theme page.',
+          'Starter includes the Default theme. Growth adds Minimal. Business includes every theme, including the premium ShopEase and Kenakata themes. On Starter or Growth you can buy a premium theme once from the Theme page.',
       },
       {
         question: 'How do I add images to my categories?',

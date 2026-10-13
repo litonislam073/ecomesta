@@ -1,5 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { BillingAccessService } from './billing-access.service';
+import { BillingCouponsService } from './billing-coupons.service';
 import { BillingController, PublicPlansController } from './billing.controller';
 import { BillingPaymentsService } from './billing-payments.service';
 import { BillingService } from './billing.service';
@@ -15,12 +16,14 @@ import { SubscriptionLifecycleService } from './subscription-lifecycle.service';
     BillingService,
     BillingAccessService,
     BillingPaymentsService,
+    BillingCouponsService,
     PlanEntitlementsService,
     SubscriptionLifecycleService,
     SubscriptionLifecycleScheduler,
   ],
   exports: [
     BillingService,
+    BillingCouponsService,
     BillingAccessService,
     BillingPaymentsService,
     PlanEntitlementsService,

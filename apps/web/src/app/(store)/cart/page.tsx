@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { KenakataCart } from '@/components/storefront/kenakata/kenakata-cart';
+import { useStoreThemeSlug } from '@/components/storefront/theme-provider';
 import { type CartLine, useCart } from '@/lib/cart';
 import { formatMoney, multiplyMoney } from '@/lib/money';
 import { useStoreQuery } from '@/lib/use-order-now';
@@ -55,6 +57,10 @@ function LineThumbnail({ line }: { line: CartLine }) {
 }
 
 export default function CartPage() {
+  return useStoreThemeSlug() === 'kenakata' ? <KenakataCart /> : <DefaultCart />;
+}
+
+function DefaultCart() {
   const { hydrated, lines, currency, itemCount, subtotal, setQuantity, removeItem, clear, lineKey } =
     useCart();
   const storeQ = encodeURIComponent(useStoreQuery());

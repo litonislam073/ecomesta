@@ -40,18 +40,35 @@ export const DEFAULT_DEAL_SECTION: ThemeHomepageSection = {
   enabled: true,
 };
 
+/** Kenakata shows its deals as a grid of discounted products, without a countdown. */
+export const KENAKATA_DEAL_SECTION: ThemeHomepageSection = {
+  type: 'deal_of_day',
+  title: 'Deals of the day',
+  text: '',
+  buttonLabel: 'See all deals',
+  showCountdown: false,
+  enabled: true,
+};
+
+/** Themes that have a deals section, and how it starts out. */
+const DEAL_SECTIONS: Record<string, ThemeHomepageSection> = {
+  shopease: DEFAULT_DEAL_SECTION,
+  kenakata: KENAKATA_DEAL_SECTION,
+};
+
 /**
  * Themes with sections of their own: a ShopEase draft saved before the deal
  * of the day was a section gets it where the storefront already shows it
  * (above the products), so the editor and the store agree.
  */
 export function withThemeSections(config: StoreThemeConfig, themeSlug: string): StoreThemeConfig {
-  if (themeSlug !== 'shopease') return config;
+  const deal = DEAL_SECTIONS[themeSlug];
+  if (!deal) return config;
   const sections = effectiveHomeSections(config.homepage);
   if (sections.some((section) => section.type === 'deal_of_day')) return config;
   const at = sections.findIndex((section) => section.type === 'featured_products');
   const next = [...sections];
-  next.splice(at < 0 ? next.length : at, 0, { ...DEFAULT_DEAL_SECTION });
+  next.splice(at < 0 ? next.length : at, 0, { ...deal });
   return { ...config, homepage: { ...config.homepage, sections: next } };
 }
 

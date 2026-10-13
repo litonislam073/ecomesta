@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import type { PublicProductDetail } from '@ecomesta/types';
+import type { PublicProductCard, PublicProductDetail } from '@ecomesta/types';
 import { AddToCartPanel } from '@/components/add-to-cart-panel';
+import { KenakataProductView } from '@/components/storefront/kenakata/kenakata-product';
 import { TrackProductView } from '@/components/storefront/track-product-view';
 import { fetchPublicProduct } from '@/lib/catalog-lookup';
-import { PublicApiError } from '@/lib/public-api';
+import { PublicApiError, publicGet } from '@/lib/public-api';
 import {
   requirePublicStore,
   storeCanonicalUrl,
@@ -62,7 +63,7 @@ export default async function ProductDetailPage({
   params: { productSlug: string };
   searchParams: Record<string, string | string[] | undefined>;
 }) {
-  const { store } = await requirePublicStore(searchParams);
+  const { store, storeSlug } = await requirePublicStore(searchParams);
   let product: PublicProductDetail;
   try {
     const result = await fetchPublicProduct(store.slug, params.productSlug);
@@ -72,6 +73,23 @@ export default async function ProductDetailPage({
       notFound();
     }
     throw err;
+  }
+
+  const theme = await fetchStoreTheme(store.slug).catch(() => null);
+  if (theme?.theme?.slug === 'kenakata') {
+    // "You may also like": other products from the same category (or the newest ones).
+    const category = product.categories[0]?.slug;
+    const related = await publicGet<{ success: true; data: { items: PublicProductCard[] } }>(
+      `/public/stores/${store.slug}/products?limit=5${category ? `&categorySlug=${encodeURIComponent(category)}` : ''}`,
+    )
+      .then((res) => res.data.items.filter((item) => item.id !== product.id).slice(0, 4))
+      .catch(() => []);
+    return (
+      <>
+        <KenakataProductView product={product} storeSlug={storeSlug} related={related} />
+        <TrackProductView id={product.id} sku={product.sku} name={product.name} price={product.price} currency={product.currency} />
+      </>
+    );
   }
 
   const image = product.images[0];

@@ -106,7 +106,7 @@ const FEATURES: { icon: IconName; title: string; body: string; points: string[];
   {
     icon: 'palette',
     title: 'Themes & Live Editor',
-    body: 'Default, Minimal and the premium ShopEase theme, customized in a live editor.',
+    body: 'Default, Minimal and premium themes like ShopEase and Kenakata, customized in a live editor.',
     points: ['Add, hide and reorder homepage sections', 'Desktop, tablet and mobile preview'],
     href: '/features/store-customization',
     linkLabel: 'Customize your storefront',

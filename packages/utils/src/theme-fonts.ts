@@ -11,6 +11,8 @@ export const THEME_FONT_FAMILIES = [
   'Source Sans 3',
   'Georgia',
   'Fraunces',
+  'Bricolage Grotesque',
+  'Hind Siliguri',
   'System',
 ] as const;
 

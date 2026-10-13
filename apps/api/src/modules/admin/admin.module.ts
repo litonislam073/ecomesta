@@ -2,11 +2,13 @@ import { Module } from '@nestjs/common';
 import { AiSupportModule } from '../ai-support/ai-support.module';
 import { AuthModule } from '../auth/auth.module';
 import { AdminAuditController } from './admin-audit.controller';
+import { AdminBillingCouponsController } from './admin-billing-coupons.controller';
 import { AdminBillingPaymentsController } from './admin-billing-payments.controller';
 import { AdminAuditService } from './admin-audit.service';
 import { AdminEmailController } from './admin-email.controller';
 import { AdminPlansController } from './admin-plans.controller';
 import { AdminPlansService } from './admin-plans.service';
+import { AdminBadgesService } from './admin-badges.service';
 import { AdminStatsService } from './admin-stats.service';
 import { AdminStoresController } from './admin-stores.controller';
 import { AdminSupportChatsController } from './admin-support-chats.controller';
@@ -24,6 +26,7 @@ import { AdminController } from './admin.controller';
   controllers: [
     AdminController,
     AdminBillingPaymentsController,
+    AdminBillingCouponsController,
     AdminUsersController,
     AdminTenantsController,
     AdminStoresController,
@@ -34,6 +37,7 @@ import { AdminController } from './admin.controller';
     AdminSupportChatsController,
   ],
   providers: [
+    AdminBadgesService,
     AdminStatsService,
     AdminUsersService,
     AdminTenantsService,

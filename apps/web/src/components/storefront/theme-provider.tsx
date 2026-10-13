@@ -11,9 +11,15 @@ import type { PublicStoreTheme, StoreThemeConfig } from '@ecomesta/types';
 import { themeCssVariables } from '@/lib/theme';
 
 const ThemeContext = createContext<StoreThemeConfig>({});
+const ThemeSlugContext = createContext<string | null>(null);
 
 export function useStoreThemeConfig(): StoreThemeConfig {
   return useContext(ThemeContext);
+}
+
+/** The store's theme (e.g. `kenakata`), for pages that render per theme; null without one. */
+export function useStoreThemeSlug(): string | null {
+  return useContext(ThemeSlugContext);
 }
 
 /**
@@ -39,6 +45,7 @@ export function ThemeProvider({
   );
 
   return (
+    <ThemeSlugContext.Provider value={theme?.theme?.slug ?? null}>
     <ThemeContext.Provider value={config}>
       <div
         className="contents"
@@ -49,5 +56,6 @@ export function ThemeProvider({
         {children}
       </div>
     </ThemeContext.Provider>
+    </ThemeSlugContext.Provider>
   );
 }

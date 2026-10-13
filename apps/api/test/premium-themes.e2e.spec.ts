@@ -112,6 +112,10 @@ describe('Premium themes (e2e)', () => {
     expect((await themes(starter)).find((t) => t.slug === 'default')).toMatchObject({ premium: false, access: 'free', priceBdt: null });
     expect((await themes(growth)).find((t) => t.slug === 'minimal')).toMatchObject({ access: 'included' });
     expect((await themes(starter)).find((t) => t.slug === 'minimal')).toMatchObject({ access: 'locked' });
+    // Kenakata is premium on the same terms (same price as ShopEase).
+    const kenakata = async (shop: Shop) => (await themes(shop)).find((t) => t.slug === 'kenakata');
+    expect(await kenakata(business)).toMatchObject({ name: 'Kenakata', premium: true, priceBdt: '999.00', access: 'included' });
+    expect(await kenakata(starter)).toMatchObject({ premium: true, access: 'locked' });
   });
 
   it('Business uses it straight away; the storefront serves it', async () => {

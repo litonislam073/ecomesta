@@ -95,7 +95,7 @@ describe('optional URL clearing (TE-02)', () => {
 
 describe('font whitelist (TE-06)', () => {
   const FONT_FIELDS = ['headingFont', 'bodyFont'] as const;
-  const WHITELIST = ['Inter', 'Work Sans', 'IBM Plex Sans', 'Source Sans 3', 'Georgia', 'Fraunces', 'System'];
+  const WHITELIST = ['Inter', 'Work Sans', 'IBM Plex Sans', 'Source Sans 3', 'Georgia', 'Fraunces', 'Bricolage Grotesque', 'Hind Siliguri', 'System'];
   const INVALID: unknown[] = [
     'Comic Sans MS',
     'Roboto',
@@ -243,5 +243,28 @@ describe('hero offer badge', () => {
     expect(() => hero({ badgeMain: 'x'.repeat(13) })).toThrow(BadRequestException);
     expect(() => hero({ badgeTop: 'y'.repeat(21) })).toThrow(BadRequestException);
     expect(() => hero({ badgeBottom: '<b>' })).toThrow(BadRequestException);
+  });
+});
+
+describe('hero side cards (Kenakata)', () => {
+  it('keeps up to two cards with text, picture and link; empty fields are left out', () => {
+    const out = normalizeThemeConfiguration({
+      hero: {
+        cards: [
+          { label: 'Electronics', title: 'Gadgets', imageUrl: '/demo-catalog/smart-watch.jpg', href: '/products' },
+          { label: '', title: 'Only a title', imageUrl: '' },
+        ],
+      },
+    });
+    expect(out.hero?.cards).toEqual([
+      { label: 'Electronics', title: 'Gadgets', imageUrl: '/demo-catalog/smart-watch.jpg', href: '/products' },
+      { title: 'Only a title' },
+    ]);
+  });
+
+  it('refuses a third card and unsafe links', () => {
+    expect(() => normalizeThemeConfiguration({ hero: { cards: [{}, {}, {}] } })).toThrow(/at most 2/);
+    expect(() => normalizeThemeConfiguration({ hero: { cards: [{ href: 'javascript:alert(1)' }] } })).toThrow(/http or https/);
+    expect(() => normalizeThemeConfiguration({ hero: { cards: [{ imageUrl: '//evil.example/x.jpg' }] } })).toThrow(/relative path/);
   });
 });

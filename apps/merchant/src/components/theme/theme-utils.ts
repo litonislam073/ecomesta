@@ -83,6 +83,8 @@ export const THEME_FONT_STACKS: Record<ThemeFontFamily, string> = {
   'Source Sans 3': "'Source Sans 3', system-ui, sans-serif",
   Georgia: "Georgia, 'Times New Roman', serif",
   Fraunces: "'Fraunces', Georgia, serif",
+  'Bricolage Grotesque': "'Bricolage Grotesque', system-ui, sans-serif",
+  'Hind Siliguri': "'Hind Siliguri', system-ui, sans-serif",
   System: SYSTEM_FONT_STACK,
 };
 

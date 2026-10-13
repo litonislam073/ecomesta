@@ -25,6 +25,7 @@ import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { EMAIL_EVENTS, type BillingPaymentParams } from '../email/email.events';
 import { EmailService } from '../email/email.service';
+import { BillingCouponsService } from './billing-coupons.service';
 import { BillingService } from './billing.service';
 import { PAYMENT_INCLUDE, toMerchantBillingPayment, type PaymentRow } from './billing-payment.mapper';
 import { planMonthlyPrice } from './plan-catalog';
@@ -100,6 +101,7 @@ export class BillingPaymentsService {
     private readonly email: EmailService,
     private readonly billing: BillingService,
     private readonly lifecycle: SubscriptionLifecycleService,
+    private readonly coupons: BillingCouponsService,
   ) {}
 
   accounts(): { success: true; data: ManualPaymentAccount[] } {
@@ -119,6 +121,7 @@ export class BillingPaymentsService {
       senderNumber: string;
       transactionId: string;
       tenant?: string;
+      couponCode?: string;
     },
     req?: Request,
   ): Promise<{ success: true; data: MerchantBillingPayment }> {
@@ -138,7 +141,14 @@ export class BillingPaymentsService {
     let created: PaymentRow;
     try {
       created = await this.prisma.$transaction((tx) =>
-        this.createPending(tx, { tenantId: tenant.id, userId, plan, billingCycle: input.billingCycle, prepared }),
+        this.createPending(tx, {
+          tenantId: tenant.id,
+          userId,
+          plan,
+          billingCycle: input.billingCycle,
+          prepared,
+          couponCode: input.couponCode,
+        }),
       );
     } catch (err) {
       throw billingPaymentConflict(err) ?? err;
@@ -162,15 +172,34 @@ export class BillingPaymentsService {
       plan: SubscriptionPlan;
       billingCycle: BillingCycle;
       prepared: PreparedWalletPayment;
+      /** Checked again here, under a lock, whatever the merchant saw before paying. */
+      couponCode?: string;
     },
   ): Promise<PaymentRow> {
-    const amount = billingCyclePrice(planMonthlyPrice(params.plan), params.billingCycle);
+    const coupon = params.couponCode?.trim()
+      ? await this.coupons.apply(tx, {
+          code: params.couponCode,
+          plan: params.plan,
+          billingCycle: params.billingCycle,
+          tenantId: params.tenantId,
+          lock: true,
+        })
+      : null;
+    const amount = coupon ? coupon.amount : billingCyclePrice(planMonthlyPrice(params.plan), params.billingCycle);
     const row = await tx.billingPayment.create({
       data: {
         tenantId: params.tenantId,
         planId: params.plan.id,
         billingCycle: params.billingCycle,
         amount,
+        ...(coupon
+          ? {
+              couponId: coupon.coupon.id,
+              couponCode: coupon.coupon.code,
+              listAmount: coupon.listAmount,
+              discountAmount: coupon.discountAmount,
+            }
+          : {}),
         method: params.prepared.method,
         payToNumber: params.prepared.account.number,
         senderNumber: params.prepared.senderNumber,

@@ -109,6 +109,9 @@ export function ShopEaseHome({
         ? { top: 'UP TO', main: `${bestOff}%`, bottom: 'OFF' }
         : null;
   const arrivals = products.slice(0, 8);
+  // A category without its own picture shows one of its products until the merchant adds one.
+  const categoryPhoto = (categoryId: string) =>
+    products.find((p) => p.images.length > 0 && p.categories.some((c) => c.id === categoryId))?.images[0]?.url ?? null;
 
   const categoriesBlock = (
     showCategories && categories.length > 0 ? (
@@ -124,9 +127,9 @@ export function ShopEaseHome({
                   className="group block overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white shadow-sm transition-shadow hover:shadow-lg"
                 >
                   <div className="aspect-[4/3] overflow-hidden bg-[var(--color-surface)]">
-                    {category.imageUrl ? (
+                    {category.imageUrl || categoryPhoto(category.id) ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={category.imageUrl} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+                      <img src={(category.imageUrl || categoryPhoto(category.id))!} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-105" />
                     ) : (
                       <div className="flex h-full items-center justify-center text-4xl font-extrabold text-[var(--color-accent)]">
                         {category.name.slice(0, 1).toUpperCase()}

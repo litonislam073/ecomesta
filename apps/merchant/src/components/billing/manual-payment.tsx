@@ -1,7 +1,8 @@
 'use client';
 
-import { useId, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 import type {
+  BillingCouponQuote,
   ManualPaymentAccount,
   ManualPaymentMethod,
   MerchantBillingPayment,
@@ -124,6 +125,127 @@ export interface WalletPaymentInput {
   method: ManualPaymentMethod;
   senderNumber: string;
   transactionId: string;
+  /** A Super Admin coupon the merchant applied to the plan price (checked again by the server). */
+  couponCode?: string;
+}
+
+/**
+ * "Have a coupon code?" for a plan payment. The code is checked with the
+ * server, which shows the discounted price; the merchant then pays that.
+ */
+function CouponBox({
+  plan,
+  cycle,
+  token,
+  applied,
+  onApplied,
+  disabled,
+}: {
+  plan: PublicPlan;
+  cycle: BillingCycleCode;
+  token: string | null;
+  applied: BillingCouponQuote | null;
+  onApplied: (quote: BillingCouponQuote | null) => void;
+  disabled?: boolean;
+}) {
+  const id = useId();
+  const [open, setOpen] = useState(false);
+  const [code, setCode] = useState('');
+  const [checking, setChecking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function apply() {
+    const value = code.trim();
+    if (!value) return setError('Enter your coupon code.');
+    setChecking(true);
+    setError(null);
+    try {
+      const res = await api.post<{ success: true; data: BillingCouponQuote }>(
+        '/billing/coupons/quote',
+        { code: value, planSlug: plan.slug, billingCycle: cycle },
+        { token },
+      );
+      onApplied(res.data);
+    } catch (err) {
+      setError(err instanceof ApiError || err instanceof Error ? err.message : 'Could not check this coupon.');
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  if (applied) {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#cfe3da] bg-[#f1f9f5] px-3 py-2 text-sm">
+        <p className="text-[var(--color-ink)]">
+          <span aria-hidden="true">🏷️ </span>
+          Coupon <strong className="font-mono">{applied.code}</strong> applied — you save {formatBdt(applied.discountAmount)}
+          {applied.description ? <span className="text-[var(--color-muted)]"> · {applied.description}</span> : null}
+        </p>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => {
+            onApplied(null);
+            setCode('');
+          }}
+          className="text-xs font-semibold text-[var(--color-accent)] hover:underline disabled:opacity-50"
+        >
+          Remove
+        </button>
+      </div>
+    );
+  }
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-sm font-semibold text-[var(--color-accent)] underline-offset-4 hover:underline"
+      >
+        Have a coupon code?
+      </button>
+    );
+  }
+  return (
+    <div className="space-y-1.5">
+      <label htmlFor={`${id}-coupon`} className="text-sm font-medium text-[var(--color-ink)]">
+        Coupon code
+      </label>
+      <div className="flex gap-2">
+        <input
+          id={`${id}-coupon`}
+          value={code}
+          autoCapitalize="characters"
+          spellCheck={false}
+          maxLength={40}
+          onChange={(e) => {
+            setCode(e.target.value.toUpperCase());
+            setError(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              void apply();
+            }
+          }}
+          className="h-10 min-w-0 flex-1 rounded-lg border border-[var(--color-border)] bg-white px-3 font-mono uppercase tracking-wide focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
+        />
+        <button
+          type="button"
+          disabled={checking || disabled}
+          onClick={() => void apply()}
+          className="h-10 shrink-0 rounded-lg bg-[var(--color-accent)] px-4 text-sm font-semibold text-white disabled:opacity-60"
+        >
+          {checking ? 'Checking…' : 'Apply'}
+        </button>
+      </div>
+      {error ? (
+        <p role="alert" className="text-sm text-[#a3441f]">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 /**
@@ -182,11 +304,24 @@ export function ManualPaymentPanel({
   const senderRef = useRef<HTMLInputElement>(null);
   const transactionRef = useRef<HTMLInputElement>(null);
   const filled = senderNumber.trim() !== '' && transactionId.trim() !== '';
+  // Coupons are for plan payments only (not themes).
+  const [coupon, setCoupon] = useState<BillingCouponQuote | null>(null);
+  const couponable = Boolean(plan && cycle && !item);
+  // A quote is for one plan and period: a change asks for the code again.
+  useEffect(() => setCoupon(null), [plan?.slug, cycle]);
 
   const account = accounts.find((item) => item.method === method) ?? accounts[0];
-  const amount = item
+  const listAmount = item
     ? item.amount
     : (plan?.prices.find((price) => price.billingCycle === cycle)?.amount ?? plan?.monthlyPrice ?? 0);
+  const amount = coupon ? coupon.amount : listAmount;
+  const couponBox =
+    couponable && plan && cycle ? (
+      <CouponBox plan={plan} cycle={cycle} token={token} applied={coupon} onApplied={setCoupon} disabled={submitting} />
+    ) : null;
+  const wasPrice = coupon ? (
+    <span className="mr-2 text-base font-medium text-[var(--color-muted)] line-through">{formatBdt(coupon.listAmount)}</span>
+  ) : null;
   const period = billingCycleDefinition(cycle ?? 'MONTHLY');
   const brand = WALLET_BRANDS[method];
   const label = METHOD_LABELS[method];
@@ -210,12 +345,13 @@ export function ManualPaymentPanel({
     }
     setSubmitting(true);
     try {
+      const couponCode = coupon?.code;
       if (onPay) {
-        await onPay({ method, senderNumber: digits, transactionId });
+        await onPay({ method, senderNumber: digits, transactionId, ...(couponCode ? { couponCode } : {}) });
       } else if (plan && cycle) {
         const result = await api.post<{ success: true; data: MerchantBillingPayment }>(
           '/billing/payments',
-          { planSlug: plan.slug, billingCycle: cycle, method, senderNumber: digits, transactionId },
+          { planSlug: plan.slug, billingCycle: cycle, method, senderNumber: digits, transactionId, ...(couponCode ? { couponCode } : {}) },
           { token },
         );
         onSubmitted?.(result.data);
@@ -301,8 +437,12 @@ export function ManualPaymentPanel({
               )}
             </p>
           </div>
-          <p className="shrink-0 text-2xl font-bold tracking-tight text-[var(--color-ink)]">{formatBdt(amount)}</p>
+          <p className="shrink-0 text-2xl font-bold tracking-tight text-[var(--color-ink)]">
+            {wasPrice}
+            {formatBdt(amount)}
+          </p>
         </div>
+        {couponBox}
         {trialEndsAt ? (
           <p className="rounded-lg bg-[#f6faf8] px-3 py-2 text-sm text-[var(--color-ink)]">
             Your free trial continues. The paid period starts on {formatBillingDate(trialEndsAt)}.
@@ -409,11 +549,15 @@ export function ManualPaymentPanel({
           <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">You are paying for</p>
           <p className="mt-2 text-lg font-semibold text-[var(--color-ink)]">{plan.name} plan</p>
           <p className="text-sm text-[var(--color-muted)]">{period.label} billing</p>
-          <p className="mt-5 text-4xl font-bold tracking-tight text-[var(--color-ink)]">{formatBdt(amount)}</p>
+          <p className="mt-5 text-4xl font-bold tracking-tight text-[var(--color-ink)]">
+            {wasPrice}
+            {formatBdt(amount)}
+          </p>
           <p className="mt-1 text-sm text-[var(--color-muted)]">
             {period.months === 1 ? 'for 1 month' : `for ${period.months} months`}
             {period.discountPercent > 0 ? ` · you save ${period.discountPercent}%` : ''}
           </p>
+          {couponBox ? <div className="mt-4">{couponBox}</div> : null}
           {trialEndsAt ? (
             <p className="mt-4 rounded-lg bg-white px-3 py-2 text-sm text-[var(--color-ink)]">
               Your free trial continues. The paid period starts on {formatBillingDate(trialEndsAt)}.
@@ -595,6 +739,12 @@ export function PaymentHistory({ payments }: { payments: MerchantBillingPayment[
                 </p>
                 <p className="text-xs text-[var(--color-muted)]">
                   {formatBillingDate(payment.createdAt)} · TrxID <span className="font-mono">{payment.transactionId}</span>
+                  {payment.couponCode ? (
+                    <>
+                      {' '}
+                      · Coupon <span className="font-mono">{payment.couponCode}</span> (−{formatBdt(payment.discountAmount)})
+                    </>
+                  ) : null}
                 </p>
                 {payment.status === 'REJECTED' && payment.rejectionReason ? (
                   <p className="mt-1 text-xs text-[#a3441f]">{payment.rejectionReason}</p>

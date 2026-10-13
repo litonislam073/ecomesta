@@ -12,6 +12,7 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { Pagination } from '@/components/ui/pagination';
 import { useToast } from '@/components/ui/toast';
 import { buildQuery, formatDateTime, humanApiError } from '@/lib/admin-utils';
+import { refreshAdminBadges } from '@/lib/admin-badges';
 import { api } from '@/lib/api-client';
 
 const METHODS: Record<AdminThemePurchase['method'], { label: string; color: string }> = {
@@ -203,6 +204,7 @@ export default function AdminThemePurchasesPage() {
     setBusy(true);
     try {
       await api.post(`/admin/theme-purchases/${approving.id}/approve`);
+      refreshAdminBadges();
       pushToast(`Approved — ${approving.tenant.name} can now use ${approving.theme.name}.`, 'success');
       setApproving(null);
       await load();
@@ -216,6 +218,7 @@ export default function AdminThemePurchasesPage() {
   async function reject(purchase: AdminThemePurchase, reason: string) {
     try {
       await api.post(`/admin/theme-purchases/${purchase.id}/reject`, { reason });
+      refreshAdminBadges();
       pushToast(`Rejected — ${purchase.tenant.name} sees the reason on their Theme page.`, 'success');
       await load();
     } catch (err) {

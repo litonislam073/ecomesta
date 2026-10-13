@@ -1142,7 +1142,12 @@ export interface MerchantBillingPayment {
   planName: string;
   planSlug: string;
   billingCycle: BillingCycle;
+  /** What the merchant paid (after any coupon). */
   amount: number;
+  /** Plan price before the coupon; null when no coupon was used. */
+  listAmount: number | null;
+  discountAmount: number;
+  couponCode: string | null;
   currency: 'BDT';
   method: ManualPaymentMethod;
   senderNumber: string;
@@ -1506,6 +1511,14 @@ export interface ThemeHomepageSection {
   showCountdown?: boolean;
 }
 
+/** A small picture card beside the hero (Kenakata): label, title, picture and link. */
+export interface ThemeHeroCard {
+  label?: string;
+  title?: string;
+  imageUrl?: string;
+  href?: string;
+}
+
 /** Closed config schema — unknown keys are stripped by the API on write. */
 export interface StoreThemeConfig {
   branding?: {
@@ -1557,6 +1570,8 @@ export interface StoreThemeConfig {
     badgeTop?: string;
     badgeMain?: string;
     badgeBottom?: string;
+    /** Cards beside the hero (Kenakata), at most 2; unset = the store's first categories. */
+    cards?: ThemeHeroCard[];
   };
   homepage?: {
     featuredCategories?: string[];
@@ -1734,4 +1749,50 @@ export interface ResolvedStorefrontDomain {
   isPrimary: boolean;
   store: PublicStore;
   canonicalHostname: string;
+}
+
+/** What a coupon takes off a plan payment, checked before the merchant pays. */
+export interface BillingCouponQuote {
+  code: string;
+  description: string | null;
+  listAmount: number;
+  discountAmount: number;
+  amount: number;
+}
+
+export type BillingCouponType = 'PERCENTAGE' | 'FIXED_AMOUNT';
+
+/** A plan payment coupon as the Super Admin manages it. */
+export interface AdminBillingCoupon {
+  id: string;
+  code: string;
+  description: string | null;
+  type: BillingCouponType;
+  /** Percent (1–99) or whole taka off. */
+  value: number;
+  /** Empty = every plan. */
+  planSlugs: string[];
+  /** Empty = every billing period. */
+  billingCycles: BillingCycle[];
+  maxRedemptions: number | null;
+  maxPerTenant: number | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  active: boolean;
+  /** Payments waiting for review or confirmed with this coupon. */
+  usedCount: number;
+  pendingCount: number;
+  /** Taka given away on confirmed payments. */
+  approvedDiscountTotal: number;
+  createdAt: string;
+}
+
+/** Super Admin sidebar counters. */
+export interface AdminBadges {
+  /** Accounts created since this admin last opened Users. */
+  newUsers: number;
+  /** Plan payments waiting for review. */
+  pendingPayments: number;
+  /** Theme purchases waiting for review. */
+  pendingThemePurchases: number;
 }

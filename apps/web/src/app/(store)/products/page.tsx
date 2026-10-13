@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { OffsetPageMeta, PublicCategory, PublicProductCard } from '@ecomesta/types';
 import { ProductCard } from '@/components/product-card';
+import { KenakataShop } from '@/components/storefront/kenakata/kenakata-shop';
+import { fetchStoreTheme } from '@/lib/theme-server';
 import { publicGet } from '@/lib/public-api';
 import { requirePublicStore, storeCanonicalUrl } from '@/lib/store-resolver';
 import { NOINDEX, storePageRobots } from '@/lib/store-seo';
@@ -55,6 +57,10 @@ export default async function ProductsPage({
   });
   if (search) qs.set('search', search);
   if (categorySlug) qs.set('categorySlug', categorySlug);
+  const minPrice = param(searchParams, 'minPrice');
+  const maxPrice = param(searchParams, 'maxPrice');
+  if (/^\d+(\.\d{1,2})?$/.test(minPrice)) qs.set('minPrice', minPrice);
+  if (/^\d+(\.\d{1,2})?$/.test(maxPrice)) qs.set('maxPrice', maxPrice);
 
   const [productsRes, categoriesRes] = await Promise.all([
     publicGet<{
@@ -69,6 +75,20 @@ export default async function ProductsPage({
 
   const { items, meta } = productsRes.data;
   const categories = categoriesRes.data.items;
+
+  const theme = await fetchStoreTheme(store.slug).catch(() => null);
+  if (theme?.theme?.slug === 'kenakata') {
+    return (
+      <KenakataShop
+        storeSlug={storeSlug}
+        title={search ? 'Search results' : 'All products'}
+        items={items}
+        meta={meta}
+        categories={categories}
+        filters={{ q: search, category: categorySlug, sort, minPrice, maxPrice, page }}
+      />
+    );
+  }
 
   function hrefFor(next: Record<string, string>) {
     const p = new URLSearchParams();

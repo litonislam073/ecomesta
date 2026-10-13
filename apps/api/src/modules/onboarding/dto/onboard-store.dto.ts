@@ -91,6 +91,13 @@ export class OnboardStoreDto {
   @IsIn(Object.values(BillingCycle))
   billingCycle!: BillingCycle;
 
+  @ApiPropertyOptional({ example: 'EID25', description: 'Super Admin coupon for this plan payment' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  couponCode?: string;
+
+
   // The first subscription payment, made by mobile wallet before the store
   // is created. The store stays offline until a Super Admin confirms it.
   @ApiProperty({ enum: ManualPaymentMethod })

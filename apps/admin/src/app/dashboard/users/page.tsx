@@ -18,12 +18,24 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { Pagination } from '@/components/ui/pagination';
 import { Select } from '@/components/ui/select';
 import { buildQuery, displayName, formatDateTime, humanApiError } from '@/lib/admin-utils';
+import { refreshAdminBadges } from '@/lib/admin-badges';
 import { api } from '@/lib/api-client';
 
 const USER_STATUSES: UserStatus[] = ['ACTIVE', 'INACTIVE', 'SUSPENDED', 'PENDING'];
 const PLATFORM_ROLES: PlatformRole[] = ['USER', 'SUPER_ADMIN'];
 
 export default function AdminUsersPage() {
+  // Opening Users clears the "new users" counter in the sidebar.
+  useEffect(() => {
+    void (async () => {
+      try {
+        await api.post('/admin/badges/users-seen');
+        refreshAdminBadges();
+      } catch {
+        /* the counter is a hint; the list still works */
+      }
+    })();
+  }, []);
   const [items, setItems] = useState<AdminUser[]>([]);
   const [meta, setMeta] = useState<OffsetPageMeta | null>(null);
   const [page, setPage] = useState(1);

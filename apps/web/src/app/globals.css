@@ -134,3 +134,35 @@ body {
     transform: none;
   }
 }
+
+/*
+ * Kenakata theme: its checkout keeps the shared form (address, delivery and
+ * payment rules) in the theme's shape — taller rounded fields, pill buttons and
+ * a tinted order summary.
+ */
+.kk-checkout input:not([type='radio']):not([type='checkbox']),
+.kk-checkout select {
+  min-height: 52px;
+  border-radius: 12px;
+  font-size: 1rem;
+}
+.kk-checkout textarea {
+  border-radius: 12px;
+  font-size: 1rem;
+}
+.kk-checkout form > div > section {
+  border-radius: 1.5rem;
+  background: #ffffff;
+}
+.kk-checkout form > aside > div {
+  border-radius: 1.5rem;
+  background: var(--color-surface);
+}
+.kk-checkout button[type='submit'] {
+  min-height: 56px;
+  border-radius: 9999px;
+  font-size: 17px;
+}
+.kk-checkout h2 {
+  font-family: var(--font-display);
+}

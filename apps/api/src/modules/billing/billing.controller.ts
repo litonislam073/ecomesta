@@ -1,11 +1,13 @@
-import { Body, Controller, Get, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AccessTokenGuard } from '../auth/guards/access-token.guard';
 import type { AuthenticatedUser } from '../auth/types/auth.types';
+import { BillingCouponsService } from './billing-coupons.service';
 import { BillingPaymentsService } from './billing-payments.service';
 import { BillingService } from './billing.service';
+import { QuoteBillingCouponDto } from './dto/billing-coupon.dto';
 import { BillingTenantQueryDto, SelectPlanDto, SubmitBillingPaymentDto } from './dto/billing.dto';
 
 @ApiTags('billing')
@@ -16,6 +18,7 @@ export class BillingController {
   constructor(
     private readonly billing: BillingService,
     private readonly payments: BillingPaymentsService,
+    private readonly coupons: BillingCouponsService,
   ) {}
 
   @Get('subscription')
@@ -34,6 +37,13 @@ export class BillingController {
   @ApiOperation({ summary: 'Ecomesta wallet numbers to send subscription payments to' })
   paymentAccounts() {
     return this.payments.accounts();
+  }
+
+  @Post('coupons/quote')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'What a coupon code takes off a plan and billing period (nothing is reserved)' })
+  quoteCoupon(@CurrentUser() user: AuthenticatedUser, @Body() dto: QuoteBillingCouponDto) {
+    return this.coupons.quote(user.userId, dto);
   }
 
   @Get('payments')

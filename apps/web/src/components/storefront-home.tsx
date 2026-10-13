@@ -8,6 +8,7 @@ import { FeaturedCategories } from '@/components/storefront/featured-categories'
 import { FeaturedProducts } from '@/components/storefront/featured-products';
 import { ContentSection, homeSections } from '@/components/storefront/content-sections';
 import { HeroSection } from '@/components/storefront/hero-section';
+import { KenakataHome } from '@/components/storefront/kenakata/kenakata-home';
 import { ShopEaseHome } from '@/components/storefront/shopease/shopease-home';
 import { StorefrontProviders } from '@/components/storefront-providers';
 import {
@@ -165,6 +166,26 @@ export async function StorefrontHome({
     theme.configuration,
     'featured_products',
   );
+
+  if (theme.theme?.slug === 'kenakata') {
+    return (
+      <StorefrontProviders store={store} theme={theme}>
+        <KenakataHome
+          store={store}
+          storeSlug={storeSlug}
+          config={theme.configuration}
+          products={products}
+          categories={categories}
+          showCategories={categoriesSection.enabled}
+          showProducts={productsSection.enabled}
+          categoriesTitle={categoriesSection.title}
+          productsTitle={productsSection.title}
+          sections={homeSections(theme.configuration)}
+          dealProduct={dealProduct}
+        />
+      </StorefrontProviders>
+    );
+  }
 
   if (theme.theme?.slug === 'shopease') {
     return (

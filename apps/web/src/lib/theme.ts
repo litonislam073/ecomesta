@@ -25,6 +25,9 @@ const FONT_STACKS: Record<ThemeFontFamily, string> = {
   'Source Sans 3': "'Source Sans 3', 'Segoe UI', sans-serif",
   Georgia: "Georgia, 'Times New Roman', serif",
   Fraunces: "'Fraunces', Georgia, serif",
+  // Loaded by next/font in the root layout (Kenakata's pair); Hind Siliguri also covers Bangla.
+  'Bricolage Grotesque': "var(--font-bricolage), 'Bricolage Grotesque', system-ui, sans-serif",
+  'Hind Siliguri': "var(--font-hind-siliguri), 'Hind Siliguri', system-ui, sans-serif",
   System: 'system-ui, -apple-system, "Segoe UI", sans-serif',
 };
 

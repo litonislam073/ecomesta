@@ -83,6 +83,14 @@ export interface ThemeHeaderConfig {
   menuItems?: ThemeMenuItem[];
 }
 
+/** A small picture card beside the hero (Kenakata): label, title, picture and link. */
+export interface ThemeHeroCard {
+  label?: string;
+  title?: string;
+  imageUrl?: string;
+  href?: string;
+}
+
 export interface ThemeHeroConfig {
   enabled?: boolean;
   headline?: string;
@@ -98,6 +106,8 @@ export interface ThemeHeroConfig {
   badgeTop?: string;
   badgeMain?: string;
   badgeBottom?: string;
+  /** Cards beside the hero (Kenakata), at most 2; unset = the store's first categories. */
+  cards?: ThemeHeroCard[];
 }
 
 export interface ThemeHomepageSection {
@@ -193,6 +203,9 @@ export const MINIMAL_THEME_SLUG = 'minimal';
 /** Premium theme: included in Business, sold to Starter and Growth businesses. */
 export const SHOPEASE_THEME_SLUG = 'shopease';
 export const SHOPEASE_THEME_PRICE_BDT = 999;
+/** Premium theme (design "Kenakata"): wide grid layout, product/shop/cart pages of its own. */
+export const KENAKATA_THEME_SLUG = 'kenakata';
+export const KENAKATA_THEME_PRICE_BDT = SHOPEASE_THEME_PRICE_BDT;
 
 export const DEFAULT_THEME_CONFIGURATION: StoreThemeConfig = {
   branding: {
@@ -397,6 +410,100 @@ export const SHOPEASE_THEME_CONFIGURATION: StoreThemeConfig = {
   },
 };
 
+export const KENAKATA_THEME_CONFIGURATION: StoreThemeConfig = {
+  // No placeholder brand name: the header and footer show the store's own name.
+  branding: {
+    tagline: 'New season',
+    primaryColor: '#0e5a48',
+    secondaryColor: '#14211c',
+    accentColor: '#f4b63f',
+    backgroundColor: '#ffffff',
+    surfaceColor: '#f4f6f2',
+    textColor: '#14211c',
+    mutedTextColor: '#475569',
+    borderRadius: 'lg',
+  },
+  typography: {
+    headingFont: 'Bricolage Grotesque',
+    bodyFont: 'Hind Siliguri',
+    baseFontSize: 16,
+  },
+  announcement: {
+    enabled: true,
+    text: 'Cash on delivery across Bangladesh',
+    backgroundColor: '#14211c',
+    textColor: '#ffffff',
+  },
+  header: {
+    layout: 'classic',
+    sticky: true,
+    showSearch: true,
+    showCart: true,
+    menuItems: [
+      { label: 'All products', href: '/products' },
+      { label: 'Track order', href: '/track-order' },
+    ],
+  },
+  hero: {
+    enabled: true,
+    headline: 'Shop smart. Get it delivered fast.',
+    subheadline: 'Fashion, gadgets, home and everyday essentials from one store, with cash on delivery or bKash and Nagad.',
+    ctaLabel: 'Shop now',
+    ctaHref: '/products',
+    alignment: 'left',
+    overlayOpacity: 0,
+    // Demo pictures (served by the storefront) the merchant replaces in the theme editor.
+    cards: [
+      { label: 'Electronics', title: 'Gadgets for everyday', imageUrl: '/demo-catalog/wireless-headphones.jpg', href: '/products' },
+      { label: 'Fashion', title: 'New season picks', imageUrl: '/demo-catalog/casual-sneakers.jpg', href: '/products' },
+    ],
+  },
+  homepage: {
+    featuredCategories: [],
+    featuredProducts: [],
+    sections: [
+      { type: 'featured_categories', title: 'Shop by category', enabled: true },
+      { type: 'deal_of_day', title: 'Deals of the day', text: '', buttonLabel: 'See all deals', showCountdown: false, enabled: true },
+      {
+        type: 'image_banner',
+        id: 'kk-promo-home',
+        title: 'Refresh your space',
+        text: 'Home & Living',
+        buttonLabel: 'Explore',
+        buttonHref: '/products',
+        imageUrl: '/demo-catalog/led-desk-lamp.jpg',
+        enabled: true,
+      },
+      {
+        type: 'image_banner',
+        id: 'kk-promo-beauty',
+        title: 'Daily care essentials',
+        text: 'Beauty',
+        buttonLabel: 'Explore',
+        buttonHref: '/products',
+        imageUrl: '/demo-catalog/skincare-gift-set.jpg',
+        enabled: true,
+      },
+      { type: 'featured_products', title: 'New arrivals', enabled: true },
+    ],
+  },
+  footer: {
+    tagline: 'Everyday shopping, delivered across Bangladesh.',
+    copyright: '',
+    showPaymentIcons: true,
+    menuItems: [
+      { label: 'All products', href: '/products' },
+      { label: 'Track order', href: '/track-order' },
+    ],
+    socialLinks: [],
+  },
+  seo: {
+    title: '',
+    description: '',
+    keywords: [],
+  },
+};
+
 export interface BuiltInThemeDefinition {
   slug: string;
   name: string;
@@ -439,6 +546,16 @@ export const BUILT_IN_THEMES: BuiltInThemeDefinition[] = [
     previewImageUrl: null,
     configuration: SHOPEASE_THEME_CONFIGURATION,
     priceBdt: SHOPEASE_THEME_PRICE_BDT,
+  },
+  {
+    slug: KENAKATA_THEME_SLUG,
+    name: 'Kenakata',
+    version: '1.0.0',
+    description:
+      'Premium storefront: wide hero with category cards, trust strip, deals and new arrivals, plus its own product, shop and cart pages.',
+    previewImageUrl: null,
+    configuration: KENAKATA_THEME_CONFIGURATION,
+    priceBdt: KENAKATA_THEME_PRICE_BDT,
   },
 ];
 

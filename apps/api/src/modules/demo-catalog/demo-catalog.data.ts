@@ -35,6 +35,12 @@ export function demoProductImageUrl(definition: DemoProductDefinition): string {
   return `/demo-catalog/${definition.slug}.jpg`;
 }
 
+/** A sample category's picture: the photo of its first sample product (the merchant can replace it). */
+export function demoCategoryImageUrl(category: DemoCategoryDefinition): string | null {
+  const product = DEMO_PRODUCTS.find((item) => item.categoryKey === category.key);
+  return product ? demoProductImageUrl(product) : null;
+}
+
 export const DEMO_CATEGORIES: DemoCategoryDefinition[] = [
   {
     key: 'electronics',

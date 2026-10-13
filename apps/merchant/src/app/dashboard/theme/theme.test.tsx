@@ -1312,7 +1312,7 @@ describe('Theme customizer: color validation (TE-05)', () => {
 // TE-06: the font dropdown offers exactly the API whitelist, and an API font
 // rejection is reported as an error without touching the editor state.
 describe('Theme customizer: font whitelist (TE-06)', () => {
-  const FONTS = ['Inter', 'Work Sans', 'IBM Plex Sans', 'Source Sans 3', 'Georgia', 'Fraunces', 'System'];
+  const FONTS = ['Inter', 'Work Sans', 'IBM Plex Sans', 'Source Sans 3', 'Georgia', 'Fraunces', 'Bricolage Grotesque', 'Hind Siliguri', 'System'];
 
   beforeEach(() => {
     canManage = true;

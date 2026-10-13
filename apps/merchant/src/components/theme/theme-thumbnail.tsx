@@ -28,6 +28,13 @@ const THEME_LOOKS: Record<
     surface: "#fbf3ec",
     text: "#ffffff",
   },
+  kenakata: {
+    bar: "#14211c",
+    hero: "#0e5a48",
+    accent: "#f4b63f",
+    surface: "#f4f6f2",
+    text: "#ffffff",
+  },
 };
 const FALLBACK_LOOK = {
   bar: "#334155",
