@@ -57,7 +57,7 @@ export const DASHBOARD_NAV: NavSection[] = [
     items: [
       { href: '/dashboard/coupons', label: 'Coupons', ready: true },
       { href: '/dashboard/tracking', label: 'Marketing & tracking', ready: true },
-      { href: '/dashboard/landing-pages', label: 'Landing page', ready: false },
+      { href: '/dashboard/landing-pages', label: 'Landing pages', ready: true, tag: 'New' },
     ],
   },
   {

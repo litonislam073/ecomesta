@@ -16,7 +16,8 @@ export interface DefaultPlan {
  * Ecomesta's plans. Keep in sync with the migrations that set the same values
  * on existing databases: `20261001090000_manual_billing_payments` and
  * `20261007120000_plan_storage_limits` (product and storage limits) and
- * `20261008090000_premium_themes` (premium themes on Business).
+ * `20261008090000_premium_themes` (premium themes on Business) and
+ * `20261014090000_landing_pages` (landing pages on Growth and Business).
  */
 export const DEFAULT_PLANS: readonly DefaultPlan[] = [
   {
@@ -45,6 +46,8 @@ export const DEFAULT_PLANS: readonly DefaultPlan[] = [
       allThemes: false,
       premiumThemes: false,
       marketingTracking: false,
+      landingPages: false,
+      maxLandingPages: 0,
     },
   },
   {
@@ -63,6 +66,7 @@ export const DEFAULT_PLANS: readonly DefaultPlan[] = [
       'Discount coupons and Bangladesh delivery zones',
       'All storefront themes',
       'Facebook Pixel, Google Analytics & Tag Manager',
+      'Up to 5 landing pages with their own order form',
     ],
     limits: {
       maxProducts: 100,
@@ -75,6 +79,8 @@ export const DEFAULT_PLANS: readonly DefaultPlan[] = [
       allThemes: true,
       premiumThemes: false,
       marketingTracking: true,
+      landingPages: true,
+      maxLandingPages: 5,
     },
   },
   {
@@ -91,6 +97,7 @@ export const DEFAULT_PLANS: readonly DefaultPlan[] = [
       'Stripe for international card payments',
       'Priority support',
       'Premium themes included',
+      'Unlimited landing pages',
     ],
     limits: {
       maxProducts: null,
@@ -103,6 +110,8 @@ export const DEFAULT_PLANS: readonly DefaultPlan[] = [
       allThemes: true,
       premiumThemes: true,
       marketingTracking: true,
+      landingPages: true,
+      maxLandingPages: null,
     },
   },
 ];

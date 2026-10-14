@@ -161,6 +161,8 @@ export class OrdersService {
       couponCode?: string | null;
       /** Total shown by the checkout quote; a mismatch refuses the order (SF-03). */
       expectedTotal?: Prisma.Decimal | null;
+      /** A published landing page of this store the order was placed from. */
+      landingPageId?: string | null;
     },
     req?: Request,
   ) {
@@ -263,6 +265,7 @@ export class OrdersService {
       idempotencyKey: input.idempotencyKey,
       generatePublicReference: true,
       expectedGrandTotal: input.expectedTotal ?? null,
+      landingPageId: input.landingPageId ?? null,
     });
 
     if (!result.replayed) {

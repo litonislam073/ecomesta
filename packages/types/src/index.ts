@@ -1122,6 +1122,10 @@ export interface PlanLimits {
   premiumThemes: boolean;
   /** Facebook Pixel, Google Tag Manager, Google Analytics and Search Console (Growth, Business). */
   marketingTracking: boolean;
+  /** Landing pages with their own order form (Growth, Business). */
+  landingPages: boolean;
+  /** Landing pages per business; `null` is unlimited. */
+  maxLandingPages: number | null;
 }
 
 export type ManualPaymentMethod = 'BKASH' | 'NAGAD' | 'ROCKET' | 'UPAY';

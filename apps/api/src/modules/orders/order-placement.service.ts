@@ -62,6 +62,8 @@ export type PlaceOrderParams = {
    * the server total differs, placement is refused before anything is written.
    */
   expectedGrandTotal?: Prisma.Decimal | null;
+  /** The landing page the order was placed from (already checked to belong to the store). */
+  landingPageId?: string | null;
 };
 
 export const CHECKOUT_TOTAL_CHANGED = 'CHECKOUT_TOTAL_CHANGED';
@@ -528,6 +530,7 @@ export class OrderPlacementService {
             couponCode: appliedCoupon?.code ?? null,
             customerNote: params.customerNote?.trim() || null,
             internalNote: params.internalNote?.trim() || null,
+            landingPageId: params.landingPageId ?? null,
             items: {
               create: prepared.map((line) => ({
                 productId: line.productId,

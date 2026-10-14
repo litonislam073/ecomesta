@@ -588,6 +588,95 @@ export const FEATURE_PAGES: ContentPage[] = [
   },
   {
     hub: 'features',
+    slug: 'landing-pages',
+    name: 'Landing Pages',
+    title: 'Landing Pages with an Order Form for Facebook Ads | Ecomesta',
+    description:
+      'Build one-page offers for your Facebook and Google ads from 5 ready designs. Shoppers order on the page with Cash on Delivery or online payment.',
+    eyebrow: 'Landing pages',
+    h1: 'One-page offers that turn ad clicks into orders',
+    intro:
+      'Pick one of 5 designs, choose products from your store, change the text and pictures in a live editor and publish. Shoppers order right on the page, and the order arrives in Orders like any other.',
+    summary: '5 landing page designs with their own order form.',
+    highlights: [
+      '5 designs: single product, festival sale, fashion lookbook, food & health, story sales page',
+      'Order form on the page: Cash on Delivery or online payment',
+      'Products, prices and stock from your catalog',
+      'Live editor: text, pictures, colours, sections, offer timer',
+      'Growth: 5 pages · Business: unlimited',
+    ],
+    sections: [
+      {
+        heading: 'Five designs for five kinds of offer',
+        bullets: [
+          'Single product — one hero product with sizes or types, for gadgets, cosmetics or clothing',
+          'Festival sale — Eid-style offers with a countdown; shoppers add several products to one order',
+          'Fashion lookbook — model photos, a size guide and a collection to pick sizes from',
+          'Food & health — honey, ghee or organic products, with the source, purity proof and package sizes',
+          'Story sales page — a problem-and-solution story with before/after photos, reviews and combo offers',
+        ],
+        paragraphs: [
+          'Every design starts with demo text and pictures in Bangla so you see the finished page before you write a word.',
+        ],
+      },
+      {
+        heading: 'Build it in Marketing → Landing pages',
+        flow: ['Choose a design', 'Pick products', 'Edit text and pictures', 'Publish', 'Share the link'],
+        paragraphs: [
+          'The editor shows the page live as you type. Hide, show and reorder sections, change the two main colours, set the offer timer (for each visitor or until a date) and the title for search and sharing. Each page gets its own address, /lp/your-page, on your store.',
+          'Package and offer cards (500 g / 1 kg, 1 pc / 2 pc combo) are your product’s variants, so prices and stock always match your catalog.',
+        ],
+      },
+      {
+        heading: 'Orders and tracking',
+        paragraphs: [
+          'The order form asks for name, phone, full address, district and thana, then shows your delivery charges and payment options (Cash on Delivery, and online payment on Growth and Business). Each order remembers the landing page it came from, so you can see which page sells.',
+          'Your Facebook Pixel and Google Analytics from Marketing & tracking also run on landing pages: page views, product views, add to cart, checkout and purchase.',
+        ],
+      },
+      {
+        heading: 'Which plans include it',
+        paragraphs: [
+          'Landing pages are included on Growth (up to 5 pages) and Business (unlimited). On Starter the page shows how to upgrade from Plan & billing.',
+        ],
+      },
+    ],
+    faqs: [
+      {
+        question: 'How do I make a landing page?',
+        answer:
+          'Open Marketing → Landing pages, choose New landing page, pick one of the 5 designs and give it a name. In the editor choose your products under Page settings, change the text and pictures section by section, then Publish and share the /lp/ link in your ads.',
+      },
+      {
+        question: 'Can shoppers order directly from the landing page?',
+        answer:
+          'Yes. The page has its own order form with your delivery charges and payment options. The order arrives in Orders, and your Pixel and Analytics record the purchase.',
+      },
+      {
+        question: 'How many landing pages can I have?',
+        answer: 'Growth includes up to 5 landing pages and Business is unlimited. Landing pages are not included on Starter.',
+      },
+    ],
+    related: [
+      {
+        href: '/features/marketing-tracking',
+        label: 'Marketing & tracking',
+        description: 'Pixel and Analytics for your ads.',
+      },
+      {
+        href: '/features/coupons',
+        label: 'Coupons',
+        description: 'Run discounts for your campaigns.',
+      },
+      {
+        href: '/pricing',
+        label: 'Pricing',
+        description: 'Growth and Business plans.',
+      },
+    ],
+  },
+  {
+    hub: 'features',
     slug: 'store-customization',
     name: 'Store Customization',
     title: 'Themes and Live Theme Editor for Your Online Store | Ecomesta',

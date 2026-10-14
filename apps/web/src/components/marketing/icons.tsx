@@ -1,4 +1,5 @@
 const PATHS = {
+  megaphone: 'M3 10v4l11 5V5L3 10zm11 0h3a3 3 0 010 6h-3M6 14.5l1.5 5.5h3l-1.2-4.5',
   store: 'M4 9l1.5-5h13L20 9M4 9v11h16V9M4 9h16M9 20v-6h6v6',
   box: 'M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3zm0 0v18M4 7.5l8 4.5 8-4.5',
   layers: 'M12 3l9 5-9 5-9-5 9-5zm-9 9l9 5 9-5M3 16l9 5 9-5',

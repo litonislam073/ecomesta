@@ -74,6 +74,7 @@ describe('content pages', () => {
         'custom-domain',
         'customer-management',
         'inventory-management',
+        'landing-pages',
         'marketing-tracking',
         'online-store',
         'order-management',

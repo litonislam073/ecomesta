@@ -102,7 +102,7 @@ export const FAQ_GROUPS: FaqGroup[] = [
       {
         question: 'Can I build landing pages?',
         answer:
-          'Not yet. Landing pages for campaigns are coming soon and are already listed in the dashboard as Coming soon. Meanwhile you can shape your homepage with theme sections and run offers with coupons.',
+          'Yes, on the Growth (up to 5 pages) and Business (unlimited) plans. In Marketing → Landing pages pick one of 5 designs — single product, festival sale, fashion lookbook, food & health or story sales page — choose your products, edit the text and pictures in a live editor and publish. Shoppers order on the page itself.',
       },
     ],
   },

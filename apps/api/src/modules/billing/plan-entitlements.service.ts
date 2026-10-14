@@ -8,7 +8,7 @@ import { pickCurrent } from './subscription-lifecycle.service';
 type Db = Prisma.TransactionClient | PrismaService;
 
 /** Plan features a request can require (product counts and storage are checked separately). */
-export type PlanFeature = Exclude<keyof PlanLimits, 'maxProducts' | 'storageMb'>;
+export type PlanFeature = Exclude<keyof PlanLimits, 'maxProducts' | 'storageMb' | 'maxLandingPages'>;
 
 const MB = 1024 * 1024;
 
@@ -30,6 +30,7 @@ const FEATURE_NAMES: Record<PlanFeature, string> = {
   allThemes: 'This theme',
   premiumThemes: 'Premium themes',
   marketingTracking: 'Marketing & tracking',
+  landingPages: 'Landing pages',
 };
 
 export const PLAN_UPGRADE_REQUIRED = 'PLAN_UPGRADE_REQUIRED';
@@ -102,6 +103,36 @@ export class PlanEntitlementsService {
       `Your plan allows up to ${max} products and you have ${used}.`,
       (candidate) => candidate.maxProducts === null || candidate.maxProducts > max,
     );
+  }
+
+  /**
+   * Refuses a new landing page when the plan has no landing pages or the
+   * business already has as many as it allows. Call it inside the transaction
+   * that creates the page: the business row is locked so concurrent creates
+   * cannot both slip under the limit.
+   */
+  async assertLandingPageCapacity(tx: Prisma.TransactionClient, storeId: string): Promise<void> {
+    await this.assertFeature(storeId, 'landingPages', tx);
+    const tenantId = await this.tenantOfStore(storeId, tx);
+    const limits = await this.limitsForTenant(tenantId, tx);
+    if (!limits || limits.maxLandingPages === null) return;
+    await tx.$queryRaw`SELECT id FROM tenants WHERE id = ${tenantId}::uuid FOR UPDATE`;
+    const used = await tx.landingPage.count({ where: { store: { tenantId } } });
+    if (used < limits.maxLandingPages) return;
+    const max = limits.maxLandingPages;
+    throw await this.upgradeRequired(
+      `Your plan allows up to ${max} landing pages and you have ${used}. Delete one you no longer use, or upgrade.`,
+      (candidate) => candidate.landingPages && (candidate.maxLandingPages === null || candidate.maxLandingPages > max),
+    );
+  }
+
+  /** Landing pages the business's plan allows, and how many it has. */
+  async landingPagesUsage(storeId: string): Promise<{ allowed: boolean; max: number | null; used: number }> {
+    const tenantId = await this.tenantOfStore(storeId, this.prisma);
+    const limits = await this.limitsForTenant(tenantId);
+    const used = await this.prisma.landingPage.count({ where: { store: { tenantId } } });
+    if (!limits) return { allowed: true, max: null, used };
+    return { allowed: limits.landingPages, max: limits.landingPages ? limits.maxLandingPages : 0, used };
   }
 
   /**

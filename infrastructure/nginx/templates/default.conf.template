@@ -35,13 +35,14 @@ gzip_types text/plain text/css application/json application/javascript text/java
 limit_req_zone $binary_remote_addr zone=storefront:10m rate=30r/s;
 limit_req_status 429;
 
-# Theme editor preview: storefront pages opened with ?theme_preview=… may be
-# framed by the merchant dashboard only; every other page stays SAMEORIGIN.
-map $arg_theme_preview $storefront_frame_options {
+# Theme and landing page editor previews: storefront pages opened with
+# ?theme_preview=… or ?lp_preview=… may be framed by the merchant dashboard
+# only; every other page stays SAMEORIGIN.
+map "$arg_theme_preview$arg_lp_preview" $storefront_frame_options {
     ""      "SAMEORIGIN";
     default "";
 }
-map $arg_theme_preview $storefront_frame_ancestors {
+map "$arg_theme_preview$arg_lp_preview" $storefront_frame_ancestors {
     ""      "";
     default "frame-ancestors 'self' https://merchant.${PLATFORM_ROOT_DOMAIN}";
 }

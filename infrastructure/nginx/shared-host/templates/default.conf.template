@@ -78,13 +78,14 @@ log_format ecomesta_edge '$edge_client_ip trusted=$edge_trusted last_hop=$xff_la
                          'peer=$remote_addr [$time_local] "$request_method $uri $server_protocol" '
                          '$status $body_bytes_sent $request_time host=$host "$http_user_agent"';
 
-# Theme editor preview: storefront pages opened with ?theme_preview=… may be
-# framed by the merchant dashboard only; every other page stays SAMEORIGIN.
-map $arg_theme_preview $storefront_frame_options {
+# Theme and landing page editor previews: storefront pages opened with
+# ?theme_preview=… or ?lp_preview=… may be framed by the merchant dashboard
+# only; every other page stays SAMEORIGIN.
+map "$arg_theme_preview$arg_lp_preview" $storefront_frame_options {
     ""      "SAMEORIGIN";
     default "";
 }
-map $arg_theme_preview $storefront_frame_ancestors {
+map "$arg_theme_preview$arg_lp_preview" $storefront_frame_ancestors {
     ""      "";
     default "frame-ancestors 'self' https://merchant.${PLATFORM_ROOT_DOMAIN}";
 }

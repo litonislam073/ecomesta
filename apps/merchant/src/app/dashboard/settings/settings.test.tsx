@@ -570,7 +570,7 @@ describe('Merchant settings', () => {
 
     it('lives in the Marketing menu, not in Settings', () => {
       const marketing = DASHBOARD_NAV.find((section) => section.title === 'Marketing')!;
-      expect(marketing.items.map((item) => item.label)).toEqual(['Coupons', 'Marketing & tracking', 'Landing page']);
+      expect(marketing.items.map((item) => item.label)).toEqual(['Coupons', 'Marketing & tracking', 'Landing pages']);
       expect(marketing.items[1]!.href).toBe('/dashboard/tracking');
       expect(SETTINGS_NAV.some((item) => item.href.includes('tracking'))).toBe(false);
     });

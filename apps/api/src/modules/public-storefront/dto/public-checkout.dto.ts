@@ -226,6 +226,11 @@ export class PublicCheckoutDto {
   @IsString()
   @Matches(MONEY_PATTERN, { message: 'expectedTotal must be an amount with up to 2 decimals' })
   expectedTotal?: string;
+
+  @ApiPropertyOptional({ description: 'The published landing page the order is placed from (ignored when unknown)' })
+  @IsOptional()
+  @IsUUID()
+  landingPageId?: string;
 }
 
 /** Cart + checkout inputs for a display-only, server-priced checkout summary. */

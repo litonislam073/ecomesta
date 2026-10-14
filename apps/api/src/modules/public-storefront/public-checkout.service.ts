@@ -116,6 +116,7 @@ export class PublicCheckoutService {
         expectedTotal: dto.expectedTotal
           ? parseMoney(dto.expectedTotal, 'expectedTotal')
           : null,
+        landingPageId: await this.landingPageOf(store.id, dto.landingPageId),
       },
       req,
     );
@@ -359,6 +360,16 @@ export class PublicCheckoutService {
     }
 
     return order;
+  }
+
+  /** The landing page an order came from: only a published page of this store counts. */
+  private async landingPageOf(storeId: string, landingPageId: string | undefined): Promise<string | null> {
+    if (!landingPageId) return null;
+    const page = await this.prisma.landingPage.findFirst({
+      where: { id: landingPageId, storeId, status: 'PUBLISHED' },
+      select: { id: true },
+    });
+    return page?.id ?? null;
   }
 
   private normalizePhone(value: string): string {

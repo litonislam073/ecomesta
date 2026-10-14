@@ -64,6 +64,8 @@ export function readPlanLimits(configuration: Prisma.JsonValue | null): PlanLimi
     allThemes: flag('allThemes'),
     premiumThemes: flag('premiumThemes'),
     marketingTracking: flag('marketingTracking'),
+    landingPages: flag('landingPages'),
+    maxLandingPages: count('maxLandingPages'),
   };
 }
 

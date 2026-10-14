@@ -64,7 +64,7 @@ describe('AI support — knowledge retrieval', () => {
     expect(text('google analytics tag manager')).toMatch(/Measurement ID|Container ID/);
     expect(text('shopease premium theme')).toMatch(/ShopEase/);
     expect(text('category te chobi kivabe dibo')).toMatch(/Category images/);
-    expect(text('landing page')).toMatch(/coming soon/i);
+    expect(text('landing page kivabe banabo')).toMatch(/Marketing → Landing pages/);
     expect(text('free trial ache')).toMatch(/no free trial|No\. You pay/i);
   });
 

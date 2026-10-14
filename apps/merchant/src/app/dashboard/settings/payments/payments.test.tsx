@@ -54,7 +54,7 @@ const row = (provider: string, over: Partial<PaymentProviderConfigSafe> = {}) =>
   ({ provider, enabled: false, mode: 'test', hasSecrets: false, implemented: true, publicConfig: null, ...over }) as PaymentProviderConfigSafe;
 
 const ALL: PlanLimits = {
-  maxProducts: null, storageMb: 5120, customDomain: true, onlinePayments: true, stripe: true, coupons: true, deliveryZones: true, allThemes: true, premiumThemes: true, marketingTracking: true,
+  maxProducts: null, storageMb: 5120, customDomain: true, onlinePayments: true, stripe: true, coupons: true, deliveryZones: true, allThemes: true, premiumThemes: true, marketingTracking: true, landingPages: true, maxLandingPages: null,
 };
 
 describe('Payment providers settings', () => {

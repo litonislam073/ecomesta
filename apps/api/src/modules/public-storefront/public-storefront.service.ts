@@ -228,6 +228,32 @@ export class PublicStorefrontService {
     };
   }
 
+  /**
+   * Active products of a store by ID, in the order asked for (a landing page's
+   * products); missing, draft and archived products are left out.
+   */
+  async productDetailsByIds(storeId: string, currency: string, ids: string[]) {
+    if (ids.length === 0) return [];
+    const products = await this.prisma.product.findMany({
+      where: { storeId, id: { in: ids }, status: ProductStatus.ACTIVE },
+      include: {
+        categories: {
+          include: { category: { select: { id: true, name: true, slug: true, status: true } } },
+        },
+        variants: {
+          where: { status: ProductStatus.ACTIVE },
+          orderBy: { createdAt: 'asc' },
+          select: { id: true, name: true, sku: true, price: true, compareAtPrice: true, status: true },
+        },
+        inventoryItems: { select: { quantity: true, reservedQuantity: true, variantId: true } },
+      },
+    });
+    return ids.flatMap((id) => {
+      const product = products.find((p) => p.id === id);
+      return product ? [this.toProductDetail(product, currency)] : [];
+    });
+  }
+
   async getCategory(storeSlug: string, categorySlug: string) {
     const store = await this.requireActiveStore(storeSlug);
     const category = await this.prisma.category.findFirst({

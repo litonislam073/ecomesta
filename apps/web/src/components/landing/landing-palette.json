@@ -1,0 +1,89 @@
+{
+  "single_product": {
+    "prefix": "sp",
+    "tokens": {
+      "brand": "#0E5A48",
+      "brand-dark": "#0A4336",
+      "brand-soft": "#E6EFE9",
+      "cta": "#C2410C",
+      "cta-dark": "#9A3412",
+      "ink": "#17211D",
+      "mist": "#F6F8F5",
+      "line": "#E3E8E4",
+      "sale": "#B4361E",
+      "star": "#F59E0B"
+    },
+    "primary": { "brand": 0, "brand-dark": -0.25, "brand-soft": 0.9 },
+    "accent": { "cta": 0, "cta-dark": -0.2 }
+  },
+  "campaign": {
+    "prefix": "cp",
+    "tokens": {
+      "maroon": "#6B1230",
+      "maroon-dark": "#4A0C21",
+      "maroon-deep": "#2A0813",
+      "gold": "#E7B54A",
+      "gold-light": "#F3CF7E",
+      "gold-soft": "#FBEFD0",
+      "cream": "#FFF8EA",
+      "emerald": "#0F6B4F",
+      "ink": "#2B1A20",
+      "line": "#EBDDC4",
+      "sale": "#C81E4A"
+    },
+    "primary": { "maroon": 0, "maroon-dark": -0.3, "maroon-deep": -0.6 },
+    "accent": { "gold": 0, "gold-light": 0.3, "gold-soft": 0.8 }
+  },
+  "fashion": {
+    "prefix": "fa",
+    "tokens": {
+      "ink": "#1C1B1A",
+      "charcoal": "#2A2826",
+      "ivory": "#F6F1E9",
+      "sand": "#E9E0D2",
+      "line": "#D8CEBF",
+      "taupe": "#5E564E",
+      "rose": "#8C4A58",
+      "rose-light": "#D9B5BC",
+      "error": "#A12D3C"
+    },
+    "primary": { "ink": 0, "charcoal": 0.08 },
+    "accent": { "rose": 0, "rose-light": 0.6 }
+  },
+  "food": {
+    "prefix": "fd",
+    "tokens": {
+      "leaf": "#3F7A3A",
+      "leaf-dark": "#2B5128",
+      "leaf-deep": "#1F3B1E",
+      "leaf-light": "#E3EFD9",
+      "honey": "#D9961A",
+      "honey-dark": "#A86F08",
+      "honey-light": "#F6DA93",
+      "honey-soft": "#FCF0CC",
+      "cream": "#FBF6E8",
+      "bark": "#5B3D22",
+      "ink": "#2E2A22",
+      "line": "#E6DBBE",
+      "berry": "#B3361F"
+    },
+    "primary": { "leaf": 0, "leaf-dark": -0.3, "leaf-deep": -0.5, "leaf-light": 0.85 },
+    "accent": { "honey": 0, "honey-dark": -0.22, "honey-light": 0.55, "honey-soft": 0.8 }
+  },
+  "story": {
+    "prefix": "st",
+    "tokens": {
+      "ink": "#15181F",
+      "soft": "#F5F7FB",
+      "brand": "#1B3FA0",
+      "brand-dark": "#122B73",
+      "brand-light": "#E6ECFB",
+      "mark": "#FFE45C",
+      "line": "#DDE3EF",
+      "bad": "#C62828",
+      "good": "#1B7F4B"
+    },
+    "primary": { "brand": 0, "brand-dark": -0.3, "brand-light": 0.88 },
+    "accent": { "mark": 0 }
+  }
+}

@@ -18,7 +18,7 @@ const BASE: PlanLimits = {
   deliveryZones: false,
   allThemes: false,
   premiumThemes: false,
-  marketingTracking: false,
+  marketingTracking: false, landingPages: false, maxLandingPages: 0,
 };
 let limits: PlanLimits = BASE;
 vi.mock('@/lib/subscription-context', () => ({
@@ -73,7 +73,7 @@ describe('Marketing & tracking by plan', () => {
   });
 
   it.each(['Growth', 'Business'])('%s: editable', () => {
-    limits = { ...BASE, marketingTracking: true };
+    limits = { ...BASE, marketingTracking: true, landingPages: true, maxLandingPages: null };
     render(<TrackingSettingsPage />);
     expect(screen.queryByText(/available on the Growth and Business plans/)).toBeNull();
     expect(screen.getByLabelText('Pixel ID')).toBeEnabled();

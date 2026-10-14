@@ -27,6 +27,7 @@ const MANAGE: { icon: IconName; label: string; href: string }[] = [
   { icon: 'users', label: 'Customers', href: '/features/customer-management' },
   { icon: 'tag', label: 'Coupons', href: '/features/coupons' },
   { icon: 'chart', label: 'Tracking', href: '/features/marketing-tracking' },
+  { icon: 'megaphone', label: 'Landing pages', href: '/features/landing-pages' },
   { icon: 'palette', label: 'Themes', href: '/features/store-customization' },
 ];
 
@@ -102,6 +103,14 @@ const FEATURES: { icon: IconName; title: string; body: string; points: string[];
     points: ['Paste an ID — no code', 'Add to cart and purchase events sent for you'],
     href: '/features/marketing-tracking',
     linkLabel: 'Measure your ads',
+  },
+  {
+    icon: 'megaphone',
+    title: 'Landing Pages',
+    body: 'One-page offers for your Facebook and Google ads, from 5 ready designs, with an order form on the page.',
+    points: ['Single product, festival sale, fashion, food & health, story page', 'Growth: 5 pages · Business: unlimited'],
+    href: '/features/landing-pages',
+    linkLabel: 'Build a landing page',
   },
   {
     icon: 'palette',

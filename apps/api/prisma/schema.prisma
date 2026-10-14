@@ -412,6 +412,7 @@ model Store {
   coupons                Coupon[]
   media                  Media[]
   storeThemes            StoreTheme[]
+  landingPages           LandingPage[]
   domains                Domain[]
   auditLogs              AuditLog[]
   notifications          Notification[]
@@ -717,11 +718,14 @@ model Order {
   internalNote       String?             @map("internal_note")
   /// Customer-safe cancellation explanation (never use for internal merchant notes).
   cancelReason       String?             @map("cancel_reason") @db.VarChar(500)
+  /// The landing page the order was placed from (null: the regular checkout).
+  landingPageId      String?             @map("landing_page_id") @db.Uuid
   createdAt          DateTime            @default(now()) @map("created_at")
   updatedAt          DateTime            @updatedAt @map("updated_at")
 
-  store    Store     @relation(fields: [storeId], references: [id], onDelete: Restrict)
-  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  store       Store        @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  customer    Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  landingPage LandingPage? @relation(fields: [landingPageId], references: [id], onDelete: SetNull)
 
   items        OrderItem[]
   addresses    OrderAddress[]
@@ -735,6 +739,7 @@ model Order {
   @@index([storeId, createdAt])
   @@index([storeId, status])
   @@index([customerId])
+  @@index([landingPageId])
   @@map("orders")
 }
 
@@ -1184,6 +1189,37 @@ model Theme {
   purchases   ThemePurchase[]
 
   @@map("themes")
+}
+
+enum LandingPageStatus {
+  DRAFT
+  PUBLISHED
+}
+
+/// A one-page campaign site built from a landing page template, with an order
+/// form for products from the store's catalog. `content` is the draft the
+/// merchant edits; shoppers see `publishedContent`.
+model LandingPage {
+  id               String            @id @default(uuid()) @db.Uuid
+  storeId          String            @map("store_id") @db.Uuid
+  title            String            @db.VarChar(120)
+  /// Address under the store: /lp/{slug}.
+  slug             String            @db.VarChar(80)
+  /// Template key (single_product, campaign, fashion, food, story).
+  template         String            @db.VarChar(40)
+  status           LandingPageStatus @default(DRAFT)
+  content          Json
+  publishedContent Json?             @map("published_content")
+  publishedAt      DateTime?         @map("published_at")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  store  Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@unique([storeId, slug])
+  @@index([storeId, updatedAt])
+  @@map("landing_pages")
 }
 
 model StoreTheme {

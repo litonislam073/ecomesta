@@ -27,9 +27,9 @@ describe('Sidebar new-order badge', () => {
     expect(screen.getByRole('link', { name: 'Theme New' })).toHaveAttribute('href', '/dashboard/theme');
   });
 
-  it('lists Landing page under Marketing as Coming soon', () => {
+  it('lists Landing pages under Marketing as New', () => {
     render(<SidebarNav />);
-    expect(screen.getByRole('link', { name: 'Landing page Coming soon' })).toHaveAttribute('href', '/dashboard/landing-pages');
+    expect(screen.getByRole('link', { name: 'Landing pages New' })).toHaveAttribute('href', '/dashboard/landing-pages');
   });
 
   it('shows no badge when nothing is new', () => {
