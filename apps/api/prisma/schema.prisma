@@ -254,16 +254,19 @@ model User {
 
   tenantMemberships        TenantUser[]
   storeMemberships         StoreUser[]
-  mediaUploads             Media[]          @relation("MediaUploadedBy")
+  mediaUploads             Media[]            @relation("MediaUploadedBy")
   auditLogs                AuditLog[]
   notifications            Notification[]
   authSessions             AuthSession[]
   authTokens               AuthToken[]
   emailDeliveries          EmailDelivery[]
-  billingPaymentsSubmitted BillingPayment[] @relation("BillingPaymentSubmittedBy")
-  billingPaymentsReviewed  BillingPayment[] @relation("BillingPaymentReviewedBy")
-  themePurchasesSubmitted  ThemePurchase[]  @relation("ThemePurchaseSubmittedBy")
-  themePurchasesReviewed   ThemePurchase[]  @relation("ThemePurchaseReviewedBy")
+  billingPaymentsSubmitted BillingPayment[]   @relation("BillingPaymentSubmittedBy")
+  billingPaymentsReviewed  BillingPayment[]   @relation("BillingPaymentReviewedBy")
+  themePurchasesSubmitted  ThemePurchase[]    @relation("ThemePurchaseSubmittedBy")
+  themePurchasesReviewed   ThemePurchase[]    @relation("ThemePurchaseReviewedBy")
+  affiliate                Affiliate?
+  /// The affiliate whose link brought this user to sign up (null: no referral).
+  affiliateReferral        AffiliateReferral?
 
   @@index([status])
   @@index([platformRole])
@@ -320,13 +323,15 @@ model Tenant {
   createdAt DateTime     @default(now()) @map("created_at")
   updatedAt DateTime     @updatedAt @map("updated_at")
 
-  stores          Store[]
-  memberships     TenantUser[]
-  subscriptions   Subscription[]
-  billingPayments BillingPayment[]
-  themePurchases  ThemePurchase[]
-  auditLogs       AuditLog[]
-  notifications   Notification[]
+  stores              Store[]
+  memberships         TenantUser[]
+  subscriptions       Subscription[]
+  billingPayments     BillingPayment[]
+  themePurchases      ThemePurchase[]
+  auditLogs           AuditLog[]
+  notifications       Notification[]
+  affiliateReferral   AffiliateReferral?
+  affiliateCommission AffiliateCommission?
 
   @@index([status])
   @@map("tenants")
@@ -413,6 +418,7 @@ model Store {
   media                  Media[]
   storeThemes            StoreTheme[]
   landingPages           LandingPage[]
+  analyticsEvents        StoreAnalyticsEvent[]
   domains                Domain[]
   auditLogs              AuditLog[]
   notifications          Notification[]
@@ -1343,12 +1349,13 @@ model BillingPayment {
   createdAt         DateTime             @default(now()) @map("created_at")
   updatedAt         DateTime             @updatedAt @map("updated_at")
 
-  tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  plan         SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
-  coupon       BillingCoupon?   @relation(fields: [couponId], references: [id], onDelete: SetNull)
-  subscription Subscription?    @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
-  submittedBy  User             @relation("BillingPaymentSubmittedBy", fields: [submittedByUserId], references: [id], onDelete: Restrict)
-  reviewedBy   User?            @relation("BillingPaymentReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  plan                SubscriptionPlan     @relation(fields: [planId], references: [id], onDelete: Restrict)
+  coupon              BillingCoupon?       @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  subscription        Subscription?        @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  affiliateCommission AffiliateCommission?
+  submittedBy         User                 @relation("BillingPaymentSubmittedBy", fields: [submittedByUserId], references: [id], onDelete: Restrict)
+  reviewedBy          User?                @relation("BillingPaymentReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
 
   /// A wallet transaction ID can only ever be claimed once.
   @@unique([method, transactionId])
@@ -1568,4 +1575,168 @@ model ThemePurchase {
   @@index([tenantId])
   @@index([status, createdAt])
   @@map("theme_purchases")
+}
+
+/// Platform-wide settings managed by Super Admins, one JSON value per key
+/// (e.g. `affiliate`: commission rate, cookie days, hold days, minimum payout).
+model PlatformSetting {
+  key       String   @id @db.VarChar(64)
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("platform_settings")
+}
+
+enum AffiliateStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  SUSPENDED
+}
+
+enum AffiliateCommissionStatus {
+  APPROVED
+  REJECTED
+}
+
+enum AffiliatePayoutStatus {
+  REQUESTED
+  PAID
+  REJECTED
+}
+
+/// Ecomesta's affiliate program: anyone with an account applies; once a Super
+/// Admin approves, their link (?ref=CODE) earns a commission on the first plan
+/// payment of each business it brings.
+model Affiliate {
+  id               String               @id @default(uuid()) @db.Uuid
+  userId           String               @unique @map("user_id") @db.Uuid
+  /// Referral code in links (uppercase letters and digits).
+  code             String               @unique @db.VarChar(32)
+  status           AffiliateStatus      @default(PENDING)
+  /// How the applicant plans to promote Ecomesta.
+  applicationNote  String?              @map("application_note") @db.VarChar(1000)
+  /// Percent override for this affiliate; null uses the program's rate.
+  commissionRate   Decimal?             @map("commission_rate") @db.Decimal(5, 2)
+  payoutMethod     ManualPaymentMethod? @map("payout_method")
+  payoutNumber     String?              @map("payout_number") @db.VarChar(20)
+  payoutName       String?              @map("payout_name") @db.VarChar(100)
+  clickCount       Int                  @default(0) @map("click_count")
+  reviewedByUserId String?              @map("reviewed_by_user_id") @db.Uuid
+  reviewedAt       DateTime?            @map("reviewed_at")
+  /// Shown to the applicant when rejected or suspended.
+  statusReason     String?              @map("status_reason") @db.VarChar(500)
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referrals   AffiliateReferral[]
+  commissions AffiliateCommission[]
+  payouts     AffiliatePayout[]
+
+  @@index([status, createdAt])
+  @@map("affiliates")
+}
+
+/// A user who signed up through an affiliate's link, and the business they set up.
+model AffiliateReferral {
+  id          String   @id @default(uuid()) @db.Uuid
+  affiliateId String   @map("affiliate_id") @db.Uuid
+  userId      String   @unique @map("user_id") @db.Uuid
+  /// The first business the referred user created (null until they create one).
+  tenantId    String?  @unique @map("tenant_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  affiliate Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant    Tenant?   @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  @@index([affiliateId, createdAt])
+  @@map("affiliate_referrals")
+}
+
+/// Commission on a referred business's first approved plan payment (one per
+/// business). Payable once `availableAt` has passed, unless rejected.
+model AffiliateCommission {
+  id               String                    @id @default(uuid()) @db.Uuid
+  affiliateId      String                    @map("affiliate_id") @db.Uuid
+  tenantId         String                    @unique @map("tenant_id") @db.Uuid
+  billingPaymentId String                    @unique @map("billing_payment_id") @db.Uuid
+  /// The plan payment the commission is on (after any coupon).
+  paymentAmount    Decimal                   @map("payment_amount") @db.Decimal(12, 2)
+  rate             Decimal                   @db.Decimal(5, 2)
+  amount           Decimal                   @db.Decimal(12, 2)
+  status           AffiliateCommissionStatus @default(APPROVED)
+  availableAt      DateTime                  @map("available_at")
+  rejectionReason  String?                   @map("rejection_reason") @db.VarChar(500)
+  reviewedByUserId String?                   @map("reviewed_by_user_id") @db.Uuid
+  createdAt        DateTime                  @default(now()) @map("created_at")
+  updatedAt        DateTime                  @updatedAt @map("updated_at")
+
+  affiliate      Affiliate      @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  tenant         Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  billingPayment BillingPayment @relation(fields: [billingPaymentId], references: [id], onDelete: Cascade)
+
+  @@index([affiliateId, createdAt])
+  @@map("affiliate_commissions")
+}
+
+/// An affiliate's withdrawal: the whole available balance, paid by hand to
+/// their bKash / Nagad / Rocket / Upay number. One open request at a time.
+model AffiliatePayout {
+  id               String                @id @default(uuid()) @db.Uuid
+  affiliateId      String                @map("affiliate_id") @db.Uuid
+  amount           Decimal               @db.Decimal(12, 2)
+  method           ManualPaymentMethod
+  number           String                @db.VarChar(20)
+  accountName      String?               @map("account_name") @db.VarChar(100)
+  status           AffiliatePayoutStatus @default(REQUESTED)
+  transactionId    String?               @map("transaction_id") @db.VarChar(40)
+  rejectionReason  String?               @map("rejection_reason") @db.VarChar(500)
+  reviewedByUserId String?               @map("reviewed_by_user_id") @db.Uuid
+  reviewedAt       DateTime?             @map("reviewed_at")
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+
+  affiliate Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  @@index([affiliateId, createdAt])
+  @@index([status, createdAt])
+  @@map("affiliate_payouts")
+}
+
+/// What a shopper did on a storefront (first-party, cookie-less analytics).
+enum StoreAnalyticsEventType {
+  PAGE_VIEW
+  PRODUCT_VIEW
+  ADD_TO_CART
+  CHECKOUT_START
+}
+
+enum AnalyticsDevice {
+  MOBILE
+  TABLET
+  DESKTOP
+}
+
+/// One storefront event. The visitor is a salted hash of IP and browser that
+/// changes every day, so no cookie is set and no shopper can be identified.
+model StoreAnalyticsEvent {
+  id          BigInt                  @id @default(autoincrement())
+  storeId     String                  @map("store_id") @db.Uuid
+  type        StoreAnalyticsEventType
+  visitorHash String                  @map("visitor_hash") @db.Char(16)
+  /// Path only, without the query string.
+  path        String                  @db.VarChar(300)
+  productId   String?                 @map("product_id") @db.Uuid
+  /// Where the visit came from: Direct, Facebook, Google, … or a website host.
+  source      String                  @db.VarChar(80)
+  device      AnalyticsDevice
+  createdAt   DateTime                @default(now()) @map("created_at")
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, createdAt])
+  @@index([storeId, type, createdAt])
+  @@map("store_analytics_events")
 }

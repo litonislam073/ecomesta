@@ -1126,6 +1126,8 @@ export interface PlanLimits {
   landingPages: boolean;
   /** Landing pages per business; `null` is unlimited. */
   maxLandingPages: number | null;
+  /** Any date range, visitors, products, traffic and export; otherwise a 30-day sales overview (Growth, Business). */
+  advancedAnalytics: boolean;
 }
 
 export type ManualPaymentMethod = 'BKASH' | 'NAGAD' | 'ROCKET' | 'UPAY';
@@ -1513,6 +1515,10 @@ export interface ThemeHomepageSection {
   productId?: string;
   /** Deal of the day: show the countdown to midnight. */
   showCountdown?: boolean;
+  /** Rich text and image banner: heading colour (hex); unset = the theme's own. */
+  headingColor?: string;
+  /** Rich text and image banner: colour of the text (hex); unset = the theme's own. */
+  textColor?: string;
 }
 
 /** A small picture card beside the hero (Kenakata): label, title, picture and link. */
@@ -1576,6 +1582,12 @@ export interface StoreThemeConfig {
     badgeBottom?: string;
     /** Cards beside the hero (Kenakata), at most 2; unset = the store's first categories. */
     cards?: ThemeHeroCard[];
+    /** Hero text colours (hex); empty = the theme's own. Small line above the headline. */
+    eyebrowColor?: string;
+    /** Headline colour. */
+    headingColor?: string;
+    /** Colour of the text under the headline. */
+    textColor?: string;
   };
   homepage?: {
     featuredCategories?: string[];
@@ -1799,4 +1811,166 @@ export interface AdminBadges {
   pendingPayments: number;
   /** Theme purchases waiting for review. */
   pendingThemePurchases: number;
+  /** Affiliate applications waiting for approval. */
+  pendingAffiliates: number;
+  /** Affiliate withdrawals waiting to be paid. */
+  pendingAffiliatePayouts: number;
+}
+
+/** Ecomesta's affiliate program. */
+export type AffiliateStatus = 'PENDING' | 'ACTIVE' | 'REJECTED' | 'SUSPENDED';
+export type AffiliateCommissionStatus = 'APPROVED' | 'REJECTED';
+export type AffiliatePayoutStatus = 'REQUESTED' | 'PAID' | 'REJECTED';
+
+export interface AffiliateProgramSettings {
+  enabled: boolean;
+  /** Percent of the referred business's first plan payment. */
+  commissionRate: number;
+  /** How long a referral link is remembered in the visitor's browser. */
+  cookieDays: number;
+  /** Days a commission waits before it can be withdrawn. */
+  holdDays: number;
+  /** Smallest withdrawal, in BDT. */
+  minPayout: number;
+}
+
+export interface AffiliateBalance {
+  /** Earned and past the hold period, minus payouts paid or requested. */
+  available: number;
+  /** Earned, still in the hold period. */
+  onHold: number;
+  /** Requested, waiting for the Ecomesta team to pay. */
+  requested: number;
+  paid: number;
+  /** Every commission not rejected. */
+  totalEarned: number;
+}
+
+export interface AffiliateProfile {
+  id: string;
+  code: string;
+  status: AffiliateStatus;
+  statusReason: string | null;
+  applicationNote: string | null;
+  /** The rate this affiliate earns (their own, or the program's). */
+  commissionRate: number;
+  payoutMethod: ManualPaymentMethod | null;
+  payoutNumber: string | null;
+  payoutName: string | null;
+  createdAt: string;
+  reviewedAt: string | null;
+}
+
+export interface AffiliateStats {
+  clicks: number;
+  signups: number;
+  businesses: number;
+  paidCustomers: number;
+}
+
+export interface AffiliateMe {
+  program: AffiliateProgramSettings;
+  affiliate: AffiliateProfile | null;
+  stats: AffiliateStats | null;
+  balance: AffiliateBalance | null;
+  /** Share this link (only once the affiliate is approved). */
+  referralUrl: string | null;
+}
+
+export interface AffiliateReferralItem {
+  id: string;
+  /** Business name shortened for privacy, or null before they set one up. */
+  business: string | null;
+  signedUpAt: string;
+  status: 'SIGNED_UP' | 'BUSINESS_CREATED' | 'PAID';
+  commission: number | null;
+}
+
+export interface AffiliateCommissionItem {
+  id: string;
+  business: string | null;
+  paymentAmount: number;
+  rate: number;
+  amount: number;
+  status: AffiliateCommissionStatus;
+  /** On hold until this date (when it is still in the future). */
+  availableAt: string;
+  rejectionReason: string | null;
+  createdAt: string;
+}
+
+export interface AffiliatePayoutItem {
+  id: string;
+  amount: number;
+  method: ManualPaymentMethod;
+  number: string;
+  accountName: string | null;
+  status: AffiliatePayoutStatus;
+  transactionId: string | null;
+  rejectionReason: string | null;
+  createdAt: string;
+  reviewedAt: string | null;
+}
+
+export interface AdminAffiliateItem extends AffiliateProfile {
+  user: { id: string; email: string; name: string };
+  /** The rate set for this affiliate only; null uses the program's rate. */
+  customRate: number | null;
+  stats: AffiliateStats;
+  balance: AffiliateBalance;
+}
+
+export interface AdminAffiliateCommissionItem extends AffiliateCommissionItem {
+  affiliate: { id: string; code: string; email: string };
+  tenant: { id: string; name: string };
+}
+
+export interface AdminAffiliatePayoutItem extends AffiliatePayoutItem {
+  affiliate: { id: string; code: string; email: string; name: string };
+}
+
+/** Storefront analytics (first-party, cookie-less). */
+export type StoreAnalyticsEventType = 'PAGE_VIEW' | 'PRODUCT_VIEW' | 'ADD_TO_CART' | 'CHECKOUT_START';
+export type AnalyticsDevice = 'MOBILE' | 'TABLET' | 'DESKTOP';
+
+export interface StoreAnalyticsTotals {
+  /** Sales: orders that are not drafts, cancelled, failed or refunded. */
+  revenue: number;
+  orders: number;
+  averageOrder: number;
+  itemsSold: number;
+  /** Null without full analytics. */
+  visitors: number | null;
+  pageViews: number | null;
+  /** Orders per 100 visitors. */
+  conversionRate: number | null;
+}
+
+export interface StoreAnalyticsDay {
+  /** YYYY-MM-DD in the store's time zone. */
+  date: string;
+  revenue: number;
+  orders: number;
+  visitors: number | null;
+}
+
+export interface StoreAnalytics {
+  /** Full analytics (Growth, Business); otherwise a 30-day sales overview. */
+  full: boolean;
+  currency: string;
+  timezone: string;
+  range: { from: string; to: string; days: number };
+  /** The same number of days just before the range, for comparison. */
+  previousRange: { from: string; to: string };
+  totals: StoreAnalyticsTotals;
+  previous: StoreAnalyticsTotals;
+  series: StoreAnalyticsDay[];
+  orderStatuses: { status: string; orders: number }[];
+  topProducts: { productId: string | null; name: string; quantity: number; revenue: number }[] | null;
+  sources: { source: string; visitors: number }[] | null;
+  pages: { path: string; views: number }[] | null;
+  devices: { device: AnalyticsDevice; visitors: number }[] | null;
+  funnel: { visitors: number; productViews: number; addToCart: number; checkout: number; orders: number } | null;
+  paymentMethods: { provider: string; orders: number; revenue: number }[] | null;
+  customers: { new: number; returning: number } | null;
 }

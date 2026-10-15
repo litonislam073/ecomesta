@@ -54,6 +54,11 @@ function color(value: string | undefined): string | null {
   return value && HEX_COLOR_PATTERN.test(value) ? value.toLowerCase() : null;
 }
 
+/** A merchant's optional colour (e.g. text over a banner) when it is a valid hex value. */
+export function safeColor(value: string | undefined | null): string | undefined {
+  return color(value?.trim() ?? undefined) ?? undefined;
+}
+
 function expandHex(hex: string): string {
   if (hex.length === 4) {
     return `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`;

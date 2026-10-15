@@ -56,9 +56,20 @@ export function invalidThemeColors(
     (config as Record<string, Record<string, unknown> | undefined>)[section]?.[key] as
       | string
       | undefined;
-  return THEME_COLOR_FIELDS.filter(({ section, key }) =>
+  const invalid = THEME_COLOR_FIELDS.filter(({ section, key }) =>
     colorFieldError(read(draft, section, key), read(saved, section, key)),
   ).map(({ label }) => label);
+  // Optional text colours: empty means "the theme's own".
+  const hero = draft.hero ?? {};
+  if (colorFieldError(hero.eyebrowColor, undefined)) invalid.push('Hero small line color');
+  if (colorFieldError(hero.headingColor, undefined)) invalid.push('Hero heading color');
+  if (colorFieldError(hero.textColor, undefined)) invalid.push('Hero text color');
+  for (const section of draft.homepage?.sections ?? []) {
+    const name = section.title?.trim() || 'Section';
+    if (colorFieldError(section.headingColor, undefined)) invalid.push(`${name} heading color`);
+    if (colorFieldError(section.textColor, undefined)) invalid.push(`${name} text color`);
+  }
+  return invalid;
 }
 
 /** A color safe to render in the editor preview, else the fallback. */

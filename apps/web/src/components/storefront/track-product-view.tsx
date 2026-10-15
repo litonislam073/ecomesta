@@ -18,7 +18,7 @@ export function TrackProductView({
   currency: string;
 }) {
   useEffect(() => {
-    trackViewItem({ id: sku || id, name, price: Number(price), quantity: 1 }, currency);
+    trackViewItem({ id: sku || id, productId: id, name, price: Number(price), quantity: 1 }, currency);
   }, [id, sku, name, price, currency]);
   return null;
 }

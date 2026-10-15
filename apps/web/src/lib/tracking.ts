@@ -1,8 +1,12 @@
+import { recordStoreEvent } from '@/lib/store-analytics';
+
 /**
  * Shopper events for the merchant's own marketing tags (Meta Pixel, Google
  * Analytics 4, Google Tag Manager). Each call is a no-op unless the store set
  * that tag up: the scripts (and so `fbq`, `gtag`, `dataLayer`) are only on
- * the page when it did, and never in the theme editor's preview.
+ * the page when it did, and never in the theme editor's preview. Page views,
+ * product views, add to cart and checkout also go to Ecomesta's own store
+ * analytics (see store-analytics.ts).
  */
 
 /** IDs are checked again before they reach a script. */
@@ -29,6 +33,8 @@ export interface TrackedItem {
   price: number;
   quantity: number;
   variant?: string | null;
+  /** Ecomesta's product id when `id` is the SKU (for store analytics). */
+  productId?: string;
 }
 
 type Fbq = (...args: unknown[]) => void;
@@ -91,6 +97,7 @@ function send(
 
 /** A page view (also after in-store navigation, which loads no new page). */
 export function trackPageView(path: string) {
+  recordStoreEvent('PAGE_VIEW');
   const w = win();
   if (!w) return;
   if (typeof w.gtag === 'function') {
@@ -101,14 +108,17 @@ export function trackPageView(path: string) {
 }
 
 export function trackViewItem(item: TrackedItem, currency: string) {
+  recordStoreEvent('PRODUCT_VIEW', item.productId ?? item.id);
   send('view_item', 'ViewContent', { currency, value: item.price, items: [item] });
 }
 
 export function trackAddToCart(item: TrackedItem, currency: string) {
+  recordStoreEvent('ADD_TO_CART', item.productId ?? item.id);
   send('add_to_cart', 'AddToCart', { currency, value: item.price * item.quantity, items: [item] });
 }
 
 export function trackBeginCheckout(items: TrackedItem[], value: number, currency: string) {
+  recordStoreEvent('CHECKOUT_START');
   send('begin_checkout', 'InitiateCheckout', { currency, value, items });
 }
 

@@ -1,8 +1,13 @@
+import { BEAUTY_TEMPLATE } from './templates/beauty.js';
 import { CAMPAIGN_TEMPLATE } from './templates/campaign.js';
 import { FASHION_TEMPLATE } from './templates/fashion.js';
 import { FOOD_TEMPLATE } from './templates/food.js';
+import { GADGET_TEMPLATE } from './templates/gadget.js';
+import { HOME_TEMPLATE } from './templates/home.js';
+import { KIDS_TEMPLATE } from './templates/kids.js';
 import { SINGLE_PRODUCT_TEMPLATE } from './templates/single-product.js';
 import { STORY_TEMPLATE } from './templates/story.js';
+import { TREND_TEMPLATE } from './templates/trend.js';
 import {
   LANDING_TEMPLATE_KEYS,
   type LandingContent,
@@ -22,6 +27,11 @@ export const LANDING_TEMPLATES: Record<LandingTemplateKey, LandingTemplateDef> =
   fashion: FASHION_TEMPLATE,
   food: FOOD_TEMPLATE,
   story: STORY_TEMPLATE,
+  gadget: GADGET_TEMPLATE,
+  beauty: BEAUTY_TEMPLATE,
+  kids: KIDS_TEMPLATE,
+  home: HOME_TEMPLATE,
+  trend: TREND_TEMPLATE,
 };
 
 export const LANDING_TEMPLATE_LIST: LandingTemplateDef[] = LANDING_TEMPLATE_KEYS.map((key) => LANDING_TEMPLATES[key]);

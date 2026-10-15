@@ -8,6 +8,7 @@ import {
 } from '@prisma/client';
 import type { Request } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AffiliatesService } from '../affiliates/affiliates.service';
 import { AuditService } from '../audit/audit.service';
 import { BillingService } from '../billing/billing.service';
 import { readPlanLimits } from '../billing/plan-catalog';
@@ -33,6 +34,7 @@ export class OnboardingService {
     private readonly billing: BillingService,
     private readonly payments: BillingPaymentsService,
     private readonly email: EmailService,
+    private readonly affiliates: AffiliatesService,
   ) {}
 
   async createTenantAndStore(userId: string, dto: OnboardStoreDto, req?: Request) {
@@ -67,6 +69,8 @@ export class OnboardingService {
             status: MembershipStatus.ACTIVE,
           },
         });
+        // A referred user's first business is the one the affiliate is paid for.
+        await this.affiliates.attachTenant(userId, tenant.id, tx);
 
         const store = await tx.store.create({
           data: {

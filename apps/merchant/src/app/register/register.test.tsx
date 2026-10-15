@@ -227,6 +227,33 @@ describe('Register form', () => {
     expect(screen.queryByLabelText('Email')).toBeNull();
   });
 
+  it('turns into the affiliate sign-up from "Join the affiliate program"', async () => {
+    const user = userEvent.setup();
+    searchParams.value = new URLSearchParams('for=affiliate');
+    register.mockResolvedValue(undefined);
+    render(<RegisterPage />);
+
+    expect(screen.getByRole('heading', { name: 'Join the affiliate program' })).toBeInTheDocument();
+    expect(screen.getByText(/no store needed/i)).toBeInTheDocument();
+    expect(screen.queryByText(/name your store/)).toBeNull();
+    expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute(
+      'href',
+      `/login?next=${encodeURIComponent('/dashboard/affiliate')}`,
+    );
+
+    await fillValid(user);
+    await user.click(screen.getByRole('button', { name: /create account/i }));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/dashboard/affiliate'));
+    expect(screen.getByRole('status')).toHaveTextContent('Taking you to the affiliate program');
+  });
+
+  it('sends a signed-in account from the affiliate sign-up to the affiliate page', async () => {
+    searchParams.value = new URLSearchParams('for=affiliate');
+    authState.user = { id: 'u1', memberships: { stores: [{ storeId: 's1' }] } };
+    render(<RegisterPage />);
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/dashboard/affiliate'));
+  });
+
   it('keeps redirecting signed-in merchants as before', async () => {
     authState.user = { id: 'u1', memberships: { stores: [{ storeId: 's1' }] } };
     render(<RegisterPage />);

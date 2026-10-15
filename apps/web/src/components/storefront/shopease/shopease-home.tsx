@@ -4,7 +4,7 @@ import type { PublicCategory, PublicProductCard, PublicStore, StoreThemeConfig, 
 import { ContentSection, homeSections } from '@/components/storefront/content-sections';
 import { productCardPrice } from '@/components/product-card';
 import { formatMoney } from '@/lib/money';
-import { withStoreParam } from '@/lib/theme';
+import { safeColor, withStoreParam } from '@/lib/theme';
 import { Icon, type IconName } from './icons';
 import { AddToCartIcon, DealCountdown } from './shopease-interactive';
 
@@ -280,21 +280,23 @@ export function ShopEaseHome({
           <div className="grid items-center gap-8 px-6 py-10 sm:px-10 lg:grid-cols-[1.1fr_1fr] lg:py-14">
             <div className="space-y-6">
               {branding.tagline?.trim() ? (
-                <p className="inline-flex rounded-md bg-white/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wider">
+                <p className="inline-flex rounded-md bg-white/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wider" style={{ color: safeColor(hero.eyebrowColor) }}>
                   {branding.tagline.trim()}
                 </p>
               ) : null}
-              <h1 id="shopease-hero" className="text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
+              <h1 id="shopease-hero" className="text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl" style={{ color: safeColor(hero.headingColor) }}>
                 {headTop}
                 {headAccent ? (
                   <>
                     <br />
-                    <span className="text-[var(--color-accent)]">{headAccent}</span>
+                    <span className={safeColor(hero.headingColor) ? undefined : 'text-[var(--color-accent)]'}>{headAccent}</span>
                   </>
                 ) : null}
               </h1>
               {hero.subheadline?.trim() || store.description ? (
-                <p className="max-w-md text-lg text-white/80">{hero.subheadline?.trim() || store.description}</p>
+                <p className="max-w-md text-lg text-white/80" style={{ color: safeColor(hero.textColor) }}>
+                  {hero.subheadline?.trim() || store.description}
+                </p>
               ) : null}
               <ul className="flex flex-wrap gap-x-6 gap-y-3" aria-label="Why shop with us">
                 {HERO_POINTS.map((point) => (

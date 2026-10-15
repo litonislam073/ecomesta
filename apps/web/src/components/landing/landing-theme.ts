@@ -18,6 +18,11 @@ const FONTS: Record<LandingTemplateKey, { sans: string; display: string }> = {
   fashion: { sans: 'var(--font-hind-siliguri)', display: 'var(--font-cormorant), var(--font-hind-siliguri)' },
   food: { sans: 'var(--font-hind-siliguri)', display: 'var(--font-baloo-da), var(--font-hind-siliguri)' },
   story: { sans: 'var(--font-noto-serif-bengali)', display: 'var(--font-anek-bangla), var(--font-noto-serif-bengali)' },
+  gadget: { sans: 'var(--font-noto-sans-bengali)', display: 'var(--font-sora), var(--font-noto-sans-bengali)' },
+  beauty: { sans: 'var(--font-noto-sans-bengali)', display: 'var(--font-dm-serif), var(--font-noto-sans-bengali)' },
+  kids: { sans: 'var(--font-noto-sans-bengali)', display: 'var(--font-fredoka), var(--font-baloo-da), var(--font-noto-sans-bengali)' },
+  home: { sans: 'var(--font-noto-sans-bengali)', display: 'var(--font-fraunces-lp), var(--font-noto-sans-bengali)' },
+  trend: { sans: 'var(--font-anek-bangla)', display: 'var(--font-anton), var(--font-anek-bangla)' },
 };
 
 function rgb(hex: string): [number, number, number] {

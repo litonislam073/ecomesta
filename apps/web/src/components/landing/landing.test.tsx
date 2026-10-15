@@ -9,7 +9,7 @@ import { money, toBn } from './landing-context';
 import { landingThemeStyle, shade } from './landing-theme';
 import { youtubeId } from './landing-bits';
 
-vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }), usePathname: () => '/lp/x' }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }), usePathname: () => '/lp/x', useSearchParams: () => new URLSearchParams() }));
 
 const publicGet = vi.fn();
 const publicPost = vi.fn();

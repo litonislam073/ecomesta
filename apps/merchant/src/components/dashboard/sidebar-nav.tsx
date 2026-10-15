@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { DASHBOARD_NAV, isNavItemActive } from '@/lib/nav';
+import { DASHBOARD_NAV, STORELESS_NAV, isNavItemActive } from '@/lib/nav';
 import { badgeText } from '@/lib/new-orders';
 
 const linkBase =
@@ -11,8 +11,11 @@ const linkBase =
 export function SidebarNav({
   onNavigate,
   badges = {},
+  storeless = false,
 }: {
   onNavigate?: () => void;
+  /** An account without a store only sees the pages it can use. */
+  storeless?: boolean;
   /** Counts shown next to links, by href (e.g. new orders on Orders). */
   badges?: Record<string, number>;
 }) {
@@ -20,7 +23,7 @@ export function SidebarNav({
 
   return (
     <nav aria-label="Dashboard" className="space-y-6">
-      {DASHBOARD_NAV.map((section) => (
+      {(storeless ? STORELESS_NAV : DASHBOARD_NAV).map((section) => (
         <div key={section.title}>
           <p className="px-3 text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">
             {section.title}

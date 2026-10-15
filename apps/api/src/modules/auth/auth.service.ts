@@ -12,6 +12,7 @@ import { MembershipStatus, PlatformRole, UserStatus } from '@prisma/client';
 import type { Request, Response } from 'express';
 import { clientIp } from '../../common/utils/request-host.util';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AffiliatesService } from '../affiliates/affiliates.service';
 import { EmailService } from '../email/email.service';
 import { PasswordService } from './password.service';
 import { AuthRateLimitService } from './auth-rate-limit.service';
@@ -46,6 +47,7 @@ export class AuthService {
     private readonly rateLimit: AuthRateLimitService,
     private readonly email: EmailService,
     private readonly google: GoogleIdTokenVerifier,
+    private readonly affiliates: AffiliatesService,
   ) {}
 
   async register(dto: RegisterDto, req: Request, res: Response) {
@@ -74,6 +76,7 @@ export class AuthService {
       return created;
     });
     this.email.dispatchPending();
+    await this.affiliates.attachSignup(user.id, dto.referralCode);
 
     const tokens = await this.issueSession(user.id, user.email, user.platformRole, req);
     this.setRefreshCookie(res, tokens.refreshToken);
@@ -196,6 +199,7 @@ export class AuthService {
         return createdUser;
       });
       this.email.dispatchPending();
+      await this.affiliates.attachSignup(user.id, dto.referralCode);
       userId = user.id;
       created = true;
     }

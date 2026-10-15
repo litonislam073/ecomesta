@@ -154,6 +154,7 @@ const MARKETING_PATH_PREFIXES = [
   '/faq',
   '/about',
   '/contact',
+  '/affiliate',
   '/privacy-policy',
   '/terms',
   '/refund-policy',

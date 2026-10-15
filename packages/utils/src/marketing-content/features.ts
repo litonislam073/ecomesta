@@ -596,10 +596,10 @@ export const FEATURE_PAGES: ContentPage[] = [
     eyebrow: 'Landing pages',
     h1: 'One-page offers that turn ad clicks into orders',
     intro:
-      'Pick one of 5 designs, choose products from your store, change the text and pictures in a live editor and publish. Shoppers order right on the page, and the order arrives in Orders like any other.',
+      'Pick one of 10 designs, choose products from your store, change the text and pictures in a live editor and publish. Shoppers order right on the page, and the order arrives in Orders like any other.',
     summary: '5 landing page designs with their own order form.',
     highlights: [
-      '5 designs: single product, festival sale, fashion lookbook, food & health, story sales page',
+      '10 designs: single product, festival sale, fashion lookbook, food & health, story sales page, gadget & electronics, beauty & skincare, baby & kids, home & kitchen, trend & streetwear',
       'Order form on the page: Cash on Delivery or online payment',
       'Products, prices and stock from your catalog',
       'Live editor: text, pictures, colours, sections, offer timer',
@@ -645,7 +645,7 @@ export const FEATURE_PAGES: ContentPage[] = [
       {
         question: 'How do I make a landing page?',
         answer:
-          'Open Marketing → Landing pages, choose New landing page, pick one of the 5 designs and give it a name. In the editor choose your products under Page settings, change the text and pictures section by section, then Publish and share the /lp/ link in your ads.',
+          'Open Marketing → Landing pages, choose New landing page, pick one of the 10 designs and give it a name. In the editor choose your products under Page settings, change the text and pictures section by section, then Publish and share the /lp/ link in your ads.',
       },
       {
         question: 'Can shoppers order directly from the landing page?',

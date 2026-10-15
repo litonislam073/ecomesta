@@ -46,6 +46,7 @@ export function indexableMarketingPaths(): string[] {
     '/faq',
     '/about',
     '/contact',
+    '/affiliate',
     '/privacy-policy',
     '/terms',
     '/refund-policy',

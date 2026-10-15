@@ -259,6 +259,70 @@ export function ColorField({
   );
 }
 
+/** A colour that may be left empty to keep the theme's own (e.g. text over a banner). */
+export function OptionalColorField({
+  label,
+  value,
+  onChange,
+  disabled,
+  hint = "Leave empty to use the theme's colour.",
+}: {
+  label: string;
+  value: string | undefined;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  hint?: string;
+}) {
+  return (
+    <div className="space-y-1">
+      <ColorField label={label} value={value} onChange={onChange} disabled={disabled} />
+      <div className="flex items-center justify-between gap-2 text-xs text-[var(--color-muted)]">
+        <span>{hint}</span>
+        {value?.trim() && !disabled ? (
+          <button type="button" className="font-medium text-[var(--color-accent)] hover:underline" onClick={() => onChange('')}>
+            Use theme colour
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Optional colours, one per piece of text (small line, heading, text). Each
+ * starts on the theme's colour and can be reset to it.
+ */
+export function TextColorsField<K extends string>({
+  title,
+  fields,
+  value,
+  onChange,
+  disabled,
+}: {
+  title: string;
+  fields: { key: K; label: string; hint: string }[];
+  value: Partial<Record<K, string | undefined>>;
+  onChange: (key: K, color: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <fieldset className="space-y-3 rounded-lg border border-[var(--color-border)] p-3">
+      <legend className="px-1 text-sm font-semibold text-[var(--color-ink)]">{title}</legend>
+      <p className="text-xs text-[var(--color-muted)]">Pick a colour for each piece of text, or leave it empty to keep the theme&apos;s colour.</p>
+      {fields.map((field) => (
+        <OptionalColorField
+          key={field.key}
+          label={`${field.label} color`}
+          hint={field.hint}
+          value={value[field.key]}
+          disabled={disabled}
+          onChange={(color) => onChange(field.key, color)}
+        />
+      ))}
+    </fieldset>
+  );
+}
+
 type MenuItem = { label: string; href: string };
 
 function formatMenuItems(items: MenuItem[]): string {

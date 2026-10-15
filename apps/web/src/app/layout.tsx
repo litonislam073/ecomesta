@@ -2,6 +2,11 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import {
   Anek_Bangla,
+  Anton,
+  DM_Serif_Display,
+  Fredoka,
+  Noto_Sans_Bengali,
+  Sora,
   Baloo_Da_2,
   Bricolage_Grotesque,
   Cormorant_Garamond,
@@ -69,7 +74,7 @@ const balooDa = Baloo_Da_2({
 
 const anekBangla = Anek_Bangla({
   subsets: ['bengali', 'latin'],
-  weight: ['600', '800'],
+  weight: ['400', '600', '800'],
   variable: '--font-anek-bangla',
   display: 'swap',
   preload: false,
@@ -83,7 +88,58 @@ const notoSerifBengali = Noto_Serif_Bengali({
   preload: false,
 });
 
-const landingFonts = [tiroBangla, cormorant, balooDa, anekBangla, notoSerifBengali].map((font) => font.variable).join(' ');
+const notoSansBengali = Noto_Sans_Bengali({
+  subsets: ['bengali', 'latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-noto-sans-bengali',
+  display: 'swap',
+  preload: false,
+});
+
+const sora = Sora({
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
+  variable: '--font-sora',
+  display: 'swap',
+  preload: false,
+});
+
+const dmSerif = DM_Serif_Display({
+  subsets: ['latin'],
+  weight: '400',
+  variable: '--font-dm-serif',
+  display: 'swap',
+  preload: false,
+});
+
+const fredoka = Fredoka({
+  subsets: ['latin'],
+  weight: ['500', '600'],
+  variable: '--font-fredoka',
+  display: 'swap',
+  preload: false,
+});
+
+// The marketing site's Fraunces under its own name, for the home & kitchen template.
+const frauncesLanding = Fraunces({
+  subsets: ['latin'],
+  weight: ['500', '600'],
+  variable: '--font-fraunces-lp',
+  display: 'swap',
+  preload: false,
+});
+
+const anton = Anton({
+  subsets: ['latin'],
+  weight: '400',
+  variable: '--font-anton',
+  display: 'swap',
+  preload: false,
+});
+
+const landingFonts = [tiroBangla, cormorant, balooDa, anekBangla, notoSerifBengali, notoSansBengali, sora, dmSerif, fredoka, frauncesLanding, anton]
+  .map((font) => font.variable)
+  .join(' ');
 
 export const metadata: Metadata = {
   title: {

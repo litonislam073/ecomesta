@@ -9,6 +9,7 @@ import { ImageField } from "@/components/media/image-field";
 import { Card } from "@/components/ui/card";
 import {
   NumberField,
+  TextColorsField,
   SelectField,
   TextAreaField,
   TextField,
@@ -252,6 +253,19 @@ export function HeroSection({
           options={ALIGNMENTS}
           disabled={disabled}
           onChange={(alignment) => onChange({ ...value, alignment })}
+        />
+        <TextColorsField
+          title="Text colours"
+          fields={[
+            ...(themeSlug === "kenakata" || themeSlug === "shopease"
+              ? [{ label: "Small line", hint: "The short line above the headline (your tagline).", key: "eyebrowColor" as const }]
+              : []),
+            { label: "Heading", hint: "The big headline.", key: "headingColor" as const },
+            { label: "Text", hint: "The sentence under the headline.", key: "textColor" as const },
+          ]}
+          value={value}
+          disabled={disabled}
+          onChange={(key, color) => onChange({ ...value, [key]: color })}
         />
         <NumberField
           label="Overlay opacity"

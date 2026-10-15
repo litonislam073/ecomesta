@@ -29,6 +29,7 @@ describe('marketing SEO', () => {
       ['/faq', () => import('@/app/(marketing)/faq/page')],
       ['/about', () => import('@/app/(marketing)/about/page')],
       ['/contact', () => import('@/app/(marketing)/contact/page')],
+      ['/affiliate', () => import('@/app/(marketing)/affiliate/page')],
       ['/privacy-policy', () => import('@/app/(marketing)/privacy-policy/page')],
       ['/terms', () => import('@/app/(marketing)/terms/page')],
       ['/refund-policy', () => import('@/app/(marketing)/refund-policy/page')],

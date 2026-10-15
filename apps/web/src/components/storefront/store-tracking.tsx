@@ -3,6 +3,7 @@
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import type { StoreTracking as StoreTrackingConfig } from '@ecomesta/types';
+import { enableStoreAnalytics } from '@/lib/store-analytics';
 import { installTags, trackPageView, validTrackingId } from '@/lib/tracking';
 
 /** Page views on every in-store navigation (the first one included). */
@@ -37,8 +38,16 @@ function ids(tracking: StoreTrackingConfig | null | undefined) {
  * and outside any Suspense boundary, so it runs before any page's own events
  * (a product view, a purchase) fire on hydration.
  */
-export function StoreTagInstaller({ tracking }: { tracking: StoreTrackingConfig | null | undefined }) {
+export function StoreTagInstaller({
+  tracking,
+  storeSlug,
+}: {
+  tracking: StoreTrackingConfig | null | undefined;
+  /** Turns on Ecomesta's own store analytics for this store. */
+  storeSlug?: string;
+}) {
   useState(() => {
+    if (storeSlug) enableStoreAnalytics(storeSlug);
     const { pixel, gtm, ga4 } = ids(tracking);
     if (pixel || gtm || ga4) installTags({ pixel, gtm, ga4 });
     return null;
@@ -46,10 +55,12 @@ export function StoreTagInstaller({ tracking }: { tracking: StoreTrackingConfig 
   return null;
 }
 
-/** Page views on navigation, and GTM's no-JavaScript fallback. */
+/**
+ * Page views on navigation (for the merchant's tags and Ecomesta's store
+ * analytics), and GTM's no-JavaScript fallback.
+ */
 export function StoreTracking({ tracking }: { tracking: StoreTrackingConfig | null | undefined }) {
-  const { pixel, gtm, ga4 } = ids(tracking);
-  if (!pixel && !gtm && !ga4) return null;
+  const { gtm } = ids(tracking);
   return (
     <>
       {gtm ? (

@@ -21,6 +21,7 @@ import type {
 } from '@ecomesta/types';
 import { addCalendarMonths, billingCycleDefinition, billingCyclePrice } from '@ecomesta/utils';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AffiliatesService } from '../affiliates/affiliates.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { EMAIL_EVENTS, type BillingPaymentParams } from '../email/email.events';
@@ -102,6 +103,7 @@ export class BillingPaymentsService {
     private readonly billing: BillingService,
     private readonly lifecycle: SubscriptionLifecycleService,
     private readonly coupons: BillingCouponsService,
+    private readonly affiliates: AffiliatesService,
   ) {}
 
   accounts(): { success: true; data: ManualPaymentAccount[] } {
@@ -400,6 +402,8 @@ export class BillingPaymentsService {
         },
         req,
       });
+      // A referred business's first plan payment earns its affiliate a commission.
+      await this.affiliates.recordFirstPayment(row.id);
     }
     return { success: true as const, data: await this.toAdminDto(row) };
   }

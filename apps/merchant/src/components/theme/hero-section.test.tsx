@@ -66,3 +66,36 @@ describe('Hero → side cards (Kenakata)', () => {
     expect(screen.queryByText('Side cards')).toBeNull();
   });
 });
+
+describe('Hero → text colours', () => {
+  const colorBox = (label: string) => screen.getAllByRole('textbox').find((el) => el.closest('label')?.textContent?.startsWith(label));
+
+  it('has a separate colour for the small line, heading and text', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Harness initial={demo} themeSlug="kenakata" onChange={onChange} />);
+    await user.type(colorBox('Heading color')!, '#111111');
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ headingColor: '#111111' }));
+    expect((onChange.mock.calls.at(-1)![0] as Hero).textColor).toBeUndefined();
+    await user.type(colorBox('Small line color')!, '#222222');
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ eyebrowColor: '#222222', headingColor: '#111111' }));
+  });
+
+  it('hides the small line colour on themes without a small line', () => {
+    render(<Harness initial={demo} themeSlug="default" onChange={vi.fn()} />);
+    expect(colorBox('Small line color')).toBeUndefined();
+    expect(colorBox('Heading color')).toBeDefined();
+  });
+
+  it('sets the banner text colour and can go back to the theme colour', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Harness initial={demo} themeSlug="kenakata" onChange={onChange} />);
+    const field = colorBox('Text color')!;
+    await user.type(field, '#ffee00');
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ textColor: '#ffee00' }));
+    await user.click(screen.getByRole('button', { name: 'Use theme colour' }));
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ textColor: '' }));
+    expect(screen.queryByRole('button', { name: 'Use theme colour' })).toBeNull();
+  });
+});

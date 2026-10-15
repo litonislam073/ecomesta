@@ -13,6 +13,11 @@ export const EMAIL_EVENTS = {
   BILLING_PAYMENT_REJECTED: 'BILLING_PAYMENT_REJECTED',
   // A website visitor asked the AI support agent for a person.
   AI_SUPPORT_HANDOFF: 'AI_SUPPORT_HANDOFF',
+  // Affiliate program (people who refer new businesses).
+  AFFILIATE_APPROVED: 'AFFILIATE_APPROVED',
+  AFFILIATE_COMMISSION_EARNED: 'AFFILIATE_COMMISSION_EARNED',
+  AFFILIATE_PAYOUT_PAID: 'AFFILIATE_PAYOUT_PAID',
+  AFFILIATE_PAYOUT_REJECTED: 'AFFILIATE_PAYOUT_REJECTED',
   // Billing lifecycle — reserved, not sent yet.
   TRIAL_STARTED: 'TRIAL_STARTED',
   TRIAL_ENDING: 'TRIAL_ENDING',
@@ -90,6 +95,25 @@ export interface AiSupportHandoffParams {
   transcript: { role: 'user' | 'assistant'; content: string }[];
 }
 
+/** Affiliate emails; each event fills the fields it needs. */
+export interface AffiliateEmailParams {
+  code?: string;
+  referralUrl?: string;
+  amount?: number;
+  business?: string;
+  availableAt?: string;
+  method?: string;
+  number?: string;
+  transactionId?: string | null;
+  reason?: string | null;
+}
+
+export type AffiliateEmailEvent =
+  | typeof EMAIL_EVENTS.AFFILIATE_APPROVED
+  | typeof EMAIL_EVENTS.AFFILIATE_COMMISSION_EARNED
+  | typeof EMAIL_EVENTS.AFFILIATE_PAYOUT_PAID
+  | typeof EMAIL_EVENTS.AFFILIATE_PAYOUT_REJECTED;
+
 /**
  * Template data persisted in the outbox. Everything here must be safe to keep
  * in the database until delivery: no passwords, tokens or token-bearing URLs.
@@ -102,4 +126,5 @@ export type OutboxEmail =
   | { event: typeof EMAIL_EVENTS.BILLING_PAYMENT_SUBMITTED; params: BillingPaymentParams }
   | { event: typeof EMAIL_EVENTS.BILLING_PAYMENT_APPROVED; params: BillingPaymentParams }
   | { event: typeof EMAIL_EVENTS.BILLING_PAYMENT_REJECTED; params: BillingPaymentParams }
-  | { event: typeof EMAIL_EVENTS.AI_SUPPORT_HANDOFF; params: AiSupportHandoffParams };
+  | { event: typeof EMAIL_EVENTS.AI_SUPPORT_HANDOFF; params: AiSupportHandoffParams }
+  | { event: AffiliateEmailEvent; params: AffiliateEmailParams };

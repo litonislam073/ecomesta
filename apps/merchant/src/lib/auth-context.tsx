@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import { ApiError, api, configureApiClient } from '@/lib/api-client';
+import { readReferralCode } from '@/lib/referral';
 
 export interface AuthUser {
   id: string;
@@ -181,6 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           firstName: input.firstName,
           lastName: input.lastName,
           phone: input.phone,
+          referralCode: readReferralCode() ?? undefined,
         },
         { token: null },
       );
@@ -195,7 +197,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const result = await api.post<{
         success: true;
         data: { accessToken: string; created: boolean; user: AuthUser };
-      }>('/auth/google', { credential }, { token: null });
+      }>('/auth/google', { credential, referralCode: readReferralCode() ?? undefined }, { token: null });
       setAccessToken(result.data.accessToken);
       await loadProfile(result.data.accessToken);
       return { created: result.data.created };

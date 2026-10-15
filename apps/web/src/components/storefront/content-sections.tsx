@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { StoreThemeConfig, ThemeHomepageSection } from '@ecomesta/types';
-import { withStoreParam } from '@/lib/theme';
+import { safeColor, withStoreParam } from '@/lib/theme';
 
 export const CONTENT_SECTION_TYPES = ['rich_text', 'image_banner'] as const;
 /** Sections that appear at most once. */
@@ -63,10 +63,14 @@ export function RichTextSection({ section, anchor, storeSlug }: { section: Theme
       className="mx-auto max-w-3xl space-y-4 px-2 py-4 text-center"
     >
       {section.title ? (
-        <h2 className="text-2xl font-bold tracking-tight text-[var(--color-ink)] sm:text-3xl">{section.title}</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-[var(--color-ink)] sm:text-3xl" style={{ color: safeColor(section.headingColor) }}>
+          {section.title}
+        </h2>
       ) : null}
       {section.text ? (
-        <p className="whitespace-pre-line text-base leading-relaxed text-[var(--color-muted)]">{section.text}</p>
+        <p className="whitespace-pre-line text-base leading-relaxed text-[var(--color-muted)]" style={{ color: safeColor(section.textColor) }}>
+          {section.text}
+        </p>
       ) : null}
       <SectionButton section={section} storeSlug={storeSlug} />
     </section>
@@ -88,8 +92,16 @@ export function ImageBannerSection({ section, anchor, storeSlug }: { section: Th
       ) : null}
       {section.imageUrl ? <div className="absolute inset-0 bg-black/40" aria-hidden="true" /> : null}
       <div className="relative max-w-xl space-y-4">
-        {section.title ? <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{section.title}</h2> : null}
-        {section.text ? <p className="whitespace-pre-line text-lg text-white/85">{section.text}</p> : null}
+        {section.title ? (
+          <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl" style={{ color: safeColor(section.headingColor) }}>
+            {section.title}
+          </h2>
+        ) : null}
+        {section.text ? (
+          <p className="whitespace-pre-line text-lg text-white/85" style={{ color: safeColor(section.textColor) }}>
+            {section.text}
+          </p>
+        ) : null}
         <SectionButton section={section} storeSlug={storeSlug} inverted />
       </div>
     </section>

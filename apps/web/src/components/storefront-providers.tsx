@@ -29,7 +29,7 @@ export function StorefrontProviders({
     <ThemeProvider theme={theme}>
       <CartProvider storeId={store.id} storeSlug={store.slug} currency={store.currency}>
         {/* Before the page, so its events find the tags installed (never in the editor preview). */}
-        {theme?.preview ? null : <StoreTagInstaller tracking={store.tracking} />}
+        {theme?.preview ? null : <StoreTagInstaller tracking={store.tracking} storeSlug={store.slug} />}
         <div
           lang={storeLang(store)}
           className="flex min-h-screen flex-col bg-[var(--color-bg)]"

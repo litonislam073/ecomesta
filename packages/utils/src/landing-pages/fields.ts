@@ -27,6 +27,22 @@ export const LANDING_ICONS = [
   { value: 'smile', label: 'Smile' },
   { value: 'star', label: 'Star' },
   { value: 'phone', label: 'Phone' },
+  { value: 'battery', label: 'Battery' },
+  { value: 'signal', label: 'Wireless signal' },
+  { value: 'box', label: 'Box' },
+  { value: 'timer', label: 'Timer' },
+  { value: 'power', label: 'Power' },
+  { value: 'pan', label: 'Pan' },
+  { value: 'touch', label: 'Touch panel' },
+  { value: 'air', label: 'Air flow' },
+  { value: 'tool', label: 'Tool' },
+  { value: 'sun', label: 'Sun' },
+  { value: 'dots', label: 'Dark spots' },
+  { value: 'tone', label: 'Skin tone' },
+  { value: 'lines', label: 'Fine lines' },
+  { value: 'pores', label: 'Pores' },
+  { value: 'round', label: 'Soft edges' },
+  { value: 'fire', label: 'Fire' },
 ] as const;
 
 export type LandingIconName = (typeof LANDING_ICONS)[number]['value'];

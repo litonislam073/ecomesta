@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {
   FormEvent,
   useCallback,
@@ -832,6 +833,16 @@ export default function OnboardForm({
             >
               Sign out
             </button>
+          </p>
+          <p className="mt-2 text-center text-sm text-[var(--color-muted)]">
+            Only want to refer businesses?{' '}
+            <Link
+              href="/dashboard/affiliate"
+              className="font-semibold text-[var(--color-accent)] underline-offset-4 hover:underline"
+            >
+              Join the affiliate program
+            </Link>{' '}
+            — no store needed.
           </p>
         </div>
       ) : null}

@@ -5,6 +5,7 @@ import { FormEvent, useCallback, useEffect, useState } from 'react';
 import type { SubscriptionPlan } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
 import { PageHeader } from '@/components/admin/page-header';
+import { PlanAnalyticsLimits } from '@/components/plans/plan-analytics-limits';
 import { PlanLandingLimits } from '@/components/plans/plan-landing-limits';
 import {
   PlanFormFields,
@@ -177,6 +178,7 @@ export default function EditPlanPage() {
       ) : null}
 
       {!loading && !error && plan ? <PlanLandingLimits key={plan.updatedAt} plan={plan} onSaved={() => void load()} /> : null}
+      {!loading && !error && plan ? <PlanAnalyticsLimits key={`analytics-${plan.updatedAt}`} plan={plan} onSaved={() => void load()} /> : null}
 
       <ConfirmDialog
         open={pendingActive !== null}

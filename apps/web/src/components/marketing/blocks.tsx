@@ -126,9 +126,14 @@ export function LinkCard({
 export function CtaSection({
   title = 'Ready to open your online store?',
   description = 'Create your store, add products and start taking orders with Cash on Delivery or online payments.',
+  primary,
+  secondary,
 }: {
   title?: string;
   description?: string;
+  /** Defaults to "Create Your Store" and "Explore Features". */
+  primary?: { href: string; label: string; cta: string };
+  secondary?: { href: string; label: string };
 }) {
   return (
     <section aria-labelledby="cta-heading" className="py-16 sm:py-20">
@@ -148,11 +153,11 @@ export function CtaSection({
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-lg text-[var(--brand-on-navy)]">{description}</p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
-              <ButtonLink href={registerUrl()} cta="create-store-cta-band">
-                Create Your Store
+              <ButtonLink href={primary?.href ?? registerUrl()} cta={primary?.cta ?? 'create-store-cta-band'}>
+                {primary?.label ?? 'Create Your Store'}
               </ButtonLink>
-              <ButtonLink href="/features" variant="secondary">
-                Explore Features
+              <ButtonLink href={secondary?.href ?? '/features'} variant="secondary">
+                {secondary?.label ?? 'Explore Features'}
               </ButtonLink>
             </div>
           </FadeUp>

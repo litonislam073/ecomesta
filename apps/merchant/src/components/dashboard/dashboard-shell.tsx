@@ -11,6 +11,7 @@ import { StoreSelector } from '@/components/dashboard/store-selector';
 import { ViewStoreLink } from '@/components/dashboard/view-store-link';
 import { LoadingState } from '@/components/ui/loading-state';
 import { confirmLeave } from '@/lib/leave-guard';
+import { isStorelessPath } from '@/lib/nav';
 import { badgeText, useNewOrdersCount } from '@/lib/new-orders';
 import { useAuth } from '@/lib/auth-context';
 import { SubscriptionProvider, useSubscription } from '@/lib/subscription-context';
@@ -61,7 +62,7 @@ function DashboardFrame({ children }: { children: ReactNode }) {
       !loading &&
       user &&
       user.memberships.stores.length === 0 &&
-      !pathname.startsWith('/onboard')
+      !isStorelessPath(pathname)
     ) {
       router.replace('/onboard');
     }
@@ -95,6 +96,7 @@ function DashboardFrame({ children }: { children: ReactNode }) {
     return null;
   }
 
+  const storeless = user.memberships.stores.length === 0;
   const displayName =
     [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
 
@@ -109,7 +111,7 @@ function DashboardFrame({ children }: { children: ReactNode }) {
             </Link>
             <p className="mt-1 px-3 text-xs text-[var(--color-muted)]">Merchant</p>
             <div className="mt-8 flex-1 overflow-y-auto pb-6">
-              <SidebarNav badges={navBadges} />
+              <SidebarNav badges={navBadges} storeless={storeless} />
             </div>
           </div>
         </aside>
@@ -178,7 +180,7 @@ function DashboardFrame({ children }: { children: ReactNode }) {
               id="mobile-sidebar"
               className="border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-4 lg:hidden"
             >
-              <SidebarNav badges={navBadges} onNavigate={() => setMobileOpen(false)} />
+              <SidebarNav badges={navBadges} storeless={storeless} onNavigate={() => setMobileOpen(false)} />
             </div>
           ) : null}
 

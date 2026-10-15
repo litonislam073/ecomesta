@@ -35,4 +35,10 @@ export class RegisterDto {
   @MaxLength(32)
   @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
   phone?: string;
+
+  @ApiPropertyOptional({ description: 'Affiliate referral code from the link the visitor came through' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  referralCode?: string;
 }

@@ -60,6 +60,7 @@ export const FOOTER_NAV: { heading: string; items: NavItem[] }[] = [
     items: [
       { href: '/about', label: 'About Ecomesta' },
       { href: '/contact', label: 'Contact' },
+      { href: '/affiliate', label: 'Affiliate program' },
     ],
   },
 ];

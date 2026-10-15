@@ -12,6 +12,8 @@ import { redactRequestForLog } from './common/utils/log-redaction.util';
 import { validateEnv } from './config/env.validation';
 import { HealthModule } from './health/health.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { AffiliatesModule } from './modules/affiliates/affiliates.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AuthorizationModule } from './modules/authorization/authorization.module';
@@ -95,6 +97,7 @@ import { RedisModule } from './redis/redis.module';
     RedisModule,
     AuditModule,
     EmailModule,
+    AffiliatesModule,
     AuthorizationModule,
     BillingModule,
     AiSupportModule,
@@ -118,6 +121,7 @@ import { RedisModule } from './redis/redis.module';
     PublicStorefrontModule,
     ThemesModule,
     LandingPagesModule,
+    AnalyticsModule,
     DomainsModule,
     AdminModule,
     SupportModule,

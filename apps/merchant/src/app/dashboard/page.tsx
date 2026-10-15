@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { DashboardSummary } from '@/components/analytics/dashboard-summary';
 import { DemoCatalogCta } from '@/components/catalog/demo-catalog-cta';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -33,7 +34,7 @@ export default function DashboardHomePage() {
           Dashboard
         </h1>
         <p className="mt-2 text-[var(--color-muted)]">
-          Account and store context for your merchant workspace.
+          {selectedStore ? `How ${selectedStore.name} is doing today.` : 'Your merchant workspace.'}
         </p>
       </div>
 
@@ -45,7 +46,9 @@ export default function DashboardHomePage() {
         />
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {selectedStore ? <DashboardSummary storeId={selectedStore.id} timezone={selectedStore.timezone} /> : null}
+
+      <div className="grid gap-4 md:grid-cols-2">
         <Card title="Selected store">
           {selectedStore ? (
             <dl className="space-y-3 text-sm">
@@ -90,13 +93,6 @@ export default function DashboardHomePage() {
               <dd className="font-medium">{stores.length}</dd>
             </div>
           </dl>
-        </Card>
-
-        <Card title="Metrics">
-          <p className="text-sm text-[var(--color-muted)]">
-            Sales and order metrics will appear here once order APIs are available.
-            No placeholder numbers are shown.
-          </p>
         </Card>
       </div>
     </div>

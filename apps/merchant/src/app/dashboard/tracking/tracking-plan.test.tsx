@@ -18,7 +18,7 @@ const BASE: PlanLimits = {
   deliveryZones: false,
   allThemes: false,
   premiumThemes: false,
-  marketingTracking: false, landingPages: false, maxLandingPages: 0,
+  marketingTracking: false, landingPages: false, maxLandingPages: 0, advancedAnalytics: false,
 };
 let limits: PlanLimits = BASE;
 vi.mock('@/lib/subscription-context', () => ({

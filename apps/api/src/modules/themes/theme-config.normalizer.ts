@@ -64,6 +64,12 @@ function color(value: unknown, path: string): string {
   return raw.toLowerCase();
 }
 
+/** A hex colour, or empty for "the theme's own". */
+function optionalColor(value: unknown, path: string): string {
+  if (typeof value === 'string' && value.trim() === '') return '';
+  return color(value, path);
+}
+
 /** Absolute http(s) URLs, or site-relative paths starting with a single `/`. */
 function url(value: unknown, path: string): string {
   const raw = text(value, path, THEME_LIMITS.url);
@@ -313,6 +319,9 @@ function normalizeHero(input: Record<string, unknown>): ThemeHeroConfig {
       ['badgeMain', (v, p) => text(v, p, 12)],
       ['badgeBottom', (v, p) => text(v, p, 20)],
       ['cards', normalizeHeroCards],
+      ['eyebrowColor', optionalColor],
+      ['headingColor', optionalColor],
+      ['textColor', optionalColor],
     ],
     'hero',
   );
@@ -378,6 +387,10 @@ function normalizeSections(
     }
     if (entry.showCountdown !== undefined && entry.showCountdown !== null) {
       parsed.showCountdown = bool(entry.showCountdown, `${at}.showCountdown`);
+    }
+    for (const key of ['headingColor', 'textColor'] as const) {
+      const value = entry[key];
+      if (typeof value === 'string' && value.trim() !== '') parsed[key] = color(value, `${at}.${key}`);
     }
     return parsed;
   });

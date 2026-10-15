@@ -29,6 +29,7 @@ export const ADMIN_NAV: NavSection[] = [
       { href: '/dashboard/plans', label: 'Plans' },
       { href: '/dashboard/coupons', label: 'Coupons' },
       { href: '/dashboard/subscriptions', label: 'Subscriptions' },
+      { href: '/dashboard/affiliates', label: 'Affiliates' },
     ],
   },
   {

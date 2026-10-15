@@ -12,6 +12,7 @@ import { PasswordRules, meetsPasswordRules } from '@/components/auth/password-ru
 import { billingCycleDefinition } from '@ecomesta/utils';
 import { hasSessionHint, useAuth } from '@/lib/auth-context';
 import { marketingSiteUrl } from '@/lib/marketing-site';
+import { AFFILIATE_PATH, isAffiliateIntent, rememberReferralCode } from '@/lib/referral';
 import { readPlanSelection, safeNextPath, withPlanSelection } from '@/lib/plan-selection';
 import { usePublicPlans } from '@/lib/subscription-context';
 
@@ -53,8 +54,13 @@ export default function RegisterPage() {
   useEffect(() => setExpectSession(hasSessionHint()), []);
   const router = useRouter();
   const searchParams = useSearchParams();
+  useEffect(() => rememberReferralCode(searchParams.get('ref')), [searchParams]);
   const selection = readPlanSelection(searchParams);
-  const next = safeNextPath(searchParams.get('next'), withPlanSelection('/onboard', selection));
+  // From "Join the affiliate program": no store setup, straight to the affiliate page.
+  const affiliate = isAffiliateIntent(searchParams);
+  const next = affiliate
+    ? AFFILIATE_PATH
+    : safeNextPath(searchParams.get('next'), withPlanSelection('/onboard', selection));
   const { plans } = usePublicPlans();
   const selectedPlan = selection ? plans?.find((plan) => plan.slug === selection.plan) : undefined;
 
@@ -75,10 +81,10 @@ export default function RegisterPage() {
     if (!loading && user && !created) {
       const hasStore = user.memberships.stores.length > 0;
       router.replace(
-        hasStore ? (selection ? withPlanSelection('/dashboard/billing', selection) : '/dashboard') : next,
+        affiliate ? next : hasStore ? (selection ? withPlanSelection('/dashboard/billing', selection) : '/dashboard') : next,
       );
     }
-  }, [loading, user, router, next, created, selection]);
+  }, [loading, user, router, next, created, selection, affiliate]);
 
   function update(field: Field, value: string) {
     setValues((prev) => ({ ...prev, [field]: value }));
@@ -148,7 +154,9 @@ export default function RegisterPage() {
     return (
       <div role="status" aria-live="polite" className="py-6 text-center">
         <p className="font-display text-2xl tracking-tight text-[var(--color-ink)]">Account created</p>
-        <p className="mt-2 text-[var(--color-muted)]">Taking you to store setup…</p>
+        <p className="mt-2 text-[var(--color-muted)]">
+          {affiliate ? 'Taking you to the affiliate program…' : 'Taking you to store setup…'}
+        </p>
       </div>
     );
   }
@@ -166,15 +174,17 @@ export default function RegisterPage() {
   return (
     <div>
       <p className="text-sm font-semibold text-[var(--color-accent)]">
-        Step 1 of 2 · Create your account
+        {affiliate ? 'Affiliate program · Create your account' : 'Step 1 of 2 · Create your account'}
       </p>
       <h1 className="mt-2 font-display text-3xl tracking-tight text-[var(--color-ink)]">
-        Create your store
+        {affiliate ? 'Join the affiliate program' : 'Create your store'}
       </h1>
       <p className="mt-2 text-[var(--color-muted)]">
-        Start building your online business with Ecomesta.
+        {affiliate
+          ? 'Create a free Ecomesta account — no store needed. Then apply and get your referral link.'
+          : 'Start building your online business with Ecomesta.'}
       </p>
-      {selection ? (
+      {selection && !affiliate ? (
         <p className="mt-4 rounded-lg bg-[#f1f8f5] px-3 py-2 text-sm text-[var(--color-ink)]">
           <span className="font-semibold">
             {selectedPlan ? `${selectedPlan.name} plan` : 'Your selected plan'} ·{' '}
@@ -260,7 +270,9 @@ export default function RegisterPage() {
           {submitting ? 'Creating account...' : 'Create Account'}
         </Button>
         <p className="text-center text-sm text-[var(--color-muted)]">
-          Next, you&apos;ll name your store and choose its web address.
+          {affiliate
+            ? 'Next, you’ll apply to the affiliate program.'
+            : 'Next, you’ll name your store and choose its web address.'}
         </p>
         <p className="text-center text-xs leading-relaxed text-[var(--color-muted)]">
           By creating an account, you agree to our{' '}
@@ -278,7 +290,7 @@ export default function RegisterPage() {
       <p className="mt-6 text-center text-sm text-[var(--color-muted)]">
         Already have an account?{' '}
         <Link
-          href={selection ? `/login?next=${encodeURIComponent(next)}` : '/login'}
+          href={selection || affiliate ? `/login?next=${encodeURIComponent(next)}` : '/login'}
           className="rounded-sm font-semibold text-[var(--color-accent)] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         >
           Sign in

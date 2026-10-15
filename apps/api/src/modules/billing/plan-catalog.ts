@@ -66,6 +66,7 @@ export function readPlanLimits(configuration: Prisma.JsonValue | null): PlanLimi
     marketingTracking: flag('marketingTracking'),
     landingPages: flag('landingPages'),
     maxLandingPages: count('maxLandingPages'),
+    advancedAnalytics: flag('advancedAnalytics'),
   };
 }
 

@@ -1,0 +1,10 @@
+import type { Metadata } from 'next';
+import AnalyticsView from './analytics-view';
+
+export const metadata: Metadata = {
+  title: 'Analytics · Ecomesta',
+};
+
+export default function AnalyticsPage() {
+  return <AnalyticsView />;
+}

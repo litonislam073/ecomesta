@@ -145,7 +145,7 @@ export function ThemePreview({
               style={{
                 fontFamily: 'var(--theme-heading-font)',
                 letterSpacing: 'var(--theme-heading-tracking, normal)',
-                color: hero.imageUrl ? '#ffffff' : 'var(--theme-text)',
+                color: validColor(hero.headingColor, hero.imageUrl ? '#ffffff' : 'var(--theme-text)'),
               }}
             >
               {hero.headline?.trim() || 'Hero headline'}
@@ -153,7 +153,7 @@ export function ThemePreview({
             {hero.subheadline ? (
               <p
                 className="max-w-sm text-xs"
-                style={{ color: hero.imageUrl ? '#f8fafc' : 'var(--theme-muted)' }}
+                style={{ color: validColor(hero.textColor, hero.imageUrl ? '#f8fafc' : 'var(--theme-muted)') }}
               >
                 {hero.subheadline}
               </p>

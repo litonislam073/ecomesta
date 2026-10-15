@@ -4,7 +4,18 @@
  * catalog. Content is plain JSON validated by `normalizeLandingContent`.
  */
 
-export const LANDING_TEMPLATE_KEYS = ['single_product', 'campaign', 'fashion', 'food', 'story'] as const;
+export const LANDING_TEMPLATE_KEYS = [
+  'single_product',
+  'campaign',
+  'fashion',
+  'food',
+  'story',
+  'gadget',
+  'beauty',
+  'kids',
+  'home',
+  'trend',
+] as const;
 export type LandingTemplateKey = (typeof LANDING_TEMPLATE_KEYS)[number];
 
 export type LandingPageStatus = 'DRAFT' | 'PUBLISHED';

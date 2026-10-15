@@ -117,6 +117,74 @@ const ICONS: Record<string, ReactNode> = {
   left: <path d="M15 6l-6 6 6 6" />,
   right: <path d="M9 6l6 6-6 6" />,
   moonFill: <path fill="currentColor" stroke="none" d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />,
+  battery: <path d="M2 7h17v10H2zM22 11v2M6 10v4M10 10v4" />,
+  signal: (
+    <>
+      <path d="M5 12a10 10 0 0114 0M8 15a6 6 0 018 0" />
+      <circle cx="12" cy="18" r="1" fill="currentColor" />
+    </>
+  ),
+  box: <path d="M3 7.5L12 3l9 4.5v9L12 21l-9-4.5zM3 7.5l9 4.5 9-4.5M12 12v9" />,
+  timer: (
+    <>
+      <circle cx="12" cy="13" r="8" />
+      <path d="M12 9v4l3 2M9 3h6" />
+    </>
+  ),
+  power: <path d="M12 3v9M6.5 6.5a8 8 0 1011 0" />,
+  pan: (
+    <>
+      <circle cx="10" cy="12" r="7" />
+      <path d="M17 12h5M6 12h8" />
+    </>
+  ),
+  touch: (
+    <>
+      <rect x="4" y="3" width="16" height="18" rx="3" />
+      <circle cx="12" cy="16" r="2" />
+      <path d="M8 7h8" />
+    </>
+  ),
+  air: <path d="M3 9h11a3 3 0 10-3-3M3 15h14a3 3 0 11-3 3M3 12h7" />,
+  tool: <path d="M14.5 6.5a4 4 0 005 5L21 13l-8 8-3-3 8-8zM9 15l-6 6" />,
+  sun: (
+    <>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6L7 7M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4" />
+    </>
+  ),
+  dots: (
+    <>
+      <circle cx="8" cy="9" r="2" />
+      <circle cx="16" cy="8" r="1.5" />
+      <circle cx="13" cy="15" r="2.5" />
+      <circle cx="6" cy="16" r="1" />
+    </>
+  ),
+  tone: (
+    <>
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 4a8 8 0 010 16z" fill="currentColor" fillOpacity={0.25} />
+    </>
+  ),
+  lines: <path d="M4 9c3-2 5 2 8 0s5-2 8 0M4 15c3-2 5 2 8 0s5-2 8 0" />,
+  pores: (
+    <>
+      <circle cx="7" cy="7" r="2" />
+      <circle cx="16" cy="8" r="2.5" />
+      <circle cx="9" cy="16" r="2.5" />
+      <circle cx="17" cy="17" r="1.5" />
+    </>
+  ),
+  round: (
+    <>
+      <rect x="4" y="4" width="16" height="16" rx="7" />
+      <path d="M9 14c1.5 1.5 4.5 1.5 6 0" />
+    </>
+  ),
+  fire: <path d="M12 3c1 3 4 5 4 9a4 4 0 01-8 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 0-8zM8.5 20.5A7 7 0 0112 21a7 7 0 003.5-.5" />,
+  plus: <path d="M12 5v14M5 12h14" />,
+  tiktok: <path d="M14 3v11.5a3.5 3.5 0 11-3.5-3.5M14 3c.5 2.5 2.5 4.5 5 4.5" />,
   star8: (
     <>
       <rect x="6" y="6" width="12" height="12" />
@@ -251,18 +319,25 @@ export function LazyVideo({
   className,
   buttonClass,
   noteClass,
+  aspect = 'aspect-video',
+  iconClass = 'ml-1 h-9 w-9',
+  label = 'ভিডিও চালু করুন',
 }: {
   url: string;
   poster: string;
   className: string;
   buttonClass: string;
   noteClass: string;
+  /** Tailwind aspect class, e.g. `aspect-[9/16]` for reels. */
+  aspect?: string;
+  iconClass?: string;
+  label?: string;
 }) {
   const { preview } = useLanding();
   const [playing, setPlaying] = useState(false);
   const id = youtubeId(url);
   return (
-    <div className={`relative aspect-video overflow-hidden ${className}`}>
+    <div className={`relative overflow-hidden ${aspect} ${className}`}>
       {playing && id ? (
         <iframe
           className="absolute inset-0 h-full w-full"
@@ -277,9 +352,9 @@ export function LazyVideo({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={poster} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
           ) : null}
-          <button type="button" aria-label="ভিডিও চালু করুন" onClick={() => id && setPlaying(true)} className="absolute inset-0 flex items-center justify-center">
+          <button type="button" aria-label={label} onClick={() => id && setPlaying(true)} className="absolute inset-0 flex items-center justify-center">
             <span className={buttonClass}>
-              <LpIcon name="play" className="ml-1 h-9 w-9" />
+              <LpIcon name="play" className={iconClass} />
             </span>
           </button>
           {!id && preview ? <p className={noteClass}>এডিটরে YouTube ভিডিওর লিংক দিন।</p> : null}

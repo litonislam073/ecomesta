@@ -266,6 +266,24 @@ export class ThemeHeroDto {
   @Min(0)
   @Max(1)
   overlayOpacity?: number;
+
+  @ApiPropertyOptional({ example: '#ffffff', description: "Small line above the headline; empty uses the theme's colour" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  eyebrowColor?: string;
+
+  @ApiPropertyOptional({ example: '#ffffff', description: "Headline colour; empty uses the theme's colour" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  headingColor?: string;
+
+  @ApiPropertyOptional({ example: '#ffffff', description: "Text under the headline; empty uses the theme's colour" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  textColor?: string;
 }
 
 export class ThemeHomepageSectionDto {

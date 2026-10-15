@@ -6,6 +6,8 @@ import { EmailDispatcher } from './email-dispatcher.service';
 import { EmailConfigService } from './email.config';
 import {
   EMAIL_EVENTS,
+  type AffiliateEmailEvent,
+  type AffiliateEmailParams,
   type AiSupportHandoffParams,
   type BillingPaymentParams,
   type OutboxEmail,
@@ -150,6 +152,11 @@ export class EmailService implements OnModuleDestroy {
       { event: EMAIL_EVENTS.AI_SUPPORT_HANDOFF, params },
       { userId: null, tenantId: null, storeId: null, idempotencyKey: `${EMAIL_EVENTS.AI_SUPPORT_HANDOFF}:${params.reference}` },
     );
+  }
+
+  /** Queues an affiliate email to the affiliate; one per event and record. */
+  sendAffiliate(event: AffiliateEmailEvent, userId: string, recordId: string, params: AffiliateEmailParams) {
+    return this.sendTemplate({ event, params }, { userId, idempotencyKey: `${event}:${recordId}` });
   }
 
   sendPasswordReset(user: { id: string; email: string; firstName: string | null }, token: string): void {

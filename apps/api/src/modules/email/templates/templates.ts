@@ -1,4 +1,5 @@
 import type {
+  AffiliateEmailParams,
   AiSupportHandoffParams,
   BillingPaymentParams,
   MerchantWelcomeParams,
@@ -345,3 +346,84 @@ export function aiSupportHandoffEmail(params: AiSupportHandoffParams, brand: Ema
   );
 }
 
+
+/** To an affiliate: the application was approved and the link works. */
+export function affiliateApprovedEmail(
+  params: AffiliateEmailParams,
+  brand: EmailBrand,
+  firstName: string | null,
+  dashboardUrl: string,
+): RenderedEmail {
+  return renderEmail(
+    {
+      subject: 'You are now an Ecomesta affiliate',
+      preheader: 'Your referral link is ready to share.',
+      heading: 'Welcome to the affiliate program',
+      intro: [
+        greeting(firstName),
+        'Your affiliate application is approved. Share your link — when a business you refer pays for its first plan, you earn a commission.',
+      ],
+      details: [
+        { label: 'Your code', value: params.code ?? '' },
+        { label: 'Your link', value: params.referralUrl ?? '', href: params.referralUrl },
+      ],
+      cta: { label: 'Open affiliate dashboard', url: dashboardUrl },
+      outro: [supportSentence(brand)],
+    },
+    brand,
+  );
+}
+
+/** To an affiliate: a referred business paid and a commission was added. */
+export function affiliateCommissionEmail(
+  params: AffiliateEmailParams,
+  brand: EmailBrand,
+  firstName: string | null,
+  dashboardUrl: string,
+): RenderedEmail {
+  return renderEmail(
+    {
+      subject: `You earned ${taka(params.amount ?? 0)} on Ecomesta`,
+      preheader: 'A business you referred paid for its plan.',
+      heading: 'You earned a commission',
+      intro: [
+        greeting(firstName),
+        `${params.business ?? 'A business you referred'} paid for its first plan, so you earned ${taka(params.amount ?? 0)}.`,
+        params.availableAt ? `You can withdraw it from ${formatDate(params.availableAt)}.` : '',
+      ].filter(Boolean),
+      cta: { label: 'View earnings', url: dashboardUrl },
+      outro: [supportSentence(brand)],
+    },
+    brand,
+  );
+}
+
+/** To an affiliate: a withdrawal was paid or declined. */
+export function affiliatePayoutEmail(
+  params: AffiliateEmailParams,
+  brand: EmailBrand,
+  firstName: string | null,
+  dashboardUrl: string,
+  paid: boolean,
+): RenderedEmail {
+  const method = PAYMENT_METHOD_LABELS[params.method ?? ''] ?? params.method ?? '';
+  return renderEmail(
+    {
+      subject: paid ? `We sent you ${taka(params.amount ?? 0)}` : 'Your withdrawal could not be paid',
+      preheader: paid ? `Your affiliate earnings were sent to your ${method}.` : 'Your balance is available to withdraw again.',
+      heading: paid ? 'Your withdrawal is paid' : 'We could not pay your withdrawal',
+      intro: paid
+        ? [greeting(firstName), `We sent ${taka(params.amount ?? 0)} to your ${method} number ${params.number ?? ''}.`]
+        : [
+            greeting(firstName),
+            `We could not send ${taka(params.amount ?? 0)} to your ${method} number ${params.number ?? ''}.`,
+            ...(params.reason ? [`Reason: ${params.reason}`] : []),
+            'The amount is back in your balance. Check your payout number and request it again.',
+          ],
+      details: paid && params.transactionId ? [{ label: 'Transaction ID', value: params.transactionId }] : undefined,
+      cta: { label: 'Open affiliate dashboard', url: dashboardUrl },
+      outro: [supportSentence(brand)],
+    },
+    brand,
+  );
+}

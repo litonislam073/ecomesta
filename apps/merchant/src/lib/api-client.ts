@@ -158,3 +158,32 @@ export const api = {
   upload: <T>(path: string, form: FormData, init?: { token?: string | null }) =>
     apiRequest<T>(path, { method: 'POST', body: form, ...init }),
 };
+
+/** A file from the API (e.g. a CSV export), with the signed-in user's token. */
+export async function apiDownload(path: string): Promise<{ blob: Blob; filename: string | null }> {
+  const send = (token: string | null) =>
+    fetch(`${apiBaseUrl()}${path}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: 'include',
+    });
+  let response = await send(accessTokenGetter());
+  if (response.status === 401) {
+    const next = await tryRefreshAccessToken();
+    if (next) response = await send(next);
+  }
+  if (!response.ok) {
+    let message = 'Download failed';
+    let code = `HTTP_${response.status}`;
+    try {
+      const body = (await response.json()) as { error?: { code?: string; message?: string } };
+      message = body.error?.message ?? message;
+      code = body.error?.code ?? code;
+    } catch {
+      // Not JSON.
+    }
+    throw new ApiError(response.status, code, message);
+  }
+  const disposition = response.headers.get('Content-Disposition') ?? '';
+  const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? null;
+  return { blob: await response.blob(), filename };
+}

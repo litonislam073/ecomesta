@@ -31,6 +31,7 @@ const FEATURE_NAMES: Record<PlanFeature, string> = {
   premiumThemes: 'Premium themes',
   marketingTracking: 'Marketing & tracking',
   landingPages: 'Landing pages',
+  advancedAnalytics: 'Full analytics',
 };
 
 export const PLAN_UPGRADE_REQUIRED = 'PLAN_UPGRADE_REQUIRED';
@@ -71,6 +72,12 @@ export class PlanEntitlementsService {
       if (limits) return limits;
     }
     return null;
+  }
+
+  /** Whether the store's plan includes `feature` (a plan without limits includes everything). */
+  async hasFeature(storeId: string, feature: PlanFeature, db: Db = this.prisma): Promise<boolean> {
+    const limits = await this.limitsForTenant(await this.tenantOfStore(storeId, db), db);
+    return !limits || limits[feature];
   }
 
   /** Refuses the request when the store's plan does not include `feature`. */

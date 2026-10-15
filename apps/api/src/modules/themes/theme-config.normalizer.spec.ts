@@ -268,3 +268,27 @@ describe('hero side cards (Kenakata)', () => {
     expect(() => normalizeThemeConfiguration({ hero: { cards: [{ imageUrl: '//evil.example/x.jpg' }] } })).toThrow(/relative path/);
   });
 });
+
+describe('text colours over banners', () => {
+  it('keeps a hero text colour and lets the merchant clear it', () => {
+    expect(normalizeThemeConfiguration({ hero: { textColor: '#FFEE00' } }).hero?.textColor).toBe('#ffee00');
+    expect(normalizeThemeConfiguration({ hero: { eyebrowColor: '#ABC', headingColor: '#000000' } }).hero).toMatchObject({ eyebrowColor: '#abc', headingColor: '#000000' });
+    expect(() => normalizeThemeConfiguration({ hero: { headingColor: 'blue' } })).toThrow(/hex color/);
+    expect(normalizeThemeConfiguration({ hero: { textColor: '' } }).hero?.textColor).toBe('');
+    expect(() => normalizeThemeConfiguration({ hero: { textColor: 'red; background:url(x)' } })).toThrow(/hex color/);
+  });
+
+  it('keeps a text colour on content sections; empty leaves it out', () => {
+    const config = normalizeThemeConfiguration({
+      homepage: {
+        sections: [
+          { type: 'image_banner', id: 'promo-1', title: 'Sale', headingColor: '#222222', textColor: '#111111' },
+          { type: 'rich_text', id: 'about', title: 'About', textColor: '' },
+        ],
+      },
+    });
+    expect(config.homepage?.sections?.[0]).toMatchObject({ headingColor: '#222222', textColor: '#111111' });
+    expect(config.homepage?.sections?.[1]).not.toHaveProperty('textColor');
+    expect(() => normalizeThemeConfiguration({ homepage: { sections: [{ type: 'image_banner', textColor: 'blue' }] } })).toThrow(/hex color/);
+  });
+});

@@ -9,6 +9,8 @@ import { AuthField, FormAlert, PasswordField, SecureNote } from '@/components/au
 import { authErrorMessage, isValidEmail } from '@/components/auth/auth-errors';
 import { GoogleSignIn } from '@/components/auth/google-sign-in';
 import { hasSessionHint, useAuth } from '@/lib/auth-context';
+import { isStorelessPath } from '@/lib/nav';
+import { AFFILIATE_PATH, isAffiliateIntent, rememberReferralCode } from '@/lib/referral';
 import { safeNextPath } from '@/lib/plan-selection';
 
 type FieldErrors = { email?: string; password?: string };
@@ -34,7 +36,9 @@ export default function LoginPage() {
   useEffect(() => setExpectSession(hasSessionHint()), []);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = safeNextPath(searchParams.get('next'), '/dashboard');
+  useEffect(() => rememberReferralCode(searchParams.get('ref')), [searchParams]);
+  const affiliate = isAffiliateIntent(searchParams);
+  const next = affiliate ? AFFILIATE_PATH : safeNextPath(searchParams.get('next'), '/dashboard');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -47,7 +51,7 @@ export default function LoginPage() {
     if (!loading && user) {
       const destination =
         user.memberships.stores.length === 0
-          ? next.startsWith('/onboard')
+          ? isStorelessPath(next)
             ? next
             : '/onboard'
           : next;
@@ -174,10 +178,10 @@ export default function LoginPage() {
       <p className="mt-6 text-center text-sm text-[var(--color-muted)]">
         Don&apos;t have an account?{' '}
         <Link
-          href="/register"
+          href={affiliate ? '/register?for=affiliate' : '/register'}
           className="rounded-sm font-semibold text-[var(--color-accent)] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
         >
-          Create your store
+          {affiliate ? 'Create an account' : 'Create your store'}
         </Link>
       </p>
 

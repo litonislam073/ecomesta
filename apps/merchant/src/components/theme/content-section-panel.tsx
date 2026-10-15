@@ -4,7 +4,7 @@ import type { StoreThemeConfig, ThemeHomepageSection } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
 import { ImageField } from '@/components/media/image-field';
 import { Card } from '@/components/ui/card';
-import { TextAreaField, TextField, ToggleField } from '@/components/theme/theme-fields';
+import { TextAreaField, TextColorsField, TextField, ToggleField } from '@/components/theme/theme-fields';
 import {
   CONTENT_SECTIONS,
   effectiveHomeSections,
@@ -75,6 +75,16 @@ export function ContentSectionPanel({
           disabled={disabled}
           hint="Plain text. Line breaks are kept."
           onChange={(text) => patch({ text })}
+        />
+        <TextColorsField
+          title="Text colours"
+          fields={[
+            { label: 'Heading', hint: "The section's heading.", key: 'headingColor' as const },
+            { label: 'Text', hint: 'The smaller text (above the heading on Kenakata banners).', key: 'textColor' as const },
+          ]}
+          value={section}
+          disabled={disabled}
+          onChange={(key, color) => patch({ [key]: color || undefined })}
         />
         <TextField
           label="Button label"

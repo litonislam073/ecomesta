@@ -17,7 +17,8 @@ export interface DefaultPlan {
  * on existing databases: `20261001090000_manual_billing_payments` and
  * `20261007120000_plan_storage_limits` (product and storage limits) and
  * `20261008090000_premium_themes` (premium themes on Business) and
- * `20261014090000_landing_pages` (landing pages on Growth and Business).
+ * `20261014090000_landing_pages` (landing pages on Growth and Business) and
+ * `20261016090000_store_analytics` (full analytics on Growth and Business).
  */
 export const DEFAULT_PLANS: readonly DefaultPlan[] = [
   {
@@ -34,6 +35,7 @@ export const DEFAULT_PLANS: readonly DefaultPlan[] = [
       'Orders, customers and inventory in one dashboard',
       'Cash on Delivery checkout',
       'Default storefront theme',
+      'Sales overview for the last 30 days',
     ],
     limits: {
       maxProducts: 25,
@@ -48,6 +50,7 @@ export const DEFAULT_PLANS: readonly DefaultPlan[] = [
       marketingTracking: false,
       landingPages: false,
       maxLandingPages: 0,
+      advancedAnalytics: false,
     },
   },
   {
@@ -67,6 +70,7 @@ export const DEFAULT_PLANS: readonly DefaultPlan[] = [
       'All storefront themes',
       'Facebook Pixel, Google Analytics & Tag Manager',
       'Up to 5 landing pages with their own order form',
+      'Full sales and visitor analytics',
     ],
     limits: {
       maxProducts: 100,
@@ -81,6 +85,7 @@ export const DEFAULT_PLANS: readonly DefaultPlan[] = [
       marketingTracking: true,
       landingPages: true,
       maxLandingPages: 5,
+      advancedAnalytics: true,
     },
   },
   {
@@ -112,6 +117,7 @@ export const DEFAULT_PLANS: readonly DefaultPlan[] = [
       marketingTracking: true,
       landingPages: true,
       maxLandingPages: null,
+      advancedAnalytics: true,
     },
   },
 ];

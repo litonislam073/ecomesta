@@ -108,6 +108,12 @@ export interface ThemeHeroConfig {
   badgeBottom?: string;
   /** Cards beside the hero (Kenakata), at most 2; unset = the store's first categories. */
   cards?: ThemeHeroCard[];
+  /** Hero text colours (hex); empty = the theme's own. Small line above the headline. */
+  eyebrowColor?: string;
+  /** Headline colour. */
+  headingColor?: string;
+  /** Colour of the text under the headline. */
+  textColor?: string;
 }
 
 export interface ThemeHomepageSection {
@@ -126,6 +132,10 @@ export interface ThemeHomepageSection {
   productId?: string;
   /** Deal of the day: show the countdown to midnight. */
   showCountdown?: boolean;
+  /** Rich text and image banner: heading colour (hex); unset = the theme's own. */
+  headingColor?: string;
+  /** Rich text and image banner: colour of the text (hex); unset = the theme's own. */
+  textColor?: string;
 }
 
 export interface ThemeHomepageConfig {

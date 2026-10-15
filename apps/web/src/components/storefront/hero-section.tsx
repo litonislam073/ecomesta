@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { StoreThemeConfig } from '@ecomesta/types';
-import { withStoreParam } from '@/lib/theme';
+import { safeColor, withStoreParam } from '@/lib/theme';
 
 export function HeroSection({
   config,
@@ -27,6 +27,8 @@ export function HeroSection({
   const ctaHref = hero.ctaHref?.trim() || '/products';
   const alignment = hero.alignment ?? 'left';
   const onImage = Boolean(hero.imageUrl);
+  const headingColor = safeColor(hero.headingColor);
+  const textColor = safeColor(hero.textColor);
 
   const alignmentClass =
     alignment === 'center'
@@ -69,7 +71,7 @@ export function HeroSection({
         <h1
           className="font-[family-name:var(--font-display)] text-4xl tracking-tight md:text-5xl"
           style={{
-            color: onImage ? '#ffffff' : undefined,
+            color: headingColor ?? (onImage ? '#ffffff' : undefined),
             letterSpacing: 'var(--theme-heading-tracking, normal)',
           }}
         >
@@ -77,7 +79,7 @@ export function HeroSection({
         </h1>
         <p
           className="mt-4 max-w-xl text-lg text-[var(--color-muted)]"
-          style={{ color: onImage ? '#f1f5f9' : undefined }}
+          style={{ color: textColor ?? (onImage ? '#f1f5f9' : undefined) }}
         >
           {subheadline}
         </p>

@@ -10,11 +10,16 @@ import { storeLang } from '@/lib/store-seo';
 import { trackViewItem } from '@/lib/tracking';
 import { LandingProvider, useLanding } from './landing-context';
 import { landingThemeStyle } from './landing-theme';
+import { BeautyTemplate } from './templates/beauty';
 import { CampaignTemplate } from './templates/campaign';
 import { FashionTemplate } from './templates/fashion';
 import { FoodTemplate } from './templates/food';
+import { GadgetTemplate } from './templates/gadget';
+import { HomeTemplate } from './templates/home';
+import { KidsTemplate } from './templates/kids';
 import { SingleProductTemplate } from './templates/single-product';
 import { StoryTemplate } from './templates/story';
+import { TrendTemplate } from './templates/trend';
 
 /** Messages from the merchant's landing page editor (the parent window). */
 export const LANDING_PREVIEW_MESSAGE = 'ecomesta-landing-preview';
@@ -25,6 +30,11 @@ const TEMPLATES: Record<LandingTemplateKey, () => JSX.Element> = {
   fashion: FashionTemplate,
   food: FoodTemplate,
   story: StoryTemplate,
+  gadget: GadgetTemplate,
+  beauty: BeautyTemplate,
+  kids: KidsTemplate,
+  home: HomeTemplate,
+  trend: TrendTemplate,
 };
 
 /** Inside the editor's preview frame: reload when the editor sends a new draft, and jump to a section. */
@@ -63,7 +73,7 @@ export function LandingPageView({ page, store }: { page: PublicLandingPage; stor
   const Template = TEMPLATES[page.template];
   return (
     <LandingProvider page={page} store={store}>
-      {page.preview ? null : <StoreTagInstaller tracking={store.tracking} />}
+      {page.preview ? null : <StoreTagInstaller tracking={store.tracking} storeSlug={store.slug} />}
       <div lang={storeLang(store)} style={landingThemeStyle(page.template, page.content.colors) as CSSProperties} className="min-h-screen">
         <Template />
       </div>

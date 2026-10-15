@@ -257,3 +257,108 @@ body {
   outline: 3px solid rgb(var(--st-brand));
   outline-offset: 2px;
 }
+
+/* Second template set: shared before/after slider (accent from --ba-accent). */
+.lp-ba .lp-ba-before {
+  clip-path: inset(0 calc(100% - var(--pos, 50%)) 0 0);
+}
+.lp-ba .lp-ba-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--pos, 50%);
+  width: 3px;
+  margin-left: -1.5px;
+  background: #fff;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+.lp-ba .lp-ba-knob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border-radius: 9999px;
+  background: #fff;
+  color: var(--ba-accent, #333);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 16px/1 sans-serif;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+.lp-ba:focus-within {
+  outline: 3px solid var(--ba-accent, #333);
+  outline-offset: 2px;
+}
+
+/* Gadget: faint tech grid behind the hero. */
+.lp-gd-grid {
+  background-image: linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 48px 48px;
+  -webkit-mask-image: radial-gradient(ellipse at 50% 30%, #000 30%, transparent 75%);
+  mask-image: radial-gradient(ellipse at 50% 30%, #000 30%, transparent 75%);
+}
+
+/* Home & kitchen: a thin strip of light wood. */
+.lp-hm-wood {
+  background-color: rgb(var(--hm-wood));
+  background-image: repeating-linear-gradient(90deg, rgba(90, 55, 25, 0.1) 0 2px, transparent 2px 46px), repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.14) 0 1px, transparent 1px 5px);
+}
+
+/* Trend: dot grids, hard offset shadows and the scrolling strip. */
+.lp-tr-dots {
+  background-image: radial-gradient(rgb(var(--tr-ink) / 0.16) 1.5px, transparent 1.5px);
+  background-size: 18px 18px;
+}
+.lp-tr-dots-light {
+  background-image: radial-gradient(rgb(var(--tr-bone) / 0.12) 1.5px, transparent 1.5px);
+  background-size: 18px 18px;
+}
+.lp-tr-hard {
+  box-shadow: 6px 6px 0 0 rgb(var(--tr-ink));
+}
+.lp-tr-hard-sm {
+  box-shadow: 3px 3px 0 0 rgb(var(--tr-ink));
+}
+.lp-tr-hard-acid {
+  box-shadow: 6px 6px 0 0 rgb(var(--tr-acid));
+}
+.lp-tr-press {
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.lp-tr-press:hover {
+  transform: translate(3px, 3px);
+  box-shadow: 3px 3px 0 0 rgb(var(--tr-ink));
+}
+.lp-tr-press:active {
+  transform: translate(6px, 6px);
+  box-shadow: none;
+}
+.lp-tr-noscroll {
+  scrollbar-width: none;
+}
+.lp-tr-noscroll::-webkit-scrollbar {
+  display: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes lp-marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  .lp-tr-marquee {
+    animation: lp-marquee 30s linear infinite;
+  }
+  .lp-tr-marquee:hover {
+    animation-play-state: paused;
+  }
+  @keyframes lp-floaty {
+    0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); }
+    50% { transform: translateY(-8px) rotate(var(--r, 0deg)); }
+  }
+  .lp-kd-float {
+    animation: lp-floaty 5s ease-in-out infinite;
+  }
+}

@@ -50,6 +50,7 @@ export function useAdminBadges(): Record<string, number> {
     '/dashboard/users': badges?.newUsers ?? 0,
     '/dashboard/payments': badges?.pendingPayments ?? 0,
     '/dashboard/theme-purchases': badges?.pendingThemePurchases ?? 0,
+    '/dashboard/affiliates': (badges?.pendingAffiliates ?? 0) + (badges?.pendingAffiliatePayouts ?? 0),
   };
 }
 

@@ -13,8 +13,15 @@
       "sale": "#B4361E",
       "star": "#F59E0B"
     },
-    "primary": { "brand": 0, "brand-dark": -0.25, "brand-soft": 0.9 },
-    "accent": { "cta": 0, "cta-dark": -0.2 }
+    "primary": {
+      "brand": 0,
+      "brand-dark": -0.25,
+      "brand-soft": 0.9
+    },
+    "accent": {
+      "cta": 0,
+      "cta-dark": -0.2
+    }
   },
   "campaign": {
     "prefix": "cp",
@@ -31,8 +38,16 @@
       "line": "#EBDDC4",
       "sale": "#C81E4A"
     },
-    "primary": { "maroon": 0, "maroon-dark": -0.3, "maroon-deep": -0.6 },
-    "accent": { "gold": 0, "gold-light": 0.3, "gold-soft": 0.8 }
+    "primary": {
+      "maroon": 0,
+      "maroon-dark": -0.3,
+      "maroon-deep": -0.6
+    },
+    "accent": {
+      "gold": 0,
+      "gold-light": 0.3,
+      "gold-soft": 0.8
+    }
   },
   "fashion": {
     "prefix": "fa",
@@ -47,8 +62,14 @@
       "rose-light": "#D9B5BC",
       "error": "#A12D3C"
     },
-    "primary": { "ink": 0, "charcoal": 0.08 },
-    "accent": { "rose": 0, "rose-light": 0.6 }
+    "primary": {
+      "ink": 0,
+      "charcoal": 0.08
+    },
+    "accent": {
+      "rose": 0,
+      "rose-light": 0.6
+    }
   },
   "food": {
     "prefix": "fd",
@@ -67,8 +88,18 @@
       "line": "#E6DBBE",
       "berry": "#B3361F"
     },
-    "primary": { "leaf": 0, "leaf-dark": -0.3, "leaf-deep": -0.5, "leaf-light": 0.85 },
-    "accent": { "honey": 0, "honey-dark": -0.22, "honey-light": 0.55, "honey-soft": 0.8 }
+    "primary": {
+      "leaf": 0,
+      "leaf-dark": -0.3,
+      "leaf-deep": -0.5,
+      "leaf-light": 0.85
+    },
+    "accent": {
+      "honey": 0,
+      "honey-dark": -0.22,
+      "honey-light": 0.55,
+      "honey-soft": 0.8
+    }
   },
   "story": {
     "prefix": "st",
@@ -83,7 +114,143 @@
       "bad": "#C62828",
       "good": "#1B7F4B"
     },
-    "primary": { "brand": 0, "brand-dark": -0.3, "brand-light": 0.88 },
-    "accent": { "mark": 0 }
+    "primary": {
+      "brand": 0,
+      "brand-dark": -0.3,
+      "brand-light": 0.88
+    },
+    "accent": {
+      "mark": 0
+    }
+  },
+  "gadget": {
+    "prefix": "gd",
+    "tokens": {
+      "night": "#060B16",
+      "navy": "#0B1426",
+      "navy-light": "#111D36",
+      "cyan": "#22D3EE",
+      "cyan-dark": "#0891B2",
+      "cyan-soft": "#A5F3FC",
+      "lime": "#B8F35A",
+      "ice": "#EAF2FF",
+      "mist": "#9FB0CC",
+      "bad": "#FF6B86"
+    },
+    "primary": {
+      "cyan": 0,
+      "cyan-dark": -0.4,
+      "cyan-soft": 0.6
+    },
+    "accent": {
+      "lime": 0
+    }
+  },
+  "beauty": {
+    "prefix": "bt",
+    "tokens": {
+      "cream": "#FFF8F3",
+      "blush": "#F7CAD4",
+      "blush-soft": "#FDEEF1",
+      "blush-deep": "#F1A9BA",
+      "peach": "#FBD9C9",
+      "peach-soft": "#FFEEE5",
+      "rose": "#A8325E",
+      "rose-dark": "#7E2147",
+      "rose-light": "#F9DCE5",
+      "plum": "#3A2430",
+      "mute": "#7A6370",
+      "line": "#F0DDD8",
+      "good": "#3F8F6B",
+      "bad": "#B3263E",
+      "star": "#E3A02D"
+    },
+    "primary": {
+      "rose": 0,
+      "rose-dark": -0.25,
+      "rose-light": 0.82
+    },
+    "accent": {
+      "blush": 0,
+      "blush-soft": 0.6,
+      "blush-deep": -0.08
+    }
+  },
+  "kids": {
+    "prefix": "kd",
+    "tokens": {
+      "paper": "#FFFBF3",
+      "sun": "#FFC93C",
+      "sun-dark": "#E8A800",
+      "sun-soft": "#FFF1BF",
+      "sky": "#3BA7F5",
+      "sky-dark": "#1C7ED6",
+      "sky-soft": "#DDF0FF",
+      "mint": "#3DD6A5",
+      "mint-dark": "#14A37A",
+      "mint-soft": "#D8F7EC",
+      "coral": "#FF6B6B",
+      "coral-dark": "#E04848",
+      "coral-soft": "#FFE0DE",
+      "ink": "#2B3A55",
+      "mute": "#66748D",
+      "line": "#F1E7D2",
+      "bad": "#D6334A"
+    },
+    "primary": {
+      "coral": 0,
+      "coral-dark": -0.15,
+      "coral-soft": 0.8
+    },
+    "accent": {
+      "sky": 0,
+      "sky-dark": -0.2,
+      "sky-soft": 0.82
+    }
+  },
+  "home": {
+    "prefix": "hm",
+    "tokens": {
+      "linen": "#FBF8F2",
+      "sand": "#F3EADC",
+      "sand-deep": "#E9DAC3",
+      "clay": "#C4623A",
+      "clay-dark": "#9E4624",
+      "clay-light": "#F6DCCF",
+      "wood": "#C9A27A",
+      "wood-dark": "#A67C52",
+      "ink": "#33302C",
+      "mute": "#7A7168",
+      "line": "#E6DAC7",
+      "sage": "#5F8566",
+      "bad": "#B3402D",
+      "star": "#D99A2B"
+    },
+    "primary": {
+      "clay": 0,
+      "clay-dark": -0.2,
+      "clay-light": 0.78
+    },
+    "accent": {
+      "sage": 0
+    }
+  },
+  "trend": {
+    "prefix": "tr",
+    "tokens": {
+      "ink": "#0B0B0B",
+      "bone": "#F4F1E8",
+      "acid": "#D4FF1E",
+      "acid-dark": "#B5DB00",
+      "mute": "#5E5A52",
+      "bad": "#E5231B"
+    },
+    "primary": {
+      "acid": 0,
+      "acid-dark": -0.15
+    },
+    "accent": {
+      "bone": 0
+    }
   }
 }

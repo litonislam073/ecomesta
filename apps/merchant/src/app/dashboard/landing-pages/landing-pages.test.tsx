@@ -99,7 +99,7 @@ describe('Landing pages list', () => {
     render(<LandingPagesPage />);
     await user.click(await screen.findByRole('button', { name: /New landing page/ }));
     const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getAllByRole('radio')).toHaveLength(5);
+    expect(within(dialog).getAllByRole('radio')).toHaveLength(10);
     await user.click(within(dialog).getByRole('radio', { name: /Story sales page/ }));
     await user.click(within(dialog).getByRole('button', { name: /Create with Story sales page/ }));
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('Give the page a name');
@@ -107,6 +107,31 @@ describe('Landing pages list', () => {
     await user.click(within(dialog).getByRole('button', { name: /Create with Story sales page/ }));
     await waitFor(() => expect(push).toHaveBeenCalledWith('/dashboard/landing-pages/new-1'));
     expect(api.post).toHaveBeenCalledWith('/stores/store-1/landing-pages', { title: 'Hair oil', template: 'story' });
+  });
+
+  it('shows the 10 designs to preview and start a page from', async () => {
+    const user = userEvent.setup();
+    api.get.mockResolvedValue(listResponse([], { allowed: true, max: null, used: 0 }));
+    render(<LandingPagesPage />);
+    const gallery = await screen.findByRole('list', { name: 'Designs' });
+    expect(within(gallery).getAllByRole('listitem')).toHaveLength(10);
+    await user.click(within(gallery).getAllByRole('button', { name: 'Preview' })[3]!);
+    const preview = screen.getByRole('dialog', { name: 'Food & health' });
+    expect(within(preview).getByTitle('Food & health preview')).toHaveAttribute('src', expect.stringContaining('/lp-demo/food'));
+    await user.click(within(preview).getByRole('button', { name: /mobile/i }));
+    expect(within(preview).getByRole('button', { name: /mobile/i })).toHaveAttribute('aria-pressed', 'true');
+    await user.click(within(preview).getByRole('button', { name: 'Use this design' }));
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByRole('radio', { name: /Food & health/ })).toBeChecked();
+  });
+
+  it('Starter can preview designs but not use them', async () => {
+    api.get.mockResolvedValue(listResponse([], { allowed: false, max: 0, used: 0 }));
+    render(<LandingPagesPage />);
+    const gallery = await screen.findByRole('list', { name: 'Designs' });
+    expect(screen.getByText('Upgrade to Growth or Business to use these designs.')).toBeInTheDocument();
+    for (const button of within(gallery).getAllByRole('button', { name: 'Use this design' })) expect(button).toBeDisabled();
+    expect(within(gallery).getAllByRole('button', { name: 'Preview' })[0]).toBeEnabled();
   });
 
   it('deletes a page after confirming', async () => {

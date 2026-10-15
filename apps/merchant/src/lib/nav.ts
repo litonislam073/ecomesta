@@ -31,7 +31,10 @@ export const SETTINGS_NAV: NavItem[] = [
 export const DASHBOARD_NAV: NavSection[] = [
   {
     title: 'Overview',
-    items: [{ href: '/dashboard', label: 'Dashboard', ready: true }],
+    items: [
+      { href: '/dashboard', label: 'Dashboard', ready: true },
+      { href: '/dashboard/analytics', label: 'Analytics', ready: true, tag: 'New' },
+    ],
   },
   {
     title: 'Catalog',
@@ -80,10 +83,31 @@ export const DASHBOARD_NAV: NavSection[] = [
     title: 'Account',
     items: [
       { href: '/dashboard/billing', label: 'Plan & billing', ready: true },
+      { href: '/dashboard/affiliate', label: 'Affiliate program', ready: true, tag: 'New' },
       { href: '/dashboard/support', label: 'Help & support', ready: true },
     ],
   },
 ];
+
+/** What an account without a store sees: setting up a store, the affiliate program and help. */
+export const STORELESS_NAV: NavSection[] = [
+  {
+    title: 'Get started',
+    items: [{ href: '/onboard', label: 'Create your store', ready: true }],
+  },
+  {
+    title: 'Account',
+    items: [
+      { href: '/dashboard/affiliate', label: 'Affiliate program', ready: true, tag: 'New' },
+      { href: '/dashboard/support', label: 'Help & support', ready: true },
+    ],
+  },
+];
+
+/** Pages an account without a store may open (everything else sends it to /onboard). */
+export function isStorelessPath(pathname: string): boolean {
+  return pathname.startsWith('/onboard') || pathname === '/dashboard/affiliate' || pathname === '/dashboard/support';
+}
 
 export function isNavItemActive(pathname: string, href: string, exact = false): boolean {
   if (href === '/dashboard' || exact) return pathname === href;

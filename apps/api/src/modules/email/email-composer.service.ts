@@ -6,6 +6,7 @@ import { AuthTokenService } from '../auth-tokens/auth-token.service';
 import { EmailConfigService } from './email.config';
 import {
   EMAIL_EVENTS,
+  type AffiliateEmailParams,
   type AiSupportHandoffParams,
   type BillingPaymentParams,
   type MerchantWelcomeParams,
@@ -18,6 +19,9 @@ import type { EmailMessage } from './providers/email-provider';
 import { EmailSendError } from './providers/email-provider';
 import type { EmailBrand } from './templates/layout';
 import {
+  affiliateApprovedEmail,
+  affiliateCommissionEmail,
+  affiliatePayoutEmail,
   aiSupportHandoffEmail,
   billingPaymentApprovedEmail,
   billingPaymentRejectedEmail,
@@ -165,6 +169,22 @@ export class EmailComposer {
             `${this.config.merchantUrl()}/dashboard/billing`,
           ),
         );
+      }
+      case EMAIL_EVENTS.AFFILIATE_APPROVED:
+      case EMAIL_EVENTS.AFFILIATE_COMMISSION_EARNED:
+      case EMAIL_EVENTS.AFFILIATE_PAYOUT_PAID:
+      case EMAIL_EVENTS.AFFILIATE_PAYOUT_REJECTED: {
+        const profile = await this.prisma.user.findUnique({ where: { id: user.id }, select: { firstName: true } });
+        const params = email.params as AffiliateEmailParams;
+        const firstName = profile?.firstName ?? null;
+        const url = `${this.config.merchantUrl()}/dashboard/affiliate`;
+        const rendered =
+          email.event === EMAIL_EVENTS.AFFILIATE_APPROVED
+            ? affiliateApprovedEmail(params, brand, firstName, url)
+            : email.event === EMAIL_EVENTS.AFFILIATE_COMMISSION_EARNED
+              ? affiliateCommissionEmail(params, brand, firstName, url)
+              : affiliatePayoutEmail(params, brand, firstName, url, email.event === EMAIL_EVENTS.AFFILIATE_PAYOUT_PAID);
+        return this.toMessage(email.event, user.email, rendered);
       }
       default:
         throw new EmailSendError('configuration', true);

@@ -386,7 +386,7 @@ describe('Theme editor (Shopify-style)', () => {
     const card = within(screen.getByRole('heading', { name: 'Rich text' }).closest('section')!);
     await user.clear(card.getByLabelText('Heading'));
     await user.type(card.getByLabelText('Heading'), 'Our story');
-    await user.type(card.getByLabelText(/^Text/), 'Made in Dhaka.{Enter}Since 2020.');
+    await user.type(card.getByLabelText(/^Text(?! color)/), 'Made in Dhaka.{Enter}Since 2020.');
     await user.type(card.getByLabelText('Button label'), 'Shop now');
     await user.type(card.getByLabelText(/^Button link/), '/products');
     // The panel is named after its heading, like the row.

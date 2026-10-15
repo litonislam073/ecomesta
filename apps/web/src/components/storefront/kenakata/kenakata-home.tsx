@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Fragment } from 'react';
 import type { PublicCategory, PublicProductCard, PublicStore, StoreThemeConfig, ThemeHomepageSection } from '@ecomesta/types';
 import { ContentSection, homeSections, sectionAnchor } from '@/components/storefront/content-sections';
-import { withStoreParam } from '@/lib/theme';
+import { safeColor, withStoreParam } from '@/lib/theme';
 import { KIcon, type KenakataIconName } from './icons';
 import { KenakataProductCard } from './kenakata-product-card';
 import { KK, kenakataDiscount } from './kenakata-utils';
@@ -129,13 +129,21 @@ export function KenakataHome({
           )}
           <div className="relative flex max-w-xl flex-col gap-5 p-8 sm:p-12 lg:p-14">
             {branding.tagline?.trim() ? (
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] sm:text-sm">{branding.tagline.trim()}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] sm:text-sm" style={{ color: safeColor(hero.eyebrowColor) }}>
+                {branding.tagline.trim()}
+              </p>
             ) : null}
-            <h1 id="kk-hero" className="font-[family-name:var(--font-display)] text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
+            <h1
+              id="kk-hero"
+              className="font-[family-name:var(--font-display)] text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl"
+              style={{ color: safeColor(hero.headingColor) }}
+            >
               {hero.headline?.trim() || branding.brandName?.trim() || store.name}
             </h1>
             {hero.subheadline?.trim() || store.description ? (
-              <p className="text-lg text-white/85">{hero.subheadline?.trim() || store.description}</p>
+              <p className="text-lg text-white/85" style={{ color: safeColor(hero.textColor) }}>
+                {hero.subheadline?.trim() || store.description}
+              </p>
             ) : null}
             <div className="flex flex-wrap gap-3 pt-2">
               <Link
@@ -273,10 +281,18 @@ export function KenakataHome({
               </>
             ) : null}
             {section.text?.trim() ? (
-              <span className="relative text-sm font-semibold uppercase tracking-widest opacity-80">{section.text.trim()}</span>
+              <span
+                className={`relative text-sm font-semibold uppercase tracking-widest ${safeColor(section.textColor) ? '' : 'opacity-80'}`}
+                style={{ color: safeColor(section.textColor) }}
+              >
+                {section.text.trim()}
+              </span>
             ) : null}
             {section.title?.trim() ? (
-              <h2 className="relative font-[family-name:var(--font-display)] text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
+              <h2
+                className="relative font-[family-name:var(--font-display)] text-3xl font-bold leading-tight tracking-tight sm:text-4xl"
+                style={{ color: safeColor(section.headingColor) }}
+              >
                 {section.title.trim()}
               </h2>
             ) : null}

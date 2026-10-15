@@ -25,6 +25,11 @@ export const FAQ_GROUPS: FaqGroup[] = [
           'Yes. The optional sample products are marked as Sample in the dashboard and can be edited or archived like any other product. Sample products are only offered before you add your own products and can be imported once per store.',
       },
       {
+        question: 'Does Ecomesta have an affiliate program?',
+        answer:
+          'Yes. Anyone with an Ecomesta account can apply — no store needed. Once approved you get a referral link and earn 20% of the first plan payment of every business that signs up through it within 30 days. After a 7-day hold you can withdraw from ৳500 to bKash, Nagad, Rocket or Upay.',
+      },
+      {
         question: 'Is there a free trial?',
         answer:
           'No. You pay for the plan you choose when you sign up. Monthly, 6-month (10% off) and yearly (25% off) billing are available.',
@@ -100,9 +105,14 @@ export const FAQ_GROUPS: FaqGroup[] = [
           'Yes, on the Growth and Business plans. In Marketing → Marketing & tracking paste your Facebook Pixel ID, Google Tag Manager Container ID, GA4 Measurement ID or Search Console verification tag. Shopping events such as add to cart and purchase are sent automatically.',
       },
       {
+        question: 'Can I see my store’s sales and visitors?',
+        answer:
+          'Yes. The dashboard shows today’s and this week’s sales, and Analytics shows sales, orders and best-selling products over time. On the Growth and Business plans you also see visitors, conversion rate, where visitors come from, the shopping funnel and any date range, with CSV export. Starter shows sales for the last 30 days. Visitors are counted without cookies and need no setup.',
+      },
+      {
         question: 'Can I build landing pages?',
         answer:
-          'Yes, on the Growth (up to 5 pages) and Business (unlimited) plans. In Marketing → Landing pages pick one of 5 designs — single product, festival sale, fashion lookbook, food & health or story sales page — choose your products, edit the text and pictures in a live editor and publish. Shoppers order on the page itself.',
+          'Yes, on the Growth (up to 5 pages) and Business (unlimited) plans. In Marketing → Landing pages pick one of 10 designs — single product, festival sale, fashion lookbook, food & health, story sales page, gadget, beauty & skincare, baby & kids, home & kitchen or trend/streetwear — choose your products, edit the text and pictures in a live editor and publish. Shoppers order on the page itself.',
       },
     ],
   },
