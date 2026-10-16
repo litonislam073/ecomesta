@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { PlatformNotFoundLinks } from '@/components/marketing/platform-not-found-links';
 
 /**
  * Shared by the marketing site and every storefront host, and embedded in every
@@ -19,6 +20,7 @@ export default function NotFound() {
           Go to the homepage
         </Link>
       </p>
+      <PlatformNotFoundLinks />
     </div>
   );
 }

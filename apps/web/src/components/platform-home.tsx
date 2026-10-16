@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import type { PublicPlan } from '@ecomesta/types';
 import { MarketingHome } from '@/components/marketing/marketing-home';
 import { MarketingShell } from '@/components/marketing/marketing-shell';
 import { buildMetadata } from '@/lib/marketing/seo';
@@ -13,10 +14,10 @@ export const PLATFORM_HOME_METADATA: Metadata = buildMetadata({
 /**
  * Ecomesta SaaS marketing homepage — independent of merchant storefront resolution.
  */
-export function PlatformHome() {
+export function PlatformHome({ plans }: { plans?: PublicPlan[] | null } = {}) {
   return (
     <MarketingShell>
-      <MarketingHome />
+      <MarketingHome plans={plans} />
     </MarketingShell>
   );
 }

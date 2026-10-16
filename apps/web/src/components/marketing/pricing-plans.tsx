@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { PublicPlan } from '@ecomesta/types';
-import { ButtonLink, CheckList } from '@ecomesta/ui/marketing';
+import { ButtonLink, CheckList, type MarketingLocale } from '@ecomesta/ui/marketing';
 import {
   BILLING_CYCLES,
   billingCycleDefinition,
@@ -11,18 +11,7 @@ import {
 } from '@ecomesta/utils';
 import { StaggerContainer } from '../animations/stagger';
 import { StaggerItem } from '../animations/stagger-item';
-
-const PERIOD_SUFFIX: Record<BillingCycleCode, string> = {
-  MONTHLY: '/month',
-  SEMI_ANNUAL: '/ 6 months',
-  YEARLY: '/year',
-};
-
-const PERIOD_WORDS: Record<BillingCycleCode, string> = {
-  MONTHLY: 'per month',
-  SEMI_ANNUAL: 'every 6 months',
-  YEARLY: 'per year',
-};
+import { PRICING_CARD_COPY } from './pricing-copy';
 
 function priceFor(plan: PublicPlan, cycle: BillingCycleCode) {
   return plan.prices.find((price) => price.billingCycle === cycle) ?? null;
@@ -37,10 +26,13 @@ export function planRegisterPath(plan: string, cycle: BillingCycleCode): string 
 export function PricingPlans({
   plans,
   merchantOrigin,
+  locale = 'en',
 }: {
   plans: PublicPlan[];
   merchantOrigin: string;
+  locale?: MarketingLocale;
 }) {
+  const copy = PRICING_CARD_COPY[locale];
   const [cycle, setCycle] = useState<BillingCycleCode>('MONTHLY');
   const [switched, setSwitched] = useState(false);
   const cycleIndex = Math.max(
@@ -51,7 +43,7 @@ export function PricingPlans({
   return (
     <div>
       <fieldset className="mx-auto w-full max-w-md">
-        <legend className="sr-only">Billing period</legend>
+        <legend className="sr-only">{copy.billingPeriod}</legend>
         <div className="relative grid grid-cols-3 gap-1 rounded-xl border border-[var(--color-border)] bg-white p-1">
           <span
             aria-hidden="true"
@@ -86,10 +78,10 @@ export function PricingPlans({
                     setSwitched(true);
                   }}
                 />
-                <span>{option.label}</span>
+                <span>{copy.cycleLabel[option.code]}</span>
                 {option.discountPercent > 0 ? (
                   <span className={`text-xs transition-colors duration-200 ${checked ? 'text-[var(--brand-on-navy-accent)]' : 'text-[var(--brand-green-text)]'}`}>
-                    Save {option.discountPercent}%
+                    {copy.save(option.discountPercent)}
                   </span>
                 ) : null}
               </label>
@@ -98,7 +90,7 @@ export function PricingPlans({
         </div>
       </fieldset>
 
-      <StaggerContainer as="ul" step={0.08} distance={20} className="mt-10 grid gap-6 lg:grid-cols-3" aria-label="Plans">
+      <StaggerContainer as="ul" step={0.08} distance={20} className="mt-10 grid gap-6 lg:grid-cols-3" aria-label={copy.plansLabel}>
         {plans.map((plan) => {
           const price = priceFor(plan, cycle);
           const amount = price?.amount ?? plan.monthlyPrice;
@@ -114,14 +106,14 @@ export function PricingPlans({
             >
               {plan.highlighted ? (
                 <p className="absolute -top-3 left-6 rounded-full bg-[var(--color-accent)] px-3 py-1 text-xs font-semibold text-white">
-                  Most Popular
+                  {copy.mostPopular}
                 </p>
               ) : null}
               <h3 id={headingId} className="font-display text-2xl tracking-tight text-[var(--color-ink)]">
                 {plan.name}
               </h3>
               {plan.tagline || plan.description ? (
-                <p className="mt-2 text-[var(--color-muted)]">{plan.tagline ?? plan.description}</p>
+                <p className="mt-2 text-[var(--color-muted)]">{copy.translate(plan.tagline ?? plan.description ?? '')}</p>
               ) : null}
               <p className="mt-5 flex flex-wrap items-baseline gap-x-1.5">
                 <span
@@ -130,12 +122,12 @@ export function PricingPlans({
                 >
                   {formatBdt(amount)}
                 </span>
-                <span className="text-[var(--color-muted)]">{PERIOD_SUFFIX[cycle]}</span>
+                <span className="text-[var(--color-muted)]">{copy.suffix[cycle]}</span>
               </p>
               <p key={switched ? cycle : undefined} className={`mt-1 min-h-5 text-sm text-[var(--color-muted)] ${switched ? 'em-price-in' : ''}`}>
                 {price && price.months > 1
-                  ? `${formatBdt(Math.round(price.effectiveMonthly))}/month · Save ${price.discountPercent}%`
-                  : 'Billed monthly'}
+                  ? copy.perMonthSaving(formatBdt(Math.round(price.effectiveMonthly)), price.discountPercent)
+                  : copy.billedMonthly}
               </p>
               <ButtonLink
                 href={`${merchantOrigin}${planRegisterPath(plan.slug, cycle)}`}
@@ -143,14 +135,13 @@ export function PricingPlans({
                 cta={`pricing-start-${plan.slug}`}
                 className="mt-6 w-full"
               >
-                Choose {plan.name}
+                {copy.choose(plan.name)}
               </ButtonLink>
               <p className="mt-3 text-sm text-[var(--color-muted)]">
-                Pay {formatBdt(amount)} {PERIOD_WORDS[cycle]} with bKash, Nagad, Rocket or Upay when you create your
-                store. It goes live as soon as we confirm the payment.
+                {copy.howToPay(formatBdt(amount), cycle)}
               </p>
               {plan.features.length > 0 ? (
-                <CheckList className="mt-6 border-t border-[var(--color-border)] pt-6 text-sm" items={plan.features} />
+                <CheckList className="mt-6 border-t border-[var(--color-border)] pt-6 text-sm" items={plan.features.map(copy.translate)} />
               ) : null}
             </StaggerItem>
           );

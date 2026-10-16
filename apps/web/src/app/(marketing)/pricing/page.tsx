@@ -1,12 +1,11 @@
-import type { PublicPlan } from '@ecomesta/types';
 import { PAYMENT_GRACE_DAYS } from '@ecomesta/utils';
 import { FadeUp } from '@/components/animations/fade';
 import { CtaSection, FaqList, JsonLd, PageHero } from '@/components/marketing/blocks';
 import { PricingPlans } from '@/components/marketing/pricing-plans';
 import { ButtonLink, Container } from '@/components/marketing/ui';
-import { breadcrumbJsonLd, buildMetadata, faqJsonLd, type Faq } from '@/lib/marketing/seo';
+import { loadPublicPlans } from '@/lib/marketing/plans';
+import { breadcrumbJsonLd, buildMetadata, faqJsonLd, softwareApplicationJsonLd, type Faq } from '@/lib/marketing/seo';
 import { merchantUrl, registerUrl } from '@/lib/marketing/site';
-import { publicGet } from '@/lib/public-api';
 
 export const metadata = buildMetadata({
   path: '/pricing',
@@ -54,21 +53,12 @@ const FAQS: Faq[] = [
   },
 ];
 
-async function loadPlans(): Promise<PublicPlan[] | null> {
-  try {
-    const result = await publicGet<{ success: true; data: PublicPlan[] }>('/public/plans');
-    return result.data.length > 0 ? result.data : null;
-  } catch {
-    return null;
-  }
-}
-
 export default async function PricingPage() {
-  const plans = await loadPlans();
+  const plans = await loadPublicPlans();
 
   return (
     <>
-      <JsonLd data={[breadcrumbJsonLd(CRUMBS), faqJsonLd(FAQS)]} />
+      <JsonLd data={[breadcrumbJsonLd(CRUMBS), softwareApplicationJsonLd(plans), faqJsonLd(FAQS)]} />
       <PageHero
         eyebrow="Pricing"
         title="Simple pricing for your growing business"

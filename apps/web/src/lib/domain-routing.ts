@@ -161,6 +161,8 @@ const MARKETING_PATH_PREFIXES = [
   '/cookie-policy',
   '/login',
   '/register',
+  // Bangla versions of marketing pages.
+  '/bn',
 ];
 
 /** Unrouted path the middleware rewrites to so Next serves its 404. */

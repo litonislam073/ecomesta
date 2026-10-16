@@ -5,6 +5,8 @@ import {
 } from '@/lib/domain-routing';
 import { BLOG_POSTS } from '@/lib/marketing/content/blog';
 import { CONTENT_UPDATED, indexableMarketingPaths } from '@/lib/marketing/content';
+import { BN_PAGES, toBanglaPath, toEnglishPath } from '@ecomesta/ui/marketing';
+import { languageAlternates } from '@/lib/marketing/seo';
 import { absoluteUrl } from '@/lib/marketing/site';
 
 export function requestIsMarketingHost(headers: Headers): boolean {
@@ -87,11 +89,16 @@ export function marketingSitemapXml(): string {
   const blogDates = new Map(
     BLOG_POSTS.map((post) => [`/blog/${post.slug}`, post.modifiedTime]),
   );
-  const urls = indexableMarketingPaths().map((path) => {
-    const { priority, changeFrequency } = sitemapHints(path);
+  const paths = [...indexableMarketingPaths(), ...BN_PAGES.map(toBanglaPath)];
+  const urls = paths.map((path) => {
+    const { priority, changeFrequency } = sitemapHints(toEnglishPath(path) ?? path);
+    const alternates = Object.entries(languageAlternates(path) ?? {}).map(
+      ([hreflang, href]) => `    <xhtml:link rel="alternate" hreflang="${hreflang}" href="${escapeXml(href)}"/>`,
+    );
     return [
       '  <url>',
       `    <loc>${escapeXml(absoluteUrl(path))}</loc>`,
+      ...alternates,
       `    <lastmod>${blogDates.get(path) ?? CONTENT_UPDATED}</lastmod>`,
       `    <changefreq>${changeFrequency}</changefreq>`,
       `    <priority>${priority}</priority>`,
@@ -100,7 +107,7 @@ export function marketingSitemapXml(): string {
   });
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
     ...urls,
     '</urlset>',
     '',

@@ -4,6 +4,7 @@ import {
   StorefrontHome,
   storefrontHomeMetadata,
 } from '@/components/storefront-home';
+import { loadPublicPlans } from '@/lib/marketing/plans';
 import { resolveStoreSlug } from '@/lib/store-resolver';
 
 /**
@@ -38,5 +39,5 @@ export default async function RootPage({
   if (await hasStorefrontContext()) {
     return <StorefrontHome searchParams={searchParams} />;
   }
-  return <PlatformHome />;
+  return <PlatformHome plans={await loadPublicPlans()} />;
 }

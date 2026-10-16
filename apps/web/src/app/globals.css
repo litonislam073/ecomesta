@@ -9,6 +9,22 @@
   --font-display: 'Fraunces', Georgia, serif;
 }
 
+/* Bangla marketing pages (/bn): Hind Siliguri reads well in Bangla and also covers
+   the Latin brand names; Bangla vowel signs need more room than Latin lines. */
+.ecomesta-bn {
+  --font-sans: var(--font-hind-siliguri), 'Segoe UI', sans-serif;
+  --font-display: var(--font-hind-siliguri), 'Segoe UI', sans-serif;
+  font-family: var(--font-sans);
+}
+.ecomesta-bn .font-display {
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.3;
+}
+.ecomesta-bn .uppercase {
+  letter-spacing: 0;
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);

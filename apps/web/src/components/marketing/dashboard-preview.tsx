@@ -67,7 +67,7 @@ export function DashboardPreview() {
               <div className="flex gap-2.5 rounded-lg border border-[var(--color-border)] p-2.5">
                 <Image
                   src="/demo-catalog/cotton-t-shirt.jpg"
-                  alt=""
+                  alt="Cotton T-shirt product photo"
                   width={56}
                   height={42}
                   className="h-11 w-14 shrink-0 rounded-md object-cover"
@@ -92,7 +92,7 @@ export function DashboardPreview() {
       <Floating className="absolute -bottom-6 -left-3 hidden w-40 overflow-hidden rounded-xl border border-[var(--color-border)] bg-white shadow-xl sm:block md:-left-8">
         <Image
           src="/demo-catalog/wireless-headphones.jpg"
-          alt=""
+          alt="Wireless headphones product photo"
           width={160}
           height={120}
           className="h-24 w-full object-cover"

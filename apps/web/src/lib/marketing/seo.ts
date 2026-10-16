@@ -1,10 +1,20 @@
 import type { Metadata } from 'next';
+import type { PublicPlan } from '@ecomesta/types';
+import {
+  SOCIAL_LINKS,
+  SUPPORT_PHONE,
+  hasBanglaVersion,
+  toBanglaPath,
+  toEnglishPath,
+  type MarketingLocale,
+} from '@ecomesta/ui/marketing';
 import {
   DEFAULT_OG_IMAGE_PATH,
   ORGANIZATION_LOGO,
   SITE_DESCRIPTION,
   SITE_NAME,
   absoluteUrl,
+  contactEmail,
   googleSiteVerification,
   siteUrl,
 } from '@/lib/marketing/site';
@@ -16,6 +26,19 @@ export interface PageSeo {
   type?: 'website' | 'article';
   publishedTime?: string;
   modifiedTime?: string;
+  /** Bangla pages live under /bn and point at their English twin. */
+  locale?: MarketingLocale;
+}
+
+/** hreflang links for a page that exists in English and Bangla; undefined otherwise. */
+export function languageAlternates(path: string): Record<string, string> | undefined {
+  const english = toEnglishPath(path) ?? path;
+  if (!hasBanglaVersion(english)) return undefined;
+  return {
+    'en-BD': absoluteUrl(english),
+    'bn-BD': absoluteUrl(toBanglaPath(english)),
+    'x-default': absoluteUrl(english),
+  };
 }
 
 export function buildMetadata({
@@ -25,8 +48,10 @@ export function buildMetadata({
   type = 'website',
   publishedTime,
   modifiedTime,
+  locale = 'en',
 }: PageSeo): Metadata {
   const url = absoluteUrl(path);
+  const languages = languageAlternates(path);
   const image = absoluteUrl(DEFAULT_OG_IMAGE_PATH);
   const verification = googleSiteVerification();
 
@@ -34,13 +59,14 @@ export function buildMetadata({
     metadataBase: new URL(siteUrl()),
     title: { absolute: title },
     description,
-    alternates: { canonical: url },
+    alternates: { canonical: url, ...(languages ? { languages } : {}) },
     openGraph: {
       title,
       description,
       url,
       siteName: SITE_NAME,
-      locale: 'en_BD',
+      locale: locale === 'bn' ? 'bn_BD' : 'en_BD',
+      ...(languages ? { alternateLocale: locale === 'bn' ? 'en_BD' : 'bn_BD' } : {}),
       images: [{ url: image, width: 1200, height: 630, alt: SITE_NAME }],
       ...(type === 'article'
         ? { type: 'article', publishedTime, modifiedTime }
@@ -77,6 +103,17 @@ export function organizationJsonLd(): JsonLd {
     },
     description: SITE_DESCRIPTION,
     areaServed: 'BD',
+    telephone: SUPPORT_PHONE.e164,
+    email: contactEmail(),
+    contactPoint: {
+      '@type': 'ContactPoint',
+      telephone: SUPPORT_PHONE.e164,
+      email: contactEmail(),
+      contactType: 'customer support',
+      areaServed: 'BD',
+      availableLanguage: ['bn', 'en'],
+    },
+    sameAs: SOCIAL_LINKS.map((social) => social.href),
   };
 }
 
@@ -92,7 +129,26 @@ export function websiteJsonLd(): JsonLd {
   };
 }
 
-export function softwareApplicationJsonLd(): JsonLd {
+/** Monthly price of each plan, in BDT, from the same data the pricing page shows. */
+export function planOffersJsonLd(plans: PublicPlan[]): JsonLd[] {
+  return plans.map((plan) => ({
+    '@type': 'Offer',
+    name: plan.name,
+    price: String(plan.monthlyPrice),
+    priceCurrency: plan.currency,
+    url: absoluteUrl('/pricing'),
+    category: 'subscription',
+    priceSpecification: {
+      '@type': 'UnitPriceSpecification',
+      price: String(plan.monthlyPrice),
+      priceCurrency: plan.currency,
+      unitCode: 'MON',
+      referenceQuantity: { '@type': 'QuantitativeValue', value: 1, unitCode: 'MON' },
+    },
+  }));
+}
+
+export function softwareApplicationJsonLd(plans?: PublicPlan[] | null): JsonLd {
   return {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
@@ -103,6 +159,7 @@ export function softwareApplicationJsonLd(): JsonLd {
     url: absoluteUrl('/'),
     description: SITE_DESCRIPTION,
     publisher: { '@id': ORGANIZATION_ID() },
+    ...(plans?.length ? { offers: planOffersJsonLd(plans) } : {}),
   };
 }
 

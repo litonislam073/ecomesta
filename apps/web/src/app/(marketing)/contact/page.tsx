@@ -1,3 +1,4 @@
+import { CONTACT_ICON_PATHS, SOCIAL_LINKS, SUPPORT_PHONE, SUPPORT_WHATSAPP } from '@ecomesta/ui/marketing';
 import { CtaSection, JsonLd, LinkCard, PageHero } from '@/components/marketing/blocks';
 import { ContactForm } from '@/components/marketing/contact-form';
 import { FadeUp } from '@/components/animations/fade';
@@ -7,9 +8,9 @@ import { SITE_NAME, absoluteUrl, contactEmail, loginUrl, merchantUrl, registerUr
 
 export const metadata = buildMetadata({
   path: '/contact',
-  title: 'Contact Ecomesta',
+  title: 'Contact Ecomesta — Ecommerce Support in Bangladesh',
   description:
-    'Contact the Ecomesta team about plans, getting started, payments or your online store. Send us a message and we will call or email you back.',
+    'Call 09697-493407, message us on WhatsApp or send a message to the Ecomesta team about plans, getting started, payments or your online store in Bangladesh.',
 });
 
 const CRUMBS = [
@@ -82,6 +83,43 @@ export default function ContactPage() {
               Reach the Ecomesta team
             </h2>
             <ul className="mt-5 space-y-5">
+              <li className="flex gap-4">
+                <ChannelIcon>
+                  <path d={CONTACT_ICON_PATHS.phone} />
+                </ChannelIcon>
+                <div>
+                  <p className="font-semibold">Phone</p>
+                  <a
+                    href={SUPPORT_PHONE.href}
+                    data-cta="call-contact"
+                    className="font-semibold text-[var(--color-accent)] underline-offset-4 hover:underline"
+                  >
+                    {SUPPORT_PHONE.display}
+                  </a>
+                </div>
+              </li>
+              <li className="flex gap-4">
+                <span
+                  aria-hidden="true"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#e7f9ee] text-[#128C7E]"
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+                    <path d={CONTACT_ICON_PATHS.whatsapp} />
+                  </svg>
+                </span>
+                <div>
+                  <p className="font-semibold">WhatsApp</p>
+                  <a
+                    href={SUPPORT_WHATSAPP.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-cta="whatsapp-contact"
+                    className="font-semibold text-[var(--color-accent)] underline-offset-4 hover:underline"
+                  >
+                    {SUPPORT_WHATSAPP.display}
+                  </a>
+                </div>
+              </li>
               {email ? (
                 <li className="flex gap-4">
                   <ChannelIcon>
@@ -132,6 +170,26 @@ export default function ContactPage() {
                 </div>
               </li>
             </ul>
+            <div className="mt-6 border-t border-[var(--color-border)] pt-5">
+              <p className="text-sm font-semibold">Follow Ecomesta</p>
+              <ul className="mt-2 flex flex-wrap gap-2">
+                {SOCIAL_LINKS.map((social) => (
+                  <li key={social.label}>
+                    <a
+                      href={social.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm font-semibold hover:border-[var(--color-accent)]"
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor" className={`h-4 w-4 ${social.label === 'Facebook' ? 'text-[#1877F2]' : 'text-[#FF0000]'}`}>
+                        <path d={social.label === 'Facebook' ? CONTACT_ICON_PATHS.facebook : CONTACT_ICON_PATHS.youtube} />
+                      </svg>
+                      {social.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
             <div className="mt-7 flex flex-wrap gap-3">
               <ButtonLink href={registerUrl()} cta="create-store-contact">
                 Create Your Store

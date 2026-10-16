@@ -7,6 +7,7 @@ import RegisterRoute, { metadata as registerMetadata } from '@/app/register/page
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/login',
 }));
 
 vi.mock('@/lib/auth-context', () => ({

@@ -163,17 +163,26 @@ describe('robots.txt and sitemap.xml', () => {
     const { indexableMarketingPaths } = await import('@/lib/marketing/content');
     const xml = marketingSitemapXml();
 
-    expect(xml.startsWith('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')).toBe(true);
+    expect(
+      xml.startsWith(
+        '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
+      ),
+    ).toBe(true);
     expect(xml.trimEnd().endsWith('</urlset>')).toBe(true);
     const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1] ?? '');
-    expect(locs).toEqual(indexableMarketingPaths().map((path) => `${SITE}${path}`));
+    expect(locs).toEqual([...indexableMarketingPaths(), '/bn', '/bn/pricing'].map((path) => `${SITE}${path}`));
+    // English and Bangla versions point at each other.
+    expect(xml).toMatch(
+      new RegExp(`<loc>${SITE}/bn/pricing</loc>\\s*<xhtml:link rel="alternate" hreflang="en-BD" href="${SITE}/pricing"/>`),
+    );
+    expect(xml.match(/hreflang="bn-BD"/g)).toHaveLength(4);
     expect(new Set(locs).size).toBe(locs.length);
     expect(xml.match(/<url>/g)).toHaveLength(locs.length);
     expect(xml.match(/<changefreq>(weekly|monthly|yearly)<\/changefreq>/g)).toHaveLength(locs.length);
     expect(xml.match(/<lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/g)).toHaveLength(locs.length);
     expect(xml).not.toMatch(/localhost|127\.0\.0\.1|store-(unavailable|not-found)/);
     expect(locs.filter((loc) => loc.includes('?') || (loc.endsWith('/') && loc !== `${SITE}/`))).toEqual([]);
-    expect(xml).toContain(`<loc>${SITE}/</loc>\n    <lastmod>`);
+    expect(xml).toMatch(new RegExp(`<loc>${SITE}/</loc>\\n(    <xhtml:link [^\\n]+\\n)+    <lastmod>`));
     expect(xml).toMatch(new RegExp(`<loc>${SITE}/</loc>[\\s\\S]*?<priority>1.0</priority>`));
   });
 
@@ -221,6 +230,48 @@ describe('structured data', () => {
 
     const text = JSON.stringify([organization, website, app]);
     expect(text).not.toMatch(/aggregateRating|review|ratingValue|localhost/i);
+  });
+
+  it('gives Organization the support phone, email and social profiles', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', SITE);
+    const { organizationJsonLd } = await import('@/lib/marketing/seo');
+    expect(organizationJsonLd()).toMatchObject({
+      telephone: '+8809697493407',
+      contactPoint: {
+        '@type': 'ContactPoint',
+        telephone: '+8809697493407',
+        contactType: 'customer support',
+        areaServed: 'BD',
+        availableLanguage: ['bn', 'en'],
+      },
+      sameAs: ['https://www.facebook.com/ecomesta', 'https://www.youtube.com/@Ecomesta'],
+    });
+  });
+
+  it('lists each plan as a monthly BDT offer, and none without plans', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', SITE);
+    const { softwareApplicationJsonLd } = await import('@/lib/marketing/seo');
+    const plan = (name: string, monthlyPrice: number) =>
+      ({ name, slug: name.toLowerCase(), monthlyPrice, currency: 'BDT' }) as import('@ecomesta/types').PublicPlan;
+    const app = softwareApplicationJsonLd([plan('Starter', 99), plan('Growth', 299), plan('Business', 699)]);
+    const offers = app.offers as Record<string, unknown>[];
+    expect(offers).toHaveLength(3);
+    expect(offers[0]).toMatchObject({ '@type': 'Offer', name: 'Starter', price: '99', priceCurrency: 'BDT', url: `${SITE}/pricing` });
+    expect(offers.map((o) => o.price)).toEqual(['99', '299', '699']);
+    expect(softwareApplicationJsonLd(null)).not.toHaveProperty('offers');
+  });
+
+  it('links English and Bangla versions with hreflang', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', SITE);
+    const { buildMetadata, languageAlternates } = await import('@/lib/marketing/seo');
+    const pair = { 'en-BD': `${SITE}/pricing`, 'bn-BD': `${SITE}/bn/pricing`, 'x-default': `${SITE}/pricing` };
+    expect(languageAlternates('/pricing')).toEqual(pair);
+    expect(languageAlternates('/bn/pricing')).toEqual(pair);
+    expect(languageAlternates('/features')).toBeUndefined();
+    const bn = buildMetadata({ path: '/bn/pricing', title: 't', description: 'd', locale: 'bn' });
+    expect(bn.alternates).toEqual({ canonical: `${SITE}/bn/pricing`, languages: pair });
+    expect(bn.openGraph).toMatchObject({ locale: 'bn_BD', alternateLocale: 'en_BD' });
+    expect(buildMetadata({ path: '/features', title: 't', description: 'd' }).alternates).toEqual({ canonical: `${SITE}/features` });
   });
 
   it('builds breadcrumbs and FAQ markup from the visible content', async () => {
