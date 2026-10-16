@@ -3,9 +3,11 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import type { Category, Product, ProductStatus, ProductType } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
+import { DescriptionEditor } from '@/components/catalog/description-editor';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { isNonNegativeMoney, isValidSlug, normalizeSlug, slugifyFromName } from '@/lib/catalog-utils';
+import { stockError, stockKey, type StockTarget } from '@/lib/product-stock';
 
 export type ProductFormValues = {
   name: string;
@@ -41,6 +43,66 @@ const emptyValues: ProductFormValues = {
   categoryIds: [],
 };
 
+function stockValues(targets: StockTarget[] | undefined): Record<string, string> {
+  return Object.fromEntries((targets ?? []).map((t) => [stockKey(t.variantId), String(t.quantity)]));
+}
+
+function StockFields({
+  targets,
+  stock,
+  tracked,
+  onChange,
+}: {
+  targets: StockTarget[];
+  stock: Record<string, string>;
+  tracked: boolean;
+  onChange: (key: string, value: string) => void;
+}) {
+  if (!tracked) {
+    return (
+      <p className="text-sm text-[var(--color-muted)] md:col-span-2">
+        Stock is not counted for this product, so it never sells out. Tick “Track inventory” to set how many you have.
+      </p>
+    );
+  }
+  const perVariant = targets.length > 1 || targets[0]?.variantId !== null;
+  return (
+    <fieldset className="space-y-2 md:col-span-2">
+      <legend className="text-sm font-medium">{perVariant ? 'Stock per variant' : 'Stock'}</legend>
+      <p className="text-xs text-[var(--color-muted)]">
+        How many you have right now. Orders reduce it automatically. Saved together with the product.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {targets.map((target) => {
+          const key = stockKey(target.variantId);
+          const hintId = `stock-hint-${key}`;
+          return (
+            <div key={key} className="space-y-1 text-sm">
+              <label className="block space-y-1">
+                <span>{perVariant ? `${target.label} stock` : target.label}</span>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  step={1}
+                  value={stock[key] ?? ''}
+                  aria-describedby={target.reserved > 0 ? hintId : undefined}
+                  onChange={(e) => onChange(key, e.target.value)}
+                />
+              </label>
+              {target.reserved > 0 ? (
+                <p id={hintId} className="text-xs text-[var(--color-muted)]">
+                  {target.reserved} held for open orders
+                </p>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
+
 export function productToFormValues(product: Product): ProductFormValues {
   return {
     name: product.name,
@@ -66,6 +128,7 @@ export function ProductForm({
   busy,
   submitLabel,
   allowArchivedStatus = false,
+  stockTargets,
   onSubmit,
 }: {
   initial?: ProductFormValues;
@@ -73,9 +136,20 @@ export function ProductForm({
   busy?: boolean;
   submitLabel: string;
   allowArchivedStatus?: boolean;
-  onSubmit: (values: ProductFormValues) => Promise<void> | void;
+  /** Where stock is counted; leave out to hide the stock fields. */
+  stockTargets?: StockTarget[];
+  /** `stock` maps each target (see `stockKey`) to the number typed. */
+  onSubmit: (values: ProductFormValues, stock: Record<string, string>) => Promise<void> | void;
 }) {
   const [values, setValues] = useState<ProductFormValues>(initial ?? emptyValues);
+  const [stock, setStock] = useState<Record<string, string>>(() => stockValues(stockTargets));
+  const appliedTargets = useRef(stockTargets);
+  useEffect(() => {
+    if (stockTargets !== appliedTargets.current) {
+      appliedTargets.current = stockTargets;
+      setStock(stockValues(stockTargets));
+    }
+  }, [stockTargets]);
   const [slugTouched, setSlugTouched] = useState(Boolean(initial?.slug));
   const [error, setError] = useState<string | null>(null);
 
@@ -119,7 +193,16 @@ export function ProductForm({
       setError('Cost price is invalid.');
       return;
     }
-    await onSubmit({ ...values, slug });
+    if (values.trackInventory) {
+      for (const target of stockTargets ?? []) {
+        const message = stockError(stock[stockKey(target.variantId)] ?? '', target, values.allowBackorder);
+        if (message) {
+          setError(message);
+          return;
+        }
+      }
+    }
+    await onSubmit({ ...values, slug }, stock);
   }
 
   return (
@@ -180,14 +263,9 @@ export function ProductForm({
             onChange={(e) => update('shortDescription', e.target.value)}
           />
         </label>
-        <label className="space-y-1 text-sm md:col-span-2">
-          <span>Description</span>
-          <textarea
-            className="min-h-28 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
-            value={values.description}
-            onChange={(e) => update('description', e.target.value)}
-          />
-        </label>
+        <div className="md:col-span-2">
+          <DescriptionEditor value={values.description} onChange={(description) => update('description', description)} />
+        </div>
       </section>
 
       <section className="grid gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 md:grid-cols-3">
@@ -234,6 +312,14 @@ export function ProductForm({
           />
           Allow backorder
         </label>
+        {stockTargets?.length ? (
+          <StockFields
+            targets={stockTargets}
+            stock={stock}
+            tracked={values.trackInventory}
+            onChange={(key, value) => setStock((prev) => ({ ...prev, [key]: value }))}
+          />
+        ) : null}
         <label className="space-y-1 text-sm">
           <span>SKU</span>
           <Input value={values.sku} onChange={(e) => update('sku', e.target.value)} />

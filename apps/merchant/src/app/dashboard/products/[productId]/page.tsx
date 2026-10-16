@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type {
   Category,
+  InventoryItem,
   OffsetPageMeta,
   ProductDetail,
   ProductVariant,
@@ -31,6 +32,7 @@ import { useToast } from '@/components/ui/toast';
 import { ApiError, api } from '@/lib/api-client';
 import { humanApiError } from '@/lib/catalog-utils';
 import { useCanManageStore } from '@/lib/permissions';
+import { fetchProductInventory, saveProductStock, stockTargetsFor } from '@/lib/product-stock';
 import { useStoreContext } from '@/lib/store-context';
 
 function toUpdateBody(values: ProductFormValues) {
@@ -82,6 +84,12 @@ function ProductDetailContent() {
     [product],
   );
   const [categories, setCategories] = useState<Category[]>([]);
+  // null when stock could not be loaded: the stock fields are hidden then.
+  const [inventory, setInventory] = useState<InventoryItem[] | null>(null);
+  const stockTargets = useMemo(
+    () => (product && inventory ? stockTargetsFor(product.variants, inventory) : undefined),
+    [product, inventory],
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -100,7 +108,7 @@ function ProductDetailContent() {
     setLoading(true);
     setError(null);
     try {
-      const [productRes, categoriesRes] = await Promise.all([
+      const [productRes, categoriesRes, inventoryItems] = await Promise.all([
         api.get<{ success: true; data: ProductDetail }>(
           `/stores/${selectedStoreId}/products/${productId}`,
         ),
@@ -108,8 +116,10 @@ function ProductDetailContent() {
           success: true;
           data: { items: Category[]; meta: OffsetPageMeta };
         }>(`/stores/${selectedStoreId}/categories?limit=100`),
+        fetchProductInventory(selectedStoreId, productId).catch(() => null),
       ]);
       setProduct(productRes.data);
+      setInventory(inventoryItems);
       setImageUrl(productRes.data.imageUrl ?? null);
       setCategories(categoriesRes.data.items);
     } catch (err) {
@@ -130,7 +140,7 @@ function ProductDetailContent() {
     void load();
   }, [load]);
 
-  async function onSave(values: ProductFormValues) {
+  async function onSave(values: ProductFormValues, stock: Record<string, string>) {
     if (!selectedStoreId || !productId) return;
     setBusy(true);
     try {
@@ -143,6 +153,15 @@ function ProductDetailContent() {
           ? { ...prev, ...result.data, variants: prev.variants }
           : { ...result.data, variants: [] },
       );
+      if (values.trackInventory && stockTargets) {
+        try {
+          await saveProductStock(selectedStoreId, productId, stockTargets, stock);
+          setInventory(await fetchProductInventory(selectedStoreId, productId));
+        } catch (err) {
+          pushToast(humanApiError(err, 'Product saved, but the stock could not be updated'), 'error');
+          return;
+        }
+      }
       pushToast('Product updated.', 'success');
     } catch (err) {
       pushToast(humanApiError(err, 'Could not update product'), 'error');
@@ -280,6 +299,7 @@ function ProductDetailContent() {
               busy={busy}
               submitLabel="Save changes"
               allowArchivedStatus
+              stockTargets={stockTargets}
               onSubmit={onSave}
             />
           ) : (

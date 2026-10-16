@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import type { PublicProductCard, PublicProductDetail } from '@ecomesta/types';
+import { RichTextContent } from '@ecomesta/ui';
 import { lineKey, useCart } from '@/lib/cart';
 import { formatMoney, multiplyMoney } from '@/lib/money';
 import { withStoreParam } from '@/lib/theme';
@@ -259,7 +260,9 @@ export function KenakataProductView({
           <h2 id="kk-details" className="mb-4 font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight text-[var(--color-ink)] sm:text-3xl">
             Product details
           </h2>
-          {product.description ? <p className="whitespace-pre-wrap text-[var(--color-ink)]/80">{product.description}</p> : null}
+          {product.description ? (
+            <RichTextContent text={product.description} className="text-[var(--color-ink)]/80" headingClassName="text-[var(--color-ink)]" />
+          ) : null}
           {product.sku || selected?.sku ? (
             <dl className="mt-4 border-t border-[var(--color-border)]">
               <div className="flex gap-4 border-b border-[var(--color-border)] py-3.5">

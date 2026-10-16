@@ -22,6 +22,7 @@ import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api-client';
 import { humanApiError } from '@/lib/catalog-utils';
 import { useCanManageStore } from '@/lib/permissions';
+import { saveProductStock, type StockTarget } from '@/lib/product-stock';
 import { useStoreContext } from '@/lib/store-context';
 
 function toCreateBody(values: ProductFormValues) {
@@ -42,6 +43,8 @@ function toCreateBody(values: ProductFormValues) {
     categoryIds: values.categoryIds,
   };
 }
+
+const NEW_PRODUCT_STOCK: StockTarget[] = [{ variantId: null, label: 'Stock quantity', quantity: 0, reserved: 0 }];
 
 function NewProductContent() {
   const router = useRouter();
@@ -80,7 +83,7 @@ function NewProductContent() {
     void loadCategories();
   }, [loadCategories]);
 
-  async function onSubmit(values: ProductFormValues) {
+  async function onSubmit(values: ProductFormValues, stock: Record<string, string>) {
     if (!selectedStoreId) return;
     setBusy(true);
     try {
@@ -89,6 +92,13 @@ function NewProductContent() {
         toCreateBody(values),
       );
       pushToast('Product created.', 'success');
+      if (values.trackInventory) {
+        try {
+          await saveProductStock(selectedStoreId, result.data.id, NEW_PRODUCT_STOCK, stock);
+        } catch (err) {
+          pushToast(humanApiError(err, 'The stock could not be saved. Set it again on the product page.'), 'error');
+        }
+      }
       if (imageFile) {
         try {
           await uploadProductImage(selectedStoreId, result.data.id, imageFile);
@@ -166,6 +176,7 @@ function NewProductContent() {
           categories={categories}
           busy={busy}
           submitLabel="Create product"
+          stockTargets={NEW_PRODUCT_STOCK}
           onSubmit={onSubmit}
         />
       ) : null}

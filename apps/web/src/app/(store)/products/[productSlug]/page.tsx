@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import type { PublicProductCard, PublicProductDetail } from '@ecomesta/types';
+import { RichTextContent, richTextToPlain } from '@ecomesta/ui';
 import { AddToCartPanel } from '@/components/add-to-cart-panel';
 import { KenakataProductView } from '@/components/storefront/kenakata/kenakata-product';
 import { TrackProductView } from '@/components/storefront/track-product-view';
@@ -32,7 +33,7 @@ export async function generateMetadata({
       store,
       configuration,
       pageTitle: product.name,
-      pageDescriptions: [product.shortDescription, product.description],
+      pageDescriptions: [product.shortDescription, richTextToPlain(product.description)],
     });
     const path = `/products/${encodeURIComponent(params.productSlug)}`;
     const url = storeCanonicalUrl(path, store.slug);
@@ -126,9 +127,7 @@ export default async function ProductDetailPage({
         {product.description ? (
           <div className="prose prose-sm max-w-none text-[var(--color-ink)]">
             <h2 className="text-lg font-semibold">Description</h2>
-            <p className="whitespace-pre-wrap text-[var(--color-muted)]">
-              {product.description}
-            </p>
+            <RichTextContent text={product.description} className="mt-2 text-[var(--color-muted)]" headingClassName="text-[var(--color-ink)]" />
           </div>
         ) : null}
       </div>
