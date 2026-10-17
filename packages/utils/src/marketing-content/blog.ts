@@ -32,6 +32,101 @@ export interface BlogPost {
 
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: 'ecommerce-website-cost-bangladesh',
+    title: 'How Much Does an Ecommerce Website Cost in Bangladesh? (2026 Guide)',
+    description:
+      'Real 2026 costs of an ecommerce website in Bangladesh: custom development, WooCommerce and Shopify, and ready-made platforms from ৳99 a month — plus the hidden costs and a first-year budget.',
+    category: 'bangladesh-ecommerce',
+    publishedTime: '2026-10-17',
+    modifiedTime: '2026-10-17',
+    readingMinutes: 7,
+    intro:
+      'An ecommerce website in Bangladesh can cost anything from ৳99 a month to more than ৳85,000 up front. The price depends less on “a website” and more on how it is built, who maintains it and what you pay every month after launch. This guide breaks down the three common routes, the costs people forget, and a simple first-year budget so you can choose with real numbers.',
+    sections: [
+      {
+        heading: 'The short answer',
+        bullets: [
+          'Custom-built website: usually ৳20,000–৳85,000 or more one-time, plus yearly hosting, domain and developer support',
+          'WooCommerce or Shopify: the software looks cheap or free, but hosting, themes, apps and setup add up — and Shopify bills in US dollars every month',
+          'Ready-made Bangladesh platform such as Ecomesta: from ৳99 a month, with hosting, security, checkout and updates included',
+        ],
+      },
+      {
+        heading: 'Option 1: A custom-built website',
+        paragraphs: [
+          'Hiring an agency or freelancer to build your store gives you a design made just for you. Published Bangladesh price lists in mid-2026 put a basic Laravel or PHP ecommerce website at roughly ৳21,000–৳25,000, a Shopify store setup around ৳32,000, a multi-vendor marketplace around ৳50,000, and a custom React or Node.js build at ৳85,000 or more. Agencies that quote for larger projects often start at ৳60,000–৳150,000.',
+          'The build price is only the beginning. A custom site needs hosting, an SSL certificate, a domain, payment-gateway integration, security updates and someone to fix things when they break. If the original developer is not available, small changes can become expensive.',
+        ],
+        bullets: [
+          'Best for: businesses with unusual requirements and a budget for ongoing development',
+          'Watch out for: who owns the code, what support is included after launch, and the yearly renewal cost',
+        ],
+      },
+      {
+        heading: 'Option 2: WooCommerce or Shopify',
+        paragraphs: [
+          'WooCommerce is free to install on WordPress, which is why it powers most stores in Bangladesh. You still pay for hosting, a premium theme, plugins for local couriers and payments, and usually a developer to set it up and keep plugins updated. Slow hosting or an outdated plugin can take the whole store down.',
+          'Shopify is easy to use, but plans are charged in US dollars every month and many features — local courier booking, Cash on Delivery rules, Bangladesh delivery areas — need paid apps. Paying a dollar subscription with a Bangladeshi card is also not always simple. Check Shopify’s current pricing and the apps you would need before you decide.',
+        ],
+      },
+      {
+        heading: 'Option 3: A ready-made platform built for Bangladesh',
+        paragraphs: [
+          'A hosted ecommerce platform gives you a working store in minutes: storefront, cart, checkout, order management, hosting and security, for a fixed monthly fee in taka. You do not pay a developer to start, and the platform keeps the software updated.',
+          'Ecomesta, for example, has three plans. Starter is ৳99 a month for up to 25 products with Cash on Delivery checkout. Growth is ৳299 a month for up to 100 products, your own domain, SSLCommerz online payments (bKash, Nagad and cards), coupons, delivery zones, all themes, Facebook Pixel and Google Analytics, and landing pages. Business is ৳699 a month for unlimited products, Stripe for international cards and premium themes. Paying for 6 months saves 10% and paying yearly saves 25% — Growth works out to ৳2,691 for a full year.',
+        ],
+      },
+      {
+        heading: 'Costs every online store has',
+        paragraphs: [
+          'Whichever route you choose, budget for these too:',
+        ],
+        bullets: [
+          'Domain name: about ৳1,500–৳2,000 a year for a .com (optional on Ecomesta — every store gets a free web address)',
+          'Payment gateway fees: online gateways such as SSLCommerz charge a percentage of each payment under your agreement with them',
+          'Courier charges: delivery inside and outside Dhaka, plus the cost of returned Cash on Delivery parcels',
+          'Product photos and descriptions: good photos sell more than an expensive design',
+          'Marketing: Facebook and Google ads, and boosting posts, are usually the biggest monthly cost once you start selling',
+        ],
+      },
+      {
+        heading: 'Example first-year budget',
+        paragraphs: [
+          'Here is how the first year can compare for a small shop with around 50 products. Your numbers will differ, but the pattern is typical.',
+        ],
+        bullets: [
+          'Custom website: ৳25,000 build + about ৳5,000 hosting + ৳1,800 domain + developer fixes = roughly ৳32,000 or more before your first sale',
+          'Ecomesta Growth, paid yearly: ৳2,691 + optional ৳1,800 domain = under ৳4,500, with hosting, checkout and updates included',
+          'The difference — often ৳25,000 or more — can go into stock, product photos and ads instead',
+        ],
+      },
+      {
+        heading: 'How to choose',
+        flow: [
+          'Count your products',
+          'List the payment methods you need',
+          'Decide who will maintain the site',
+          'Compare the full first-year cost',
+          'Start small and upgrade as you grow',
+        ],
+        paragraphs: [
+          'If you are moving from a Facebook page or starting out, begin with a ready-made platform: you can be selling this week and you only pay a small monthly fee. Move to a custom build later if your business really needs something no platform offers.',
+        ],
+      },
+      {
+        heading: 'Don’t forget the paperwork',
+        paragraphs: [
+          'An online business in Bangladesh generally needs a trade license from your city corporation or local authority, a TIN for tax, and a Digital Business Identity (DBID), which the Ministry of Commerce issues free at dbid.gov.bd. Online stores are also expected to publish their terms in Bangla. Requirements change, so check the current rules or ask an adviser before you launch.',
+        ],
+      },
+    ],
+    related: [
+      { href: '/pricing', label: 'Ecomesta plans and prices' },
+      { href: '/features/online-store', label: 'What you get with an Ecomesta online store' },
+      { href: '/blog/facebook-page-to-online-store', label: 'Moving from a Facebook page to your own store' },
+    ],
+  },
+  {
     slug: 'delivery-charges-bangladesh-online-store',
     title: 'How to Set Delivery Charges for an Online Store in Bangladesh',
     description:

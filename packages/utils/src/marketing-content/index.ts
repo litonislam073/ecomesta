@@ -30,7 +30,7 @@ export function findContentPage(hub: ContentHub, slug: string): ContentPage | un
   return PAGES_BY_HUB[hub].find((page) => page.slug === slug);
 }
 
-export const CONTENT_UPDATED = '2026-10-09';
+export const CONTENT_UPDATED = '2026-10-17';
 
 /** Every indexable marketing route, used by the sitemap. */
 export function indexableMarketingPaths(): string[] {
