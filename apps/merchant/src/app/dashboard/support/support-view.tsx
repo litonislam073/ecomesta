@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Button } from '@ecomesta/ui';
 import { authErrorMessage } from '@/components/auth/auth-errors';
@@ -99,6 +100,13 @@ export default function SupportView() {
         title="Help & support"
         description="Questions about your store, billing or account? Send the Ecomesta team a message."
       />
+      <p className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-sm">
+        Most answers are in the{' '}
+        <Link href="/dashboard/guide" className="font-medium text-[var(--color-accent)] underline">
+          Store guide
+        </Link>{' '}
+        (বাংলা ও English): step-by-step help for every part of the dashboard.
+      </p>
 
       {!contact && !contactError ? <LoadingState label="Loading support options" /> : null}
 

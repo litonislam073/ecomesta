@@ -84,6 +84,7 @@ export const DASHBOARD_NAV: NavSection[] = [
     items: [
       { href: '/dashboard/billing', label: 'Plan & billing', ready: true },
       { href: '/dashboard/affiliate', label: 'Affiliate program', ready: true, tag: 'New' },
+      { href: '/dashboard/guide', label: 'Store guide', ready: true, tag: 'New' },
       { href: '/dashboard/support', label: 'Help & support', ready: true },
     ],
   },
@@ -99,6 +100,7 @@ export const STORELESS_NAV: NavSection[] = [
     title: 'Account',
     items: [
       { href: '/dashboard/affiliate', label: 'Affiliate program', ready: true, tag: 'New' },
+      { href: '/dashboard/guide', label: 'Store guide', ready: true, tag: 'New' },
       { href: '/dashboard/support', label: 'Help & support', ready: true },
     ],
   },
@@ -106,7 +108,7 @@ export const STORELESS_NAV: NavSection[] = [
 
 /** Pages an account without a store may open (everything else sends it to /onboard). */
 export function isStorelessPath(pathname: string): boolean {
-  return pathname.startsWith('/onboard') || pathname === '/dashboard/affiliate' || pathname === '/dashboard/support';
+  return pathname.startsWith('/onboard') || pathname === '/dashboard/affiliate' || pathname === '/dashboard/guide' || pathname === '/dashboard/support';
 }
 
 export function isNavItemActive(pathname: string, href: string, exact = false): boolean {

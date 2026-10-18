@@ -8,6 +8,7 @@ import { SubscriptionBanner, SuspendedScreen } from '@/components/billing/subscr
 import { EmailVerificationBanner } from '@/components/dashboard/email-verification-banner';
 import { SidebarNav } from '@/components/dashboard/sidebar-nav';
 import { StoreSelector } from '@/components/dashboard/store-selector';
+import { GuideLink } from '@/components/dashboard/guide-link';
 import { ViewStoreLink } from '@/components/dashboard/view-store-link';
 import { LoadingState } from '@/components/ui/loading-state';
 import { confirmLeave } from '@/lib/leave-guard';
@@ -140,6 +141,7 @@ function DashboardFrame({ children }: { children: ReactNode }) {
                 </Button>
                 <StoreSelector />
                 <ViewStoreLink />
+                <GuideLink />
               </div>
               <div className="ml-auto flex min-w-0 items-center gap-3">
                 <button
