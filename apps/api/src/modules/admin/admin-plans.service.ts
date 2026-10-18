@@ -243,7 +243,7 @@ export class AdminPlansService {
       monthlyPrice: moneyToString(plan.monthlyPrice)!,
       yearlyPrice: moneyToString(plan.yearlyPrice)!,
       currency: pricing.currency,
-      trialMonths: pricing.trialMonths,
+      trialDays: pricing.trialDays,
       prices: pricing.prices,
       active: plan.active,
       configuration: plan.configuration,

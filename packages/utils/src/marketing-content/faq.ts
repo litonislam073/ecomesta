@@ -32,7 +32,7 @@ export const FAQ_GROUPS: FaqGroup[] = [
       {
         question: 'Is there a free trial?',
         answer:
-          'No. You pay for the plan you choose when you sign up. Monthly, 6-month (10% off) and yearly (25% off) billing are available.',
+          'Some plans can come with a free trial (for example 7 or 30 days). When a plan has one, the pricing page shows it and you can choose "Start free trial" at sign-up: your store goes live straight away and you pay before the trial ends. Otherwise you pay for the plan when you sign up. Monthly, 6-month (10% off) and yearly (25% off) billing are available.',
       },
       {
         question: 'Can I use my own domain?',

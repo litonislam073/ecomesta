@@ -11,7 +11,7 @@ import {
   SubscriptionStatus,
 } from '@prisma/client';
 import { hash } from '@node-rs/argon2';
-import { DEFAULT_TRIAL_MONTHS, billingCyclePrice } from '@ecomesta/utils';
+import { DEFAULT_TRIAL_DAYS, billingCyclePrice } from '@ecomesta/utils';
 import { BUILT_IN_THEMES } from '../src/modules/themes/theme-config.types';
 import { DEFAULT_PLANS } from '../src/modules/billing/plan-defaults';
 import { seedBangladeshLocations } from './seed-bangladesh-locations';
@@ -71,7 +71,7 @@ async function main(): Promise<void> {
       yearlyPrice: billingCyclePrice(item.monthlyPrice, 'YEARLY'),
       active: true,
       configuration: {
-        trialMonths: DEFAULT_TRIAL_MONTHS,
+        trialDays: DEFAULT_TRIAL_DAYS,
         tagline: item.tagline,
         highlighted: item.highlighted,
         sortOrder: item.sortOrder,

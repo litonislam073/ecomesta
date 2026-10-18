@@ -12,6 +12,10 @@ export interface PricingCardCopy {
   perMonthSaving: (perMonth: string, percent: number) => string;
   choose: (plan: string) => string;
   howToPay: (amount: string, cycle: BillingCycleCode) => string;
+  /** Badge on a plan with a free trial. */
+  trialBadge: (days: number) => string;
+  /** Under the button of a plan with a free trial. */
+  trialOrPay: (days: number, amount: string, cycle: BillingCycleCode) => string;
   /** Plan text that comes from the API in English. */
   translate: (text: string) => string;
 }
@@ -72,6 +76,9 @@ export const PRICING_CARD_COPY: Record<MarketingLocale, PricingCardCopy> = {
     choose: (plan) => `Choose ${plan}`,
     howToPay: (amount, cycle) =>
       `Pay ${amount} ${EN_WORDS[cycle]} with bKash, Nagad, Rocket or Upay when you create your store. It goes live as soon as we confirm the payment.`,
+    trialBadge: (days) => `${days}-day free trial`,
+    trialOrPay: (days, amount, cycle) =>
+      `Start with a ${days}-day free trial — no payment needed, your store goes live at once. Then pay ${amount} ${EN_WORDS[cycle]} with bKash, Nagad, Rocket or Upay.`,
     translate: (text) => text,
   },
   bn: {
@@ -86,6 +93,9 @@ export const PRICING_CARD_COPY: Record<MarketingLocale, PricingCardCopy> = {
     choose: (plan) => `${plan} নিন`,
     howToPay: (amount, cycle) =>
       `স্টোর খোলার সময় ${BN_WORDS[cycle]} ${amount} bKash, Nagad, Rocket বা Upay দিয়ে পাঠান। পেমেন্ট নিশ্চিত হলেই স্টোর চালু হয়ে যায়।`,
+    trialBadge: (days) => `${days.toLocaleString('bn-BD')} দিনের ফ্রি ট্রায়াল`,
+    trialOrPay: (days, amount, cycle) =>
+      `${days.toLocaleString('bn-BD')} দিনের ফ্রি ট্রায়াল দিয়ে শুরু করুন — এখন কোনো পেমেন্ট লাগবে না, স্টোর সাথে সাথে চালু হবে। পরে ${BN_WORDS[cycle]} ${amount} bKash, Nagad, Rocket বা Upay দিয়ে দিন।`,
     translate: (text) => BN_PLAN_TEXT[text] ?? text,
   },
 };

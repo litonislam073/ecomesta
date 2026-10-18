@@ -2,12 +2,14 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { BillingCycle, ManualPaymentMethod } from '@prisma/client';
 import { Transform } from 'class-transformer';
 import {
+  IsBoolean,
   IsIn,
   IsOptional,
   IsString,
   Matches,
   MaxLength,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 import { SLUG_REGEX, normalizeSlug } from '../../../common/utils/slug.util';
 
@@ -98,18 +100,29 @@ export class OnboardStoreDto {
   couponCode?: string;
 
 
+  @ApiPropertyOptional({
+    description: 'Start the plan as a free trial (only when the plan offers one) instead of paying now',
+  })
+  @IsOptional()
+  @IsBoolean()
+  startTrial?: boolean;
+
   // The first subscription payment, made by mobile wallet before the store
   // is created. The store stays offline until a Super Admin confirms it.
+  // Not needed when the plan is started as a free trial.
   @ApiProperty({ enum: ManualPaymentMethod })
+  @ValidateIf((dto: OnboardStoreDto) => dto.startTrial !== true)
   @IsIn(Object.values(ManualPaymentMethod))
   method!: ManualPaymentMethod;
 
   @ApiProperty({ example: '01712345678', description: 'Wallet number the merchant paid from' })
+  @ValidateIf((dto: OnboardStoreDto) => dto.startTrial !== true)
   @IsString()
   @MaxLength(20)
   senderNumber!: string;
 
   @ApiProperty({ example: 'BKA7XY12QZ', description: 'Transaction ID from the wallet payment message' })
+  @ValidateIf((dto: OnboardStoreDto) => dto.startTrial !== true)
   @IsString()
   @MaxLength(40)
   transactionId!: string;

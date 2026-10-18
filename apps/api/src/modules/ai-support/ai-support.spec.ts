@@ -133,7 +133,7 @@ describe('AI support — output safety and prompt', () => {
           highlighted: true,
           currency: 'BDT',
           monthlyPrice: 299,
-          trialMonths: 2,
+          trialDays: 7,
           limits: null,
           prices: [
             { billingCycle: 'MONTHLY', amount: 299, months: 1, discountPercent: 0, effectiveMonthly: 299 },

@@ -45,30 +45,29 @@ describe('plan prices', () => {
   });
 });
 
-// New stores no longer get a trial, but trials started earlier (and any a
-// Super Admin sets on a plan) still end on calendar months.
-describe('trial dates (Asia/Dhaka calendar months)', () => {
-  it('has no free months by default', () => {
+// A plan's free trial (set by a Super Admin, e.g. 7 or 30 days) ends after
+// that many Asia/Dhaka calendar days.
+describe('trial dates (Asia/Dhaka calendar days)', () => {
+  it('has no free days by default', () => {
     expect(trialEndDate(dhaka('2026-09-28'))).toEqual(dhaka('2026-09-28'));
   });
 
-  it('ends two calendar months after the start', () => {
-    expect(trialEndDate(dhaka('2026-09-28'), 2)).toEqual(dhaka('2026-11-28'));
-    expect(formatBillingDate(trialEndDate(dhaka('2026-09-28'), 2))).toBe('November 28, 2026');
+  it('ends 7 or 30 calendar days after the start', () => {
+    expect(trialEndDate(dhaka('2026-09-28'), 7)).toEqual(dhaka('2026-10-05'));
+    expect(formatBillingDate(trialEndDate(dhaka('2026-09-28'), 7))).toBe('October 5, 2026');
+    expect(trialEndDate(dhaka('2026-09-28'), 30)).toEqual(dhaka('2026-10-28'));
+    expect(trialEndDate(dhaka('2027-02-15'), 30)).toEqual(dhaka('2027-03-17'));
   });
 
-  it('clamps to the last day of shorter months', () => {
-    expect(trialEndDate(dhaka('2026-12-31'), 2)).toEqual(dhaka('2027-02-28'));
-    expect(trialEndDate(dhaka('2027-12-31'), 2)).toEqual(dhaka('2028-02-29'));
-    expect(trialEndDate(dhaka('2026-08-31'), 2)).toEqual(dhaka('2026-10-31'));
+  it('still clamps calendar months for paid periods', () => {
     expect(addCalendarMonths(dhaka('2027-03-31'), -1)).toEqual(dhaka('2027-02-28'));
   });
 
   it('uses the Dhaka date even when the UTC date is different', () => {
     // 01:30 on Oct 1 in Dhaka is still Sep 30 in UTC.
     const start = new Date('2026-09-30T19:30:00.000Z');
-    expect(trialEndDate(start, 2).toISOString()).toBe('2026-11-30T19:30:00.000Z');
-    expect(formatBillingDate(trialEndDate(start, 2))).toBe('December 1, 2026');
+    expect(trialEndDate(start, 7).toISOString()).toBe('2026-10-07T19:30:00.000Z');
+    expect(formatBillingDate(trialEndDate(start, 7))).toBe('October 8, 2026');
   });
 
   it('gives a 7-day payment grace period after the trial', () => {
@@ -119,8 +118,9 @@ describe('plan catalog', () => {
   });
 
   it('builds public prices from the monthly price without exposing ids', () => {
-    const dto = toPublicPlan(plan('growth', '999.00', { trialMonths: 2, highlighted: true, features: ['A', 3] }));
+    const dto = toPublicPlan(plan('growth', '999.00', { trialDays: 7, highlighted: true, features: ['A', 3] }));
     expect(dto).not.toHaveProperty('id');
+    expect(dto.trialDays).toBe(7);
     expect(dto.currency).toBe('BDT');
     expect(dto.highlighted).toBe(true);
     expect(dto.features).toEqual(['A']);
@@ -132,10 +132,14 @@ describe('plan catalog', () => {
   });
 
   it('defaults to no free trial and ignores invalid settings', () => {
-    expect(readPlanSettings(null).trialMonths).toBe(0);
-    expect(readPlanSettings({ trialMonths: -1 }).trialMonths).toBe(0);
-    expect(readPlanSettings({ trialMonths: 1.5 }).trialMonths).toBe(0);
-    expect(readPlanSettings({ trialMonths: 3 }).trialMonths).toBe(3);
+    expect(readPlanSettings(null).trialDays).toBe(0);
+    expect(readPlanSettings({ trialDays: -1 }).trialDays).toBe(0);
+    expect(readPlanSettings({ trialDays: 1.5 }).trialDays).toBe(0);
+    expect(readPlanSettings({ trialDays: 91 }).trialDays).toBe(0);
+    expect(readPlanSettings({ trialDays: 7 }).trialDays).toBe(7);
+    expect(readPlanSettings({ trialDays: 30 }).trialDays).toBe(30);
+    // The old month-based setting no longer gives a trial.
+    expect(readPlanSettings({ trialMonths: 2 }).trialDays).toBe(0);
   });
 
   it('sorts by configured order, then price', () => {

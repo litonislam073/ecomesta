@@ -20,7 +20,7 @@ vi.mock('@/lib/api-client', async () => {
       get: () =>
         Promise.resolve({
           success: true,
-          data: [{ slug: 'growth', name: 'Growth', prices: [], trialMonths: 2 }],
+          data: [{ slug: 'growth', name: 'Growth', prices: [], trialDays: 0 }],
         }),
     },
   };

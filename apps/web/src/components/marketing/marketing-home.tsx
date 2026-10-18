@@ -16,6 +16,7 @@ import { DashboardPreview } from './dashboard-preview';
 import { HOME_COPY } from './home-copy';
 import { Icon, IconBadge } from './icons';
 import { ButtonLink, CheckList, Container, SectionHeader, TextLink } from './ui';
+import { trialHeadline } from '@/lib/marketing/trial';
 
 export function MarketingHome({
   plans,
@@ -23,6 +24,9 @@ export function MarketingHome({
 }: { plans?: PublicPlan[] | null; locale?: MarketingLocale } = {}) {
   const register = registerUrl();
   const copy = HOME_COPY[locale];
+  // A trial the Super Admin has switched on leads the price facts under the buttons.
+  const trial = trialHeadline(plans, locale);
+  const heroOffer = trial ? [trial, ...copy.hero.offer] : copy.hero.offer;
   const homeFaqs = copy.faq.items;
 
   return (
@@ -83,7 +87,7 @@ export function MarketingHome({
               aria-label={locale === 'bn' ? 'দাম আর পেমেন্ট' : 'Price and payment'}
               className="mt-6 inline-flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-[var(--brand-green)]/30 bg-[var(--brand-green-tint)] px-4 py-3 text-sm font-semibold text-[var(--brand-green-text)]"
             >
-              {copy.hero.offer.map((item) => (
+              {heroOffer.map((item) => (
                 <li key={item} className="flex items-center gap-1.5">
                   <span aria-hidden="true" className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[var(--brand-green)] text-white">
                     <svg viewBox="0 0 20 20" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="3">

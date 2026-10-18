@@ -294,6 +294,150 @@ describe('Plans, entitlements and manual billing payments (e2e)', () => {
     });
   });
 
+  describe('free-trial sign-up', () => {
+    const trialist = merchant('trialist');
+    const trialist30 = merchant('trial30');
+    const blocked = merchant('notrial');
+    let growthId = '';
+    let starterId = '';
+    const savedConfig: Record<string, unknown> = {};
+
+    /** Sets a plan's trial the way the admin dashboard does: the whole configuration with `trialDays` changed. */
+    async function setTrialDays(planId: string, trialDays: number) {
+      const plan = await prisma.subscriptionPlan.findUniqueOrThrow({ where: { id: planId } });
+      const config = (plan.configuration ?? {}) as Record<string, unknown>;
+      const res = await request(server())
+        .patch(`/api/v1/admin/plans/${planId}`)
+        .set(bearer(admin))
+        .send({ configuration: { ...config, trialDays } })
+        .expect(200);
+      expect(res.body.data.trialDays).toBe(trialDays);
+    }
+
+    const trialSignUp = (user: Merchant, body: Record<string, unknown> = {}) =>
+      request(server())
+        .post('/api/v1/onboarding/store')
+        .set(bearer(user))
+        .send({
+          businessName: `Pay ${user.tenantSlug}`,
+          tenantSlug: user.tenantSlug,
+          storeName: `Pay ${user.storeSlug}`,
+          storeSlug: user.storeSlug,
+          planSlug: 'growth',
+          billingCycle: 'MONTHLY',
+          startTrial: true,
+          ...body,
+        });
+
+    beforeAll(async () => {
+      for (const user of [trialist, trialist30, blocked]) await register(user);
+      const growth = await prisma.subscriptionPlan.findUniqueOrThrow({ where: { slug: 'growth' } });
+      const starterPlan = await prisma.subscriptionPlan.findUniqueOrThrow({ where: { slug: 'starter' } });
+      growthId = growth.id;
+      starterId = starterPlan.id;
+      savedConfig[growth.id] = growth.configuration;
+      savedConfig[starterPlan.id] = starterPlan.configuration;
+      await setTrialDays(growthId, 7);
+      await setTrialDays(starterId, 0);
+    });
+
+    afterAll(async () => {
+      // Leave the shared plans exactly as they were.
+      for (const [id, configuration] of Object.entries(savedConfig)) {
+        await prisma.subscriptionPlan.update({ where: { id }, data: { configuration: configuration as object } });
+      }
+    });
+
+    it('shows each plan\'s trial on the public price list', async () => {
+      const res = await request(server()).get('/api/v1/public/plans').expect(200);
+      const bySlug = Object.fromEntries(res.body.data.map((p: { slug: string; trialDays: number }) => [p.slug, p.trialDays]));
+      expect(bySlug.growth).toBe(7);
+      expect(bySlug.starter).toBe(0);
+    });
+
+    it('refuses a trial on a plan without one and creates nothing', async () => {
+      const res = await trialSignUp(blocked, { planSlug: 'starter' }).expect(422);
+      expect(res.body.error.message).toMatch(/no free trial/i);
+      expect(await prisma.tenant.count({ where: { slug: blocked.tenantSlug } })).toBe(0);
+    });
+
+    it('starts a 7-day trial without payment and puts the store live at once', async () => {
+      const before = new Date();
+      const res = await trialSignUp(trialist).expect(201);
+      trialist.tenantId = res.body.data.tenant.id;
+      trialist.storeId = res.body.data.store.id;
+      expect(res.body.data.store.status).toBe('ACTIVE');
+      expect(res.body.data.payment).toBeNull();
+      expect(res.body.data.subscription).toMatchObject({ status: 'TRIALING', planSlug: 'growth', billingCycle: 'MONTHLY' });
+
+      const sub = await subscriptionOf(trialist);
+      expect(sub.status).toBe(SubscriptionStatus.TRIALING);
+      const expectedEnd = addCalendarDays(before, 7).getTime();
+      expect(Math.abs(sub.trialEndsAt!.getTime() - expectedEnd)).toBeLessThan(60_000);
+      expect(await prisma.billingPayment.count({ where: { tenantId: trialist.tenantId } })).toBe(0);
+      expect(await prisma.store.findUniqueOrThrow({ where: { id: trialist.storeId } })).toMatchObject({
+        status: StoreStatus.ACTIVE,
+        awaitingFirstPayment: false,
+      });
+      await request(server()).get(`/api/v1/public/stores/${trialist.storeSlug}`).expect(200);
+
+      const billing = await request(server()).get('/api/v1/billing/subscription').set(bearer(trialist)).expect(200);
+      expect(billing.body.data).toMatchObject({ awaitingFirstPayment: false, pendingPayment: null });
+      expect(billing.body.data.subscription).toMatchObject({ status: 'TRIALING' });
+      expect(billing.body.data.subscription.plan).toMatchObject({ slug: 'growth', trialDays: 7 });
+    });
+
+    it('gives each person one trial', async () => {
+      const second = { ...trialist, tenantSlug: `${trialist.tenantSlug}-b`, storeSlug: `${trialist.storeSlug}-b` };
+      const res = await trialSignUp(second).expect(409);
+      expect(res.body.error.message).toMatch(/first store/);
+      expect(await prisma.tenant.count({ where: { slug: second.tenantSlug } })).toBe(0);
+    });
+
+    it('uses the trial length the Super Admin sets (30 days)', async () => {
+      await setTrialDays(growthId, 30);
+      const before = new Date();
+      const res = await trialSignUp(trialist30, { billingCycle: 'SEMI_ANNUAL' }).expect(201);
+      trialist30.tenantId = res.body.data.tenant.id;
+      const sub = await subscriptionOf(trialist30);
+      expect(Math.abs(sub.trialEndsAt!.getTime() - addCalendarDays(before, 30).getTime())).toBeLessThan(60_000);
+      expect(sub.billingCycle).toBe('SEMI_ANNUAL');
+    });
+
+    it('still accepts a paid sign-up on a plan with a trial', async () => {
+      const res = await signUp(blocked, { planSlug: 'growth', billingCycle: 'MONTHLY' }).expect(201);
+      blocked.tenantId = res.body.data.tenant.id;
+      expect(res.body.data.subscription).toBeNull();
+      expect(res.body.data.store.status).toBe('INACTIVE');
+      expect(res.body.data.payment).toMatchObject({ status: 'PENDING' });
+    });
+
+    it('starts the paid period when the trial ends if the merchant pays during the trial', async () => {
+      const sub = await subscriptionOf(trialist);
+      const paid = await submit(trialist, { planSlug: 'growth', billingCycle: 'MONTHLY' }).expect(201);
+      await request(server()).post(`/api/v1/admin/billing-payments/${paid.body.data.id}/approve`).set(bearer(admin)).expect(200);
+      const after = await subscriptionOf(trialist);
+      expect(after.status).toBe(SubscriptionStatus.ACTIVE);
+      expect(after.endsAt).toEqual(addCalendarMonths(sub.trialEndsAt!, 1));
+    });
+
+    it('moves an ended trial to payment due, then pauses the store after the grace period', async () => {
+      const trialEndsAt = addCalendarDays(new Date(), -1);
+      await prisma.subscription.updateMany({ where: { tenantId: trialist30.tenantId }, data: { trialEndsAt } });
+      await lifecycle.evaluateTenant(trialist30.tenantId);
+      expect((await subscriptionOf(trialist30)).status).toBe(SubscriptionStatus.PAST_DUE);
+
+      await prisma.subscription.updateMany({
+        where: { tenantId: trialist30.tenantId },
+        data: { trialEndsAt: addCalendarDays(new Date(), -8) },
+      });
+      await lifecycle.evaluateTenant(trialist30.tenantId);
+      expect((await subscriptionOf(trialist30)).status).toBe(SubscriptionStatus.EXPIRED);
+      const store = await prisma.store.findFirstOrThrow({ where: { tenantId: trialist30.tenantId } });
+      expect(store.status).toBe(StoreStatus.SUSPENDED);
+    });
+  });
+
   describe('plans', () => {
     it('publishes Starter ৳99, Growth ৳299 and Business ৳699 with their limits', async () => {
       const res = await request(server()).get('/api/v1/public/plans').expect(200);

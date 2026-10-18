@@ -1098,7 +1098,8 @@ export interface PublicPlan {
   highlighted: boolean;
   currency: 'BDT';
   monthlyPrice: number;
-  trialMonths: number;
+  /** Free-trial days a merchant can start this plan with; 0 when the plan has no trial. */
+  trialDays: number;
   prices: PublicPlanPrice[];
   /** What the plan unlocks. `null` when the plan sets no limits (everything allowed). */
   limits: PlanLimits | null;
@@ -1221,7 +1222,7 @@ export interface MerchantSubscription {
     currency: 'BDT';
     /** Amount for one billing period of the selected cycle after the trial. */
     amountDue: number;
-    plan: { name: string; slug: string; monthlyPrice: number; trialMonths: number; limits: PlanLimits | null };
+    plan: { name: string; slug: string; monthlyPrice: number; trialDays: number; limits: PlanLimits | null };
   } | null;
   /** A payment waiting for Ecomesta to check, if any. */
   pendingPayment: MerchantBillingPayment | null;
@@ -1413,7 +1414,7 @@ export interface SubscriptionPlan {
   monthlyPrice: string;
   yearlyPrice: string;
   currency: 'BDT';
-  trialMonths: number;
+  trialDays: number;
   /** Price for each billing cycle, derived from the monthly price. */
   prices: PublicPlanPrice[];
   active: boolean;
@@ -1445,7 +1446,7 @@ export interface AdminSubscription {
     active: boolean;
     monthlyPrice: string;
     yearlyPrice: string;
-    trialMonths: number;
+    trialDays: number;
   };
 }
 

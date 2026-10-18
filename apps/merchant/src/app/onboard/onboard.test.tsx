@@ -70,7 +70,7 @@ const PLANS = ['starter', 'growth', 'business'].map((slug, i) => ({
   highlighted: slug === 'growth',
   currency: 'BDT',
   monthlyPrice: [99, 299, 699][i]!,
-  trialMonths: 0,
+  trialDays: 0,
   prices: [
     { billingCycle: 'MONTHLY', amount: [99, 299, 699][i]!, months: 1, discountPercent: 0, effectiveMonthly: [99, 299, 699][i]! },
     { billingCycle: 'YEARLY', amount: [891, 2691, 6291][i]!, months: 12, discountPercent: 25, effectiveMonthly: 0 },
@@ -187,6 +187,70 @@ describe('Onboard form', () => {
       expect(replace).toHaveBeenCalledWith('/dashboard');
     });
     expect(screen.getByRole('status')).toHaveTextContent('Store created. Waiting for payment confirmation.');
+  });
+
+  it('starts a free trial without payment on a plan that offers one', async () => {
+    const user = userEvent.setup();
+    const withTrial = PLANS.map((plan) => (plan.slug === 'growth' ? { ...plan, trialDays: 7 } : plan));
+    get.mockImplementation(async (path: string) => {
+      if (path === '/public/plans') return { success: true, data: withTrial };
+      if (path === '/billing/payment-accounts') return { success: true, data: ACCOUNTS };
+      return { success: true, data: [] };
+    });
+    post.mockResolvedValue({ success: true, data: {} });
+    renderForm();
+
+    await user.type(await screen.findByLabelText('Business name'), 'Trial Shop');
+    await user.click(storeContinue());
+    await screen.findByRole('radio', { name: /Starter/ });
+    // Starter has no trial: only paying is offered.
+    expect(screen.queryByRole('button', { name: /free trial/ })).not.toBeInTheDocument();
+    expect(screen.getByText('7-day free trial')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('radio', { name: /Growth/ }));
+    await user.click(screen.getByRole('button', { name: 'Start 7-day free trial' }));
+
+    await waitFor(() => {
+      expect(post).toHaveBeenCalledWith(
+        '/onboarding/store',
+        {
+          businessName: 'Trial Shop',
+          storeName: 'Trial Shop',
+          tenantSlug: 'trial-shop',
+          storeSlug: 'trial-shop',
+          currency: 'BDT',
+          timezone: 'Asia/Dhaka',
+          locale: 'en-BD',
+          planSlug: 'growth',
+          billingCycle: 'MONTHLY',
+          startTrial: true,
+        },
+        { token: 'access-token' },
+      );
+    });
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/dashboard'));
+    expect(screen.getByRole('status')).toHaveTextContent('Store created. Your free trial has started.');
+    expect(setupSteps().join(' ')).toMatch(/7-day free trial/);
+  });
+
+  it('shows a refused trial on the plan screen', async () => {
+    const user = userEvent.setup();
+    const withTrial = PLANS.map((plan) => ({ ...plan, trialDays: 30 }));
+    get.mockImplementation(async (path: string) =>
+      path === '/public/plans' ? { success: true, data: withTrial } : { success: true, data: [] },
+    );
+    const { ApiError } = await import('@/lib/api-client');
+    post.mockRejectedValue(
+      new ApiError(409, 'CONFLICT', 'The free trial is for your first store. Pay for the plan to create another store.'),
+    );
+    renderForm();
+
+    await user.type(await screen.findByLabelText('Business name'), 'Second Shop');
+    await user.click(storeContinue());
+    await user.click(await screen.findByRole('button', { name: 'Start 30-day free trial' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/first store/);
+    expect(screen.getByRole('button', { name: 'Continue to payment' })).toBeInTheDocument();
   });
 
   it('keeps the plan and interval chosen on the pricing page and asks for payment at the end', async () => {

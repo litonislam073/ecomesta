@@ -12,6 +12,7 @@ import {
 import { StaggerContainer } from '../animations/stagger';
 import { StaggerItem } from '../animations/stagger-item';
 import { PRICING_CARD_COPY } from './pricing-copy';
+import { trialHeadline } from '@/lib/marketing/trial';
 
 function priceFor(plan: PublicPlan, cycle: BillingCycleCode) {
   return plan.prices.find((price) => price.billingCycle === cycle) ?? null;
@@ -40,8 +41,15 @@ export function PricingPlans({
     BILLING_CYCLES.findIndex((option) => option.code === cycle),
   );
 
+  const trial = trialHeadline(plans, locale);
   return (
     <div>
+      {trial ? (
+        <p className="mx-auto mb-6 flex w-fit items-center gap-2 rounded-full border border-[var(--brand-green)]/30 bg-[var(--brand-green-tint)] px-4 py-2 text-sm font-semibold text-[var(--brand-green-text)]">
+          <span aria-hidden="true" className="h-2 w-2 rounded-full bg-[var(--brand-green)]" />
+          {trial} — {locale === 'bn' ? 'শুরু করতে কোনো পেমেন্ট লাগে না' : 'no payment needed to start'}
+        </p>
+      ) : null}
       <fieldset className="mx-auto w-full max-w-md">
         <legend className="sr-only">{copy.billingPeriod}</legend>
         <div className="relative grid grid-cols-3 gap-1 rounded-xl border border-[var(--color-border)] bg-white p-1">
@@ -109,6 +117,11 @@ export function PricingPlans({
                   {copy.mostPopular}
                 </p>
               ) : null}
+              {plan.trialDays > 0 ? (
+                <span className="mb-3 inline-flex w-fit rounded-full bg-[var(--brand-green-tint)] px-3 py-1 text-xs font-semibold text-[var(--brand-green-text)]">
+                  {copy.trialBadge(plan.trialDays)}
+                </span>
+              ) : null}
               <h3 id={headingId} className="font-display text-2xl tracking-tight text-[var(--color-ink)]">
                 {plan.name}
               </h3>
@@ -138,7 +151,9 @@ export function PricingPlans({
                 {copy.choose(plan.name)}
               </ButtonLink>
               <p className="mt-3 text-sm text-[var(--color-muted)]">
-                {copy.howToPay(formatBdt(amount), cycle)}
+                {plan.trialDays > 0
+                  ? copy.trialOrPay(plan.trialDays, formatBdt(amount), cycle)
+                  : copy.howToPay(formatBdt(amount), cycle)}
               </p>
               {plan.features.length > 0 ? (
                 <CheckList className="mt-6 border-t border-[var(--color-border)] pt-6 text-sm" items={plan.features.map(copy.translate)} />

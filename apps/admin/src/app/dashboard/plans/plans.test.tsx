@@ -49,7 +49,7 @@ const samplePlan = {
   monthlyPrice: '999.00',
   yearlyPrice: '8991.00',
   currency: 'BDT',
-  trialMonths: 2,
+  trialDays: 7,
   prices: [
     { billingCycle: 'MONTHLY', amount: 999, months: 1, discountPercent: 0, effectiveMonthly: 999 },
     { billingCycle: 'SEMI_ANNUAL', amount: 5395, months: 6, discountPercent: 10, effectiveMonthly: 899.17 },
@@ -84,7 +84,7 @@ describe('Admin plans', () => {
     expect(screen.getByText('৳999')).toBeInTheDocument();
     expect(screen.getByText('৳5,395')).toBeInTheDocument();
     expect(screen.getByText('৳8,991')).toBeInTheDocument();
-    expect(screen.getByText('2 months')).toBeInTheDocument();
+    expect(screen.getByText('7 days')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /new plan/i })).toBeInTheDocument();
   });
 
@@ -162,5 +162,34 @@ describe('Admin plans', () => {
     expect(screen.getByLabelText('Plan slug')).toHaveValue('growth');
     expect(screen.getByLabelText(/Monthly price/)).toHaveValue('999.00');
     expect(screen.queryByLabelText(/Yearly price/)).not.toBeInTheDocument();
+  });
+
+  it('sets the free trial to 30 days or off and keeps the rest of the configuration', async () => {
+    const plan = { ...samplePlan, configuration: { sortOrder: 2, trialDays: 7, limits: { maxProducts: 100 } } };
+    api.get.mockResolvedValue({ success: true, data: plan });
+    api.patch.mockResolvedValue({ success: true, data: plan });
+    render(<EditPlanPage />);
+
+    const section = (await screen.findByRole('heading', { name: 'Free trial' })).closest('section')!;
+    expect(section).toHaveTextContent('Now: 7-day free trial');
+    const save = screen.getByRole('button', { name: 'Save free trial' });
+    expect(save).toBeDisabled();
+
+    await userEvent.click(screen.getByRole('radio', { name: '30 days' }));
+    await userEvent.click(save);
+    await waitFor(() =>
+      expect(api.patch).toHaveBeenCalledWith('/admin/plans/plan-1', {
+        configuration: { sortOrder: 2, trialDays: 30, limits: { maxProducts: 100 } },
+      }),
+    );
+    expect(pushToast).toHaveBeenCalledWith('Growth now has a 30-day free trial', 'success');
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Off' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Save free trial' }));
+    await waitFor(() =>
+      expect(api.patch).toHaveBeenLastCalledWith('/admin/plans/plan-1', {
+        configuration: { sortOrder: 2, trialDays: 0, limits: { maxProducts: 100 } },
+      }),
+    );
   });
 });

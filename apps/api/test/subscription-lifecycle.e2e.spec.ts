@@ -216,7 +216,7 @@ describe('Subscription lifecycle (e2e)', () => {
           monthlyPrice: monthly,
           yearlyPrice: '0',
           active: true,
-          configuration: { trialMonths: 2, sortOrder: order, highlighted: name === 'growth' },
+          configuration: { trialDays: 30, sortOrder: order, highlighted: name === 'growth' },
         },
       });
     }
@@ -256,7 +256,7 @@ describe('Subscription lifecycle (e2e)', () => {
   it('lists active plans publicly with BDT prices for every cycle and no ids', async () => {
     const res = await request(server()).get('/api/v1/public/plans').expect(200);
     const growth = res.body.data.find((p: { slug: string }) => p.slug === planSlug('growth'));
-    expect(growth).toMatchObject({ currency: 'BDT', monthlyPrice: 999, trialMonths: 2, highlighted: true });
+    expect(growth).toMatchObject({ currency: 'BDT', monthlyPrice: 999, trialDays: 30, highlighted: true });
     expect(growth.prices.map((p: { amount: number }) => p.amount)).toEqual([999, 5395, 8991]);
     expect(JSON.stringify(res.body)).not.toMatch(UUID);
   });

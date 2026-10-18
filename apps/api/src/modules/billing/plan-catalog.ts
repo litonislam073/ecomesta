@@ -2,14 +2,15 @@ import type { Prisma, SubscriptionPlan } from '@prisma/client';
 import type { PlanLimits, PublicPlan } from '@ecomesta/types';
 import {
   BILLING_CYCLES,
-  DEFAULT_TRIAL_MONTHS,
   billingCyclePrice,
   effectiveMonthlyPrice,
+  normalizeTrialDays,
 } from '@ecomesta/utils';
 
 /** Marketing and trial settings kept in `SubscriptionPlan.configuration`. */
 export interface PlanSettings {
-  trialMonths: number;
+  /** Free-trial days a merchant can start this plan with; 0 = no trial. */
+  trialDays: number;
   tagline: string | null;
   features: string[];
   highlighted: boolean;
@@ -24,13 +25,9 @@ function asRecord(value: Prisma.JsonValue | null): Record<string, unknown> {
 
 export function readPlanSettings(configuration: Prisma.JsonValue | null): PlanSettings {
   const config = asRecord(configuration);
-  const trialMonths = config.trialMonths;
   const sortOrder = config.sortOrder;
   return {
-    trialMonths:
-      typeof trialMonths === 'number' && Number.isInteger(trialMonths) && trialMonths >= 0 && trialMonths <= 24
-        ? trialMonths
-        : DEFAULT_TRIAL_MONTHS,
+    trialDays: normalizeTrialDays(config.trialDays),
     tagline: typeof config.tagline === 'string' && config.tagline.trim() ? config.tagline.trim() : null,
     features: Array.isArray(config.features)
       ? config.features.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
@@ -86,7 +83,7 @@ export function toPublicPlan(plan: SubscriptionPlan): PublicPlan {
     highlighted: settings.highlighted,
     currency: 'BDT',
     monthlyPrice,
-    trialMonths: settings.trialMonths,
+    trialDays: settings.trialDays,
     limits: readPlanLimits(plan.configuration),
     prices: BILLING_CYCLES.map((cycle) => ({
       billingCycle: cycle.code,

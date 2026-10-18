@@ -76,7 +76,7 @@ describe('Bangla home and pricing', () => {
       highlighted: true,
       currency: 'BDT',
       monthlyPrice: 699,
-      trialMonths: 0,
+      trialDays: 0,
       prices: [{ billingCycle: 'MONTHLY', months: 1, amount: 699, effectiveMonthly: 699, discountPercent: 0 }],
       limits: null,
     } as unknown as PublicPlan;

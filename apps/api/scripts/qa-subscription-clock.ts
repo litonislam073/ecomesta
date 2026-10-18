@@ -1,6 +1,6 @@
 /**
  * Local QA only: moves a QA tenant's subscription dates so the trial → grace →
- * suspension lifecycle can be exercised without waiting two months. It only
+ * suspension lifecycle can be exercised without waiting for the trial. It only
  * rewrites dates (and resets status for `trial`); the API's own lifecycle
  * evaluation then moves the subscription and stores, exactly as in real use.
  *
@@ -8,7 +8,7 @@
  *     QA_PHASE=grace pnpm --filter @ecomesta/api qa:subscription-clock
  *
  * QA_PHASE:
- *   trial   trial started today (TRIALING, trial ends in the plan's trial months)
+ *   trial   trial started today (TRIALING, trial ends after the plan's trial days)
  *   grace   trial ended yesterday (payment due, inside the 7-day grace period)
  *   lapsed  trial ended 8 days ago (grace period over → store is suspended)
  *
@@ -16,15 +16,14 @@
  * listed in qa-local-guard.ts.
  */
 import { PrismaClient, SubscriptionStatus } from '@prisma/client';
-import { addCalendarDays, addCalendarMonths, DEFAULT_TRIAL_MONTHS } from '@ecomesta/utils';
+import { addCalendarDays, normalizeTrialDays } from '@ecomesta/utils';
 import { QA_ACCOUNTS, checkEnvironment, fail } from './qa-local-guard';
 
 const PHASES = ['trial', 'grace', 'lapsed'] as const;
 type Phase = (typeof PHASES)[number];
 
-function trialMonthsOf(configuration: unknown): number {
-  const value = (configuration as { trialMonths?: unknown } | null)?.trialMonths;
-  return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : DEFAULT_TRIAL_MONTHS;
+function trialDaysOf(configuration: unknown): number {
+  return normalizeTrialDays((configuration as { trialDays?: unknown } | null)?.trialDays);
 }
 
 async function main(): Promise<void> {
@@ -61,12 +60,12 @@ async function main(): Promise<void> {
     if (!subscription) fail(`tenant ${account.slug} has no subscription`);
 
     const now = new Date();
-    const months = trialMonthsOf(subscription.plan.configuration);
+    const days = trialDaysOf(subscription.plan.configuration);
     const trialEndsAt =
       phase === 'trial'
-        ? addCalendarMonths(now, months)
+        ? addCalendarDays(now, days)
         : addCalendarDays(now, phase === 'grace' ? -1 : -8);
-    const startsAt = phase === 'trial' ? now : addCalendarMonths(trialEndsAt, -months);
+    const startsAt = phase === 'trial' ? now : addCalendarDays(trialEndsAt, -days);
 
     if (phase === 'trial' && subscription.status !== SubscriptionStatus.TRIALING) {
       fail(`subscription is ${subscription.status}; only a TRIALING subscription can be reset to trial`);

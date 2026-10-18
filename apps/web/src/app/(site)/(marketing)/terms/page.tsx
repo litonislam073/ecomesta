@@ -50,6 +50,7 @@ const SECTIONS: LegalSection[] = [
             'Ecomesta is a paid service. Prices are shown in Bangladeshi Taka (BDT) on our pricing page and may be billed monthly, every 6 months or yearly.',
             'Plans are paid in advance. You pay through bKash, Nagad, Rocket or Upay and submit your sending number and transaction ID. Your store is created when you submit the payment and goes live for customers once our team confirms it.',
             'If we cannot confirm a payment (for example, the transaction ID does not match), we will tell you and you can pay again from Plan & billing.',
+            'Some plans may offer a free trial, shown on the pricing page and at sign-up. A trial store goes live without payment; pay for the plan before the trial ends to keep it running — the paid period starts when the trial ends. Each person can use one free trial, for their first store, and we may end trials that are misused.',
             'When a paid period ends, payment for the next period is due. You have a 7-day grace period during which your store keeps working. If payment is not made by then, your store is paused until payment is completed. Your products, orders and settings are kept.',
             'Upgrades and plan changes take effect once the payment for the new plan is confirmed.',
             'We may change our prices. Price changes apply from your next billing period, and we will tell you before they take effect.',

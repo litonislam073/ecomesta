@@ -182,7 +182,7 @@ export class BillingService {
         name: subscription.plan.name,
         slug: subscription.plan.slug,
         monthlyPrice,
-        trialMonths: readPlanSettings(subscription.plan.configuration).trialMonths,
+        trialDays: readPlanSettings(subscription.plan.configuration).trialDays,
         limits: readPlanLimits(subscription.plan.configuration),
       },
     };

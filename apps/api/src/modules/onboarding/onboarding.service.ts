@@ -1,17 +1,19 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, UnprocessableEntityException } from '@nestjs/common';
 import {
   MembershipStatus,
   StoreRole,
   StoreStatus,
+  SubscriptionStatus,
   TenantRole,
   TenantStatus,
 } from '@prisma/client';
+import { trialEndDate } from '@ecomesta/utils';
 import type { Request } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AffiliatesService } from '../affiliates/affiliates.service';
 import { AuditService } from '../audit/audit.service';
 import { BillingService } from '../billing/billing.service';
-import { readPlanLimits } from '../billing/plan-catalog';
+import { readPlanLimits, readPlanSettings } from '../billing/plan-catalog';
 import { createDefaultShipping } from '../shipping/default-shipping';
 import {
   BillingPaymentsService,
@@ -47,9 +49,12 @@ export class OnboardingService {
     }
     await assertStoreSlugAvailable(this.prisma, dto.storeSlug);
     // Payment is the last step of sign-up: nothing is created unless the
-    // plan and the wallet details are valid.
+    // plan and the wallet details are valid. A plan with a free trial can be
+    // started without paying instead.
     const plan = await this.billing.requireActivePlan(dto.planSlug);
-    const prepared = prepareWalletPayment(dto);
+    const trial = dto.startTrial === true ? await this.trialFor(userId, plan) : null;
+    const prepared = trial ? null : prepareWalletPayment(dto);
+    const startedAt = new Date();
 
     const result = await this.prisma
       .$transaction(async (tx) => {
@@ -80,10 +85,11 @@ export class OnboardingService {
             currency: dto.currency ?? 'BDT',
             timezone: dto.timezone ?? 'Asia/Dhaka',
             locale: dto.locale ?? 'en-BD',
-            // Offline until the first payment is confirmed; the merchant can
-            // still set it up in the dashboard meanwhile.
-            status: StoreStatus.INACTIVE,
-            awaitingFirstPayment: true,
+            // A paid sign-up stays offline until the first payment is
+            // confirmed (the merchant can set it up meanwhile); a free trial
+            // goes live straight away.
+            status: trial ? StoreStatus.ACTIVE : StoreStatus.INACTIVE,
+            awaitingFirstPayment: !trial,
           },
         });
 
@@ -101,14 +107,30 @@ export class OnboardingService {
           zones: readPlanLimits(plan.configuration)?.deliveryZones ?? false,
         });
 
-        const payment = await this.payments.createPending(tx, {
-          tenantId: tenant.id,
-          userId,
-          plan,
-          billingCycle: dto.billingCycle,
-          prepared,
-          couponCode: dto.couponCode,
-        });
+        const payment = prepared
+          ? await this.payments.createPending(tx, {
+              tenantId: tenant.id,
+              userId,
+              plan,
+              billingCycle: dto.billingCycle,
+              prepared,
+              couponCode: dto.couponCode,
+            })
+          : null;
+        // The trial runs on the chosen plan; paying during it starts the paid
+        // period when the trial ends, so no trial days are lost.
+        const subscription = trial
+          ? await tx.subscription.create({
+              data: {
+                tenantId: tenant.id,
+                planId: plan.id,
+                billingCycle: dto.billingCycle,
+                status: SubscriptionStatus.TRIALING,
+                startsAt: startedAt,
+                trialEndsAt: trialEndDate(startedAt, trial.days),
+              },
+            })
+          : null;
 
         const owner = await tx.user.findUniqueOrThrow({
           where: { id: userId },
@@ -122,13 +144,13 @@ export class OnboardingService {
             storeSlug: store.slug,
             planName: plan.name,
             billingCycle: dto.billingCycle,
-            trialEndsAt: null,
-            awaitingPayment: true,
+            trialEndsAt: subscription?.trialEndsAt?.toISOString() ?? null,
+            awaitingPayment: !subscription,
           },
           tx,
         );
 
-        return { tenant, store, payment };
+        return { tenant, store, payment, subscription };
       })
       .catch((error: unknown) => {
         // A reused transaction ID is reported as such, not as a taken slug.
@@ -163,7 +185,25 @@ export class OnboardingService {
       req,
     });
 
-    await this.payments.auditSubmitted(result.payment, plan, userId, req);
+    if (result.payment) {
+      await this.payments.auditSubmitted(result.payment, plan, userId, req);
+    }
+    if (result.subscription) {
+      await this.audit.log({
+        action: 'SUBSCRIPTION_TRIAL_STARTED',
+        entityType: 'Subscription',
+        entityId: result.subscription.id,
+        userId,
+        tenantId: result.tenant.id,
+        metadata: {
+          planSlug: plan.slug,
+          billingCycle: result.subscription.billingCycle,
+          trialDays: trial?.days ?? 0,
+          trialEndsAt: result.subscription.trialEndsAt?.toISOString() ?? null,
+        },
+        req,
+      });
+    }
 
     return {
       success: true as const,
@@ -188,10 +228,37 @@ export class OnboardingService {
           createdAt: result.store.createdAt,
           updatedAt: result.store.updatedAt,
         },
-        // The plan starts when the payment is approved.
-        subscription: null,
-        payment: this.payments.toMerchantDto(result.payment),
+        // A paid sign-up's plan starts when the payment is approved; a trial
+        // has started already.
+        subscription: result.subscription
+          ? {
+              id: result.subscription.id,
+              status: result.subscription.status,
+              planSlug: plan.slug,
+              billingCycle: result.subscription.billingCycle,
+              trialEndsAt: result.subscription.trialEndsAt,
+            }
+          : null,
+        payment: result.payment ? this.payments.toMerchantDto(result.payment) : null,
       },
     };
+  }
+
+  /**
+   * The free trial a sign-up may start: the plan must offer one, and each
+   * person gets one trial — someone who already owns a business pays instead.
+   */
+  private async trialFor(userId: string, plan: { configuration: Parameters<typeof readPlanSettings>[0]; name: string }) {
+    const days = readPlanSettings(plan.configuration).trialDays;
+    if (days <= 0) {
+      throw new UnprocessableEntityException(`${plan.name} has no free trial. Pay for the plan to create your store.`);
+    }
+    const ownsBusiness = await this.prisma.tenantUser.count({
+      where: { userId, role: TenantRole.OWNER },
+    });
+    if (ownsBusiness > 0) {
+      throw new ConflictException('The free trial is for your first store. Pay for the plan to create another store.');
+    }
+    return { days };
   }
 }

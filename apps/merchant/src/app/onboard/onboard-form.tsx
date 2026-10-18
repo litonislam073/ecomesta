@@ -158,23 +158,32 @@ function ProvisioningPanel({
   phase,
   storeName,
   storeUrl,
+  trialDays,
   headingRef,
   onOpenDashboard,
 }: {
   phase: Exclude<Phase, 'form'>;
   storeName: string;
   storeUrl: string | null;
+  /** Set when the store is created with a free trial instead of a payment. */
+  trialDays: number | null;
   headingRef: RefObject<HTMLHeadingElement>;
   onOpenDashboard: () => void;
 }) {
   const completed = phase === 'completed';
   const steps: ProvisioningStep[] = [
     { label: 'Account verified', state: 'done' },
-    {
-      label: 'Payment submitted',
-      state: 'done',
-      detail: 'Our team checks it and brings your store online.',
-    },
+    trialDays
+      ? {
+          label: `${trialDays}-day free trial`,
+          state: 'done',
+          detail: 'No payment now. Pay from Plan & billing before the trial ends to keep your store live.',
+        }
+      : {
+          label: 'Payment submitted',
+          state: 'done',
+          detail: 'Our team checks it and brings your store online.',
+        },
     {
       label: 'Creating your store',
       state: phase === 'creating' ? 'current' : 'done',
@@ -191,7 +200,9 @@ function ProvisioningPanel({
       ? 'Creating your store...'
       : phase === 'finalizing'
         ? 'Store created. Preparing your dashboard...'
-        : 'Store created. Waiting for payment confirmation.';
+        : trialDays
+          ? 'Store created. Your free trial has started.'
+          : 'Store created. Waiting for payment confirmation.';
 
   return (
     <div>
@@ -214,7 +225,9 @@ function ProvisioningPanel({
       </h1>
       <p className="mt-2 text-[var(--color-muted)]">
         {completed
-          ? 'We are confirming your payment. Your store goes live for customers as soon as it is confirmed — meanwhile you can add products in your dashboard.'
+          ? trialDays
+            ? `Your ${trialDays}-day free trial has started and your store is live. Add your products, and pay from Plan & billing before the trial ends.`
+            : 'We are confirming your payment. Your store goes live for customers as soon as it is confirmed — meanwhile you can add products in your dashboard.'
           : "We're getting everything ready for your online business."}
       </p>
 
@@ -295,9 +308,10 @@ export default function OnboardForm({
   const [returnFocus, setReturnFocus] = useState(false);
   const [accounts, setAccounts] = useState<ManualPaymentAccount[] | null>(null);
   const [accountsError, setAccountsError] = useState<string | null>(null);
-  const [provisioned, setProvisioned] = useState<{ name: string; url: string | null }>({
+  const [provisioned, setProvisioned] = useState<{ name: string; url: string | null; trialDays: number | null }>({
     name: '',
     url: null,
+    trialDays: null,
   });
   const [signingOut, setSigningOut] = useState(false);
   const inFlight = useRef(false);
@@ -470,7 +484,30 @@ export default function OnboardForm({
   }
 
   /** Step 2: the payment creates the store (offline until the payment is confirmed). */
-  async function createStore(payment: WalletPaymentInput): Promise<void> {
+  function createStore(payment: WalletPaymentInput): Promise<void> {
+    return submitStore({ payment });
+  }
+
+  /**
+   * On a plan with a free trial: create the store without paying. It goes live
+   * at once and the merchant pays before the trial ends.
+   */
+  function startTrial() {
+    setError(null);
+    if (!accessToken) {
+      setError({ message: SESSION_EXPIRED });
+      return;
+    }
+    if (!planChoice || !chosenPlan || chosenPlan.trialDays <= 0) {
+      setError({ message: 'Choose a plan with a free trial to continue.' });
+      return;
+    }
+    void submitStore({ trialDays: chosenPlan.trialDays });
+  }
+
+  async function submitStore(
+    mode: { payment: WalletPaymentInput; trialDays?: undefined } | { trialDays: number; payment?: undefined },
+  ): Promise<void> {
     if (inFlight.current || !planChoice) return;
     if (!accessToken) throw new Error(SESSION_EXPIRED);
 
@@ -478,7 +515,7 @@ export default function OnboardForm({
     const nextStoreName = storeName.trim() || nextBusinessName;
     const nextStoreSlug = slugify(storeSlug);
     inFlight.current = true;
-    setProvisioned({ name: nextStoreName, url: previewUrl });
+    setProvisioned({ name: nextStoreName, url: previewUrl, trialDays: mode.trialDays ?? null });
     setPhase('creating');
     const startedAt = Date.now();
     try {
@@ -492,7 +529,7 @@ export default function OnboardForm({
           ...STORE_DEFAULTS,
           planSlug: planChoice.plan,
           billingCycle: planChoice.cycle,
-          ...payment,
+          ...(mode.payment ? mode.payment : { startTrial: true }),
         },
         { token: accessToken },
       );
@@ -501,7 +538,7 @@ export default function OnboardForm({
       setPhase('form');
       const mapped = onboardingErrorMessage(err, { tenantSlugEdited });
       // Payment problems are shown on the payment step, which keeps what was typed.
-      if (mapped.payment) throw new Error(mapped.message);
+      if (mapped.payment && mode.payment) throw new Error(mapped.message);
       setError({ title: CREATE_FAILED_TITLE, message: mapped.message });
       setStep('details');
       // A field problem reopens the store details; anything else stays on the plan screen.
@@ -538,6 +575,7 @@ export default function OnboardForm({
 
   const summaryName = storeName.trim() || businessName.trim();
   const chosenPlan = planChoice ? plans?.find((plan) => plan.slug === planChoice.plan) ?? null : null;
+  const chosenTrialDays = chosenPlan?.trialDays ?? 0;
   // While paying, the details and plan above are locked; "Back" unlocks them.
   const locked = step === 'payment';
   const closePayment = () => {
@@ -606,6 +644,7 @@ export default function OnboardForm({
           phase={phase as Exclude<Phase, 'form'>}
           storeName={provisioned.name}
           storeUrl={provisioned.url}
+          trialDays={provisioned.trialDays}
           headingRef={headingRef}
           onOpenDashboard={openDashboard}
         />
@@ -764,7 +803,9 @@ export default function OnboardForm({
                         Your plan
                       </h2>
                       <p className="text-sm text-[var(--color-muted)]">
-                        You pay for it in the next step. Your store goes live as soon as we confirm the payment.
+                        {chosenTrialDays > 0
+                          ? `Start with a ${chosenTrialDays}-day free trial, or pay now. A trial store goes live at once.`
+                          : 'You pay for it in the next step. Your store goes live as soon as we confirm the payment.'}
                       </p>
                     </div>
                     <fieldset disabled={locked} className="m-0 min-w-0 border-0 p-0">
@@ -815,6 +856,21 @@ export default function OnboardForm({
                     <Button id="continue-to-payment" type="submit" className="h-11 w-full rounded-lg text-base font-semibold">
                       Continue to payment
                     </Button>
+                  )}
+                  {locked || chosenTrialDays <= 0 ? null : (
+                    <div className="space-y-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={startTrial}
+                        className="h-11 w-full rounded-lg border-[var(--color-accent)] text-base font-semibold text-[var(--color-accent)]"
+                      >
+                        Start {chosenTrialDays}-day free trial
+                      </Button>
+                      <p className="text-center text-xs text-[var(--color-muted)]">
+                        No payment now. Pay from Plan &amp; billing before the trial ends to keep your store live.
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>

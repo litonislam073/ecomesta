@@ -68,7 +68,7 @@ function subscription(overrides: Partial<Sub> = {}, top: Partial<MerchantSubscri
       paymentDueBy: '2026-12-04T18:00:00.000Z',
       currency: 'BDT',
       amountDue: 999,
-      plan: { name: 'Growth', slug: 'growth', monthlyPrice: 999, trialMonths: 2, limits: null },
+      plan: { name: 'Growth', slug: 'growth', monthlyPrice: 999, trialDays: 0, limits: null },
       ...overrides,
     },
   };
@@ -87,7 +87,7 @@ const PLANS: PublicPlan[] = [
   highlighted: p.slug === 'growth',
   currency: 'BDT',
   monthlyPrice: p.monthly,
-  trialMonths: 2,
+  trialDays: 0,
   limits: null,
   prices: [
     { billingCycle: 'MONTHLY', amount: p.monthly, months: 1, discountPercent: 0, effectiveMonthly: p.monthly },
@@ -465,7 +465,7 @@ describe('Plan & billing page', () => {
     const user = userEvent.setup();
     post.mockResolvedValue({
       success: true,
-      data: subscription({ plan: { name: 'Starter', slug: 'starter', monthlyPrice: 499, trialMonths: 2, limits: null } }),
+      data: subscription({ plan: { name: 'Starter', slug: 'starter', monthlyPrice: 499, trialDays: 0, limits: null } }),
     });
     renderBilling(subscription());
     await screen.findByRole('button', { name: /Continue to payment/ });

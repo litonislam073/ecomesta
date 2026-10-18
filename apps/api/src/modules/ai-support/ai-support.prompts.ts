@@ -14,7 +14,7 @@ export function planSummary(plans: PublicPlan[]): string {
   return plans
     .map((plan) => {
       const price = (cycle: string) => plan.prices.find((p) => p.billingCycle === cycle)?.amount ?? plan.monthlyPrice;
-      const line = `- ${plan.name}: ${formatBdt(price('MONTHLY'))}/month, ${formatBdt(price('SEMI_ANNUAL'))} per 6 months (10% off), ${formatBdt(price('YEARLY'))}/year (25% off)${plan.tagline ? ` — ${plan.tagline}` : ''}`;
+      const line = `- ${plan.name}: ${formatBdt(price('MONTHLY'))}/month, ${formatBdt(price('SEMI_ANNUAL'))} per 6 months (10% off), ${formatBdt(price('YEARLY'))}/year (25% off)${plan.trialDays > 0 ? `, ${plan.trialDays}-day free trial available` : ', no free trial'}${plan.tagline ? ` — ${plan.tagline}` : ''}`;
       return plan.features.length ? `${line}\n  Includes: ${plan.features.join('; ')}` : line;
     })
     .join('\n');
@@ -61,7 +61,7 @@ Facts
 - Affiliate program (Ecomesta's own; for anyone, no store needed): apply in the merchant app at Account → Affiliate program (or from the website's /affiliate page); a Super Admin approves, then the person gets a referral link (website link with ?ref=CODE). They earn 20% of the FIRST plan payment of each business that signs up through the link within 30 days (renewals earn nothing). Commissions are held 7 days, then can be withdrawn from ৳500 to bKash, Nagad, Rocket or Upay; the Ecomesta team pays by hand and emails the transaction ID. Self-referrals do not count.
 - Landing pages (Growth: up to 5, Business: unlimited; not on Starter): in Marketing → Landing pages the merchant picks one of 10 designs (single product, festival sale, fashion lookbook, food & health, story sales page, gadget & electronics, beauty & skincare, baby & kids, home & kitchen, trend & streetwear), chooses products from their catalog, edits text, pictures, colours, sections and the offer timer in a live editor, and publishes it at /lp/page-name on their store. Shoppers order on the page (Cash on Delivery, and online payment where the store offers it); orders arrive in Orders and remember the page. Package or offer cards are the product's variants. No AI features exist for merchants.
 - Merchants pay their own Ecomesta plan manually with bKash, Nagad, Rocket or Upay from Plan & billing in the dashboard; the team confirms it.
-- There is no free trial: a new merchant pays for the chosen plan in the last step of sign-up, and the store goes live once the team confirms the payment. After a paid period ends there is a ${PAYMENT_GRACE_DAYS}-day grace period.
+- Free trials depend on the plan (see "Current plans" below; Ecomesta sets each plan's trial, for example 7 or 30 days, or none). On a plan with a trial, a new merchant can choose "Start free trial" in the last step of sign-up: the store goes live right away without paying, they can pay any time during the trial from Plan & billing, and the paid period starts when the trial ends. Each person gets one trial (for their first store). Without a trial, the merchant pays for the plan in the last step of sign-up and the store goes live once the team confirms the payment. When a trial or paid period ends there is a ${PAYMENT_GRACE_DAYS}-day grace period.
 - Current plans (BDT):
 ${planSummary(input.plans)}
 - For anything else (features, setup steps, payments, shipping, domains, themes, coupons, policies) call search_ecomesta_knowledge first, then answer from what it returns. For "how do I…" questions base the steps only on the reference material or search results; never make up menu names or steps.

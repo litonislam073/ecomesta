@@ -102,13 +102,14 @@ export async function runAiSupportTool(
       return {
         result: JSON.stringify({
           currency: 'BDT',
-          freeTrial: false,
-          signUp: 'Pay for the chosen plan in the last step of sign-up; the store goes live once the payment is confirmed.',
+          signUp:
+            'In the last step of sign-up, pay for the chosen plan (the store goes live once the payment is confirmed) or, on a plan with a free trial, start the trial (the store goes live right away; one trial per person).',
           gracePeriodDays: PAYMENT_GRACE_DAYS,
           page: '/pricing',
           plans: plans.map((plan) => ({
             name: plan.name,
             tagline: plan.tagline,
+            freeTrialDays: plan.trialDays,
             prices: plan.prices.map((price) => ({
               period: price.billingCycle,
               amount: price.amount,

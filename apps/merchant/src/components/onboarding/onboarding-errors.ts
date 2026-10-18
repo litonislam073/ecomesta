@@ -38,6 +38,11 @@ export function onboardingErrorMessage(
   if (error.status === 401) {
     return { message: SESSION_EXPIRED, fieldErrors: {} };
   }
+  // A free trial that cannot be started (the plan has none, or this person
+  // already has a store) is explained as it is, on the plan screen.
+  if ((error.status === 409 || error.status === 422) && /free trial/i.test(error.message)) {
+    return { message: error.message, fieldErrors: {} };
+  }
   // The payment checks answer with merchant-facing sentences (a reused
   // transaction ID, a wrong wallet number); those are shown as they are.
   if (error.status === 409 && /transaction|payment/i.test(error.message)) {

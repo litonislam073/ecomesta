@@ -66,7 +66,7 @@ const sampleSubscription = {
     active: true,
     monthlyPrice: '999.00',
     yearlyPrice: '8991.00',
-    trialMonths: 2,
+    trialDays: 7,
   },
 };
 
@@ -121,7 +121,7 @@ describe('Admin subscriptions', () => {
     render(<AdminSubscriptionDetailPage />);
 
     expect(await screen.findByText('Grace period (payment due)')).toBeInTheDocument();
-    expect(screen.getByText('2 months')).toBeInTheDocument();
+    expect(screen.getByText('7 days')).toBeInTheDocument();
     expect(screen.getByText('৳5,395')).toBeInTheDocument();
     expect(screen.getByText('Payment due by')).toBeInTheDocument();
   });

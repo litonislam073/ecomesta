@@ -148,7 +148,7 @@ export class AdminSubscriptionsService {
         startsAt,
         trialEndsAt:
           status === SubscriptionStatus.TRIALING
-            ? trialEndDate(startsAt, readPlanSettings(plan.configuration).trialMonths)
+            ? trialEndDate(startsAt, readPlanSettings(plan.configuration).trialDays)
             : null,
       },
       include: SUBSCRIPTION_INCLUDE,
@@ -262,7 +262,7 @@ export class AdminSubscriptionsService {
         active: subscription.plan.active,
         monthlyPrice: moneyToString(subscription.plan.monthlyPrice)!,
         yearlyPrice: moneyToString(subscription.plan.yearlyPrice)!,
-        trialMonths: readPlanSettings(subscription.plan.configuration).trialMonths,
+        trialDays: readPlanSettings(subscription.plan.configuration).trialDays,
       },
     };
   }

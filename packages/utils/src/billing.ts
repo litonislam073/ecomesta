@@ -14,11 +14,24 @@ const BILLING_UTC_OFFSET_MS = 6 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Free months when a plan does not configure `trialMonths`. New stores no
- * longer get a free trial: they pay when they create the store. Subscriptions
- * already in a trial keep their own `trialEndsAt`.
+ * Free-trial days when a plan does not configure `trialDays`: none. A Super
+ * Admin can give each plan a trial (for example 7 or 30 days); a merchant can
+ * then start that plan as a trial at sign-up instead of paying first.
  */
-export const DEFAULT_TRIAL_MONTHS = 0;
+export const DEFAULT_TRIAL_DAYS = 0;
+
+/** Trial lengths a Super Admin can pick for a plan (0 switches the trial off). */
+export const TRIAL_DAY_OPTIONS = [0, 7, 30] as const;
+
+/** Longest trial a plan may configure. */
+export const MAX_TRIAL_DAYS = 90;
+
+/** A plan's trial length from its stored setting: a whole number of days, 0 when unset or invalid. */
+export function normalizeTrialDays(value: unknown): number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= MAX_TRIAL_DAYS
+    ? value
+    : DEFAULT_TRIAL_DAYS;
+}
 
 /** Days after the trial (or a paid period) ends before the store is suspended. */
 export const PAYMENT_GRACE_DAYS = 7;
@@ -128,8 +141,9 @@ export function addCalendarDays(date: Date, days: number): Date {
   return new Date(date.getTime() + days * DAY_MS);
 }
 
-export function trialEndDate(startsAt: Date, trialMonths = DEFAULT_TRIAL_MONTHS): Date {
-  return addCalendarMonths(startsAt, trialMonths);
+/** When a trial of `trialDays` days that starts at `startsAt` ends. */
+export function trialEndDate(startsAt: Date, trialDays = DEFAULT_TRIAL_DAYS): Date {
+  return addCalendarDays(startsAt, trialDays);
 }
 
 /** Last moment the store stays usable without payment. */

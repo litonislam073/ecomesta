@@ -88,6 +88,11 @@ export function PlanPicker({
                   {plan.tagline ? (
                     <span className="block text-sm text-[var(--color-muted)]">{plan.tagline}</span>
                   ) : null}
+                  {plan.trialDays > 0 ? (
+                    <span className="mt-1 inline-flex rounded-full bg-[#e6f6f1] px-2 py-0.5 text-xs font-semibold text-[#027a60]">
+                      {plan.trialDays}-day free trial
+                    </span>
+                  ) : null}
                 </span>
               </label>
             );
