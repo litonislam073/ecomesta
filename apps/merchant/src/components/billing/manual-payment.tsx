@@ -8,6 +8,7 @@ import type {
   MerchantBillingPayment,
   PublicPlan,
 } from '@ecomesta/types';
+import { BillingInvoice, InvoiceDialog, billingInvoiceNumber } from '@ecomesta/ui';
 import { billingCycleDefinition, formatBdt, formatBillingDate, type BillingCycleCode } from '@ecomesta/utils';
 import { api, ApiError } from '@/lib/api-client';
 
@@ -720,7 +721,15 @@ const STATUS_STYLES: Record<MerchantBillingPayment['status'], { label: string; c
   REJECTED: { label: 'Not confirmed', className: 'bg-[#fdeee8] text-[#a3441f]' },
 };
 
-export function PaymentHistory({ payments }: { payments: MerchantBillingPayment[] }) {
+export function PaymentHistory({
+  payments,
+  billedTo,
+}: {
+  payments: MerchantBillingPayment[];
+  /** Who the invoices are made out to; without it the invoice button is hidden. */
+  billedTo?: { name: string; email?: string | null; contactName?: string | null };
+}) {
+  const [invoiceFor, setInvoiceFor] = useState<MerchantBillingPayment | null>(null);
   if (payments.length === 0) return null;
   return (
     <section aria-labelledby="payment-history-title" className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]">
@@ -752,10 +761,25 @@ export function PaymentHistory({ payments }: { payments: MerchantBillingPayment[
               </div>
               <p className="text-sm font-semibold">{formatBdt(payment.amount)}</p>
               <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${status.className}`}>{status.label}</span>
+              {billedTo && payment.status === 'APPROVED' ? (
+                <button
+                  type="button"
+                  onClick={() => setInvoiceFor(payment)}
+                  className="rounded-md border border-[var(--color-border)] px-2.5 py-1 text-xs font-medium hover:bg-[var(--color-bg)]"
+                  aria-label={`Invoice for ${payment.planName} payment of ${formatBillingDate(payment.createdAt)}`}
+                >
+                  Invoice
+                </button>
+              ) : null}
             </li>
           );
         })}
       </ul>
+      {invoiceFor && billedTo ? (
+        <InvoiceDialog label={`Invoice ${billingInvoiceNumber(invoiceFor)}`} onClose={() => setInvoiceFor(null)}>
+          <BillingInvoice payment={invoiceFor} billedTo={billedTo} />
+        </InvoiceDialog>
+      ) : null}
     </section>
   );
 }

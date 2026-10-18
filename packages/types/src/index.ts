@@ -536,6 +536,11 @@ export interface OrderAddressSnapshot {
   country: string;
   phone: string | null;
   email: string | null;
+  /** Bangladesh location snapshots (set by storefront checkout). */
+  divisionName?: string | null;
+  districtName?: string | null;
+  upazilaName?: string | null;
+  landmark?: string | null;
 }
 
 export interface OrderPaymentRef {

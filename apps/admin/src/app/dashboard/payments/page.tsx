@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import type { AdminBillingPayment, BillingPaymentStatus, OffsetPageMeta } from '@ecomesta/types';
-import { Button } from '@ecomesta/ui';
+import { BillingInvoice, Button, InvoiceDialog, billingInvoiceNumber } from '@ecomesta/ui';
 import { PageHeader } from '@/components/admin/page-header';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -72,6 +72,7 @@ function PaymentCard({
 }) {
   const method = METHODS[payment.method];
   const [rejecting, setRejecting] = useState(false);
+  const [showInvoice, setShowInvoice] = useState(false);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -159,6 +160,18 @@ function PaymentCard({
           {payment.reviewedBy ? ` by ${payment.reviewedBy.email}` : ''}
           {payment.reviewedAt ? ` on ${formatDateTime(payment.reviewedAt)}` : ''}
           {payment.rejectionReason ? ` — ${payment.rejectionReason}` : ''}
+          {payment.status === 'APPROVED' ? (
+            <>
+              {' '}
+              <button
+                type="button"
+                onClick={() => setShowInvoice(true)}
+                className="ml-1 rounded-md border border-[var(--color-border)] px-2.5 py-1 text-xs font-medium text-[var(--color-ink)] hover:bg-[var(--color-bg)]"
+              >
+                Invoice
+              </button>
+            </>
+          ) : null}
         </p>
       ) : rejecting ? (
         <div className="mt-4 space-y-2">
@@ -196,6 +209,14 @@ function PaymentCard({
           </Button>
         </div>
       )}
+      {showInvoice ? (
+        <InvoiceDialog label={`Invoice ${billingInvoiceNumber(payment)}`} onClose={() => setShowInvoice(false)}>
+          <BillingInvoice
+            payment={payment}
+            billedTo={{ name: payment.tenant.name, contactName: payment.submittedBy.name, email: payment.submittedBy.email }}
+          />
+        </InvoiceDialog>
+      ) : null}
     </li>
   );
 }

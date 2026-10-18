@@ -89,7 +89,7 @@ function StatusSummary({ data, sub }: { data: MerchantSubscription; sub: Sub }) 
 }
 
 export default function BillingView() {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const { data, loading, error, refresh, setData } = useSubscription();
   const { plans } = usePublicPlans();
   const searchParams = useSearchParams();
@@ -362,7 +362,16 @@ export default function BillingView() {
         </PaymentDialog>
       ) : null}
 
-      {data ? <PaymentHistory payments={payments} /> : null}
+      {data ? (
+        <PaymentHistory
+          payments={payments}
+          billedTo={{
+            name: data.tenantName,
+            contactName: [user?.firstName, user?.lastName].filter(Boolean).join(' ') || null,
+            email: user?.email ?? null,
+          }}
+        />
+      ) : null}
     </div>
   );
 }

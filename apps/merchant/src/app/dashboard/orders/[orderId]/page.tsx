@@ -243,6 +243,15 @@ function OrderDetailContent() {
               Public reference: {order.publicReference}
             </p>
           ) : null}
+          {order ? (
+            <Link
+              href={`/dashboard/orders/${order.id}/invoice`}
+              className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--color-bg)]"
+            >
+              <span aria-hidden="true">🧾</span>
+              Invoice
+            </Link>
+          ) : null}
         </div>
         {canWrite && order && nextStatuses.includes('CANCELLED') ? (
           activeCourier ? (
