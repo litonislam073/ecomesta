@@ -9,7 +9,7 @@ export const metadata = buildMetadata({
   path: '/shipping',
   title: 'Ecommerce Shipping and Delivery Charges in Bangladesh | Ecomesta',
   description:
-    'Configure delivery for your online store across Bangladesh: shipping zones by division, district and upazila, flat and free rates, free-shipping thresholds and COD rules.',
+    'Set delivery across Bangladesh: zones by division, district and upazila, flat and free rates, free-shipping thresholds, COD rules and courier booking.',
 });
 
 export default function ShippingPage() {
@@ -58,9 +58,10 @@ export default function ShippingPage() {
             <div>
               <h3 className="text-lg font-semibold">Couriers</h3>
               <p className="mt-4 text-[var(--color-muted)]">
-                Courier APIs such as Pathao, Steadfast or RedX are not integrated. Book deliveries
-                with your courier as usual and add the tracking number to the order’s shipment — the
-                customer sees it on the order tracking page.
+                Steadfast, Pathao, RedX, Paperfly and eCourier are connected: add the API details
+                from your courier account in Settings → Couriers, then book parcels and follow their
+                delivery status from each order. For other couriers, book as usual and add the
+                tracking number to the order’s shipment — the customer sees it on the order tracking page.
               </p>
             </div>
           </FadeUp>

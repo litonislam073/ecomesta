@@ -37,14 +37,14 @@ describe('storefront detail pages use uncached lookups', () => {
   });
 
   it('product page: uncached lookup, 404 once the product is gone', async () => {
-    const { default: ProductDetailPage } = await import('@/app/(store)/products/[productSlug]/page');
+    const { default: ProductDetailPage } = await import('@/app/(site)/(store)/products/[productSlug]/page');
     const digest = await digestOf(() => ProductDetailPage({ params: { productSlug: 'old-shirt' }, searchParams: {} }));
     expect(digest).toBe('NEXT_NOT_FOUND');
     expect(publicGet).toHaveBeenCalledWith('/public/stores/alpha/products/old-shirt', { fresh: true });
   });
 
   it('category page: uncached lookup, 404 once the category is gone', async () => {
-    const { default: CategoryPage } = await import('@/app/(store)/categories/[categorySlug]/page');
+    const { default: CategoryPage } = await import('@/app/(site)/(store)/categories/[categorySlug]/page');
     const digest = await digestOf(() => CategoryPage({ params: { categorySlug: 'old-shirts' }, searchParams: {} }));
     expect(digest).toBe('NEXT_NOT_FOUND');
     expect(publicGet).toHaveBeenCalledWith('/public/stores/alpha/categories/old-shirts', { fresh: true });

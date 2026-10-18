@@ -6,9 +6,9 @@ import { buildMetadata } from '@/lib/marketing/seo';
 
 export const PLATFORM_HOME_METADATA: Metadata = buildMetadata({
   path: '/',
-  title: 'Ecomesta — Build and Manage Your Online Store in Bangladesh',
+  title: 'Ecommerce Website Bangladesh: Online Store from ৳99/month | Ecomesta',
   description:
-    'Create an online store for your Bangladesh business. Manage products, inventory, orders, Cash on Delivery and SSLCommerz payments, and delivery zones in one place.',
+    'Create your ecommerce website in Bangladesh from ৳99 a month. Cash on Delivery, bKash and Nagad payments, courier booking and delivery zones in one place.',
 });
 
 /**

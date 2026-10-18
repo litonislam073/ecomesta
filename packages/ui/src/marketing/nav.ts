@@ -53,6 +53,7 @@ export const FOOTER_NAV: { heading: string; items: NavItem[] }[] = [
       { href: '/resources', label: 'Resource center' },
       { href: '/blog', label: 'Blog' },
       { href: '/faq', label: 'FAQ' },
+      { href: '/shopify-alternative-bangladesh', label: 'Ecomesta vs Shopify' },
     ],
   },
   {

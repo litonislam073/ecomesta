@@ -9,7 +9,16 @@ import type { IconName } from './icons';
 type Link = { href: string; label: string };
 
 export interface HomeCopy {
-  hero: { badge: string; title: string; intro: string; primary: string; secondary: string; points: string[] };
+  hero: {
+    badge: string;
+    title: string;
+    intro: string;
+    primary: string;
+    secondary: string;
+    /** Price and payment facts shown right under the buttons. */
+    offer: string[];
+    points: string[];
+  };
   manage: { heading: string; items: { icon: IconName; label: string; href: string }[] };
   features: {
     eyebrow: string;
@@ -59,13 +68,14 @@ const HOME_FAQ_QUESTIONS = [
 
 const EN: HomeCopy = {
   hero: {
-    badge: 'Ecommerce platform for Bangladesh',
+    badge: 'Ecommerce website builder for Bangladesh',
     title: 'Build Your Online Store. Sell More. Manage Everything in One Place.',
     intro:
-      'Ecomesta helps Bangladesh businesses create and manage online stores — products, orders, payments, courier booking, themes and marketing tracking — from one platform.',
+      'Get your ecommerce website in Bangladesh from ৳99 a month. Products, orders, Cash on Delivery, bKash and Nagad payments, courier booking and themes — all from one platform.',
     primary: 'Create Your Store',
     secondary: 'Explore Features',
-    points: ['Cash on Delivery', 'SSLCommerz payments', 'Steadfast, Pathao & RedX booking', 'Live theme editor'],
+    offer: ['Plans from ৳99/month', 'Pay with bKash, Nagad, Rocket or Upay', 'No fee on your sales'],
+    points: ['Cash on Delivery', 'bKash, Nagad & card payments', 'Steadfast, Pathao & RedX booking', 'Live theme editor'],
   },
   manage: {
     heading: 'Manage your whole store from one platform',
@@ -209,8 +219,8 @@ const EN: HomeCopy = {
       },
       {
         icon: 'shield',
-        title: 'SSLCommerz',
-        body: 'Bangladesh-focused hosted payment flow, validated with SSLCommerz on the server before an order is marked paid.',
+        title: 'bKash, Nagad & cards',
+        body: 'Customers pay online with bKash, Nagad or cards through SSLCommerz (Growth and Business plans). Every payment is verified before the order is marked paid.',
         href: '/payments/sslcommerz',
       },
       {
@@ -227,7 +237,7 @@ const EN: HomeCopy = {
       },
     ],
     note:
-      'Totals are always calculated by Ecomesta, and an online payment only counts once the provider confirms it. bKash and Nagad are not integrated directly; customers can pay with the methods enabled on your SSLCommerz account.',
+      'Your own plan is paid in taka with bKash, Nagad, Rocket or Upay, from ৳99 a month, and Ecomesta takes no fee on your sales. bKash and Nagad payments from customers run through your SSLCommerz account, not a direct bKash or Nagad connection.',
   },
   shipping: {
     eyebrow: 'Bangladesh shipping',
@@ -295,13 +305,14 @@ const EN: HomeCopy = {
 
 const BN: HomeCopy = {
   hero: {
-    badge: 'বাংলাদেশের ব্যবসার জন্য ই-কমার্স প্ল্যাটফর্ম',
+    badge: 'বাংলাদেশে ই-কমার্স ওয়েবসাইট বানানোর প্ল্যাটফর্ম',
     title: 'নিজের অনলাইন স্টোর খুলুন। বেশি বিক্রি করুন। সব কিছু এক জায়গা থেকে চালান।',
     intro:
-      'Ecomesta দিয়ে বাংলাদেশের যেকোনো ব্যবসা সহজে অনলাইন স্টোর খুলে চালাতে পারে — প্রোডাক্ট, অর্ডার, পেমেন্ট, কুরিয়ার বুকিং, থিম আর মার্কেটিং ট্র্যাকিং, সব এক প্ল্যাটফর্মে।',
+      'মাসে মাত্র ৳৯৯ থেকে নিজের ই-কমার্স ওয়েবসাইট চালু করুন। প্রোডাক্ট, অর্ডার, ক্যাশ অন ডেলিভারি, bKash ও Nagad পেমেন্ট, কুরিয়ার বুকিং আর থিম — সব এক প্ল্যাটফর্মে।',
     primary: 'স্টোর খুলুন',
     secondary: 'ফিচারগুলো দেখুন',
-    points: ['ক্যাশ অন ডেলিভারি', 'SSLCommerz পেমেন্ট', 'Steadfast, Pathao ও RedX বুকিং', 'লাইভ থিম এডিটর'],
+    offer: ['মাসে ৳৯৯ থেকে প্যাকেজ', 'bKash, Nagad, Rocket বা Upay দিয়ে পেমেন্ট', 'বিক্রিতে কোনো ফি নেই'],
+    points: ['ক্যাশ অন ডেলিভারি', 'bKash, Nagad ও কার্ডে পেমেন্ট', 'Steadfast, Pathao ও RedX বুকিং', 'লাইভ থিম এডিটর'],
   },
   manage: {
     heading: 'পুরো স্টোর চালান এক প্ল্যাটফর্ম থেকে',
@@ -445,8 +456,8 @@ const BN: HomeCopy = {
       },
       {
         icon: 'shield',
-        title: 'SSLCommerz',
-        body: 'বাংলাদেশের জন্য তৈরি অনলাইন পেমেন্ট। SSLCommerz সার্ভারে যাচাই করার পরই অর্ডার "পেইড" হয়।',
+        title: 'bKash, Nagad আর কার্ড',
+        body: 'কাস্টমার SSLCommerz দিয়ে bKash, Nagad বা কার্ডে অনলাইনে টাকা দেন (Growth আর Business প্যাকেজে)। প্রতিটি পেমেন্ট যাচাই করার পরই অর্ডার "পেইড" হয়।',
         href: '/payments/sslcommerz',
       },
       {
@@ -463,7 +474,7 @@ const BN: HomeCopy = {
       },
     ],
     note:
-      'মোট টাকার হিসাব সবসময় Ecomesta করে, আর অনলাইন পেমেন্ট তখনই গোনা হয় যখন পেমেন্ট সার্ভিস নিশ্চিত করে। bKash আর Nagad সরাসরি যুক্ত নয়; আপনার SSLCommerz অ্যাকাউন্টে যে উপায়গুলো চালু আছে (যেমন bKash, Nagad, কার্ড), কাস্টমার সেগুলো দিয়ে দিতে পারে।',
+      'আপনার নিজের প্যাকেজের টাকা মাসে ৳৯৯ থেকে, bKash, Nagad, Rocket বা Upay দিয়ে টাকায় দেন, আর Ecomesta আপনার বিক্রি থেকে কোনো ফি নেয় না। কাস্টমারের bKash আর Nagad পেমেন্ট আপনার SSLCommerz অ্যাকাউন্ট দিয়ে চলে — সরাসরি bKash বা Nagad সংযোগ নয়।',
   },
   shipping: {
     eyebrow: 'বাংলাদেশে ডেলিভারি',

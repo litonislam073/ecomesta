@@ -5,9 +5,9 @@ import { buildMetadata } from '@/lib/marketing/seo';
 export const metadata = buildMetadata({
   path: '/bn',
   locale: 'bn',
-  title: 'Ecomesta — বাংলাদেশে অনলাইন স্টোর খুলুন ও চালান',
+  title: 'ই-কমার্স ওয়েবসাইট বাংলাদেশ: মাসে ৳৯৯ থেকে অনলাইন স্টোর | Ecomesta',
   description:
-    'আপনার ব্যবসার জন্য অনলাইন স্টোর খুলুন। প্রোডাক্ট, স্টক, অর্ডার, ক্যাশ অন ডেলিভারি, SSLCommerz পেমেন্ট আর কুরিয়ার বুকিং — সব এক জায়গা থেকে চালান।',
+    'মাসে ৳৯৯ থেকে নিজের ই-কমার্স ওয়েবসাইট খুলুন। ক্যাশ অন ডেলিভারি, bKash ও Nagad পেমেন্ট, কুরিয়ার বুকিং আর ডেলিভারি জোন — সব এক জায়গা থেকে চালান।',
 });
 
 export const revalidate = 300;

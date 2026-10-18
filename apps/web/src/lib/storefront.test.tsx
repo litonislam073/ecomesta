@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ProductCard } from '@/components/product-card';
-import NotFound from '@/app/not-found';
+import NotFound from '@/app/(site)/not-found';
 import { CartProvider, useCart } from '@/lib/cart';
 import { readStoreQuery } from '@/lib/domain-routing';
 

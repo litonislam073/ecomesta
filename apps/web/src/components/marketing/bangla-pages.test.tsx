@@ -28,13 +28,19 @@ describe('Bangla page paths', () => {
     expect(alternateLanguagePath('/')).toEqual({ locale: 'bn', href: '/bn' });
     expect(alternateLanguagePath('/pricing/')).toEqual({ locale: 'bn', href: '/bn/pricing' });
     expect(alternateLanguagePath('/bn/pricing')).toEqual({ locale: 'en', href: '/pricing' });
-    expect(alternateLanguagePath('/features')).toBeNull();
-    expect(alternateLanguagePath('/bn/features')).toBeNull();
+    expect(alternateLanguagePath('/features/coupons')).toEqual({ locale: 'bn', href: '/bn/features/coupons' });
+    expect(alternateLanguagePath('/bn/blog/facebook-page-to-online-store')).toEqual({
+      locale: 'en',
+      href: '/blog/facebook-page-to-online-store',
+    });
+    expect(alternateLanguagePath('/login')).toBeNull();
+    expect(alternateLanguagePath('/bn/login')).toBeNull();
   });
 
   it('links Bangla navigation to Bangla pages when they exist', () => {
     expect(localizedHref('/pricing', 'bn')).toBe('/bn/pricing');
-    expect(localizedHref('/features', 'bn')).toBe('/features');
+    expect(localizedHref('/features', 'bn')).toBe('/bn/features');
+    expect(localizedHref('/login', 'bn')).toBe('/login');
     const nav = primaryNav('bn');
     expect(nav.find((item) => item.href === '/bn/pricing')?.label).toBe('প্যাকেজ ও দাম');
     expect(nav.find((item) => item.href === '/bn')?.label).toBe('হোম');

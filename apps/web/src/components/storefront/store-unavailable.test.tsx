@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import StoreUnavailablePage, { metadata } from '@/app/store-unavailable/page';
+import StoreUnavailablePage, { metadata } from '@/app/(site)/store-unavailable/page';
 import { isStoreUnavailableError } from '@/components/storefront/store-unavailable';
 import { PublicApiError } from '@/lib/public-api';
 

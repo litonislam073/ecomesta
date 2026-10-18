@@ -1,7 +1,7 @@
 'use client';
 
-import { useId, useRef, useState, type FormEvent } from 'react';
-import { MARKETING_FOCUS } from '@ecomesta/ui/marketing';
+import { useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { MARKETING_FOCUS, type MarketingLocale } from '@ecomesta/ui/marketing';
 import { requestHumanSupport, visitorDetailsErrors } from '@/lib/ai-support';
 
 /** Topics the team sorts requests by; sent as the request's reason. */
@@ -14,6 +14,66 @@ export const CONTACT_TOPICS = [
   'Partnership',
   'Something else',
 ] as const;
+
+/** Bangla labels for the topics; the English value is what the team receives. */
+const TOPIC_LABELS_BN: Record<(typeof CONTACT_TOPICS)[number], string> = {
+  'Plans and pricing': 'প্যাকেজ ও দাম',
+  'Getting started': 'শুরু করা',
+  'Payments and billing': 'পেমেন্ট ও বিলিং',
+  'Delivery and couriers': 'ডেলিভারি ও কুরিয়ার',
+  'Technical help': 'কারিগরি সাহায্য',
+  Partnership: 'পার্টনারশিপ',
+  'Something else': 'অন্য কিছু',
+};
+
+const FORM_COPY = {
+  en: {
+    form: 'Contact form',
+    name: 'Your name',
+    phone: 'Phone number',
+    email: 'Email',
+    optional: '(optional)',
+    topic: 'Topic',
+    message: 'How can we help?',
+    messagePlaceholder: 'Tell us about your business and what you need.',
+    required: (star: ReactNode) => <>Fields marked {star} are required.</>,
+    send: 'Send message',
+    sending: 'Sending…',
+    writeMessage: 'Please write your message.',
+    minLength: (min: number) => `Please write at least ${min} characters.`,
+    fieldErrors: null as null | Partial<Record<'name' | 'phone' | 'email', string>>,
+    thanks: (name: string) => `Thank you, ${name}! Your message has reached our team.`,
+    callYou: 'We will call you on',
+    orEmail: 'or email',
+    reference: 'Your reference:',
+    another: 'Send another message',
+  },
+  bn: {
+    form: 'যোগাযোগ ফর্ম',
+    name: 'আপনার নাম',
+    phone: 'মোবাইল নম্বর',
+    email: 'ইমেইল',
+    optional: '(ঐচ্ছিক)',
+    topic: 'বিষয়',
+    message: 'কীভাবে সাহায্য করতে পারি?',
+    messagePlaceholder: 'আপনার ব্যবসা আর কী দরকার, লিখুন।',
+    required: (star: ReactNode) => <>{star} চিহ্নিত ঘরগুলো পূরণ করতে হবে।</>,
+    send: 'মেসেজ পাঠান',
+    sending: 'পাঠানো হচ্ছে…',
+    writeMessage: 'আপনার মেসেজ লিখুন।',
+    minLength: (min: number) => `অন্তত ${min.toLocaleString('bn-BD')} অক্ষর লিখুন।`,
+    fieldErrors: {
+      name: 'আপনার নাম লিখুন।',
+      phone: 'সঠিক মোবাইল নম্বর দিন (যেমন 01XXXXXXXXX)।',
+      email: 'সঠিক ইমেইল ঠিকানা দিন।',
+    } as null | Partial<Record<'name' | 'phone' | 'email', string>>,
+    thanks: (name: string) => `ধন্যবাদ, ${name}! আপনার মেসেজ আমাদের টিমের কাছে পৌঁছেছে।`,
+    callYou: 'আমরা কল করব এই নম্বরে:',
+    orEmail: 'অথবা ইমেইল করব',
+    reference: 'আপনার রেফারেন্স:',
+    another: 'আরেকটি মেসেজ পাঠান',
+  },
+};
 
 const MESSAGE_MIN = 10;
 const MESSAGE_MAX = 2000;
@@ -31,7 +91,8 @@ const required = "after:ml-0.5 after:text-[#c0392b] after:content-['*']";
  * Public contact form. Requests reach the Ecomesta team by email through the
  * same rate-limited endpoint as the support chat's "talk to a person" form.
  */
-export function ContactForm() {
+export function ContactForm({ locale = 'en' }: { locale?: MarketingLocale }) {
+  const copy = FORM_COPY[locale];
   const id = useId();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -53,9 +114,14 @@ export function ContactForm() {
 
   function check(): Partial<Record<Field, string>> {
     const found: Partial<Record<Field, string>> = { ...visitorDetailsErrors({ name, phone, email }) };
+    if (copy.fieldErrors) {
+      for (const field of ['name', 'phone', 'email'] as const) {
+        if (found[field]) found[field] = copy.fieldErrors[field];
+      }
+    }
     const text = message.trim();
-    if (!text) found.message = 'Please write your message.';
-    else if (text.length < MESSAGE_MIN) found.message = `Please write at least ${MESSAGE_MIN} characters.`;
+    if (!text) found.message = copy.writeMessage;
+    else if (text.length < MESSAGE_MIN) found.message = copy.minLength(MESSAGE_MIN);
     return found;
   }
 
@@ -107,27 +173,27 @@ export function ContactForm() {
           ✓
         </span>
         <h3 ref={doneRef} tabIndex={-1} className="mt-4 text-xl font-semibold focus:outline-none">
-          Thank you, {sent.name}! Your message has reached our team.
+          {copy.thanks(sent.name)}
         </h3>
         <p className="mt-2 text-[var(--color-muted)]">
-          We will call you on <strong className="text-[var(--color-ink)]">{sent.phone}</strong>
+          {copy.callYou} <strong className="text-[var(--color-ink)]">{sent.phone}</strong>
           {sent.email ? (
             <>
               {' '}
-              or email <strong className="break-all text-[var(--color-ink)]">{sent.email}</strong>
+              {copy.orEmail} <strong className="break-all text-[var(--color-ink)]">{sent.email}</strong>
             </>
           ) : null}
           .
         </p>
         <p className="mt-4 text-sm">
-          Your reference: <span className="font-mono font-semibold">{sent.reference}</span>
+          {copy.reference} <span className="font-mono font-semibold">{sent.reference}</span>
         </p>
         <button
           type="button"
           onClick={startOver}
           className={`mt-5 rounded-sm text-sm font-semibold text-[var(--color-accent)] underline-offset-4 hover:underline ${MARKETING_FOCUS}`}
         >
-          Send another message
+          {copy.another}
         </button>
       </div>
     );
@@ -143,11 +209,11 @@ export function ContactForm() {
   const clear = (field: Field) => errors[field] && setErrors((prev) => ({ ...prev, [field]: undefined }));
 
   return (
-    <form onSubmit={onSubmit} noValidate aria-label="Contact form" className="relative space-y-5">
+    <form onSubmit={onSubmit} noValidate aria-label={copy.form} className="relative space-y-5">
       <div className="grid gap-5 sm:grid-cols-2">
         <div>
         <label className="block text-sm font-medium text-[var(--color-ink)]">
-          <span className={required}>Your name</span>
+          <span className={required}>{copy.name}</span>
           <input
             ref={refs.name}
             className={`${fieldClass(Boolean(errors.name))} h-12`}
@@ -167,7 +233,7 @@ export function ContactForm() {
         </div>
         <div>
         <label className="block text-sm font-medium text-[var(--color-ink)]">
-          <span className={required}>Phone number</span>
+          <span className={required}>{copy.phone}</span>
           <input
             ref={refs.phone}
             className={`${fieldClass(Boolean(errors.phone))} h-12`}
@@ -192,7 +258,7 @@ export function ContactForm() {
       <div className="grid gap-5 sm:grid-cols-2">
         <div>
         <label className="block text-sm font-medium text-[var(--color-ink)]">
-          Email <span className="font-normal text-[var(--color-muted)]">(optional)</span>
+          {copy.email} <span className="font-normal text-[var(--color-muted)]">{copy.optional}</span>
           <input
             ref={refs.email}
             className={`${fieldClass(Boolean(errors.email))} h-12`}
@@ -212,11 +278,11 @@ export function ContactForm() {
           {fieldError('email')}
         </div>
         <label className="block text-sm font-medium text-[var(--color-ink)]">
-          Topic
+          {copy.topic}
           <select className={`${fieldClass(false)} h-12`} value={topic} onChange={(e) => setTopic(e.target.value)}>
             {CONTACT_TOPICS.map((item) => (
               <option key={item} value={item}>
-                {item}
+                {locale === 'bn' ? TOPIC_LABELS_BN[item] : item}
               </option>
             ))}
           </select>
@@ -224,13 +290,13 @@ export function ContactForm() {
       </div>
       <div>
       <label className="block text-sm font-medium text-[var(--color-ink)]">
-        <span className={required}>How can we help?</span>
+        <span className={required}>{copy.message}</span>
         <textarea
           ref={refs.message}
           className={`${fieldClass(Boolean(errors.message))} min-h-36 resize-y py-3`}
           required
           maxLength={MESSAGE_MAX}
-          placeholder="Tell us about your business and what you need."
+          placeholder={copy.messagePlaceholder}
           value={message}
           aria-invalid={Boolean(errors.message) || undefined}
           aria-describedby={[describe('message'), `${id}-count`].filter(Boolean).join(' ')}
@@ -265,14 +331,14 @@ export function ContactForm() {
       ) : null}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-[var(--color-muted)]">
-          Fields marked <span className="text-[#c0392b]">*</span> are required.
+          {copy.required(<span className="text-[#c0392b]">*</span>)}
         </p>
         <button
           type="submit"
           disabled={busy}
           className={`inline-flex h-12 items-center justify-center rounded-xl bg-[var(--color-accent)] px-7 text-base font-semibold text-white shadow-sm hover:bg-[var(--color-accent-hover)] disabled:cursor-not-allowed disabled:opacity-60 ${MARKETING_FOCUS}`}
         >
-          {busy ? 'Sending…' : 'Send message'}
+          {busy ? copy.sending : copy.send}
         </button>
       </div>
     </form>

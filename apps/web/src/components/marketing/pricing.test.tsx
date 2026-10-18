@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PublicPlan } from '@ecomesta/types';
 import { billingCyclePrice, type BillingCycleCode } from '@ecomesta/utils';
-import PricingPage, { metadata } from '@/app/(marketing)/pricing/page';
+import PricingPage, { metadata } from '@/app/(site)/(marketing)/pricing/page';
 import { PricingPlans } from '@/components/marketing/pricing-plans';
 
 vi.mock('next/link', () => ({

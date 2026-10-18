@@ -1,13 +1,7 @@
 import type { ReactNode } from 'react';
-import { HtmlLang } from '@/components/marketing/html-lang';
 import { MarketingShell } from '@/components/marketing/marketing-shell';
 
-/** Bangla versions of the marketing pages, at /bn. */
+/** Bangla versions of the marketing pages, at /bn. The root layout sets `lang="bn"`. */
 export default function BanglaMarketingLayout({ children }: { children: ReactNode }) {
-  return (
-    <>
-      <HtmlLang lang="bn" />
-      <MarketingShell locale="bn">{children}</MarketingShell>
-    </>
-  );
+  return <MarketingShell locale="bn">{children}</MarketingShell>;
 }

@@ -175,13 +175,13 @@ describe('product and category metadata', () => {
 
   async function productMetadata(overrides: Partial<typeof product> = {}) {
     getMock.mockResolvedValue({ success: true, data: { ...product, ...overrides } });
-    const { generateMetadata } = await import('@/app/(store)/products/[productSlug]/page');
+    const { generateMetadata } = await import('@/app/(site)/(store)/products/[productSlug]/page');
     return generateMetadata({ params: { productSlug: 'clay-mug' }, searchParams: {} });
   }
 
   async function categoryMetadata(overrides: Partial<typeof category> = {}) {
     getMock.mockResolvedValue({ success: true, data: { ...category, ...overrides } });
-    const { generateMetadata } = await import('@/app/(store)/categories/[categorySlug]/page');
+    const { generateMetadata } = await import('@/app/(site)/(store)/categories/[categorySlug]/page');
     return generateMetadata({ params: { categorySlug: 'kitchen' }, searchParams: {} });
   }
 
@@ -254,23 +254,23 @@ describe('private and listing storefront metadata', () => {
   });
 
   it('noindexes checkout, cart and payment return pages', async () => {
-    const checkout = await import('@/app/(store)/checkout/page');
+    const checkout = await import('@/app/(site)/(store)/checkout/page');
     expect((await checkout.generateMetadata({ searchParams: {} })).robots).toEqual({
       index: false,
       follow: false,
     });
-    expect((await import('@/app/(store)/cart/layout')).metadata.robots).toEqual({
+    expect((await import('@/app/(site)/(store)/cart/layout')).metadata.robots).toEqual({
       index: false,
       follow: false,
     });
-    expect((await import('@/app/(store)/payment/layout')).metadata.robots).toEqual({
+    expect((await import('@/app/(site)/(store)/payment/layout')).metadata.robots).toEqual({
       index: false,
       follow: false,
     });
   });
 
   it('indexes only the unfiltered product listing, with a canonical URL', async () => {
-    const { generateMetadata } = await import('@/app/(store)/products/page');
+    const { generateMetadata } = await import('@/app/(site)/(store)/products/page');
     const base = await generateMetadata({ searchParams: { store: 'alpha' } });
     expect(base.alternates).toEqual({ canonical: 'https://shop.alpha.com/products' });
     expect(base.robots).toBeUndefined();

@@ -64,7 +64,7 @@ describe('where the AI support agent may appear', () => {
   });
 
   it('is never imported by storefront routes or storefront components', () => {
-    const roots = [join(__dirname, '../../app/(store)'), join(__dirname, '../storefront')];
+    const roots = [join(__dirname, '../../app/(site)/(store)'), join(__dirname, '../storefront')];
     const files: string[] = [];
     const walk = (dir: string) => {
       for (const name of readdirSync(dir)) {

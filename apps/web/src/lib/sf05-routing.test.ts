@@ -262,7 +262,7 @@ describe('SF-05 missing stores are real 404s', () => {
   });
 
   it('the storefront layout raises notFound() instead of rendering a 200 "Store not found"', async () => {
-    const { default: StoreLayout } = await import('@/app/(store)/layout');
+    const { default: StoreLayout } = await import('@/app/(site)/(store)/layout');
     expect(await thrownDigest(() => StoreLayout({ children: null }))).toBe('NEXT_NOT_FOUND');
 
     headerBag.set('x-ecomesta-store-slug', 'no-such-store');

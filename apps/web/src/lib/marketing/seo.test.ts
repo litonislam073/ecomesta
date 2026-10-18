@@ -19,21 +19,22 @@ describe('marketing SEO', () => {
     vi.stubEnv('NEXT_PUBLIC_MERCHANT_URL', 'https://merchant.ecomesta.com');
 
     const staticPages: [string, () => Promise<{ metadata: Metadata }>][] = [
-      ['/features', () => import('@/app/(marketing)/features/page')],
-      ['/payments', () => import('@/app/(marketing)/payments/page')],
-      ['/shipping', () => import('@/app/(marketing)/shipping/page')],
-      ['/pricing', () => import('@/app/(marketing)/pricing/page')],
-      ['/solutions', () => import('@/app/(marketing)/solutions/page')],
-      ['/resources', () => import('@/app/(marketing)/resources/page')],
-      ['/blog', () => import('@/app/(marketing)/blog/page')],
-      ['/faq', () => import('@/app/(marketing)/faq/page')],
-      ['/about', () => import('@/app/(marketing)/about/page')],
-      ['/contact', () => import('@/app/(marketing)/contact/page')],
-      ['/affiliate', () => import('@/app/(marketing)/affiliate/page')],
-      ['/privacy-policy', () => import('@/app/(marketing)/privacy-policy/page')],
-      ['/terms', () => import('@/app/(marketing)/terms/page')],
-      ['/refund-policy', () => import('@/app/(marketing)/refund-policy/page')],
-      ['/cookie-policy', () => import('@/app/(marketing)/cookie-policy/page')],
+      ['/features', () => import('@/app/(site)/(marketing)/features/page')],
+      ['/payments', () => import('@/app/(site)/(marketing)/payments/page')],
+      ['/shipping', () => import('@/app/(site)/(marketing)/shipping/page')],
+      ['/pricing', () => import('@/app/(site)/(marketing)/pricing/page')],
+      ['/solutions', () => import('@/app/(site)/(marketing)/solutions/page')],
+      ['/resources', () => import('@/app/(site)/(marketing)/resources/page')],
+      ['/blog', () => import('@/app/(site)/(marketing)/blog/page')],
+      ['/faq', () => import('@/app/(site)/(marketing)/faq/page')],
+      ['/about', () => import('@/app/(site)/(marketing)/about/page')],
+      ['/contact', () => import('@/app/(site)/(marketing)/contact/page')],
+      ['/affiliate', () => import('@/app/(site)/(marketing)/affiliate/page')],
+      ['/privacy-policy', () => import('@/app/(site)/(marketing)/privacy-policy/page')],
+      ['/terms', () => import('@/app/(site)/(marketing)/terms/page')],
+      ['/refund-policy', () => import('@/app/(site)/(marketing)/refund-policy/page')],
+      ['/cookie-policy', () => import('@/app/(site)/(marketing)/cookie-policy/page')],
+      ['/shopify-alternative-bangladesh', () => import('@/app/(site)/(marketing)/shopify-alternative-bangladesh/page')],
     ];
     for (const [path, load] of staticPages) {
       pages.push({ path, metadata: (await load()).metadata });
@@ -54,7 +55,7 @@ describe('marketing SEO', () => {
       }
     }
 
-    const blogPost = await import('@/app/(marketing)/blog/[slug]/page');
+    const blogPost = await import('@/app/(site)/(marketing)/blog/[slug]/page');
     const { BLOG_POSTS } = await import('@/lib/marketing/content/blog');
     for (const post of BLOG_POSTS) {
       pages.push({
@@ -110,8 +111,8 @@ describe('marketing SEO', () => {
   });
 
   it('marks the login and register redirects as noindex', async () => {
-    const login = await import('@/app/(marketing)/login/page');
-    const register = await import('@/app/(marketing)/register/page');
+    const login = await import('@/app/(site)/(marketing)/login/page');
+    const register = await import('@/app/(site)/(marketing)/register/page');
     expect(login.metadata.robots).toEqual({ index: false, follow: false });
     expect(register.metadata.robots).toEqual({ index: false, follow: false });
   });
@@ -170,12 +171,14 @@ describe('robots.txt and sitemap.xml', () => {
     ).toBe(true);
     expect(xml.trimEnd().endsWith('</urlset>')).toBe(true);
     const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1] ?? '');
-    expect(locs).toEqual([...indexableMarketingPaths(), '/bn', '/bn/pricing'].map((path) => `${SITE}${path}`));
+    const english = indexableMarketingPaths();
+    const bangla = english.map((path) => (path === '/' ? '/bn' : `/bn${path}`));
+    expect(locs).toEqual([...english, ...bangla].map((path) => `${SITE}${path}`));
     // English and Bangla versions point at each other.
     expect(xml).toMatch(
       new RegExp(`<loc>${SITE}/bn/pricing</loc>\\s*<xhtml:link rel="alternate" hreflang="en-BD" href="${SITE}/pricing"/>`),
     );
-    expect(xml.match(/hreflang="bn-BD"/g)).toHaveLength(4);
+    expect(xml.match(/hreflang="bn-BD"/g)).toHaveLength(english.length * 2);
     expect(new Set(locs).size).toBe(locs.length);
     expect(xml.match(/<url>/g)).toHaveLength(locs.length);
     expect(xml.match(/<changefreq>(weekly|monthly|yearly)<\/changefreq>/g)).toHaveLength(locs.length);
@@ -267,11 +270,16 @@ describe('structured data', () => {
     const pair = { 'en-BD': `${SITE}/pricing`, 'bn-BD': `${SITE}/bn/pricing`, 'x-default': `${SITE}/pricing` };
     expect(languageAlternates('/pricing')).toEqual(pair);
     expect(languageAlternates('/bn/pricing')).toEqual(pair);
-    expect(languageAlternates('/features')).toBeUndefined();
+    expect(languageAlternates('/features/coupons')).toEqual({
+      'en-BD': `${SITE}/features/coupons`,
+      'bn-BD': `${SITE}/bn/features/coupons`,
+      'x-default': `${SITE}/features/coupons`,
+    });
+    expect(languageAlternates('/login')).toBeUndefined();
     const bn = buildMetadata({ path: '/bn/pricing', title: 't', description: 'd', locale: 'bn' });
     expect(bn.alternates).toEqual({ canonical: `${SITE}/bn/pricing`, languages: pair });
     expect(bn.openGraph).toMatchObject({ locale: 'bn_BD', alternateLocale: 'en_BD' });
-    expect(buildMetadata({ path: '/features', title: 't', description: 'd' }).alternates).toEqual({ canonical: `${SITE}/features` });
+    expect(buildMetadata({ path: '/login', title: 't', description: 'd' }).alternates).toEqual({ canonical: `${SITE}/login` });
   });
 
   it('builds breadcrumbs and FAQ markup from the visible content', async () => {

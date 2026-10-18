@@ -2,13 +2,38 @@ import { FOOTER_NAV, LEGAL_NAV, PRIMARY_NAV, type NavItem } from './nav';
 
 export type MarketingLocale = 'en' | 'bn';
 
-/** English pages that also have a Bangla version under /bn. */
-export const BN_PAGES = ['/', '/pricing'] as const;
+/**
+ * Sections of the marketing site that also exist in Bangla under /bn — every
+ * page in them, including their sub-pages (/features/coupons, /blog/…).
+ */
+export const BN_SECTIONS = [
+  '/pricing',
+  '/features',
+  '/payments',
+  '/shipping',
+  '/solutions',
+  '/resources',
+  '/blog',
+  '/faq',
+  '/about',
+  '/contact',
+  '/affiliate',
+  '/privacy-policy',
+  '/terms',
+  '/refund-policy',
+  '/cookie-policy',
+  '/shopify-alternative-bangladesh',
+] as const;
+
+/** Kept for callers that list the top-level Bangla pages. */
+export const BN_PAGES = ['/', ...BN_SECTIONS] as const;
 
 const BN_PREFIX = '/bn';
 
 export function hasBanglaVersion(enPath: string): boolean {
-  return (BN_PAGES as readonly string[]).includes(enPath);
+  const path = enPath.replace(/\/+$/, '') || '/';
+  if (path === '/') return true;
+  return (BN_SECTIONS as readonly string[]).some((section) => path === section || path.startsWith(`${section}/`));
 }
 
 /** `/` → `/bn`, `/pricing` → `/bn/pricing`. */
@@ -73,6 +98,7 @@ const BN_LABELS: Record<string, string> = {
   'Terms & Conditions': 'শর্তাবলি',
   'Refund Policy': 'রিফান্ড নীতি',
   'Cookie Policy': 'কুকি নীতি',
+  'Ecomesta vs Shopify': 'Ecomesta বনাম Shopify',
   // Footer headings
   Product: 'প্রোডাক্ট',
   'Payments & shipping': 'পেমেন্ট ও ডেলিভারি',

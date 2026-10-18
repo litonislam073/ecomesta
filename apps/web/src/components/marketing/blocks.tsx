@@ -1,6 +1,8 @@
 import Link from 'next/link';
+import type { MarketingLocale } from '@ecomesta/ui/marketing';
 import type { Crumb, Faq } from '@/lib/marketing/seo';
 import { registerUrl } from '@/lib/marketing/site';
+import { UI_COPY, href as localHref } from '@/lib/marketing/ui-copy';
 import { AccordionItem } from '../animations/accordion-item';
 import { FadeUp } from '../animations/fade';
 import { ButtonLink, Container } from './ui';
@@ -14,9 +16,9 @@ export function JsonLd({ data }: { data: Record<string, unknown> | Record<string
   );
 }
 
-export function Breadcrumbs({ crumbs }: { crumbs: Crumb[] }) {
+export function Breadcrumbs({ crumbs, locale = 'en' }: { crumbs: Crumb[]; locale?: MarketingLocale }) {
   return (
-    <nav aria-label="Breadcrumb" className="text-sm text-[var(--color-muted)]">
+    <nav aria-label={UI_COPY[locale].breadcrumb} className="text-sm text-[var(--color-muted)]">
       <ol className="flex flex-wrap items-center gap-1.5">
         {crumbs.map((crumb, index) => {
           const last = index === crumbs.length - 1;
@@ -97,11 +99,13 @@ export function LinkCard({
   title,
   description,
   headingLevel = 3,
+  locale = 'en',
 }: {
   href: string;
   title: string;
   description: string;
   headingLevel?: 2 | 3;
+  locale?: MarketingLocale;
 }) {
   const Heading = headingLevel === 2 ? 'h2' : 'h3';
   return (
@@ -114,7 +118,7 @@ export function LinkCard({
       </Heading>
       <p className="mt-2 text-sm leading-relaxed text-[var(--color-muted)]">{description}</p>
       <span aria-hidden="true" className="mt-auto pt-4 text-sm font-semibold text-[var(--color-accent)]">
-        Learn more{' '}
+        {UI_COPY[locale].learnMore}{' '}
         <span className="inline-block transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none">
           →
         </span>
@@ -124,13 +128,15 @@ export function LinkCard({
 }
 
 export function CtaSection({
-  title = 'Ready to open your online store?',
-  description = 'Create your store, add products and start taking orders with Cash on Delivery or online payments.',
+  title,
+  description,
   primary,
   secondary,
+  locale = 'en',
 }: {
   title?: string;
   description?: string;
+  locale?: MarketingLocale;
   /** Defaults to "Create Your Store" and "Explore Features". */
   primary?: { href: string; label: string; cta: string };
   secondary?: { href: string; label: string };
@@ -149,15 +155,15 @@ export function CtaSection({
           />
           <FadeUp className="relative">
             <h2 id="cta-heading" className="font-display text-3xl tracking-tight text-white sm:text-4xl">
-              {title}
+              {title ?? UI_COPY[locale].ctaTitle}
             </h2>
-            <p className="mx-auto mt-4 max-w-xl text-lg text-[var(--brand-on-navy)]">{description}</p>
+            <p className="mx-auto mt-4 max-w-xl text-lg text-[var(--brand-on-navy)]">{description ?? UI_COPY[locale].ctaDescription}</p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               <ButtonLink href={primary?.href ?? registerUrl()} cta={primary?.cta ?? 'create-store-cta-band'}>
-                {primary?.label ?? 'Create Your Store'}
+                {primary?.label ?? UI_COPY[locale].createStore}
               </ButtonLink>
-              <ButtonLink href={secondary?.href ?? '/features'} variant="secondary">
-                {secondary?.label ?? 'Explore Features'}
+              <ButtonLink href={secondary?.href ?? localHref('/features', locale)} variant="secondary">
+                {secondary?.label ?? UI_COPY[locale].exploreFeatures}
               </ButtonLink>
             </div>
           </FadeUp>
@@ -173,17 +179,19 @@ export function PageHero({
   intro,
   crumbs,
   children,
+  locale = 'en',
 }: {
   eyebrow: string;
   title: string;
   intro: string;
   crumbs?: Crumb[];
   children?: React.ReactNode;
+  locale?: MarketingLocale;
 }) {
   return (
     <section className="border-b border-[var(--color-border)] bg-gradient-to-b from-[var(--brand-tint)] to-[var(--brand-paper)]">
       <Container className="py-12 sm:py-16">
-        {crumbs ? <Breadcrumbs crumbs={crumbs} /> : null}
+        {crumbs ? <Breadcrumbs crumbs={crumbs} locale={locale} /> : null}
         <FadeUp on="load" as="p" distance={12} className="mt-6 text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-accent)]">
           {eyebrow}
         </FadeUp>

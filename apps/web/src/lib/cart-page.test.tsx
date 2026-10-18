@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import CartPage from '@/app/(store)/cart/page';
+import CartPage from '@/app/(site)/(store)/cart/page';
 import { CartProvider } from '@/lib/cart';
 
 vi.mock('next/navigation', () => ({

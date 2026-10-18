@@ -32,10 +32,152 @@ export interface BlogPost {
 
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: 'how-to-start-online-business-bangladesh',
+    title: 'How to Start an Online Business in Bangladesh: The Complete 2026 Guide',
+    description:
+      'Step-by-step guide to starting an online business in Bangladesh: what to sell, budget, trade license and DBID, your store, pricing, delivery, payments and ads.',
+    category: 'bangladesh-ecommerce',
+    publishedTime: '2026-10-18',
+    modifiedTime: '2026-10-18',
+    readingMinutes: 12,
+    intro:
+      'Starting an online business no longer needs big capital or technical skills, but starting without a plan wastes both money and time. This guide walks through every step of starting an online business in Bangladesh — from choosing products to your first 30 days — in plain language, with real numbers.',
+    sections: [
+      {
+        heading: '1. Decide what to sell',
+        paragraphs: [
+          'A successful online business starts with the right product. Pick something you know well, that people want, and that still leaves a profit after delivery and advertising. Start with one focused category — for example only women’s clothing, only organic food or only mobile accessories — rather than everything at once.',
+        ],
+        bullets: [
+          'Check demand: see what people ask for and talk about in Facebook groups and pages',
+          'Work out the profit: what is left after buying price, packaging, delivery, ads and returns',
+          'Light, unbreakable products are easier and cheaper to deliver',
+          'Make sure you can restock if demand grows',
+        ],
+      },
+      {
+        heading: '2. Set your budget',
+        paragraphs: [
+          'Many people only budget for stock, but an online business has other costs. Make a simple plan first, and keep money aside for two or three months of advertising — sales usually start slowly.',
+        ],
+        bullets: [
+          'First stock: start small and order more of what sells',
+          'Product photos: clear phone photos in good light are enough',
+          'Online store: from ৳99 a month on a platform like Ecomesta — no hosting or developer needed',
+          'Advertising: start with a small daily budget on Facebook and scale what works',
+          'Packaging and delivery: polybags, boxes, stickers and courier charges',
+        ],
+      },
+      {
+        heading: '3. The paperwork you need',
+        paragraphs: [
+          'An online business in Bangladesh usually needs the following. Even if you do not have everything on day one, sort it out early — it builds customer trust and helps with payment gateways and banks.',
+        ],
+        bullets: [
+          'Trade license — from your city corporation, municipality or union parishad; big cities accept online applications',
+          'DBID (Digital Business Identity) — free from the Ministry of Commerce at dbid.gov.bd, using your website or Facebook page and NID',
+          'TIN — for tax returns and banking',
+          'A business mobile wallet and bank account — keep personal and business money separate',
+          'Terms and a refund policy on your store — DBID rules expect your terms in Bangla',
+        ],
+      },
+      {
+        heading: '4. Where to sell: Facebook page, marketplace or your own store',
+        paragraphs: [
+          'A Facebook page alone is easy to start with, but as orders grow, quoting prices in the inbox, copying addresses and keeping track becomes hard. Marketplaces have many buyers, but take a commission and the customer is not really yours.',
+          'The best approach is both: use Facebook to get attention and take orders on your own online store. There, customers see prices, sizes and stock themselves, enter their own address, and every order has a number and sits in one place.',
+        ],
+      },
+      {
+        heading: '5. Open your online store',
+        paragraphs: [
+          'You do not need to code to open a store. On Ecomesta, sign up with your store name and address, choose a plan and pay with bKash, Nagad, Rocket or Upay — the store is created right away. Then finish these steps:',
+        ],
+        flow: ['Open the store', 'Add your logo and colours', 'Add categories and products', 'Set delivery charges', 'Turn on payments', 'Place a test order'],
+      },
+      {
+        heading: '6. Product photos and descriptions',
+        paragraphs: ['Online customers cannot touch the product, so photos and descriptions do the selling.'],
+        bullets: [
+          'Shoot in daylight against a plain background, from several angles',
+          'Write size, colour, material and usage clearly',
+          'Create variants for sizes or colours, each with its own stock',
+          'Show both the regular and the offer price — offers stand out',
+          'Add customer reviews and real photos when you have them',
+        ],
+      },
+      {
+        heading: '7. Price so the profit does not disappear',
+        paragraphs: [
+          'Many new sellers copy competitors’ prices and then find they lose money on every order. Work out the full cost of one order before you set a price.',
+          'Example: a product costs ৳400, packaging ৳20, the average ad cost per order ৳100 and the average loss on returned parcels ৳30 — ৳550 in total. If the customer pays delivery separately, selling at ৳750–৳800 leaves a healthy profit.',
+        ],
+      },
+      {
+        heading: '8. Delivery and couriers',
+        paragraphs: [
+          'Delivery in Bangladesh is priced by area — usually less inside Dhaka and more outside. Base your customer charge on what your courier charges you, and remember the courier’s COD charge on Cash on Delivery orders.',
+          'In Ecomesta you set delivery charges by division, district and upazila, and customers see the right charge as soon as they pick their area at checkout. Connect Steadfast, Pathao, RedX, Paperfly or eCourier to book parcels straight from the order.',
+        ],
+        bullets: [
+          'Two zones are enough to start: inside Dhaka and outside Dhaka',
+          'Free delivery above an order value raises your average order',
+          'Send customers the tracking number after shipping — fewer “where is my order” messages',
+        ],
+      },
+      {
+        heading: '9. Payments: Cash on Delivery and online payment',
+        paragraphs: [
+          'Most customers in Bangladesh still prefer Cash on Delivery, so you need it. Adding online payment brings money in at the time of order and reduces returned parcels.',
+        ],
+        bullets: [
+          'Keep Cash on Delivery for regular orders',
+          'Connect SSLCommerz so customers can pay online with bKash, Nagad and cards',
+          'Consider taking the delivery charge in advance for distant or high-value orders',
+        ],
+      },
+      {
+        heading: '10. Marketing: getting your first customers',
+        paragraphs: [
+          'Early sales usually come from Facebook. Post good content regularly and test small ad budgets to see which products and photos get the best response.',
+        ],
+        bullets: [
+          'Add Facebook Pixel to your store so your ads reach people more likely to buy',
+          'Build a landing page with an order form for one product and send your ads there',
+          'Post short videos of the product in use and customer reviews',
+          'Run coupon offers before festivals',
+          'Tell past customers about new products — cheaper than finding new ones',
+        ],
+      },
+      {
+        heading: '11. Reduce fake orders and returns',
+        paragraphs: ['Returned parcels eat your profit — you pay delivery both ways. A few habits cut them a lot.'],
+        bullets: [
+          'Call to confirm the order before you ship',
+          'Use real photos and accurate sizes — wrong expectations cause returns',
+          'Take the delivery charge in advance on suspicious or distant orders',
+          'Keep track of numbers that repeatedly refuse parcels',
+        ],
+      },
+      {
+        heading: '12. Your first 30 days',
+        flow: ['Choose products and margins', 'Open the store with about 10 products', 'Set delivery and payments', 'Add your store link to your Facebook page', 'Test ads with a small budget', 'Scale what sells'],
+        paragraphs: [
+          'Starting matters more than being perfect. Each week, check which products sell, which ads work and where parcels come back — then adjust. Online businesses grow through patience and steady work.',
+        ],
+      },
+    ],
+    related: [
+      { href: '/blog/ecommerce-website-cost-bangladesh', label: 'How much an ecommerce website costs' },
+      { href: '/blog/delivery-charges-bangladesh-online-store', label: 'How to set delivery charges' },
+      { href: '/pricing', label: 'Ecomesta plans and prices' },
+    ],
+  },
+  {
     slug: 'ecommerce-website-cost-bangladesh',
     title: 'How Much Does an Ecommerce Website Cost in Bangladesh? (2026 Guide)',
     description:
-      'Real 2026 costs of an ecommerce website in Bangladesh: custom development, WooCommerce and Shopify, and ready-made platforms from ৳99 a month — plus the hidden costs and a first-year budget.',
+      'Real 2026 ecommerce website costs in Bangladesh: custom builds, WooCommerce, Shopify and ready-made platforms from ৳99 a month, plus hidden costs and a budget.',
     category: 'bangladesh-ecommerce',
     publishedTime: '2026-10-17',
     modifiedTime: '2026-10-17',
@@ -123,6 +265,7 @@ export const BLOG_POSTS: BlogPost[] = [
     related: [
       { href: '/pricing', label: 'Ecomesta plans and prices' },
       { href: '/features/online-store', label: 'What you get with an Ecomesta online store' },
+      { href: '/shopify-alternative-bangladesh', label: 'Ecomesta vs Shopify for Bangladesh stores' },
       { href: '/blog/facebook-page-to-online-store', label: 'Moving from a Facebook page to your own store' },
     ],
   },

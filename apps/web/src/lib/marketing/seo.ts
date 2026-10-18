@@ -28,6 +28,8 @@ export interface PageSeo {
   modifiedTime?: string;
   /** Bangla pages live under /bn and point at their English twin. */
   locale?: MarketingLocale;
+  /** Share image path (1200×630); the site-wide default when omitted. */
+  image?: string;
 }
 
 /** hreflang links for a page that exists in English and Bangla; undefined otherwise. */
@@ -49,10 +51,11 @@ export function buildMetadata({
   publishedTime,
   modifiedTime,
   locale = 'en',
+  image: imagePath = DEFAULT_OG_IMAGE_PATH,
 }: PageSeo): Metadata {
   const url = absoluteUrl(path);
   const languages = languageAlternates(path);
-  const image = absoluteUrl(DEFAULT_OG_IMAGE_PATH);
+  const image = absoluteUrl(imagePath);
   const verification = googleSiteVerification();
 
   return {
@@ -204,6 +207,8 @@ export function articleJsonLd(input: {
   description: string;
   publishedTime: string;
   modifiedTime: string;
+  /** Article image path; the site-wide share image when omitted. */
+  image?: string;
 }): JsonLd {
   return {
     '@context': 'https://schema.org',
@@ -213,7 +218,7 @@ export function articleJsonLd(input: {
     datePublished: input.publishedTime,
     dateModified: input.modifiedTime,
     mainEntityOfPage: absoluteUrl(input.path),
-    image: absoluteUrl(DEFAULT_OG_IMAGE_PATH),
+    image: absoluteUrl(input.image ?? DEFAULT_OG_IMAGE_PATH),
     author: { '@type': 'Organization', name: SITE_NAME },
     publisher: {
       '@type': 'Organization',

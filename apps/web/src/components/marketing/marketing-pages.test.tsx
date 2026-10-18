@@ -1,17 +1,17 @@
 import type { ReactElement } from 'react';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import FeaturesPage from '@/app/(marketing)/features/page';
-import PaymentsPage from '@/app/(marketing)/payments/page';
-import ShippingPage from '@/app/(marketing)/shipping/page';
-import SolutionsPage from '@/app/(marketing)/solutions/page';
-import PricingPage from '@/app/(marketing)/pricing/page';
-import FaqPage from '@/app/(marketing)/faq/page';
-import BlogPage from '@/app/(marketing)/blog/page';
-import BlogPostPage from '@/app/(marketing)/blog/[slug]/page';
-import ResourcesPage from '@/app/(marketing)/resources/page';
-import AboutPage from '@/app/(marketing)/about/page';
-import ContactPage from '@/app/(marketing)/contact/page';
+import FeaturesPage from '@/app/(site)/(marketing)/features/page';
+import PaymentsPage from '@/app/(site)/(marketing)/payments/page';
+import ShippingPage from '@/app/(site)/(marketing)/shipping/page';
+import SolutionsPage from '@/app/(site)/(marketing)/solutions/page';
+import PricingPage from '@/app/(site)/(marketing)/pricing/page';
+import FaqPage from '@/app/(site)/(marketing)/faq/page';
+import BlogPage from '@/app/(site)/(marketing)/blog/page';
+import BlogPostPage from '@/app/(site)/(marketing)/blog/[slug]/page';
+import ResourcesPage from '@/app/(site)/(marketing)/resources/page';
+import AboutPage from '@/app/(site)/(marketing)/about/page';
+import ContactPage from '@/app/(site)/(marketing)/contact/page';
 import { ContentPageView } from '@/components/marketing/content-page';
 import {
   FEATURE_PAGES,
@@ -129,9 +129,9 @@ describe('hub and static pages', () => {
     expect(screen.getByText(/no direct bKash, Nagad or Rocket integrations/i)).toBeInTheDocument();
   });
 
-  it('renders the shipping page with the courier limitation stated', () => {
+  it('renders the shipping page with the connected couriers stated', () => {
     expectSingleH1(<ShippingPage />);
-    expect(screen.getByText(/are not integrated/i)).toBeInTheDocument();
+    expect(screen.getByText(/Steadfast, Pathao, RedX, Paperfly and eCourier are connected/i)).toBeInTheDocument();
   });
 
   it('renders the solutions hub', () => {
@@ -161,7 +161,7 @@ describe('hub and static pages', () => {
   it('renders the blog index and each post', () => {
     expectSingleH1(<BlogPage />);
     for (const post of BLOG_POSTS) {
-      expect(screen.getByRole('link', { name: new RegExp(post.title, 'i') })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: post.title })).toHaveAttribute(
         'href',
         `/blog/${post.slug}`,
       );

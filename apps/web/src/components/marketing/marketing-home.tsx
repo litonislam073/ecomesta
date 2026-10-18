@@ -75,7 +75,26 @@ export function MarketingHome({
                 </ButtonLink>
               </FadeUp>
             </div>
-            <FadeUp on="load" as="ul" delay={0.3} distance={12} className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[var(--color-muted)]">
+            <FadeUp
+              on="load"
+              as="ul"
+              delay={0.27}
+              distance={12}
+              aria-label={locale === 'bn' ? 'দাম আর পেমেন্ট' : 'Price and payment'}
+              className="mt-6 inline-flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-[var(--brand-green)]/30 bg-[var(--brand-green-tint)] px-4 py-3 text-sm font-semibold text-[var(--brand-green-text)]"
+            >
+              {copy.hero.offer.map((item) => (
+                <li key={item} className="flex items-center gap-1.5">
+                  <span aria-hidden="true" className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[var(--brand-green)] text-white">
+                    <svg viewBox="0 0 20 20" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="3">
+                      <path d="M4 10.5l4 4 8-9" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                  {item}
+                </li>
+              ))}
+            </FadeUp>
+            <FadeUp on="load" as="ul" delay={0.3} distance={12} className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[var(--color-muted)]">
               {copy.hero.points.map((item) => (
                 <li key={item} className="flex items-center gap-2">
                   <svg aria-hidden="true" viewBox="0 0 20 20" className="h-4 w-4 text-[var(--brand-green)]" fill="none" stroke="currentColor" strokeWidth="2.2">

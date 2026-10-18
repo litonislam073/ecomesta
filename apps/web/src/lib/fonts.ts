@@ -1,5 +1,4 @@
-import type { Metadata } from 'next';
-import type { ReactNode } from 'react';
+// Fonts shared by the site's root layouts: English (app/(site)) and Bangla (app/(marketing-bn)).
 import {
   Anek_Bangla,
   Anton,
@@ -16,7 +15,6 @@ import {
   Source_Sans_3,
   Tiro_Bangla,
 } from 'next/font/google';
-import './globals.css';
 
 const sourceSans = Source_Sans_3({
   subsets: ['latin'],
@@ -141,19 +139,8 @@ const landingFonts = [tiroBangla, cormorant, balooDa, anekBangla, notoSerifBenga
   .map((font) => font.variable)
   .join(' ');
 
-export const metadata: Metadata = {
-  title: {
-    default: 'Ecomesta',
-    template: '%s | Ecomesta',
-  },
-  description:
-    'Bangladesh-first ecommerce SaaS — merchant stores, payments, and shipping.',
-};
-
-export default function RootLayout({ children }: { children: ReactNode }) {
-  return (
-    <html lang="en" className={`${sourceSans.variable} ${fraunces.variable} ${bricolage.variable} ${hindSiliguri.variable} ${landingFonts}`}>
-      <body className="min-h-screen text-[var(--color-ink)] antialiased">{children}</body>
-    </html>
-  );
-}
+/** Every font variable, for the `<html>` element of a root layout. */
+export const ROOT_FONT_CLASSES = [sourceSans, fraunces, bricolage, hindSiliguri]
+  .map((font) => font.variable)
+  .concat(landingFonts)
+  .join(' ');
