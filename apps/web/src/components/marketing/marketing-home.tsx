@@ -24,6 +24,7 @@ export function MarketingHome({
 }: { plans?: PublicPlan[] | null; locale?: MarketingLocale } = {}) {
   const register = registerUrl();
   const copy = HOME_COPY[locale];
+  const link = (path: string) => localizedHref(path, locale);
   // A trial the Super Admin has switched on leads the price facts under the buttons.
   const trial = trialHeadline(plans, locale);
   const heroOffer = trial ? [trial, ...copy.hero.offer] : copy.hero.offer;
@@ -74,7 +75,7 @@ export function MarketingHome({
                 </ButtonLink>
               </FadeUp>
               <FadeUp on="load" as="span" delay={0.24} className="inline-flex">
-                <ButtonLink href="/features" variant="secondary">
+                <ButtonLink href={link("/features")} variant="secondary">
                   {copy.hero.secondary}
                 </ButtonLink>
               </FadeUp>
@@ -124,7 +125,7 @@ export function MarketingHome({
             {copy.manage.items.map((item) => (
               <StaggerItem as="li" key={item.label}>
                 <Link
-                  href={item.href}
+                  href={link(item.href)}
                   className="em-hover-lift flex h-full flex-col items-center gap-2 rounded-xl border border-[var(--color-border)] bg-white px-2 py-4 text-center text-sm font-medium text-[var(--color-ink)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
                 >
                   <Icon name={item.icon} className="em-hover-icon h-6 w-6 text-[var(--color-accent)]" />
@@ -153,7 +154,7 @@ export function MarketingHome({
                 <h3 className="mt-4 text-lg font-semibold">{feature.title}</h3>
                 <p className="mt-2 text-[var(--color-muted)]">{feature.body}</p>
                 <CheckList items={feature.points} className="mt-4 text-sm" />
-                <TextLink href={feature.href} className="mt-auto pt-5 text-sm">
+                <TextLink href={link(feature.href)} className="mt-auto pt-5 text-sm">
                   {feature.linkLabel} →
                 </TextLink>
               </StaggerItem>
@@ -176,7 +177,7 @@ export function MarketingHome({
             {copy.payments.items.map((payment) => (
               <StaggerItem as="li" key={payment.title}>
                 <Link
-                  href={payment.href}
+                  href={link(payment.href)}
                   className="em-hover-lift group flex h-full flex-col rounded-xl border border-[var(--color-border)] bg-white p-6 hover:border-[var(--color-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
                 >
                   <IconBadge name={payment.icon} />
@@ -201,9 +202,9 @@ export function MarketingHome({
             />
             <CheckList className="mt-6" items={copy.shipping.points} />
             <div className="mt-8 flex flex-wrap gap-4">
-              {copy.shipping.links.map((link) => (
-                <TextLink key={link.href} href={link.href}>
-                  {link.label} →
+              {copy.shipping.links.map((item) => (
+                <TextLink key={item.href} href={link(item.href)}>
+                  {item.label} →
                 </TextLink>
               ))}
             </div>
@@ -251,7 +252,7 @@ export function MarketingHome({
             ))}
           </StaggerContainer>
           <p className="mt-6">
-            <TextLink href={copy.builder.link.href}>{copy.builder.link.label} →</TextLink>
+            <TextLink href={link(copy.builder.link.href)}>{copy.builder.link.label} →</TextLink>
           </p>
         </Container>
       </section>
@@ -268,7 +269,7 @@ export function MarketingHome({
           <StaggerContainer as="ul" className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {copy.solutions.items.map((page) => (
               <StaggerItem as="li" key={page.slug}>
-                <LinkCard href={`/solutions/${page.slug}`} title={page.name} description={page.summary} />
+                <LinkCard href={link(`/solutions/${page.slug}`)} title={page.name} description={page.summary} />
               </StaggerItem>
             ))}
           </StaggerContainer>
@@ -281,9 +282,9 @@ export function MarketingHome({
             <SectionHeader id="home-faq-heading" eyebrow={copy.faq.eyebrow} title={copy.faq.title} />
             <p className="mt-4 text-[var(--color-muted)]">{copy.faq.intro}</p>
             <div className="mt-6 flex flex-wrap gap-4">
-              {copy.faq.links.map((link) => (
-                <TextLink key={link.href} href={link.href}>
-                  {link.label} →
+              {copy.faq.links.map((item) => (
+                <TextLink key={item.href} href={link(item.href)}>
+                  {item.label} →
                 </TextLink>
               ))}
             </div>
@@ -299,7 +300,7 @@ export function MarketingHome({
           title={copy.cta.title}
           description={copy.cta.description}
           primary={{ href: register, label: copy.cta.primary, cta: 'create-store-cta-band' }}
-          secondary={{ href: localizedHref('/features', locale), label: copy.cta.secondary }}
+          secondary={{ href: link('/features'), label: copy.cta.secondary }}
         />
       ) : (
         <CtaSection />
