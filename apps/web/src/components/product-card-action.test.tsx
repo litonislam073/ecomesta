@@ -167,6 +167,51 @@ describe('Order now', () => {
     expect(pushMock).toHaveBeenCalledWith('/checkout?store=alpha');
   });
 
+  it('does not double a product already in the cart', async () => {
+    const user = userEvent.setup();
+    renderInStore(<ProductCard product={card()} storeSlug="alpha" />);
+
+    await user.click(screen.getByRole('button', { name: 'Add Ceramic Mug to cart' }));
+    expect(screen.getByTestId('cart')).toHaveTextContent('1|p1:-:450.00x1');
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('button', { name: 'Order Ceramic Mug now' }));
+
+    expect(screen.getByTestId('cart')).toHaveTextContent('1|p1:-:450.00x1');
+    expect(pushMock).toHaveBeenCalledWith('/checkout?store=alpha');
+  });
+
+  it('keeps the larger quantity when ordering from the product page with the item in the cart', async () => {
+    const user = userEvent.setup();
+    window.localStorage.setItem(
+      'ecomesta_cart_alpha',
+      JSON.stringify({
+        storeId: 's1',
+        storeSlug: 'alpha',
+        currency: 'BDT',
+        couponCode: null,
+        lines: [
+          { productId: 'p6', productSlug: 'tee', productName: 'Tee', variantId: 'v-m', variantName: 'M', sku: 'TEE-M', unitPrice: '550.00', quantity: 1, imageUrl: null },
+        ],
+      }),
+    );
+    renderInStore(
+      <AddToCartPanel
+        product={{
+          ...card({ id: 'p6', name: 'Tee', slug: 'tee', hasVariants: true }),
+          description: null,
+          variants: [{ id: 'v-m', name: 'M', sku: 'TEE-M', price: '550.00', compareAtPrice: null, available: true }],
+        }}
+      />,
+    );
+    await screen.findByText('1|p6:v-m:550.00x1');
+
+    await user.tripleClick(screen.getByLabelText('Quantity'));
+    await user.keyboard('3');
+    await user.click(screen.getByRole('button', { name: 'Order now' }));
+
+    expect(screen.getByTestId('cart')).toHaveTextContent('3|p6:v-m:550.00x3');
+  });
+
   it('orders the chosen variant and quantity from the product page', async () => {
     const user = userEvent.setup();
     renderInStore(

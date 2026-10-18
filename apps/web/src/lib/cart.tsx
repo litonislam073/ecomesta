@@ -45,6 +45,12 @@ type CartContextValue = {
   drawerOpen: boolean;
   setDrawerOpen: (open: boolean) => void;
   addItem: (line: Omit<CartLine, 'quantity'> & { quantity?: number }) => void;
+  /**
+   * "Buy now": makes sure the line is in the cart without adding to what is
+   * already there — the quantity becomes the larger of the cart's and the one
+   * chosen now, so buying an item already in the cart never doubles it.
+   */
+  ensureItem: (line: Omit<CartLine, 'quantity'> & { quantity?: number }) => void;
   setQuantity: (key: string, quantity: number) => void;
   removeItem: (key: string) => void;
   clear: () => void;
@@ -163,6 +169,22 @@ export function CartProvider({
     [storeId, storeSlug, currency],
   );
 
+  const ensureItem = useCallback(
+    (line: Omit<CartLine, 'quantity'> & { quantity?: number }) => {
+      const qty = Math.max(1, line.quantity ?? 1);
+      const key = lineKey(line);
+      const inCart = state.storeId === storeId ? state.lines.find((l) => lineKey(l) === key) : undefined;
+      if (!inCart) {
+        addItem(line);
+        return;
+      }
+      if (qty > inCart.quantity) {
+        addItem({ ...line, quantity: qty - inCart.quantity });
+      }
+    },
+    [addItem, state.lines, state.storeId, storeId],
+  );
+
   const setQuantity = useCallback((key: string, quantity: number) => {
     setState((prev) => ({
       ...prev,
@@ -232,6 +254,7 @@ export function CartProvider({
     drawerOpen,
     setDrawerOpen,
     addItem,
+    ensureItem,
     setQuantity,
     removeItem,
     clear,

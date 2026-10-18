@@ -11,17 +11,20 @@ export function useStoreQuery() {
   return searchParams.get('store') ?? storeSlug;
 }
 
-/** "Order now": adds the line to the cart like Add to cart, then goes straight to checkout. */
+/**
+ * "Order now" / "Buy now": puts the line in the cart — without doubling it when
+ * the shopper already added it — then goes straight to checkout.
+ */
 export function useOrderNow() {
   const router = useRouter();
-  const { addItem } = useCart();
+  const { ensureItem } = useCart();
   const storeQ = useStoreQuery();
 
   return useCallback(
     (line: Omit<CartLine, 'quantity'> & { quantity?: number }) => {
-      addItem(line);
+      ensureItem(line);
       router.push(`/checkout?store=${encodeURIComponent(storeQ)}`);
     },
-    [addItem, router, storeQ],
+    [ensureItem, router, storeQ],
   );
 }

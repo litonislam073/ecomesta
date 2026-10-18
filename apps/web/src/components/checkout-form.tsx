@@ -268,6 +268,8 @@ export function CheckoutForm({
     couponCode,
     setCouponCode,
     syncPrices,
+    setQuantity,
+    removeItem,
   } = useCart();
 
   // Marketing tags: the shopper started checkout (once per visit to the page).
@@ -822,6 +824,8 @@ export function CheckoutForm({
   }
 
   const imageByLine = new Map(lines.map((line) => [lineKey(line), line.imageUrl]));
+  // The steppers follow the cart, which changes at once; the quote catches up.
+  const cartQuantity = new Map(lines.map((line) => [lineKey(line), line.quantity]));
   const hasOnline = (provider: string) => onlineProviders.some((p) => p.provider === provider);
 
   return (
@@ -1180,6 +1184,7 @@ export function CheckoutForm({
               <ul className="mt-4 space-y-3" aria-busy={quoteLoading}>
                 {quote.lines.map((line) => {
                   const imageUrl = imageByLine.get(lineKey(line));
+                  const quantity = cartQuantity.get(lineKey(line)) ?? line.quantity;
                   return (
                     <li key={lineKey(line)} className="flex gap-3 text-sm">
                       <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)]">
@@ -1195,7 +1200,7 @@ export function CheckoutForm({
                         <span className="flex justify-between gap-3">
                           <span>
                             {line.productName}
-                            {line.variantName ? ` · ${line.variantName}` : ''} × {line.quantity}
+                            {line.variantName ? ` · ${line.variantName}` : ''}
                           </span>
                           <span className="shrink-0 font-medium">
                             {formatMoney(line.lineTotal, quote.currency)}
@@ -1203,6 +1208,44 @@ export function CheckoutForm({
                         </span>
                         <span className="block text-xs text-[var(--color-muted)]">
                           {formatMoney(line.unitPrice, quote.currency)} each
+                        </span>
+                        <span className="mt-2 flex items-center gap-2">
+                          <span className="inline-flex items-center overflow-hidden rounded-lg border border-[var(--color-border)]">
+                            <button
+                              type="button"
+                              aria-label={`Decrease quantity of ${line.productName}`}
+                              disabled={submitting || quantity <= 1}
+                              onClick={() => setQuantity(lineKey(line), quantity - 1)}
+                              className="flex h-8 w-8 items-center justify-center text-base hover:bg-[var(--color-bg)] disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              −
+                            </button>
+                            <span
+                              aria-live="polite"
+                              aria-label={`Quantity ${quantity}`}
+                              className="min-w-8 border-x border-[var(--color-border)] px-2 text-center text-sm font-semibold leading-8"
+                            >
+                              {quantity}
+                            </span>
+                            <button
+                              type="button"
+                              aria-label={`Increase quantity of ${line.productName}`}
+                              disabled={submitting}
+                              onClick={() => setQuantity(lineKey(line), quantity + 1)}
+                              className="flex h-8 w-8 items-center justify-center text-base hover:bg-[var(--color-bg)] disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              +
+                            </button>
+                          </span>
+                          <button
+                            type="button"
+                            aria-label={`Remove ${line.productName}`}
+                            disabled={submitting}
+                            onClick={() => removeItem(lineKey(line))}
+                            className="text-xs font-medium text-[var(--color-muted)] underline-offset-2 hover:text-[var(--color-danger)] hover:underline disabled:opacity-40"
+                          >
+                            Remove
+                          </button>
                         </span>
                       </span>
                     </li>

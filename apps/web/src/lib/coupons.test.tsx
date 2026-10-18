@@ -191,7 +191,7 @@ describe('Checkout coupon apply UI', () => {
       const parsed = raw ? JSON.parse(raw) : null;
       expect(parsed?.couponCode).toBe('SUMMER10');
     });
-    expect(screen.getByRole('button', { name: /remove/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument();
 
     // SF-03: the discount shown comes from the server quote for the coupon.
     await waitFor(() => {

@@ -661,6 +661,38 @@ describe('CheckoutForm — SF-03 server pricing', () => {
     });
   });
 
+  it('changes quantities and removes items in the order summary, re-quoting each time', async () => {
+    const user = userEvent.setup();
+    seedCart(); // 2 × Widget at 10.00
+    postMock.mockImplementation(async (path: string, body?: unknown) => {
+      if (String(path).endsWith('/checkout/quote')) return quoteFor(body, { methods: freeOnly });
+      throw new Error(`Unexpected POST ${path}`);
+    });
+    const { CheckoutForm } = await import('@/components/checkout-form');
+    render(
+      <CartProvider storeId="s1" storeSlug="alpha" currency="BDT">
+        <CheckoutForm />
+      </CartProvider>,
+    );
+    await waitForSettledQuote();
+    expect(summaryRow(/^Subtotal$/)).toMatch(/20\.00/);
+
+    await user.click(screen.getByRole('button', { name: 'Increase quantity of Widget' }));
+    await waitFor(() => expect(summaryRow(/^Subtotal$/)).toMatch(/30\.00/));
+    const lastQuote = () => postMock.mock.calls.filter(isQuoteCall).at(-1)![1] as { items: { quantity: number }[] };
+    expect(lastQuote().items).toEqual([{ productId: 'p1', variantId: null, quantity: 3 }]);
+    expect(JSON.parse(window.localStorage.getItem('ecomesta_cart_alpha') ?? '{}').lines[0].quantity).toBe(3);
+
+    await user.click(screen.getByRole('button', { name: 'Decrease quantity of Widget' }));
+    await user.click(screen.getByRole('button', { name: 'Decrease quantity of Widget' }));
+    await waitFor(() => expect(summaryRow(/^Subtotal$/)).toMatch(/10\.00/));
+    // One is the least: removing is a separate, explicit action.
+    expect(screen.getByRole('button', { name: 'Decrease quantity of Widget' })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: 'Remove Widget' }));
+    expect(await screen.findByText(/your cart is empty/i)).toBeInTheDocument();
+  });
+
   it('sends the quoted total as expectedTotal and places the order at that price', async () => {
     seedCart();
     postMock.mockImplementation(async (path: string, body?: unknown) => {
