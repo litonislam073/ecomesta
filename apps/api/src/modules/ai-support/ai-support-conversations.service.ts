@@ -48,6 +48,7 @@ function summary(row: ConversationRow): AdminSupportConversationSummary {
     visitorName: row.visitorName,
     visitorPhone: row.visitorPhone,
     visitorEmail: row.visitorEmail,
+    source: row.source,
     messageCount: row.messageCount,
     firstMessage: first && first.length > 140 ? `${first.slice(0, 139)}…` : first,
     handoffReference: row.handoffReference,
@@ -167,7 +168,61 @@ export class AiSupportConversationsService {
     }
   }
 
-  async adminList(query: { page?: number; limit?: number; search?: string }): Promise<{
+  /**
+   * Persists a marketing contact-form submission in the same inbox as chat
+   * handoffs, labelled CONTACT_FORM so Super Admins can filter it.
+   */
+  async recordContactHandoff(
+    input: {
+      name: string;
+      phone: string;
+      email?: string | null;
+      message: string;
+      reason?: string | null;
+      reference: string;
+    },
+    req: Request,
+  ): Promise<void> {
+    const token = randomBytes(24).toString('base64url');
+    const userAgent = req.headers['user-agent'];
+    const now = new Date();
+    const topic = input.reason?.trim().slice(0, 200) || null;
+    const body = topic ? `Topic: ${topic}\n\n${input.message.trim()}` : input.message.trim();
+    try {
+      await this.prisma.aiSupportConversation.create({
+        data: {
+          visitorName: input.name.trim(),
+          visitorPhone: input.phone,
+          visitorEmail: input.email?.trim().toLowerCase() || null,
+          tokenHash: hashToken(token),
+          userAgent: typeof userAgent === 'string' ? userAgent.slice(0, 300) : null,
+          source: 'CONTACT_FORM',
+          handoffReference: input.reference,
+          messageCount: 1,
+          lastMessageAt: now,
+          messages: {
+            create: {
+              role: 'USER',
+              content: body,
+              createdAt: now,
+            },
+          },
+        },
+      });
+    } catch (err) {
+      // Email already went out; inbox write must not fail the visitor's success.
+      this.logger.warn(
+        `ai-support contact handoff ${input.reference} not saved to inbox: ${errorSummary(err)}`,
+      );
+    }
+  }
+
+  async adminList(query: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    source?: 'CHAT' | 'CONTACT_FORM';
+  }): Promise<{
     items: AdminSupportConversationSummary[];
     meta: OffsetPageMeta;
   }> {
@@ -185,7 +240,12 @@ export class AiSupportConversationsService {
           ],
         }
       : {};
-    const where: Prisma.AiSupportConversationWhereInput = { AND: [this.active(), matches] };
+    const sourceFilter: Prisma.AiSupportConversationWhereInput = query.source
+      ? { source: query.source }
+      : {};
+    const where: Prisma.AiSupportConversationWhereInput = {
+      AND: [this.active(), matches, sourceFilter],
+    };
     const [total, rows] = await this.prisma.$transaction([
       this.prisma.aiSupportConversation.count({ where }),
       this.prisma.aiSupportConversation.findMany({

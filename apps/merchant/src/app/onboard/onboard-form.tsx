@@ -492,6 +492,8 @@ export default function OnboardForm({
    * On a plan with a free trial: create the store without paying. It goes live
    * at once and the merchant pays before the trial ends.
    */
+  const [startingTrial, setStartingTrial] = useState(false);
+
   function startTrial() {
     setError(null);
     if (!accessToken) {
@@ -502,7 +504,11 @@ export default function OnboardForm({
       setError({ message: 'Choose a plan with a free trial to continue.' });
       return;
     }
-    void submitStore({ trialDays: chosenPlan.trialDays });
+    if (inFlight.current || startingTrial) return;
+    setStartingTrial(true);
+    void submitStore({ trialDays: chosenPlan.trialDays }).finally(() => {
+      setStartingTrial(false);
+    });
   }
 
   async function submitStore(
@@ -661,7 +667,9 @@ export default function OnboardForm({
               </h1>
               <p className="mt-2 text-[var(--color-muted)]">
                 {storeConfirmed
-                  ? 'Pick a plan, then pay for it. Your store is created as soon as you submit the payment.'
+                  ? chosenTrialDays > 0
+                    ? 'Pick a plan. Start a free trial with no payment now, or pay to go live immediately — your store is created when you continue.'
+                    : 'Pick a plan, then pay for it. Your store is created as soon as you submit the payment.'
                   : 'Add a few details about your business to get your Ecomesta store ready.'}
               </p>
             </div>
@@ -728,6 +736,11 @@ export default function OnboardForm({
                     hint={
                       <>
                         Lowercase letters, numbers and hyphens.
+                        {!suggested ? (
+                          <span className="mt-1 block">
+                            Type a Latin URL (for example my-shop) — Bangla names cannot be used in the address.
+                          </span>
+                        ) : null}
                         {previewUrl ? (
                           <span className="mt-1 block break-all">
                             Your store address: <span className="font-medium text-[var(--color-ink)]">{previewUrl}</span>
@@ -863,9 +876,13 @@ export default function OnboardForm({
                         type="button"
                         variant="secondary"
                         onClick={startTrial}
+                        disabled={startingTrial || phase !== 'form'}
+                        aria-busy={startingTrial}
                         className="h-11 w-full rounded-lg border-[var(--color-accent)] text-base font-semibold text-[var(--color-accent)]"
                       >
-                        Start {chosenTrialDays}-day free trial
+                        {startingTrial
+                          ? 'Starting trial…'
+                          : `Start ${chosenTrialDays}-day free trial`}
                       </Button>
                       <p className="text-center text-xs text-[var(--color-muted)]">
                         No payment now. Pay from Plan &amp; billing before the trial ends to keep your store live.

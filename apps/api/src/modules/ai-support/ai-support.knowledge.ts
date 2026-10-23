@@ -6,7 +6,10 @@ import {
   PAYMENT_PAGES,
   SHIPPING_PAGES,
   SOLUTION_PAGES,
+  blogPosts,
   contentPath,
+  faqGroups,
+  pagesForHub,
   type ContentPage,
   type ContentSection,
 } from '@ecomesta/utils/marketing-content';
@@ -73,26 +76,53 @@ function sectionText(section: ContentSection): string {
   ].join('\n');
 }
 
-function pageChunks(page: ContentPage): KnowledgeChunk[] {
+function pageChunks(page: ContentPage, idPrefix = ''): KnowledgeChunk[] {
   const path = contentPath(page);
+  const prefix = idPrefix ? `${idPrefix}-` : '';
   const chunks: KnowledgeChunk[] = [
     {
-      id: `${page.hub}-${page.slug}`,
+      id: `${prefix}${page.hub}-${page.slug}`,
       title: page.name,
       path,
       text: [page.h1, page.intro, ...page.highlights.map((item) => `- ${item}`)].join('\n'),
     },
     ...page.sections.map((section, index) => ({
-      id: `${page.hub}-${page.slug}-${index}`,
+      id: `${prefix}${page.hub}-${page.slug}-${index}`,
       title: `${page.name}: ${section.heading}`,
       path,
       text: sectionText(section),
     })),
   ];
   for (const [index, faq] of (page.faqs ?? []).entries()) {
-    chunks.push({ id: `${page.hub}-${page.slug}-faq-${index}`, title: faq.question, path, text: faq.answer });
+    chunks.push({
+      id: `${prefix}${page.hub}-${page.slug}-faq-${index}`,
+      title: faq.question,
+      path,
+      text: faq.answer,
+    });
   }
   return chunks;
+}
+
+/** Multi-word Bangla / Banglish intents → English retrieval terms. */
+const PHRASE_EXPANSIONS: { match: RegExp; expand: string }[] = [
+  { match: /স্টোর\s*খুল|দোকান\s*খুল|সাইন\s*আপ|অ্যাকাউন্ট\s*খুল|dokan\s*khul|store\s*khul/i, expand: 'sign up store trial register' },
+  { match: /ডোমেইন\s*যুক্ত|কাস্টম\s*ডোমেইন|নিজের\s*ডোমেইন|domain\s*jugto|custom\s*domain/i, expand: 'custom domain DNS connect' },
+  { match: /প্ল্যান\s*দাম|কত\s*টাকা|দাম\s*কত|plan\s*er\s*dam|dam\s*koto/i, expand: 'pricing plan price' },
+  { match: /পেমেন্ট\s*নিশ্চিত|ট্রানজেকশন|payment\s*confirm|transaction/i, expand: 'subscription payment Plan billing' },
+  { match: /কুরিয়ার|পার্সেল\s*বুক|courier|parcel\s*book/i, expand: 'courier Steadfast Pathao shipping' },
+  { match: /থিম\s*কাস্টম|থিম\s*এডিট|theme\s*custom|theme\s*edit/i, expand: 'theme editor customize' },
+  { match: /ল্যান্ডিং\s*পেজ|landing\s*page/i, expand: 'landing pages Marketing' },
+  { match: /ফ্রি\s*ট্রায়াল|free\s*trial|ট্রায়াল/i, expand: 'free trial sign up' },
+  { match: /অর্ডার\s*ট্র্যাক|track\s*order|ট্র্যাকিং/i, expand: 'track order phone reference' },
+];
+
+function expandQuery(query: string): string {
+  const extras: string[] = [];
+  for (const { match, expand } of PHRASE_EXPANSIONS) {
+    if (match.test(query)) extras.push(expand);
+  }
+  return extras.length ? `${query} ${extras.join(' ')}` : query;
 }
 
 /** Bangla / Banglish words mapped to the English terms the content uses. */
@@ -168,6 +198,15 @@ const SYNONYMS: Record<string, string[]> = {
   ক্যাটাগরি: ['category', 'categories'],
   landing: ['landing', 'pages'],
   trial: ['trial', 'free', 'sign'],
+  খুলব: ['sign', 'store', 'create'],
+  খুলতে: ['sign', 'store', 'create'],
+  যুক্ত: ['connect', 'domain', 'add'],
+  কিভাবে: ['how'],
+  কীভাবে: ['how'],
+  সাইন: ['sign', 'register'],
+  অ্যাকাউন্ট: ['account', 'sign'],
+  বিলিং: ['billing', 'payment', 'plan'],
+  সাবস্ক্রিপশন: ['subscription', 'plan', 'billing'],
 };
 
 const STOP_WORDS = new Set([
@@ -176,7 +215,7 @@ const STOP_WORDS = new Set([
 ]);
 
 function terms(text: string): string[] {
-  const words = text.toLowerCase().match(/[a-z0-9]+|[ঀ-৿]+/g) ?? [];
+  const words = expandQuery(text).toLowerCase().match(/[a-z0-9]+|[ঀ-৿]+/g) ?? [];
   const expanded: string[] = [];
   for (const word of words) {
     if (STOP_WORDS.has(word)) continue;
@@ -193,14 +232,36 @@ export class AiSupportKnowledge {
   private readonly index: { chunk: KnowledgeChunk; title: string; body: string }[];
 
   constructor() {
-    const pages = [...FEATURE_PAGES, ...PAYMENT_PAGES, ...SHIPPING_PAGES, ...SOLUTION_PAGES];
+    const pagesEn = [...FEATURE_PAGES, ...PAYMENT_PAGES, ...SHIPPING_PAGES, ...SOLUTION_PAGES];
+    const pagesBn = (['features', 'payments', 'shipping', 'solutions'] as const).flatMap((hub) =>
+      pagesForHub(hub, 'bn'),
+    );
+    const faqBn = faqGroups('bn').flatMap((group, groupIndex) =>
+      group.items.map((faq, index) => ({
+        id: `faq-bn-${groupIndex}-${index}`,
+        title: faq.question,
+        path: '/faq',
+        text: faq.answer,
+      })),
+    );
     this.chunks = [
       ...platformFacts(),
-      ...pages.flatMap(pageChunks),
+      ...pagesEn.flatMap((page) => pageChunks(page)),
+      // Bangla marketing copy (same English paths so the prompt allowlist stays valid).
+      ...pagesBn.flatMap((page) => pageChunks(page, 'bn')),
       ...ALL_FAQS.map((faq, index) => ({ id: `faq-${index}`, title: faq.question, path: '/faq', text: faq.answer })),
+      ...faqBn,
       ...BLOG_POSTS.flatMap((post) =>
         post.sections.map((section, index) => ({
           id: `blog-${post.slug}-${index}`,
+          title: `${post.title}: ${section.heading}`,
+          path: `/blog/${post.slug}`,
+          text: sectionText(section),
+        })),
+      ),
+      ...blogPosts('bn').flatMap((post) =>
+        post.sections.map((section, index) => ({
+          id: `blog-bn-${post.slug}-${index}`,
           title: `${post.title}: ${section.heading}`,
           path: `/blog/${post.slug}`,
           text: sectionText(section),

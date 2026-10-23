@@ -67,7 +67,7 @@ export const DEFAULT_PLANS: readonly DefaultPlan[] = [
       'Connect your own domain',
       'Online payments with SSLCommerz (bKash, Nagad, cards)',
       'Discount coupons and Bangladesh delivery zones',
-      'All storefront themes',
+      'All included themes (Default and Minimal)',
       'Facebook Pixel, Google Analytics & Tag Manager',
       'Up to 5 landing pages with their own order form',
       'Full sales and visitor analytics',

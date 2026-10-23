@@ -148,6 +148,10 @@ describe('Ordering from a landing page', () => {
     await user.click(within(packages).getAllByRole('button', { name: 'এটি অর্ডার করুন' })[1]!);
     expect(within(order).getByRole('radio', { name: /1 kg/ })).toBeChecked();
 
+    // Wait until the server quote finishes so Confirm is enabled (M12).
+    await waitFor(() =>
+      expect(within(order).getByRole('button', { name: 'অর্ডার কনফার্ম করুন' })).toBeEnabled(),
+    );
     await user.click(within(order).getByRole('button', { name: 'অর্ডার কনফার্ম করুন' }));
     expect(within(order).getByText('আপনার নাম লিখুন')).toBeInTheDocument();
     expect(within(order).getByText('মোবাইল নম্বর লিখুন')).toBeInTheDocument();
@@ -161,6 +165,9 @@ describe('Ordering from a landing page', () => {
     await user.selectOptions(within(order).getByLabelText(/^জেলা/), 'd-dhaka');
     await waitFor(() => expect(within(order).getByRole('option', { name: 'Dhanmondi' })).toBeInTheDocument());
     await user.selectOptions(within(order).getByLabelText(/থানা/), 'u-dhan');
+    await waitFor(() =>
+      expect(within(order).getByRole('button', { name: 'অর্ডার কনফার্ম করুন' })).toBeEnabled(),
+    );
     await user.click(within(order).getByRole('button', { name: 'অর্ডার কনফার্ম করুন' }));
     expect(within(order).getByText(/সঠিক ১১ ডিজিটের নম্বর দিন/)).toBeInTheDocument();
     await user.clear(within(order).getByLabelText(/মোবাইল নম্বর/));
@@ -168,6 +175,9 @@ describe('Ordering from a landing page', () => {
 
     await waitFor(() => expect(within(order).getByText('৳2,960')).toBeInTheDocument(), { timeout: 3000 });
     expect(within(order).getByRole('radio', { name: /Home delivery/ })).toBeChecked();
+    await waitFor(() =>
+      expect(within(order).getByRole('button', { name: 'অর্ডার কনফার্ম করুন' })).toBeEnabled(),
+    );
     await user.click(within(order).getByRole('button', { name: 'অর্ডার কনফার্ম করুন' }));
 
     expect(await screen.findByText(/ধন্যবাদ, Rumana!/)).toBeInTheDocument();

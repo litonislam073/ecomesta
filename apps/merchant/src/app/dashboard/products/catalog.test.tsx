@@ -11,9 +11,14 @@ const routerPush = vi.fn();
 let selectedStoreId = 'store-1';
 let canManage = true;
 
+const routerReplace = vi.fn();
+let currentSearch = '';
+
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: routerPush }),
+  useRouter: () => ({ push: routerPush, replace: routerReplace }),
   useParams: () => ({ productId: 'prod-1' }),
+  usePathname: () => '/dashboard/products',
+  useSearchParams: () => new URLSearchParams(currentSearch),
 }));
 
 vi.mock('next/link', () => ({
@@ -108,10 +113,47 @@ describe('Products catalog UI', () => {
     canManage = true;
     pushToast.mockReset();
     routerPush.mockReset();
+    routerReplace.mockReset();
+    currentSearch = '';
     api.get.mockReset();
     api.post.mockReset();
     api.patch.mockReset();
     api.delete.mockReset();
+  });
+
+  it('shows a filter-aware empty state and syncs filters to the URL', async () => {
+    const user = userEvent.setup();
+    api.get.mockResolvedValue({
+      success: true,
+      data: { items: [], meta: { total: 0, page: 1, limit: 20, totalPages: 0 } },
+    });
+
+    render(<ProductsPage />);
+    expect(await screen.findByText('No products yet')).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('Search products'), 'zzz');
+    await user.click(screen.getByRole('button', { name: 'Search' }));
+
+    expect(await screen.findByText('No products match your filters')).toBeInTheDocument();
+    expect(screen.queryByText('No products yet')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(routerReplace).toHaveBeenCalledWith('/dashboard/products?q=zzz', { scroll: false });
+    });
+  });
+
+  it('restores filters from the URL', async () => {
+    currentSearch = 'q=tee&status=DRAFT&page=2';
+    api.get.mockResolvedValue({
+      success: true,
+      data: { items: [], meta: { total: 0, page: 2, limit: 20, totalPages: 0 } },
+    });
+
+    render(<ProductsPage />);
+    expect(await screen.findByText('No products match your filters')).toBeInTheDocument();
+    const call = api.get.mock.calls.map((c) => String(c[0])).find((p) => p.includes('/products?'));
+    expect(call).toContain('search=tee');
+    expect(call).toContain('status=DRAFT');
+    expect(call).toContain('page=2');
   });
 
   it('loads the product list', async () => {
@@ -386,7 +428,7 @@ describe('Variants UI', () => {
     await user.click(screen.getAllByRole('button', { name: /^delete$/i })[0]!);
     expect(screen.getByText(/delete this variant/i)).toBeInTheDocument();
     const dialog = screen.getByRole('dialog');
-    await user.click(within(dialog).getByRole('button', { name: /^delete$/i }));
+    await user.click(within(dialog).getByRole('button', { name: /^delete variant$/i }));
 
     await waitFor(() => {
       expect(api.delete).toHaveBeenCalledWith(

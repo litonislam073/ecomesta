@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { StoreDomain, StoreDomainList } from '@ecomesta/types';
+import { PlanLockedBanner } from '@/components/billing/plan-locked-banner';
 import { AddDomainForm } from '@/components/domains/add-domain-form';
 import { DomainList, type DomainAction } from '@/components/domains/domain-list';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -12,6 +13,7 @@ import { useToast } from '@/components/ui/toast';
 import { ApiError, api } from '@/lib/api-client';
 import { useCanManageStore } from '@/lib/permissions';
 import { useStoreContext } from '@/lib/store-context';
+import { useSubscription } from '@/lib/subscription-context';
 
 type DestructiveAction = Extract<DomainAction, 'disable' | 'delete'>;
 
@@ -50,6 +52,10 @@ export default function DomainsPage() {
   const { selectedStoreId } = useStoreContext();
   const canWrite = useCanManageStore();
   const { pushToast } = useToast();
+  const { data: subscription } = useSubscription();
+  const limits = subscription?.subscription?.plan.limits ?? null;
+  const locked = Boolean(limits && !limits.customDomain);
+  const canAddDomain = canWrite && !locked;
 
   const [data, setData] = useState<StoreDomainList | null>(null);
   const [loading, setLoading] = useState(true);
@@ -90,14 +96,19 @@ export default function DomainsPage() {
   }, [load]);
 
   async function addDomain(hostname: string): Promise<boolean> {
-    if (!selectedStoreId || !canWrite) {
+    if (!selectedStoreId || !canAddDomain) {
+      return false;
+    }
+    const trimmed = hostname.trim();
+    if (!trimmed) {
+      pushToast('Hostname is required', 'error');
       return false;
     }
     setAdding(true);
     try {
       const created = await api.post<{ success: true; data: StoreDomain }>(
         `/stores/${selectedStoreId}/domains`,
-        { hostname },
+        { hostname: trimmed },
       );
       const raw = created.data.verification?.recordValue;
       if (raw) {
@@ -110,7 +121,11 @@ export default function DomainsPage() {
       await load();
       return true;
     } catch (err) {
-      pushToast(errorMessage(err, 'Failed to add domain'), 'error');
+      if (err instanceof ApiError && err.code === 'PLAN_UPGRADE_REQUIRED') {
+        pushToast(err.message, 'error');
+      } else {
+        pushToast(errorMessage(err, 'Failed to add domain'), 'error');
+      }
       return false;
     } finally {
       setAdding(false);
@@ -231,7 +246,14 @@ export default function DomainsPage() {
         ) : null}
       </div>
 
-      {canWrite ? <AddDomainForm busy={adding} onSubmit={addDomain} /> : null}
+      {locked ? (
+        <PlanLockedBanner
+          title="Custom domains are available on the Growth and Business plans"
+          description="Every store keeps its free platform subdomain. Attach your own hostname on Growth or Business."
+        />
+      ) : null}
+
+      {canAddDomain ? <AddDomainForm busy={adding} onSubmit={addDomain} /> : null}
 
       {loading ? <LoadingState label="Loading domains…" /> : null}
       {error ? <ErrorState message={error} onRetry={() => void load()} /> : null}
@@ -247,6 +269,10 @@ export default function DomainsPage() {
           canWrite={canWrite}
           busyDomainId={busyDomainId}
           onAction={onAction}
+          dnsTargets={{
+            cname: data?.meta.cnameTarget ?? process.env.NEXT_PUBLIC_DOMAIN_CNAME_TARGET ?? null,
+            a: data?.meta.aRecordTarget ?? process.env.NEXT_PUBLIC_DOMAIN_A_RECORD_TARGET ?? null,
+          }}
         />
       ) : null}
 

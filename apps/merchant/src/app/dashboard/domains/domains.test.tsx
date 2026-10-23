@@ -35,6 +35,17 @@ vi.mock('@/lib/permissions', () => ({
   useCanManageStore: () => canManage,
 }));
 
+let customDomainAllowed = true;
+vi.mock('@/lib/subscription-context', () => ({
+  useSubscription: () => ({
+    data: {
+      subscription: {
+        plan: { limits: { customDomain: customDomainAllowed } },
+      },
+    },
+  }),
+}));
+
 vi.mock('@/components/ui/toast', () => ({
   useToast: () => ({ pushToast }),
 }));
@@ -112,10 +123,35 @@ function mockList(items: StoreDomain[] = [subdomain, pendingCustom]) {
 describe('Domains dashboard', () => {
   beforeEach(() => {
     canManage = true;
+    customDomainAllowed = true;
     pushToast.mockReset();
     api.get.mockReset();
     api.post.mockReset();
     api.delete.mockReset();
+  });
+
+  it('Starter: locked with an upgrade link and no add form', async () => {
+    customDomainAllowed = false;
+    mockList([subdomain]);
+    render(<DomainsPage />);
+    expect(
+      await screen.findByRole('heading', { name: /Custom domains are available on the Growth and Business plans/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Upgrade in Plan & billing/i })).toHaveAttribute(
+      'href',
+      '/dashboard/billing',
+    );
+    expect(screen.queryByRole('form', { name: 'Add custom domain' })).not.toBeInTheDocument();
+  });
+
+  it('requires a non-empty hostname before submitting', async () => {
+    mockList([subdomain]);
+    const user = userEvent.setup();
+    render(<DomainsPage />);
+    await screen.findByLabelText('Hostname');
+    await user.click(screen.getByRole('button', { name: 'Add domain' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Hostname is required');
+    expect(api.post).not.toHaveBeenCalled();
   });
 
   it('lists domains with type, status, primary badge and verified date', async () => {
@@ -136,8 +172,9 @@ describe('Domains dashboard', () => {
     expect(within(rows[0]!).getByText('Primary')).toBeInTheDocument();
     expect(within(rows[0]!).getByText('Active')).toBeInTheDocument();
     expect(
-      within(rows[0]!).getByText(/platform subdomain · verified 2026-01-01/i),
+      within(rows[0]!).getByText(/platform subdomain · included with your store/i),
     ).toBeInTheDocument();
+    expect(within(rows[0]!).queryByText(/verified 2026-01-01/i)).not.toBeInTheDocument();
 
     expect(
       within(rows[1]!).getByText('shop.example.com', { selector: 'span' }),

@@ -17,7 +17,7 @@ export const FAQ_GROUPS: FaqGroup[] = [
       {
         question: 'How do I create a store?',
         answer:
-          'Sign up with your store name and store address, choose a plan and billing period, and pay with bKash, Nagad, Rocket or Upay in the last step. Your store is created right away, so you can add products while the Ecomesta team confirms the payment (usually within a few hours); then the store goes live for customers.',
+          'Sign up with your store name and store address, choose a plan and billing period, then in the last step either pay with bKash, Nagad, Rocket or Upay, or — when that plan offers a free trial — start the trial. With payment, your store is created right away so you can add products while the Ecomesta team confirms the payment (usually within a few hours), then it goes live for customers. With a trial, the store goes live straight away and you pay before the trial ends.',
       },
       {
         question: 'Can I delete sample products?',
@@ -32,7 +32,7 @@ export const FAQ_GROUPS: FaqGroup[] = [
       {
         question: 'Is there a free trial?',
         answer:
-          'Some plans can come with a free trial (for example 7 or 30 days). When a plan has one, the pricing page shows it and you can choose "Start free trial" at sign-up: your store goes live straight away and you pay before the trial ends. Otherwise you pay for the plan when you sign up. Monthly, 6-month (10% off) and yearly (25% off) billing are available.',
+          'You pay for your plan when you sign up, unless the plan you choose offers a free trial. Each plan’s trial length is set by Ecomesta (0, 7, or 30 days) and shown on the pricing page and at sign-up. When a trial is available, choose "Start free trial": your store goes live straight away and you pay before the trial ends. Monthly, 6-month (10% off) and yearly (25% off) billing are available.',
       },
       {
         question: 'Can I use my own domain?',
@@ -57,12 +57,12 @@ export const FAQ_GROUPS: FaqGroup[] = [
       {
         question: 'Does Ecomesta support SSLCommerz?',
         answer:
-          'Yes, on the Growth and Business plans. Connect your SSLCommerz merchant account in Payment settings. Customers pay on the SSLCommerz hosted page, and each payment is validated server-side before the order is marked paid.',
+          'Yes, on the Growth and Business plans (not Starter). Connect your SSLCommerz merchant account in Payment settings. Customers pay on the SSLCommerz hosted page, and each payment is validated server-side before the order is marked paid.',
       },
       {
         question: 'Can I connect Stripe?',
         answer:
-          'Yes, on the Business plan, if you have a Stripe account that supports your business. Stripe payments use hosted Stripe Checkout and are confirmed through signed webhooks.',
+          'Yes, on the Business plan only, if you have a Stripe account that supports your business. Stripe payments use hosted Stripe Checkout and are confirmed through signed webhooks.',
       },
     ],
   },

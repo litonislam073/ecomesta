@@ -129,12 +129,12 @@ export const PAYMENT_PAGES: ContentPage[] = [
       {
         question: 'Do I need my own SSLCommerz account?',
         answer:
-          'Yes. Ecomesta connects to your SSLCommerz merchant account using your store ID and store password.',
+          'Yes. SSLCommerz is available on Growth and Business. Ecomesta connects to your SSLCommerz merchant account using your store ID and store password.',
       },
       {
         question: 'Does Ecomesta integrate bKash or Nagad directly?',
         answer:
-          'No. There is no direct bKash or Nagad integration. Customers pay through the methods available on your SSLCommerz payment page.',
+          'No. There is no direct bKash or Nagad integration. Customers pay through the methods available on your SSLCommerz payment page (Growth and Business plans).',
       },
       {
         question: 'Are refunds processed through Ecomesta?',
@@ -151,7 +151,7 @@ export const PAYMENT_PAGES: ContentPage[] = [
       {
         href: '/payments/online-payments',
         label: 'Online payments',
-        description: 'Stripe and test payments.',
+        description: 'SSLCommerz and Stripe by plan.',
       },
       {
         href: '/shipping',
@@ -166,28 +166,27 @@ export const PAYMENT_PAGES: ContentPage[] = [
     name: 'Online Payments',
     title: 'Online Payments for Ecommerce Stores in Bangladesh | Ecomesta',
     description:
-      'How online payments work on Ecomesta: SSLCommerz and Stripe hosted checkout, a test provider for development, server-calculated totals and verified payment confirmations.',
+      'How online payments work on Ecomesta: SSLCommerz on Growth and Business, Stripe on Business, server-calculated totals and verified payment confirmations.',
     eyebrow: 'Online payments',
     h1: 'Online payments that are verified, not assumed',
     intro:
-      'Ecomesta supports hosted online payments through SSLCommerz and Stripe, plus a test provider for trying the flow. In every case, totals are calculated by the server and a payment only counts once the provider confirms it.',
-    summary: 'SSLCommerz, Stripe and a test provider.',
+      'Ecomesta supports hosted online payments through SSLCommerz (Growth and Business plans) and Stripe (Business plan). Totals are calculated by the server and a payment only counts once the provider confirms it.',
+    summary: 'SSLCommerz on Growth and Business; Stripe on Business.',
     highlights: [
-      'SSLCommerz hosted payments',
-      'Stripe Checkout where configured',
-      'Test provider for development',
+      'SSLCommerz on Growth and Business',
+      'Stripe Checkout on Business',
+      'Your own merchant accounts',
       'Server-side amount checks',
     ],
     sections: [
       {
         heading: 'Available online providers',
         bullets: [
-          'SSLCommerz — Bangladesh-focused hosted payment page, validated with SSLCommerz after each payment',
-          'Stripe — hosted Stripe Checkout for card payments, confirmed through signed Stripe webhooks, where you have a Stripe account that supports your business',
-          'Test payments — a deterministic provider for development and staging, so you can try the full checkout without real money',
+          'SSLCommerz — Bangladesh-focused hosted payment page on Growth and Business, validated with SSLCommerz after each payment',
+          'Stripe — hosted Stripe Checkout for international card payments on the Business plan, confirmed through signed Stripe webhooks, when you have a Stripe account that supports your business',
         ],
         paragraphs: [
-          'Each provider is enabled and configured per store. A provider only appears at checkout after the store has connected and enabled it.',
+          'Each provider is enabled and configured per store. A provider only appears at checkout after the store has connected and enabled it, and only when the plan includes that provider.',
         ],
       },
       {
@@ -210,12 +209,17 @@ export const PAYMENT_PAGES: ContentPage[] = [
       {
         question: 'Can I connect Stripe?',
         answer:
-          'Yes, if you have a Stripe account that supports your business. Add your Stripe secret key and webhook secret in Payment settings.',
+          'Yes, on the Business plan, if you have a Stripe account that supports your business. Add your Stripe secret key and webhook secret in Payment settings.',
+      },
+      {
+        question: 'Which plans include online payments?',
+        answer:
+          'SSLCommerz is on Growth and Business. Stripe is on Business only. Starter includes Cash on Delivery; optional bank transfer or another offline method can be enabled in Payment settings on any plan.',
       },
       {
         question: 'Is every provider available to every store automatically?',
         answer:
-          'No. Each store connects the providers it wants with its own merchant accounts. Cash on Delivery needs no external account.',
+          'No. Each store connects the providers it wants with its own merchant accounts, within what the plan allows. Cash on Delivery needs no external account.',
       },
     ],
     related: [

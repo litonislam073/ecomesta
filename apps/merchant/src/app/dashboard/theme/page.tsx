@@ -154,7 +154,9 @@ function ThemeLibrary() {
                 </p>
                 <h2 id="current-theme" className="mt-1 text-xl font-semibold">{active.name}</h2>
                 <p className="mt-0.5 text-sm text-[var(--color-muted)]">
-                  {live?.publishedAt ? `Live since ${new Date(live.publishedAt).toLocaleString()}.` : 'Shown on your store.'}
+                  {live?.publishedAt
+                    ? `Live since ${new Date(live.publishedAt).toLocaleString()}.`
+                    : 'Default theme is shown until you publish.'}
                   {unpublished ? ' You have edits that are not published yet.' : ''}
                 </p>
               </div>

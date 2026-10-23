@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import type {
   AdminAffiliateCommissionItem,
   AdminAffiliateItem,
@@ -148,18 +148,25 @@ export default function AdminAffiliatesPage() {
 function useList<T>(path: string, errorLabel: string) {
   const [items, setItems] = useState<T[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Only the latest request may write state, so a slow response for a previous
+  // filter can never overwrite (or leave stuck) the current one.
+  const latest = useRef(0);
   const load = useCallback(async () => {
+    const id = ++latest.current;
     setError(null);
     try {
       const res = await api.get<{ success: true; data: { items: T[] } }>(path);
-      setItems(res.data.items);
+      if (id === latest.current) setItems(res.data.items);
     } catch (err) {
-      setError(humanApiError(err, errorLabel));
+      if (id === latest.current) setError(humanApiError(err, errorLabel));
     }
   }, [path, errorLabel]);
   useEffect(() => {
     setItems(null);
     void load();
+    return () => {
+      latest.current += 1;
+    };
   }, [load]);
   return { items, error, load };
 }

@@ -81,6 +81,16 @@ export class EnvironmentVariables {
   @IsString()
   PLATFORM_ROOT_DOMAIN?: string;
 
+  /** Host a merchant's custom-domain CNAME should point at. Defaults to PLATFORM_ROOT_DOMAIN. */
+  @IsOptional()
+  @IsString()
+  DOMAIN_CNAME_TARGET?: string;
+
+  /** Public IPv4 of the storefront edge, shown for apex (A record) setups. */
+  @IsOptional()
+  @IsString()
+  DOMAIN_A_RECORD_TARGET?: string;
+
   @IsOptional()
   @IsString()
   LOG_LEVEL?: string;

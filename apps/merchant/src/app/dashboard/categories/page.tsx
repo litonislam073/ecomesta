@@ -431,7 +431,7 @@ function CategoriesContent() {
         open={Boolean(deleteTarget)}
         title="Delete this category?"
         description="Deletion fails if child categories or products still use it."
-        confirmLabel="Delete"
+        confirmLabel="Delete category"
         danger
         busy={busy}
         onCancel={() => setDeleteTarget(null)}

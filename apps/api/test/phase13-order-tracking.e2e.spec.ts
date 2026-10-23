@@ -45,6 +45,7 @@ describe('Phase 13 order tracking + operations (e2e)', () => {
   let freeShippingId = '';
   let orderId = '';
   let publicReference = '';
+  let orderNumber = '';
   const customerEmail = `guest.p13.${suffix}@example.com`;
 
   beforeAll(async () => {
@@ -211,6 +212,7 @@ describe('Phase 13 order tracking + operations (e2e)', () => {
       .expect(201);
 
     publicReference = placed.body.data.publicReference;
+    orderNumber = placed.body.data.orderNumber;
     expect(publicReference.length).toBeGreaterThanOrEqual(16);
 
     const order = await prisma.order.findFirstOrThrow({
@@ -240,6 +242,10 @@ describe('Phase 13 order tracking + operations (e2e)', () => {
 
     await request(app.getHttpServer())
       .get(`/api/v1/public/stores/${storeSlug}/orders/EM-100001`)
+      .expect(404);
+    // The order number alone (no contact proof) never discloses an order.
+    await request(app.getHttpServer())
+      .get(`/api/v1/public/stores/${storeSlug}/orders/${orderNumber}`)
       .expect(404);
 
     await request(app.getHttpServer())
@@ -290,9 +296,25 @@ describe('Phase 13 order tracking + operations (e2e)', () => {
     await lookup(storeSlug, {}).expect(404);
     await lookup(otherStoreSlug, { email: customerEmail }).expect(404);
     await request(app.getHttpServer())
-      .post(`/api/v1/public/stores/${storeSlug}/orders/EM-100001/lookup`)
+      .post(`/api/v1/public/stores/${storeSlug}/orders/EM-999999999/lookup`)
       .send({ email: customerEmail })
       .expect(404);
+  });
+
+  it('looks an order up by EM-* order number with contact proof', async () => {
+    const byNumber = (slug: string, number: string, proof: Record<string, string>) =>
+      request(app.getHttpServer())
+        .post(`/api/v1/public/stores/${slug}/orders/${number}/lookup`)
+        .send(proof);
+
+    const own = await byNumber(storeSlug, orderNumber, { email: customerEmail }).expect(200);
+    expect(own.body.data.orderNumber).toBe(orderNumber);
+    expect(own.body.data.publicReference).toBe(publicReference);
+    await byNumber(storeSlug, orderNumber.toLowerCase(), { phone: '+15550013' }).expect(200);
+
+    await byNumber(storeSlug, orderNumber, { email: 'someone.else@example.com' }).expect(404);
+    await byNumber(storeSlug, orderNumber, {}).expect(404);
+    await byNumber(otherStoreSlug, orderNumber, { email: customerEmail }).expect(404);
   });
 
   it('supports merchant filters, timeline, cancel reason, and shipment tracking', async () => {

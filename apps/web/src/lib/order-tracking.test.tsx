@@ -97,13 +97,28 @@ describe('Track order + confirmation tracking', () => {
   it('validates reference and email before lookup', async () => {
     const user = userEvent.setup();
     render(<TrackOrderForm storeSlug="alpha" />);
-    await user.type(screen.getByLabelText(/order reference/i), 'short-ref');
     await user.type(screen.getByLabelText(/checkout phone or email/i), 'ada@example.com');
     await user.click(screen.getByRole('button', { name: /track order/i }));
     expect(
-      await screen.findByText(/full order reference/i),
-    ).toBeInTheDocument();
+      await screen.findByRole('alert'),
+    ).toHaveTextContent(/enter your order number/i);
     expect(lookupMock).not.toHaveBeenCalled();
+  });
+
+  it('accepts a short EM-* order number with phone/email proof', async () => {
+    const user = userEvent.setup();
+    lookupMock.mockResolvedValue({ success: true, data: sampleOrder });
+    render(<TrackOrderForm storeSlug="alpha" />);
+    await user.type(screen.getByLabelText(/order number or reference/i), 'EM-100013');
+    await user.type(screen.getByLabelText(/checkout phone or email/i), 'ada@example.com');
+    await user.click(screen.getByRole('button', { name: /track order/i }));
+    await waitFor(() =>
+      expect(lookupMock).toHaveBeenCalledWith(
+        '/public/stores/alpha/orders/EM-100013/lookup',
+        { email: 'ada@example.com' },
+      ),
+    );
+    expect(await screen.findByText('EM-100013')).toBeInTheDocument();
   });
 
   it('looks up an order with email verification and shows timeline', async () => {
@@ -112,7 +127,7 @@ describe('Track order + confirmation tracking', () => {
     render(<TrackOrderForm storeSlug="alpha" />);
 
     await user.type(
-      screen.getByLabelText(/order reference/i),
+      screen.getByLabelText(/order number or reference/i),
       sampleOrder.publicReference,
     );
     await user.type(screen.getByLabelText(/checkout phone or email/i), 'ada@example.com');
@@ -130,7 +145,7 @@ describe('Track order + confirmation tracking', () => {
     const user = userEvent.setup();
     lookupMock.mockResolvedValue({ success: true, data: sampleOrder });
     render(<TrackOrderForm storeSlug="alpha" />);
-    await user.type(screen.getByLabelText(/order reference/i), sampleOrder.publicReference);
+    await user.type(screen.getByLabelText(/order number or reference/i), sampleOrder.publicReference);
     await user.type(screen.getByLabelText(/checkout phone or email/i), '01711 000000');
     await user.click(screen.getByRole('button', { name: /track order/i }));
     await waitFor(() =>
@@ -156,7 +171,7 @@ describe('Track order + confirmation tracking', () => {
     );
     render(<TrackOrderForm storeSlug="alpha" />);
     await user.type(
-      screen.getByLabelText(/order reference/i),
+      screen.getByLabelText(/order number or reference/i),
       'abcdefghijklmnopqrstuvwxyz012345',
     );
     await user.type(screen.getByLabelText(/checkout phone or email/i), 'nope@example.com');

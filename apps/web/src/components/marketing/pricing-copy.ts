@@ -51,6 +51,7 @@ const BN_PLAN_TEXT: Record<string, string> = {
   'Online payments with SSLCommerz (bKash, Nagad, cards)': 'SSLCommerz দিয়ে অনলাইন পেমেন্ট (bKash, Nagad, কার্ড)',
   'Discount coupons and Bangladesh delivery zones': 'ডিসকাউন্ট কুপন আর বাংলাদেশের ডেলিভারি জোন',
   'All storefront themes': 'সব স্টোর থিম',
+  'All included themes (Default and Minimal)': 'সব অন্তর্ভুক্ত থিম (Default আর Minimal)',
   'Facebook Pixel, Google Analytics & Tag Manager': 'Facebook Pixel, Google Analytics ও Tag Manager',
   'Up to 5 landing pages with their own order form': 'অর্ডার ফর্মসহ ৫টি পর্যন্ত ল্যান্ডিং পেজ',
   'Full sales and visitor analytics': 'বিক্রি আর ভিজিটরের পুরো অ্যানালিটিক্স',

@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useAuth } from '@/lib/auth-context';
 import { useCanManageStore } from '@/lib/permissions';
+import { roleLabel } from '@/lib/role-labels';
 import { useStoreContext } from '@/lib/store-context';
 
 export default function DashboardHomePage() {
@@ -20,12 +21,15 @@ export default function DashboardHomePage() {
     return <LoadingState label="Loading dashboard" />;
   }
 
-  const storeRole =
+  const storeRole = roleLabel(
     user?.memberships.stores.find(
       (membership) => membership.storeId === selectedStore?.id,
     )?.role ??
-    user?.memberships.tenants[0]?.role ??
-    '—';
+      user?.memberships.tenants.find(
+        (membership) => membership.tenantId === selectedStore?.tenantId,
+      )?.role ??
+      user?.memberships.tenants[0]?.role,
+  );
 
   return (
     <div className="space-y-6">
@@ -85,7 +89,7 @@ export default function DashboardHomePage() {
               <dd className="font-medium">{user?.email}</dd>
             </div>
             <div>
-              <dt className="text-[var(--color-muted)]">Role context</dt>
+              <dt className="text-[var(--color-muted)]">Your role</dt>
               <dd className="font-medium">{storeRole}</dd>
             </div>
             <div>

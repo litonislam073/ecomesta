@@ -11,9 +11,17 @@ import {
 const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   [OrderStatus.DRAFT]: [OrderStatus.PENDING, OrderStatus.CANCELLED],
   [OrderStatus.PENDING]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
-  [OrderStatus.CONFIRMED]: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
-  [OrderStatus.PROCESSING]: [OrderStatus.COMPLETED, OrderStatus.CANCELLED],
-  [OrderStatus.COMPLETED]: [],
+  [OrderStatus.CONFIRMED]: [
+    OrderStatus.PROCESSING,
+    OrderStatus.PENDING,
+    OrderStatus.CANCELLED,
+  ],
+  [OrderStatus.PROCESSING]: [
+    OrderStatus.COMPLETED,
+    OrderStatus.CONFIRMED,
+    OrderStatus.CANCELLED,
+  ],
+  [OrderStatus.COMPLETED]: [OrderStatus.PROCESSING],
   [OrderStatus.CANCELLED]: [],
 };
 

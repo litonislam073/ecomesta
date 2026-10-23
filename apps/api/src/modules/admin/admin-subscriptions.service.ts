@@ -26,6 +26,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import {
   CreateSubscriptionDto,
   ListAdminSubscriptionsQueryDto,
+  UpdateSubscriptionPlanDto,
   UpdateSubscriptionStatusDto,
 } from './dto/admin-subscription.dto';
 import { assertSubscriptionStatusTransition } from './subscription-transitions';
@@ -214,6 +215,84 @@ export class AdminSubscriptionsService {
         previousStatus: existing.status,
         status: subscription.status,
         planSlug: subscription.plan.slug,
+      },
+      req,
+    });
+
+    return { success: true as const, data: this.toDto(subscription) };
+  }
+
+  async updatePlan(
+    actingUserId: string,
+    subscriptionId: string,
+    dto: UpdateSubscriptionPlanDto,
+    req?: Request,
+  ) {
+    await this.authorization.assertSuperAdmin(actingUserId);
+    const existing = await this.requireSubscription(subscriptionId);
+
+    const plan = await this.prisma.subscriptionPlan.findUnique({
+      where: { id: dto.planId },
+      select: { id: true, slug: true, name: true, active: true },
+    });
+    if (!plan) {
+      throw new NotFoundException('Subscription plan not found');
+    }
+    if (!plan.active && plan.id !== existing.planId) {
+      throw new UnprocessableEntityException(
+        'Cannot assign an inactive subscription plan',
+      );
+    }
+
+    const data: Prisma.SubscriptionUpdateInput = {
+      plan: { connect: { id: plan.id } },
+    };
+
+    if (dto.endsAt !== undefined) {
+      if (dto.endsAt === null || dto.endsAt === '') {
+        data.endsAt = null;
+      } else {
+        const endsAt = new Date(dto.endsAt);
+        if (Number.isNaN(endsAt.getTime())) {
+          throw new BadRequestException('endsAt is invalid');
+        }
+        data.endsAt = endsAt;
+      }
+    }
+
+    if (dto.trialEndsAt !== undefined) {
+      if (dto.trialEndsAt === null || dto.trialEndsAt === '') {
+        data.trialEndsAt = null;
+      } else {
+        const trialEndsAt = new Date(dto.trialEndsAt);
+        if (Number.isNaN(trialEndsAt.getTime())) {
+          throw new BadRequestException('trialEndsAt is invalid');
+        }
+        data.trialEndsAt = trialEndsAt;
+      }
+    }
+
+    await this.prisma.subscription.update({
+      where: { id: existing.id },
+      data,
+    });
+    const subscription = await this.requireSubscription(existing.id);
+
+    await this.audit.log({
+      action: 'SUBSCRIPTION_PLAN_CHANGED',
+      entityType: 'Subscription',
+      entityId: subscription.id,
+      userId: actingUserId,
+      tenantId: subscription.tenantId,
+      metadata: {
+        previousPlanId: existing.planId,
+        previousPlanSlug: existing.plan.slug,
+        planId: subscription.planId,
+        planSlug: subscription.plan.slug,
+        previousEndsAt: existing.endsAt?.toISOString() ?? null,
+        endsAt: subscription.endsAt?.toISOString() ?? null,
+        previousTrialEndsAt: existing.trialEndsAt?.toISOString() ?? null,
+        trialEndsAt: subscription.trialEndsAt?.toISOString() ?? null,
       },
       req,
     });

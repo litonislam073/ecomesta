@@ -73,6 +73,7 @@ export async function apiRequest<T>(
   const method = options.method ?? 'GET';
   const headers: Record<string, string> = {
     Accept: 'application/json',
+    'X-Ecomesta-Client': 'merchant',
   };
 
   const token = options.token === undefined ? accessTokenGetter() : options.token;

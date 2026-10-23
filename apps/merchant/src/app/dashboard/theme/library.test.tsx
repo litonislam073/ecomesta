@@ -105,6 +105,7 @@ describe('Theme library', () => {
     render(<ThemeLibraryPage />);
     const current = (await screen.findByRole('heading', { name: 'Default' })).closest('section')!;
     expect(within(current).getByText('Active theme')).toBeInTheDocument();
+    expect(within(current).getByText(/Live since/)).toBeInTheDocument();
     expect(within(current).getByRole('button', { name: 'Customize' })).toBeInTheDocument();
     // Said once: one active theme, no second "Active" badge.
     expect(screen.getAllByText(/Active/)).toHaveLength(1);
@@ -198,6 +199,7 @@ describe('Theme library', () => {
     render(<ThemeLibraryPage />);
     const current = (await screen.findByRole('heading', { name: 'Default' })).closest('section')!;
     expect(within(current).getByText('Active theme')).toBeInTheDocument();
+    expect(within(current).getByText('Default theme is shown until you publish.')).toBeInTheDocument();
     const minimal = screen.getByRole('heading', { name: 'Minimal' }).closest('li')!;
     expect(within(minimal).getByRole('button', { name: 'Activate' })).toBeInTheDocument();
   });

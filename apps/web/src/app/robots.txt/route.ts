@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export function GET(request: Request) {
   const body = requestIsMarketingHost(request.headers)
     ? marketingRobotsTxt()
-    : storefrontRobotsTxt();
+    : storefrontRobotsTxt(request.url);
   return new Response(body, {
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',

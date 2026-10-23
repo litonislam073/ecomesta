@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import CouponsPage from '@/app/dashboard/coupons/page';
 import NewCouponPage from '@/app/dashboard/coupons/new/page';
 import { ApiError } from '@/lib/api-client';
@@ -47,6 +48,17 @@ vi.mock('@/lib/store-context', () => ({
 
 vi.mock('@/lib/permissions', () => ({
   useCanManageStore: () => canManage,
+}));
+
+let couponsAllowed = true;
+vi.mock('@/lib/subscription-context', () => ({
+  useSubscription: () => ({
+    data: {
+      subscription: {
+        plan: { limits: { coupons: couponsAllowed } },
+      },
+    },
+  }),
 }));
 
 vi.mock('@/components/ui/toast', () => ({
@@ -97,6 +109,7 @@ describe('Coupons UI', () => {
   beforeEach(() => {
     selectedStoreId = 'store-1';
     canManage = true;
+    couponsAllowed = true;
     pushToast.mockReset();
     api.get.mockReset();
     api.post.mockReset();
@@ -112,8 +125,31 @@ describe('Coupons UI', () => {
     });
     render(<CouponsPage />);
     expect(await screen.findByRole('link', { name: 'SUMMER10' })).toBeInTheDocument();
-    expect(screen.getAllByText('PERCENTAGE').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Percentage').length).toBeGreaterThan(0);
+    expect(screen.queryByText('PERCENTAGE')).not.toBeInTheDocument();
+    expect(screen.queryByText('FIXED_AMOUNT')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /new coupon/i })).toBeInTheDocument();
+  });
+
+  it('Starter: locked with an upgrade link and no create button', async () => {
+    couponsAllowed = false;
+    api.get.mockResolvedValue({
+      success: true,
+      data: {
+        items: [sampleCoupon],
+        meta: { total: 1, page: 1, limit: 20, totalPages: 1 },
+      },
+    });
+    render(<CouponsPage />);
+    expect(
+      await screen.findByRole('heading', { name: /available on the Growth and Business plans/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Upgrade in Plan & billing/i })).toHaveAttribute(
+      'href',
+      '/dashboard/billing',
+    );
+    expect(screen.queryByRole('link', { name: /new coupon/i })).not.toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'SUMMER10' })).toBeInTheDocument();
   });
 
   it('hides New coupon for staff read-only access', async () => {
@@ -137,6 +173,24 @@ describe('Coupons UI', () => {
     expect(screen.getByLabelText(/coupon type/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/coupon value/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^create$/i })).toBeInTheDocument();
+  });
+
+  it('uses human labels for coupon types in the form', async () => {
+    render(<NewCouponPage />);
+    const select = await screen.findByLabelText(/coupon type/i);
+    expect(within(select).getByRole('option', { name: 'Percentage' })).toBeInTheDocument();
+    expect(within(select).getByRole('option', { name: 'Fixed amount' })).toBeInTheDocument();
+    expect(within(select).queryByRole('option', { name: 'FIXED_AMOUNT' })).not.toBeInTheDocument();
+  });
+
+  it('shows explicit required-field errors when creating an empty coupon', async () => {
+    const user = userEvent.setup();
+    render(<NewCouponPage />);
+    await user.clear(await screen.findByLabelText(/coupon value/i));
+    await user.click(screen.getByRole('button', { name: /^create$/i }));
+    expect(await screen.findByText('Coupon code is required.')).toBeInTheDocument();
+    expect(screen.getByText('Discount value is required.')).toBeInTheDocument();
+    expect(api.post).not.toHaveBeenCalled();
   });
 
   it('shows API errors on the list', async () => {

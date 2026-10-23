@@ -657,9 +657,14 @@ export interface OrderTimelineEvent {
     | 'PAYMENT_PENDING'
     | 'PAYMENT_PAID'
     | 'PAYMENT_FAILED'
+    | 'PAYMENT_REFUNDED'
+    | 'PAYMENT_PARTIALLY_REFUNDED'
     | 'PROCESSING'
+    | 'ORDER_COMPLETED'
+    | 'FULFILLED'
     | 'SHIPMENT_CREATED'
     | 'SHIPPED'
+    | 'IN_TRANSIT'
     | 'DELIVERED'
     | 'CANCELLED';
   label: string;
@@ -721,6 +726,11 @@ export interface PublicStore {
     requireEmail: boolean;
     requirePhone: boolean;
     allowOrderNotes: boolean;
+  };
+  /** Enabled payment methods for footer icons / trust badges (no secrets). */
+  payments?: {
+    offline: Array<'COD' | 'BANK_TRANSFER' | 'OTHER'>;
+    online: Array<'SSL_COMMERZ' | 'STRIPE' | 'TEST'>;
   };
   allowCustomerCancellation?: boolean;
   seo?: PublicStoreSeo;
@@ -1171,12 +1181,17 @@ export interface MerchantBillingPayment {
 }
 
 /** A submitted payment as the Super Admin reviews it. */
+/** Where a support inbox row came from. */
+export type AdminSupportConversationSource = 'CHAT' | 'CONTACT_FORM';
+
 /** A website support chat, as listed for Super Admins. */
 export interface AdminSupportConversationSummary {
   id: string;
   visitorName: string;
   visitorPhone: string;
   visitorEmail: string | null;
+  /** CHAT = assistant widget; CONTACT_FORM = /contact marketing form. */
+  source: AdminSupportConversationSource;
   messageCount: number;
   /** The visitor's first message, shortened for the list. */
   firstMessage: string | null;
@@ -1751,6 +1766,10 @@ export interface StoreDomainList {
   meta: {
     total: number;
     platformRootDomain: string;
+    /** Host a custom domain's CNAME should point at. */
+    cnameTarget?: string | null;
+    /** IPv4 for apex A records, when the platform publishes one. */
+    aRecordTarget?: string | null;
     canonicalHostname: string;
   };
 }

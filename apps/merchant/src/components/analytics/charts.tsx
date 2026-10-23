@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { dayLabel } from '@/lib/analytics';
+import { dayLabel, monthYearLabel } from '@/lib/analytics';
 
 export interface ChartPoint {
   date: string;
@@ -43,7 +43,14 @@ export function BarChart({
   const barWidth = Math.max(1, (width - gap * (data.length - 1)) / Math.max(1, data.length));
   const shown = active == null ? null : data[active];
   const total = data.reduce((sum, p) => sum + p.value, 0);
-  const ticks = data.length <= 7 ? data.map((_, i) => i) : [0, Math.floor((data.length - 1) / 2), data.length - 1];
+  // Long ranges (more than ~2 months) get evenly spaced month + year ticks.
+  const longRange = points.length > 60;
+  const ticks = longRange
+    ? Array.from({ length: 5 }, (_, k) => Math.round((k * (data.length - 1)) / 4))
+    : data.length <= 7
+      ? data.map((_, i) => i)
+      : [0, Math.floor((data.length - 1) / 2), data.length - 1];
+  const tickLabel = (date: string) => (longRange ? monthYearLabel(date) : dayLabel(date));
 
   return (
     <figure className="space-y-2">
@@ -88,7 +95,7 @@ export function BarChart({
             className="absolute -translate-x-1/2 whitespace-nowrap first:translate-x-0 last:-translate-x-full"
             style={{ left: `${data.length <= 1 ? 0 : (i / (data.length - 1)) * 100}%` }}
           >
-            {dayLabel(data[i]!.date)}
+            {tickLabel(data[i]!.date)}
           </span>
         ))}
       </div>

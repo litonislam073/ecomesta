@@ -70,6 +70,8 @@ export function DashboardPreview() {
                   alt="Cotton T-shirt product photo"
                   width={56}
                   height={42}
+                  sizes="56px"
+                  quality={70}
                   className="h-11 w-14 shrink-0 rounded-md object-cover"
                   priority
                 />
@@ -95,8 +97,9 @@ export function DashboardPreview() {
           alt="Wireless headphones product photo"
           width={160}
           height={120}
+          sizes="160px"
+          quality={70}
           className="h-24 w-full object-cover"
-          priority
         />
         <div className="p-2.5 text-[11px]">
           <p className="font-semibold">Wireless Headphones</p>

@@ -85,6 +85,9 @@ export class ShippingQuoteService {
   /**
    * Shared cart pricing for checkout free-threshold + quote. Prices always come
    * from the live catalog; `lines` carries them for checkout display (SF-03).
+   *
+   * Products and variants are loaded in two queries (not one per line) so
+   * multi-item checkout quotes stay under a couple of round-trips.
    */
   async computeCartSubtotal(
     storeId: string,
@@ -94,12 +97,22 @@ export class ShippingQuoteService {
       quantity: number;
     }[],
   ): Promise<{ subtotal: Prisma.Decimal; lines: PricedCartLine[] }> {
-    let subtotal = new Prisma.Decimal(0);
-    const lines: PricedCartLine[] = [];
+    if (items.length === 0) {
+      return { subtotal: new Prisma.Decimal(0), lines: [] };
+    }
 
-    for (const line of items) {
-      const product = await this.prisma.product.findFirst({
-        where: { id: line.productId, storeId },
+    const productIds = [...new Set(items.map((line) => line.productId))];
+    const variantIds = [
+      ...new Set(
+        items
+          .map((line) => line.variantId)
+          .filter((id): id is string => typeof id === 'string' && id.length > 0),
+      ),
+    ];
+
+    const [products, variants] = await Promise.all([
+      this.prisma.product.findMany({
+        where: { id: { in: productIds }, storeId },
         select: {
           id: true,
           name: true,
@@ -109,7 +122,29 @@ export class ShippingQuoteService {
           allowBackorder: true,
           _count: { select: { variants: true } },
         },
-      });
+      }),
+      variantIds.length
+        ? this.prisma.productVariant.findMany({
+            where: { id: { in: variantIds }, storeId },
+            select: {
+              id: true,
+              productId: true,
+              name: true,
+              price: true,
+              status: true,
+            },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const productById = new Map(products.map((product) => [product.id, product]));
+    const variantById = new Map(variants.map((variant) => [variant.id, variant]));
+
+    let subtotal = new Prisma.Decimal(0);
+    const lines: PricedCartLine[] = [];
+
+    for (const line of items) {
+      const product = productById.get(line.productId);
       if (!product) {
         throw new NotFoundException(
           `Product ${line.productId} not found in this store`,
@@ -129,15 +164,8 @@ export class ShippingQuoteService {
             `variantId is required for product "${product.name}"`,
           );
         }
-        const variant = await this.prisma.productVariant.findFirst({
-          where: {
-            id: line.variantId,
-            productId: product.id,
-            storeId,
-          },
-          select: { name: true, price: true, status: true },
-        });
-        if (!variant) {
+        const variant = variantById.get(line.variantId);
+        if (!variant || variant.productId !== product.id) {
           throw new NotFoundException(
             `Variant ${line.variantId} not found in this store`,
           );

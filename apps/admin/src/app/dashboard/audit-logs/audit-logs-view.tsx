@@ -8,6 +8,8 @@ import { PageHeader } from '@/components/admin/page-header';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
+import { AUDIT_ACTIONS } from '@/lib/audit-actions';
 import { LoadingState } from '@/components/ui/loading-state';
 import { Pagination } from '@/components/ui/pagination';
 import {
@@ -110,37 +112,64 @@ export default function AuditLogsView() {
       >
         <label className="block space-y-1.5" htmlFor="audit-action">
           <span className="text-sm font-medium">Action</span>
-          <Input
+          <Select
             id="audit-action"
-            placeholder="TENANT_SUSPENDED"
             value={filters.action}
             onChange={(e) => update('action', e.target.value)}
-          />
+          >
+            <option value="">Any action</option>
+            {AUDIT_ACTIONS.map((action) => (
+              <option key={action} value={action}>
+                {action}
+              </option>
+            ))}
+          </Select>
         </label>
-        <label className="block space-y-1.5" htmlFor="audit-tenant">
-          <span className="text-sm font-medium">Tenant ID</span>
-          <Input
-            id="audit-tenant"
-            value={filters.tenantId}
-            onChange={(e) => update('tenantId', e.target.value)}
-          />
-        </label>
-        <label className="block space-y-1.5" htmlFor="audit-store">
-          <span className="text-sm font-medium">Store ID</span>
-          <Input
-            id="audit-store"
-            value={filters.storeId}
-            onChange={(e) => update('storeId', e.target.value)}
-          />
-        </label>
-        <label className="block space-y-1.5" htmlFor="audit-user">
-          <span className="text-sm font-medium">Actor user ID</span>
-          <Input
-            id="audit-user"
-            value={filters.userId}
-            onChange={(e) => update('userId', e.target.value)}
-          />
-        </label>
+        <div className="space-y-1.5">
+          <label className="block space-y-1.5" htmlFor="audit-tenant">
+            <span className="text-sm font-medium">Tenant ID</span>
+            <Input
+              id="audit-tenant"
+              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+              aria-describedby="audit-tenant-help"
+              value={filters.tenantId}
+              onChange={(e) => update('tenantId', e.target.value)}
+            />
+          </label>
+          <p id="audit-tenant-help" className="text-xs text-[var(--color-muted)]">
+            Full UUID (copy it from the tenant page). Leave empty for all tenants.
+          </p>
+        </div>
+        <div className="space-y-1.5">
+          <label className="block space-y-1.5" htmlFor="audit-store">
+            <span className="text-sm font-medium">Store ID</span>
+            <Input
+              id="audit-store"
+              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+              aria-describedby="audit-store-help"
+              value={filters.storeId}
+              onChange={(e) => update('storeId', e.target.value)}
+            />
+          </label>
+          <p id="audit-store-help" className="text-xs text-[var(--color-muted)]">
+            Full UUID (copy it from the store page). Leave empty for all stores.
+          </p>
+        </div>
+        <div className="space-y-1.5">
+          <label className="block space-y-1.5" htmlFor="audit-user">
+            <span className="text-sm font-medium">Actor user ID</span>
+            <Input
+              id="audit-user"
+              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+              aria-describedby="audit-user-help"
+              value={filters.userId}
+              onChange={(e) => update('userId', e.target.value)}
+            />
+          </label>
+          <p id="audit-user-help" className="text-xs text-[var(--color-muted)]">
+            Full UUID of the admin or user who acted (copy it from the user page).
+          </p>
+        </div>
         <label className="block space-y-1.5" htmlFor="audit-from">
           <span className="text-sm font-medium">From</span>
           <Input

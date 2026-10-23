@@ -137,17 +137,17 @@ describe('robots.txt and sitemap.xml', () => {
     expect(body).toContain(`Sitemap: ${SITE}/sitemap.xml`);
   });
 
-  it('serves storefront robots without the platform sitemap on store hosts', async () => {
+  it('serves storefront robots with a store sitemap on store hosts', async () => {
     const { GET } = await import('@/app/robots.txt/route');
     const body = await GET(get('shop.example.com')).text();
     expect(body).toContain('Disallow: /checkout');
-    expect(body).not.toContain('Sitemap:');
+    expect(body).toMatch(/Sitemap: https?:\/\/shop\.example\.com\/sitemap\.xml/);
   });
 
   it('lists indexable pages and excludes private routes', async () => {
     vi.stubEnv('NEXT_PUBLIC_SITE_URL', SITE);
     const { GET } = await import('@/app/sitemap.xml/route');
-    const response = GET(get('localhost:3000'));
+    const response = await GET(get('localhost:3000'));
     expect(response.status).toBe(200);
     const xml = await response.text();
     for (const path of ['/', '/features/order-management', '/payments/sslcommerz', '/pricing', '/blog']) {
@@ -202,10 +202,72 @@ describe('robots.txt and sitemap.xml', () => {
     expect(body.match(/^Sitemap: /gm)).toHaveLength(1);
   });
 
-  it('returns 404 for the sitemap on store hosts', async () => {
+  it('serves a store sitemap of products and categories on store hosts', async () => {
+    vi.doMock('@/lib/domain-routing', async () => {
+      const actual = await vi.importActual<typeof import('@/lib/domain-routing')>(
+        '@/lib/domain-routing',
+      );
+      return {
+        ...actual,
+        resolveHostname: vi.fn().mockResolvedValue({
+          status: 'resolved',
+          resolution: {
+            storeSlug: 'alpha',
+            canonicalHostname: 'alpha.ecomesta.local',
+          },
+        }),
+      };
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes('/categories')) {
+          return new Response(
+            JSON.stringify({ success: true, data: { items: [{ slug: 'kitchen' }] } }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          );
+        }
+        if (url.includes('/products')) {
+          return new Response(
+            JSON.stringify({ success: true, data: { items: [{ slug: 'mug' }] } }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          );
+        }
+        return new Response('not found', { status: 404 });
+      }),
+    );
+
+    vi.resetModules();
     const { GET } = await import('@/app/sitemap.xml/route');
-    expect(GET(get('alpha.ecomesta.local')).status).toBe(404);
-    expect(GET(get('shop.example.com')).status).toBe(404);
+    const response = await GET(get('alpha.ecomesta.local'));
+    expect(response.status).toBe(200);
+    const xml = await response.text();
+    expect(xml).toContain('<loc>http://alpha.ecomesta.local/</loc>');
+    expect(xml).toContain('<loc>http://alpha.ecomesta.local/products</loc>');
+    expect(xml).toContain('<loc>http://alpha.ecomesta.local/categories</loc>');
+    expect(xml).toContain('<loc>http://alpha.ecomesta.local/categories/kitchen</loc>');
+    expect(xml).toContain('<loc>http://alpha.ecomesta.local/products/mug</loc>');
+    expect(xml).not.toContain('/pricing');
+
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+
+  it('returns 404 for the sitemap when the store host cannot be resolved', async () => {
+    vi.doMock('@/lib/domain-routing', async () => {
+      const actual = await vi.importActual<typeof import('@/lib/domain-routing')>(
+        '@/lib/domain-routing',
+      );
+      return {
+        ...actual,
+        resolveHostname: vi.fn().mockResolvedValue({ status: 'unknown' }),
+      };
+    });
+    vi.resetModules();
+    const { GET } = await import('@/app/sitemap.xml/route');
+    expect((await GET(get('unknown.example.com'))).status).toBe(404);
+    vi.resetModules();
   });
 });
 

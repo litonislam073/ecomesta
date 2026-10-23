@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import type { AdminSubscription, SubscriptionStatus } from '@ecomesta/types';
+import type { AdminSubscription, SubscriptionPlan, SubscriptionStatus } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
 import { PageHeader } from '@/components/admin/page-header';
 import { StatusBadge } from '@/components/admin/status-badge';
@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
+import { Input } from '@/components/ui/input';
 import { LoadingState } from '@/components/ui/loading-state';
 import { Select } from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast';
@@ -26,12 +27,28 @@ import {
 } from '@/lib/admin-utils';
 import { api } from '@/lib/api-client';
 
+/** ISO → value for `<input type="datetime-local">` in local time. */
+function toLocalInput(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function fromLocalInput(local: string): string | null {
+  if (!local.trim()) return null;
+  const date = new Date(local);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 export default function AdminSubscriptionDetailPage() {
   const params = useParams<{ subscriptionId: string }>();
   const subscriptionId = params.subscriptionId;
   const { pushToast } = useToast();
 
   const [subscription, setSubscription] = useState<AdminSubscription | null>(null);
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -39,15 +56,30 @@ export default function AdminSubscriptionDetailPage() {
   const [pending, setPending] = useState<SubscriptionStatus | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const [planId, setPlanId] = useState('');
+  const [endsAt, setEndsAt] = useState('');
+  const [trialEndsAt, setTrialEndsAt] = useState('');
+  const [planBusy, setPlanBusy] = useState(false);
+  const [confirmPlan, setConfirmPlan] = useState(false);
+
   const load = useCallback(async () => {
     if (!subscriptionId) return;
     setLoading(true);
     setError(null);
     try {
-      const result = await api.get<{ success: true; data: AdminSubscription }>(
-        `/admin/subscriptions/${subscriptionId}`,
-      );
-      setSubscription(result.data);
+      const [subResult, plansResult] = await Promise.all([
+        api.get<{ success: true; data: AdminSubscription }>(
+          `/admin/subscriptions/${subscriptionId}`,
+        ),
+        api.get<{ success: true; data: { items: SubscriptionPlan[] } }>(
+          '/admin/plans?limit=100',
+        ),
+      ]);
+      setSubscription(subResult.data);
+      setPlans(plansResult.data.items);
+      setPlanId(subResult.data.planId);
+      setEndsAt(toLocalInput(subResult.data.endsAt));
+      setTrialEndsAt(toLocalInput(subResult.data.trialEndsAt));
       setDraft('');
     } catch (err) {
       setError(humanApiError(err, 'Failed to load subscription'));
@@ -81,9 +113,61 @@ export default function AdminSubscriptionDetailPage() {
     }
   }
 
+  async function applyPlan() {
+    if (!subscriptionId || !planId || !subscription) return;
+    setPlanBusy(true);
+    setActionError(null);
+    try {
+      const body: {
+        planId: string;
+        endsAt?: string | null;
+        trialEndsAt?: string | null;
+      } = { planId };
+      if (endsAt !== toLocalInput(subscription.endsAt)) {
+        body.endsAt = fromLocalInput(endsAt);
+      }
+      if (trialEndsAt !== toLocalInput(subscription.trialEndsAt)) {
+        body.trialEndsAt = fromLocalInput(trialEndsAt);
+      }
+      await api.patch(`/admin/subscriptions/${subscriptionId}/plan`, body);
+      pushToast('Subscription plan updated', 'success');
+      setConfirmPlan(false);
+      await load();
+    } catch (err) {
+      const message = humanApiError(err, 'Could not update the plan');
+      setActionError(message);
+      pushToast(message, 'error');
+      setConfirmPlan(false);
+    } finally {
+      setPlanBusy(false);
+    }
+  }
+
   const transitions = subscription
     ? allowedSubscriptionTransitions(subscription.status)
     : [];
+
+  const planDirty =
+    !!subscription &&
+    (planId !== subscription.planId ||
+      endsAt !== toLocalInput(subscription.endsAt) ||
+      trialEndsAt !== toLocalInput(subscription.trialEndsAt));
+
+  const selectedPlanName =
+    plans.find((plan) => plan.id === planId)?.name ?? subscription?.plan.name ?? 'plan';
+
+  // Include the current plan even if it was later deactivated.
+  const planOptions =
+    subscription && !plans.some((plan) => plan.id === subscription.planId)
+      ? [
+          {
+            id: subscription.plan.id,
+            name: `${subscription.plan.name} (current)`,
+            active: subscription.plan.active,
+          },
+          ...plans,
+        ]
+      : plans;
 
   return (
     <div className="space-y-6">
@@ -192,6 +276,56 @@ export default function AdminSubscriptionDetailPage() {
                 </div>
               )}
             </Card>
+
+            <Card
+              title="Change plan"
+              description="Override the plan and paid-through / trial end dates. Written to the audit log."
+              className="lg:col-span-2"
+            >
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <label className="block space-y-1.5 sm:col-span-2 lg:col-span-1" htmlFor="subscription-plan">
+                  <span className="text-sm font-medium">Plan</span>
+                  <Select
+                    id="subscription-plan"
+                    value={planId}
+                    onChange={(e) => setPlanId(e.target.value)}
+                  >
+                    {planOptions.map((plan) => (
+                      <option key={plan.id} value={plan.id}>
+                        {plan.name}
+                        {'active' in plan && plan.active === false ? ' (inactive)' : ''}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+                <label className="block space-y-1.5" htmlFor="subscription-ends-at">
+                  <span className="text-sm font-medium">Paid through (ends)</span>
+                  <Input
+                    id="subscription-ends-at"
+                    type="datetime-local"
+                    value={endsAt}
+                    onChange={(e) => setEndsAt(e.target.value)}
+                  />
+                </label>
+                <label className="block space-y-1.5" htmlFor="subscription-trial-ends-at">
+                  <span className="text-sm font-medium">Trial ends</span>
+                  <Input
+                    id="subscription-trial-ends-at"
+                    type="datetime-local"
+                    value={trialEndsAt}
+                    onChange={(e) => setTrialEndsAt(e.target.value)}
+                  />
+                </label>
+                <div className="flex items-end">
+                  <Button
+                    disabled={!planDirty || !planId}
+                    onClick={() => setConfirmPlan(true)}
+                  >
+                    Save plan changes
+                  </Button>
+                </div>
+              </div>
+            </Card>
           </div>
         </>
       ) : null}
@@ -213,6 +347,16 @@ export default function AdminSubscriptionDetailPage() {
         confirmLabel="Confirm status change"
         onConfirm={() => void applyStatus()}
         onCancel={() => setPending(null)}
+      />
+
+      <ConfirmDialog
+        open={confirmPlan}
+        busy={planBusy}
+        title={`Change plan to ${selectedPlanName}?`}
+        description="The subscription plan and dates are updated immediately. Entitlements follow the new plan, and the change is written to the audit log."
+        confirmLabel="Confirm plan change"
+        onConfirm={() => void applyPlan()}
+        onCancel={() => setConfirmPlan(false)}
       />
     </div>
   );

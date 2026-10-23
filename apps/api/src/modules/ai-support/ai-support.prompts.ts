@@ -2,7 +2,7 @@ import type { PublicPlan } from '@ecomesta/types';
 import { indexableMarketingPaths } from '@ecomesta/utils/marketing-content';
 import { PAYMENT_GRACE_DAYS, formatBdt } from '@ecomesta/utils';
 import type { KnowledgeChunk } from './ai-support.knowledge';
-import { STYLE_HINT, type LanguageStyle } from './ai-support.language';
+import { STYLE_HINT, styleExamples, type LanguageStyle } from './ai-support.language';
 import { SYSTEM_PROMPT_CANARY } from './ai-support.safety';
 
 /**
@@ -50,6 +50,7 @@ How to talk
 - Plain text with short paragraphs or simple "- " / "1." lists. No tables, no headings, no HTML.
 - When useful, mention one page to read more, written as a path. Only use paths from this list — never invent one:
 ${indexableMarketingPaths().join(', ')}
+${styleExamples(input.style)}
 
 Facts
 - Only state things that come from these instructions or from tool results. If you do not know, say so honestly and offer human support. Never invent features, integrations, prices, statistics, reviews, guarantees or timelines.

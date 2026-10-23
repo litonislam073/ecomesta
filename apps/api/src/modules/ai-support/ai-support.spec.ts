@@ -52,6 +52,17 @@ describe('AI support — knowledge retrieval', () => {
     expect(knowledge.search('plan er dam koto').some((chunk) => chunk.path === '/pricing')).toBe(true);
   });
 
+  it('indexes Bangla FAQ/pages and expands common Bangla intents', () => {
+    expect(knowledge.chunks.some((chunk) => chunk.id.startsWith('faq-bn-'))).toBe(true);
+    expect(knowledge.chunks.some((chunk) => chunk.id.startsWith('bn-features-'))).toBe(true);
+    const domain = knowledge.search('নিজের ডোমেইন কিভাবে যোগ করব?');
+    expect(domain.some((chunk) => /domain/i.test(chunk.path) || /domain/i.test(chunk.title + chunk.text))).toBe(true);
+    const signup = knowledge.search('স্টোর খুলব কীভাবে?');
+    expect(signup.some((chunk) => /sign|trial|store|pricing|faq/i.test(`${chunk.path} ${chunk.title} ${chunk.text}`))).toBe(
+      true,
+    );
+  });
+
   it('answers bKash questions with the honest "no direct integration" content', () => {
     const text = knowledge.search('bkash nagad integration').map((chunk) => chunk.text).join(' ');
     expect(text).toMatch(/no direct bKash or Nagad integration|not a bKash or Nagad integration/i);
@@ -65,7 +76,7 @@ describe('AI support — knowledge retrieval', () => {
     expect(text('shopease premium theme')).toMatch(/ShopEase/);
     expect(text('category te chobi kivabe dibo')).toMatch(/Category images/);
     expect(text('landing page kivabe banabo')).toMatch(/Marketing → Landing pages/);
-    expect(text('free trial ache')).toMatch(/no free trial|No\. You pay/i);
+    expect(text('free trial ache')).toMatch(/free trial|Start the free trial|pays for it/i);
   });
 
   it('keeps results within the size budget and returns nothing for empty queries', () => {

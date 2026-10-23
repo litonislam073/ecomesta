@@ -2,7 +2,7 @@
 
 import type { StoreDomain } from '@ecomesta/types';
 import { Badge } from '@/components/ui/badge';
-import { DnsInstructions } from '@/components/domains/dns-instructions';
+import { DnsInstructions, type DnsTargets } from '@/components/domains/dns-instructions';
 import { DomainStatusBadge } from '@/components/domains/domain-status-badge';
 
 export type DomainAction =
@@ -57,7 +57,9 @@ function DomainCard({
   canWrite,
   busy,
   onAction,
+  dnsTargets,
 }: {
+  dnsTargets?: DnsTargets;
   domain: StoreDomain;
   canWrite: boolean;
   busy: boolean;
@@ -77,9 +79,14 @@ function DomainCard({
           </div>
           <p className="text-xs text-[var(--color-muted)]">
             {domain.type === 'SUBDOMAIN'
-              ? 'Platform subdomain'
+              ? 'Platform subdomain · Included with your store'
               : 'Custom domain'}
-            {verifiedAt ? ` · Verified ${verifiedAt}` : ' · Not verified'}
+            {/* The platform subdomain is provisioned, never DNS-verified: no misleading "Verified" date. */}
+            {domain.type === 'SUBDOMAIN'
+              ? ''
+              : verifiedAt
+                ? ` · Verified ${verifiedAt}`
+                : ' · Not verified'}
           </p>
         </div>
         {actions.length > 0 ? (
@@ -108,6 +115,7 @@ function DomainCard({
           hostname={domain.hostname}
           status={domain.status}
           verification={domain.verification}
+          targets={dnsTargets}
           canRegenerate={
             canWrite &&
             (domain.status === 'PENDING' ||
@@ -127,11 +135,13 @@ export function DomainList({
   canWrite,
   busyDomainId,
   onAction,
+  dnsTargets,
 }: {
   domains: StoreDomain[];
   canWrite: boolean;
   busyDomainId: string | null;
   onAction: (action: DomainAction, domain: StoreDomain) => void;
+  dnsTargets?: DnsTargets;
 }) {
   return (
     <ul aria-label="Store domains" className="space-y-3">
@@ -142,6 +152,7 @@ export function DomainList({
           canWrite={canWrite}
           busy={busyDomainId === domain.id}
           onAction={onAction}
+          dnsTargets={dnsTargets}
         />
       ))}
     </ul>

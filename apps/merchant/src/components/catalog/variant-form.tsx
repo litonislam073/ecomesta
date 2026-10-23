@@ -16,21 +16,29 @@ export type VariantFormValues = {
   costPrice: string;
   weight: string;
   status: ProductStatus;
+  /** Initial stock on create when the product tracks inventory. */
+  quantity: string;
 };
 
 export function VariantForm({
   initial,
   busy,
   submitLabel,
+  trackInventory = false,
+  showStockField = false,
   onSubmit,
   onCancel,
 }: {
   initial?: Partial<VariantFormValues>;
   busy?: boolean;
   submitLabel: string;
+  /** When true, show stock field and validate integer quantity on create. */
+  trackInventory?: boolean;
+  showStockField?: boolean;
   onSubmit: (values: VariantFormValues) => Promise<void> | void;
   onCancel?: () => void;
 }) {
+  const stockVisible = showStockField && trackInventory;
   const [values, setValues] = useState<VariantFormValues>({
     name: initial?.name ?? '',
     sku: initial?.sku ?? '',
@@ -40,6 +48,7 @@ export function VariantForm({
     costPrice: initial?.costPrice ?? '',
     weight: initial?.weight ?? '',
     status: initial?.status ?? 'ACTIVE',
+    quantity: initial?.quantity ?? '0',
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -54,8 +63,23 @@ export function VariantForm({
       setError('Price must be a non-negative amount with up to 2 decimals.');
       return;
     }
-    await onSubmit(values);
+    if (stockVisible) {
+      const raw = values.quantity.trim() === '' ? '0' : values.quantity.trim();
+      const qty = Number.parseInt(raw, 10);
+      if (!Number.isFinite(qty) || String(qty) !== raw || qty < 0) {
+        setError('Stock must be a whole number of 0 or more.');
+        return;
+      }
+    }
+    await onSubmit({
+      ...values,
+      quantity: values.quantity.trim() === '' ? '0' : values.quantity.trim(),
+    });
   }
+
+  const stockQty = Number.parseInt(values.quantity, 10);
+  const stockZeroWarning =
+    stockVisible && Number.isFinite(stockQty) && stockQty === 0;
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-3 md:grid-cols-2" noValidate>
@@ -123,6 +147,31 @@ export function VariantForm({
           onChange={(e) => setValues((v) => ({ ...v, weight: e.target.value }))}
         />
       </label>
+      {stockVisible ? (
+        <label className="space-y-1 text-sm md:col-span-2">
+          <span>Stock quantity</span>
+          <Input
+            inputMode="numeric"
+            value={values.quantity}
+            onChange={(e) =>
+              setValues((v) => ({
+                ...v,
+                quantity: e.target.value.replace(/[^\d]/g, ''),
+              }))
+            }
+            aria-describedby={stockZeroWarning ? 'variant-stock-warn' : undefined}
+          />
+          {stockZeroWarning ? (
+            <p
+              id="variant-stock-warn"
+              className="text-xs text-[var(--color-muted)]"
+              role="status"
+            >
+              Stock is 0 — customers cannot buy this variant until you add inventory.
+            </p>
+          ) : null}
+        </label>
+      ) : null}
       {error ? (
         <p className="md:col-span-2 text-sm text-[var(--color-danger)]" role="alert">
           {error}
@@ -152,5 +201,6 @@ export function variantToFormValues(variant: ProductVariant): VariantFormValues 
     costPrice: variant.costPrice ?? '',
     weight: variant.weight ?? '',
     status: variant.status,
+    quantity: '0',
   };
 }

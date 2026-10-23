@@ -88,7 +88,7 @@ describe('Landing pages list', () => {
   it('at the plan limit: no new pages, with a way out', async () => {
     api.get.mockResolvedValue(listResponse([page()], { allowed: true, max: 1, used: 1 }));
     render(<LandingPagesPage />);
-    expect(await screen.findByText(/You have used all 1 landing pages/)).toBeInTheDocument();
+    expect(await screen.findByText(/You have used all 1 landing page on your plan/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /New landing page/ })).toBeDisabled();
   });
 

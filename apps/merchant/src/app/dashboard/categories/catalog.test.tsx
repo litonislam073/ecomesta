@@ -189,7 +189,7 @@ describe('Categories UI', () => {
     await screen.findAllByText('Electronics');
     await user.click(screen.getAllByRole('button', { name: /^delete$/i })[0]!);
     const dialog = screen.getByRole('dialog');
-    await user.click(within(dialog).getByRole('button', { name: /^delete$/i }));
+    await user.click(within(dialog).getByRole('button', { name: /^delete category$/i }));
 
     await waitFor(() => {
       expect(api.delete).toHaveBeenCalledWith('/stores/store-1/categories/cat-1');
@@ -213,7 +213,7 @@ describe('Categories UI', () => {
     await screen.findAllByText('Electronics');
     await user.click(screen.getAllByRole('button', { name: /^delete$/i })[0]!);
     const dialog = screen.getByRole('dialog');
-    await user.click(within(dialog).getByRole('button', { name: /^delete$/i }));
+    await user.click(within(dialog).getByRole('button', { name: /^delete category$/i }));
 
     await waitFor(() => {
       expect(pushToast).toHaveBeenCalledWith(

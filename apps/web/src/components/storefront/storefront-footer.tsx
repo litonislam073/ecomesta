@@ -4,9 +4,9 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import type { PublicStore } from '@ecomesta/types';
 import { useStoreThemeConfig } from '@/components/storefront/theme-provider';
+import { storeDisplayName } from '@/lib/store-display-name';
+import { storePaymentLabels } from '@/lib/store-payment-labels';
 import { withStoreParam } from '@/lib/theme';
-
-const PAYMENT_LABELS = ['Cash on delivery', 'Bank transfer', 'Card'];
 
 export function StorefrontFooter({ store }: { store: PublicStore }) {
   const searchParams = useSearchParams();
@@ -14,7 +14,8 @@ export function StorefrontFooter({ store }: { store: PublicStore }) {
 
   const config = useStoreThemeConfig();
   const footer = config.footer ?? {};
-  const brandName = config.branding?.brandName?.trim() || store.name;
+  const brandName = storeDisplayName(store, config.branding?.brandName);
+  const paymentLabels = storePaymentLabels(store);
   const copyright =
     footer.copyright?.trim() || `© ${new Date().getFullYear()} ${brandName}`;
   const contact = store.contact ?? { email: null, phone: null, address: null };
@@ -81,9 +82,9 @@ export function StorefrontFooter({ store }: { store: PublicStore }) {
           </ul>
         ) : null}
 
-        {footer.showPaymentIcons ? (
+        {footer.showPaymentIcons && paymentLabels.length > 0 ? (
           <ul className="flex flex-wrap gap-2 text-xs" aria-label="Payment methods">
-            {PAYMENT_LABELS.map((label) => (
+            {paymentLabels.map((label) => (
               <li
                 key={label}
                 className="border border-[var(--color-border)] px-2 py-1"

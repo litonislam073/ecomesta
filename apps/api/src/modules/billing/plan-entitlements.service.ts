@@ -84,6 +84,10 @@ export class PlanEntitlementsService {
   async assertFeature(storeId: string, feature: PlanFeature, db: Db = this.prisma): Promise<void> {
     const tenantId = await this.tenantOfStore(storeId, db);
     const limits = await this.limitsForTenant(tenantId, db);
+    await this.assertFeatureIn(limits, feature);
+  }
+
+  private async assertFeatureIn(limits: PlanLimits | null, feature: PlanFeature): Promise<void> {
     if (!limits || limits[feature]) return;
     throw await this.upgradeRequired(
       `${FEATURE_NAMES[feature]} ${feature === 'allThemes' || feature === 'marketingTracking' ? 'is' : 'are'} not included in your plan.`,
@@ -119,9 +123,10 @@ export class PlanEntitlementsService {
    * cannot both slip under the limit.
    */
   async assertLandingPageCapacity(tx: Prisma.TransactionClient, storeId: string): Promise<void> {
-    await this.assertFeature(storeId, 'landingPages', tx);
+    // One tenant + plan lookup serves both the feature check and the limit.
     const tenantId = await this.tenantOfStore(storeId, tx);
     const limits = await this.limitsForTenant(tenantId, tx);
+    await this.assertFeatureIn(limits, 'landingPages');
     if (!limits || limits.maxLandingPages === null) return;
     await tx.$queryRaw`SELECT id FROM tenants WHERE id = ${tenantId}::uuid FOR UPDATE`;
     const used = await tx.landingPage.count({ where: { store: { tenantId } } });
