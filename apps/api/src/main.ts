@@ -10,7 +10,7 @@ import { AppModule } from './app.module';
 import { configureCors } from './common/cors/cors.config';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { trustProxySetting } from './common/utils/request-host.util';
-import { REFRESH_COOKIE_NAME } from './modules/auth/types/auth.types';
+import { REFRESH_COOKIE_NAMES } from './modules/auth/types/auth.types';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -67,7 +67,8 @@ async function bootstrap(): Promise<void> {
       .setDescription('Multi-tenant SaaS ecommerce platform API')
       .setVersion('0.1.0')
       .addBearerAuth()
-      .addCookieAuth(REFRESH_COOKIE_NAME)
+      .addCookieAuth(REFRESH_COOKIE_NAMES.merchant)
+      .addCookieAuth(REFRESH_COOKIE_NAMES.admin)
       .build();
     const document = SwaggerModule.createDocument(app, swaggerConfig);
     SwaggerModule.setup('api/docs', app, document);

@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateDomainDto {
   @ApiProperty({
@@ -7,9 +7,9 @@ export class CreateDomainDto {
     description:
       'Custom hostname to attach. Protocol, path and port are stripped server-side.',
   })
-  @IsString()
-  @MinLength(3)
-  @MaxLength(253)
+  @IsString({ message: 'Hostname is required' })
+  @IsNotEmpty({ message: 'Hostname is required' })
+  @MaxLength(253, { message: 'Hostname must be 253 characters or fewer' })
   hostname!: string;
 }
 

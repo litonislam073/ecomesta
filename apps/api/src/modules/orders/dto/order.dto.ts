@@ -250,6 +250,21 @@ export class UpdatePaymentStatusDto {
   @ApiProperty({ enum: PaymentStatus })
   @IsIn(Object.values(PaymentStatus))
   paymentStatus!: PaymentStatus;
+
+  @ApiPropertyOptional({
+    description: 'Refund amount when marking REFUNDED / PARTIALLY_REFUNDED',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  @Matches(/^\d+(\.\d{1,4})?$/)
+  amount?: string;
+
+  @ApiPropertyOptional({ description: 'Reason for refund or status change' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
 }
 
 export class UpdateFulfillmentStatusDto {

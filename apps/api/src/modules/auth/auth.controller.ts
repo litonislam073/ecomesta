@@ -21,7 +21,11 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterDto } from './dto/register.dto';
 import { AccessTokenGuard } from './guards/access-token.guard';
 import type { AuthenticatedUser } from './types/auth.types';
-import { REFRESH_COOKIE_NAME } from './types/auth.types';
+import {
+  REFRESH_COOKIE_NAMES,
+  readRefreshCookie,
+  resolveAuthClient,
+} from './types/auth.types';
 
 @ApiTags('auth')
 @Controller({ path: 'auth', version: '1' })
@@ -71,20 +75,24 @@ export class AuthController {
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  @ApiCookieAuth(REFRESH_COOKIE_NAME)
-  @ApiOperation({ summary: 'Rotate refresh token and issue a new access token' })
+  @ApiCookieAuth(REFRESH_COOKIE_NAMES.merchant)
+  @ApiOperation({
+    summary:
+      'Rotate refresh token and issue a new access token (scoped by X-Ecomesta-Client)',
+  })
   async refresh(
     @Body() dto: RefreshTokenDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const cookieToken = req.cookies?.[REFRESH_COOKIE_NAME] as string | undefined;
+    const client = resolveAuthClient(req);
+    const cookieToken = readRefreshCookie(req.cookies, client);
     return this.authService.refresh(dto.refreshToken ?? cookieToken, req, res);
   }
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  @ApiCookieAuth(REFRESH_COOKIE_NAME)
+  @ApiCookieAuth(REFRESH_COOKIE_NAMES.merchant)
   @ApiBearerAuth()
   @ApiOperation({
     summary:

@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -38,19 +39,30 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-let refreshInFlight: Promise<string | null> | null = null;
+type RefreshResult = { accessToken: string; user: AuthUser };
+
+let refreshInFlight: Promise<RefreshResult | null> | null = null;
 
 /**
  * One refresh at a time in this tab. The API rotates the refresh token on
  * every call, so a second concurrent POST /auth/refresh with the same cookie
  * (the start-up refresh racing a 401 retry, or React running the start-up
  * effect twice) is refused and would sign the admin out.
+ *
+ * Refresh returns the user so startup can skip GET /auth/me.
  */
-function refreshAccessTokenOnce(): Promise<string | null> {
+function refreshAccessTokenOnce(): Promise<RefreshResult | null> {
   refreshInFlight ??= api
-    .post<{ success: true; data: { accessToken: string } }>('/auth/refresh', {}, { token: null })
+    .post<{ success: true; data: { accessToken: string; user: AuthUser } }>(
+      '/auth/refresh',
+      {},
+      { token: null },
+    )
     .then(
-      (refreshed) => refreshed.data.accessToken,
+      (refreshed) => ({
+        accessToken: refreshed.data.accessToken,
+        user: refreshed.data.user,
+      }),
       () => null,
     )
     .finally(() => {
@@ -61,49 +73,57 @@ function refreshAccessTokenOnce(): Promise<string | null> {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [accessToken, setAccessTokenState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // The API client reads the token from this ref, which is updated in the same
+  // tick as the state. Child effects (the page's first fetch) run BEFORE this
+  // provider's effects, so a token that only reached the client via an effect
+  // was still null on that first request: it 401'd, forced a second refresh
+  // round trip and made admin lists sit on "Loading…" for seconds.
+  const accessTokenRef = useRef<string | null>(null);
+
+  const setAccessToken = useCallback((token: string | null) => {
+    accessTokenRef.current = token;
+    setAccessTokenState(token);
+  }, []);
 
   const clearSession = useCallback(() => {
     setAccessToken(null);
     setUser(null);
-  }, []);
+  }, [setAccessToken]);
 
-  useEffect(() => {
-    configureApiClient({
-      getAccessToken: () => accessToken,
-      onUnauthorized: clearSession,
-      refreshAccessToken: async () => {
-        const token = await refreshAccessTokenOnce();
-        if (token) setAccessToken(token);
-        else clearSession();
-        return token;
-      },
-    });
-  }, [accessToken, clearSession]);
-
-  const loadProfile = useCallback(async (token: string) => {
-    const me = await api.get<{ success: true; data: AuthUser }>('/auth/me', {
-      token,
-    });
-    setUser(me.data);
-  }, []);
+  // Configure during render (idempotent, only touches module state) so the
+  // client is ready before any child effect fires.
+  configureApiClient({
+    getAccessToken: () => accessTokenRef.current,
+    onUnauthorized: clearSession,
+    refreshAccessToken: async () => {
+      const result = await refreshAccessTokenOnce();
+      if (result) {
+        setAccessToken(result.accessToken);
+        setUser(result.user);
+        return result.accessToken;
+      }
+      clearSession();
+      return null;
+    },
+  });
 
   const refreshSession = useCallback(async () => {
-    const token = await refreshAccessTokenOnce();
-    if (!token) {
+    const result = await refreshAccessTokenOnce();
+    if (!result) {
       clearSession();
       return false;
     }
     try {
-      setAccessToken(token);
-      await loadProfile(token);
+      setAccessToken(result.accessToken);
+      setUser(result.user);
       return true;
     } catch {
       clearSession();
       return false;
     }
-  }, [clearSession, loadProfile]);
+  }, [clearSession, setAccessToken]);
 
   useEffect(() => {
     void (async () => {
@@ -119,9 +139,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: { accessToken: string; user: AuthUser };
       }>('/auth/login', { email, password }, { token: null });
       setAccessToken(result.data.accessToken);
-      await loadProfile(result.data.accessToken);
+      setUser(result.data.user);
     },
-    [loadProfile],
+    [setAccessToken],
   );
 
   const logout = useCallback(async () => {

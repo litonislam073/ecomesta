@@ -97,10 +97,10 @@ describe('Auth pages inside the marketing shell', () => {
     expect(within(mobile).getByRole('link', { name: 'Create Your Store' })).toHaveAttribute('href', '/register');
   });
 
-  it('keeps both auth pages out of search indexes without a canonical', () => {
+  it('keeps both auth pages out of search indexes with a self-referencing canonical', () => {
     for (const metadata of [loginMetadata, registerMetadata]) {
       expect(metadata.robots).toEqual({ index: false, follow: false });
-      expect(metadata.alternates).toBeUndefined();
+      expect(metadata.alternates).toBeDefined();
     }
   });
 });

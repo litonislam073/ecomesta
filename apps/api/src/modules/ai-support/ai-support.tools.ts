@@ -14,10 +14,15 @@ export const AI_SUPPORT_TOOLS: ChatToolDefinition[] = [
     function: {
       name: 'search_ecomesta_knowledge',
       description:
-        'Search Ecomesta’s public website content (features, setup, payments, shipping, domains, themes, coupons, FAQ, guides). Use English keywords.',
+        'Search Ecomesta’s public website content (features, setup, payments, shipping, domains, themes, coupons, FAQ, guides). Query may be Bangla, Banglish or English; the server expands synonyms.',
       parameters: {
         type: 'object',
-        properties: { query: { type: 'string', description: 'What to look up, in English keywords' } },
+        properties: {
+          query: {
+            type: 'string',
+            description: 'What to look up (Bangla, Banglish or English — pass the customer’s words when helpful)',
+          },
+        },
         required: ['query'],
         additionalProperties: false,
       },

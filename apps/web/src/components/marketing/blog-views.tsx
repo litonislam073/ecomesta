@@ -72,7 +72,7 @@ export function BlogIndexView({ locale = 'en' }: { locale?: MarketingLocale }) {
                 <article className="em-hover-lift flex h-full flex-col overflow-hidden rounded-xl border border-[var(--color-border)] bg-white">
                   <Image
                     src={blogCoverDataUri(post.slug)}
-                    alt=""
+                    alt={`${post.title} cover illustration`}
                     width={COVER_WIDTH}
                     height={COVER_HEIGHT}
                     unoptimized

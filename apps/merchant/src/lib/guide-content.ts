@@ -126,7 +126,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     ],
     tips: [
       'প্রোডাক্ট ডিলিট করলে সেটি আর্কাইভ হয় — স্টোর থেকে সরে যায়, কিন্তু আগের অর্ডারে তথ্য থেকে যায়।',
-      'Starter প্যাকেজে ২৫টি আর Growth-এ ১০০টি পর্যন্ত প্রোডাক্ট রাখা যায়; Business-এ সীমা নেই।',
+      'Starter প্যাকেজে ২৫টি আর Growth-এ ১০০টি পর্যন্ত প্রোডাক্ট রাখা যায়; Business-এ যত খুশি রাখা যায়।',
     ],
     links: [
       { href: '/dashboard/products/new', label: 'Add product' },
@@ -380,7 +380,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     title: 'ল্যান্ডিং পেজ (ফেসবুক বিজ্ঞাপনের জন্য)',
     summary:
       'এক পেজের অফার, যার নিজস্ব অর্ডার ফর্ম আছে — কাস্টমার পেজেই অর্ডার দেন, আর অর্ডার **Orders**-এ আসে।',
-    plan: 'Growth (৫টি) ও Business (সীমাহীন)',
+    plan: 'Growth (৫টি) ও Business (যত খুশি)',
     steps: [
       '**Landing pages → New landing page** চাপুন।',
       '১০টি ডিজাইনের একটি বাছুন (একক প্রোডাক্ট, উৎসবের সেল, ফ্যাশন, খাবার ও স্বাস্থ্য, গ্যাজেট, বিউটি, শিশু, হোম ও কিচেন ইত্যাদি) আর **Page name** দিন।',

@@ -216,6 +216,23 @@ describe('Theme editor (Shopify-style)', () => {
     expect(api.patch).not.toHaveBeenCalled();
   });
 
+  it('does not re-PUT an identical preview payload after the session settles', async () => {
+    mockLoad();
+    render(<ThemePage />);
+    await waitFor(() => expect(frame()).toBeInTheDocument());
+    const putsAfterLoad = api.put.mock.calls.length;
+
+    // Remount with the same draft should not schedule another PUT once the key matches.
+    await waitFor(() => expect(api.put.mock.calls.length).toBeGreaterThanOrEqual(putsAfterLoad));
+    const settled = api.put.mock.calls.length;
+
+    // Advance past debounce without changing the draft — no extra session updates.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 400));
+    });
+    expect(api.put.mock.calls.length).toBe(settled);
+  });
+
   it('a section clicked in the preview opens its settings; messages from elsewhere are ignored', async () => {
     mockLoad();
     render(<ThemePage />);

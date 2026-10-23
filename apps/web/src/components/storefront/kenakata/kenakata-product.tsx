@@ -245,7 +245,7 @@ export function KenakataProductView({
             </li>
             <li className="flex items-center gap-3">
               <KIcon name="phone" />
-              Pay with bKash or Nagad
+              Online payment where the store offers it
             </li>
             <li className="flex items-center gap-3">
               <KIcon name="returns" />

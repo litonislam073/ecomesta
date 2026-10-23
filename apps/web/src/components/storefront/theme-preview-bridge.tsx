@@ -22,6 +22,17 @@ function sectionOf(target: EventTarget | null): HTMLElement | null {
   return target instanceof Element ? target.closest<HTMLElement>('[data-theme-section]') : null;
 }
 
+/** Scroll a section into view without hiding it under a sticky/fixed storefront header. */
+export function scrollThemeSectionIntoView(el: HTMLElement) {
+  const header = document.querySelector<HTMLElement>('[data-theme-section="header"]');
+  const sticky =
+    header &&
+    (getComputedStyle(header).position === 'sticky' || getComputedStyle(header).position === 'fixed');
+  const offset = sticky && header ? header.getBoundingClientRect().height : 0;
+  const y = el.getBoundingClientRect().top + window.scrollY - offset - 8;
+  window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+}
+
 /**
  * Runs inside the theme editor's preview frame only. It keeps navigation in
  * the preview, refreshes when the editor's draft changes, and lets the
@@ -63,7 +74,7 @@ export function ThemePreviewBridge() {
         let tries = 0;
         const find = () => {
           const el = document.querySelector<HTMLElement>(selector);
-          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          if (el) scrollThemeSectionIntoView(el);
           if (el || ++tries > 15) window.clearInterval(focusTimer);
           return el;
         };

@@ -11,6 +11,7 @@ import { PlanEntitlementsService } from '../billing/plan-entitlements.service';
 import { ThemeAccessService, isPremiumTheme } from './theme-access.service';
 import { ThemePurchasesService } from './theme-purchases.service';
 import { RedisService } from '../../redis/redis.service';
+import { fireAndForget } from '../../common/utils/fire-and-forget.util';
 import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { UpdateStoreThemeDto } from './dto/store-theme.dto';
@@ -135,13 +136,17 @@ export class ThemesService {
       );
     }
 
-    const store = await this.requireStore(storeId);
+    const [store, target] = await Promise.all([
+      this.requireStore(storeId),
+      dto.themeId
+        ? this.prisma.theme.findUnique({
+            where: { id: dto.themeId },
+            select: { id: true, slug: true, name: true, priceBdt: true },
+          })
+        : Promise.resolve(null),
+    ]);
     if (dto.themeId) {
       // Only the default theme is included in every plan.
-      const target = await this.prisma.theme.findUnique({
-        where: { id: dto.themeId },
-        select: { id: true, slug: true, name: true, priceBdt: true },
-      });
       if (target && isPremiumTheme(target)) {
         // Premium themes: Business, or bought by the business.
         await this.themeAccess.assertPremiumUsable(store.tenantId, target);
@@ -159,6 +164,10 @@ export class ThemesService {
     // the public cache are left alone until publish(). The merge runs against
     // the latest committed draft under the store's theme lock, so concurrent
     // saves of different fields cannot overwrite each other.
+    // The live theme is not touched by selecting/saving a draft, so it is read
+    // alongside the transaction instead of after it.
+    const livePromise = this.findLiveStoreTheme(storeId);
+    livePromise.catch(() => undefined);
     const { storeTheme, switchedTheme } = await this.prisma.$transaction(
       async (tx) => {
         await this.lockStoreThemes(tx, storeId);
@@ -183,35 +192,41 @@ export class ThemesService {
     );
 
     if (switchedTheme) {
-      await this.audit.log({
-        action: 'THEME_SELECTED',
-        entityType: 'StoreTheme',
-        entityId: storeTheme.id,
-        userId,
-        tenantId: store.tenantId,
-        storeId,
-        metadata: { themeId: storeTheme.themeId, themeSlug: storeTheme.theme.slug },
-        req,
-      });
+      fireAndForget(
+        this.audit.log({
+          action: 'THEME_SELECTED',
+          entityType: 'StoreTheme',
+          entityId: storeTheme.id,
+          userId,
+          tenantId: store.tenantId,
+          storeId,
+          metadata: { themeId: storeTheme.themeId, themeSlug: storeTheme.theme.slug },
+          req,
+        }),
+        'theme audit',
+      );
     }
 
     if (dto.configuration !== undefined) {
-      await this.audit.log({
-        action: 'THEME_UPDATED',
-        entityType: 'StoreTheme',
-        entityId: storeTheme.id,
-        userId,
-        tenantId: store.tenantId,
-        storeId,
-        metadata: {
-          themeSlug: storeTheme.theme.slug,
-          sections: Object.keys(patch ?? {}),
-        },
-        req,
-      });
+      fireAndForget(
+        this.audit.log({
+          action: 'THEME_UPDATED',
+          entityType: 'StoreTheme',
+          entityId: storeTheme.id,
+          userId,
+          tenantId: store.tenantId,
+          storeId,
+          metadata: {
+            themeSlug: storeTheme.theme.slug,
+            sections: Object.keys(patch ?? {}),
+          },
+          req,
+        }),
+        'theme audit',
+      );
     }
 
-    const live = await this.findLiveStoreTheme(storeId);
+    const live = await livePromise;
     return { success: true as const, data: this.toStoreThemeDto(storeTheme, live) };
   }
 
@@ -261,21 +276,25 @@ export class ThemesService {
       return published;
     });
 
-    await this.invalidatePublishedCache(storeId);
-
-    await this.audit.log({
-      action: 'THEME_PUBLISHED',
-      entityType: 'StoreTheme',
-      entityId: storeTheme.id,
-      userId,
-      tenantId: store.tenantId,
-      storeId,
-      metadata: {
-        themeSlug: storeTheme.theme.slug,
-        publishedAt: storeTheme.publishedAt?.toISOString(),
-      },
-      req,
-    });
+    // Cache purge and audit are issued now but not awaited: the response does
+    // not depend on them (the cache also expires on its own TTL).
+    fireAndForget(this.invalidatePublishedCache(storeId), 'theme cache purge');
+    fireAndForget(
+      this.audit.log({
+        action: 'THEME_PUBLISHED',
+        entityType: 'StoreTheme',
+        entityId: storeTheme.id,
+        userId,
+        tenantId: store.tenantId,
+        storeId,
+        metadata: {
+          themeSlug: storeTheme.theme.slug,
+          publishedAt: storeTheme.publishedAt?.toISOString(),
+        },
+        req,
+      }),
+      'theme audit',
+    );
 
     return {
       success: true as const,
@@ -442,6 +461,17 @@ export class ThemesService {
       throw new NotFoundException('Theme not found');
     }
 
+    const [store, previousActive] = await Promise.all([
+      tx.store.findUnique({
+        where: { id: storeId },
+        select: { name: true },
+      }),
+      tx.storeTheme.findFirst({
+        where: { storeId, isActive: true },
+        select: { configuration: true },
+      }),
+    ]);
+
     // `store_themes_one_active_uidx` allows a single active row per store, so
     // the previous selection has to be stood down before the new one is armed.
     await tx.storeTheme.updateMany({
@@ -449,17 +479,84 @@ export class ThemesService {
       data: { isActive: false },
     });
 
-    return tx.storeTheme.upsert({
+    const defaults = this.themeDefaults(theme);
+    const previous = asStoreThemeConfig(previousActive?.configuration);
+    const seeded = this.seedThemeConfigForStore(defaults, previous, store?.name ?? null);
+
+    const existing = await tx.storeTheme.findUnique({
       where: { storeId_themeId: { storeId, themeId: theme.id } },
-      update: { isActive: true },
-      create: {
+      include: { theme: true },
+    });
+    if (existing) {
+      // Re-activating a previously used theme keeps its saved draft.
+      return tx.storeTheme.update({
+        where: { id: existing.id },
+        data: { isActive: true },
+        include: { theme: true },
+      });
+    }
+
+    return tx.storeTheme.create({
+      data: {
         storeId,
         themeId: theme.id,
         isActive: true,
-        configuration: this.themeDefaults(theme) as Prisma.InputJsonValue,
+        configuration: seeded as Prisma.InputJsonValue,
       },
       include: { theme: true },
     });
+  }
+
+  /**
+   * New theme draft: keep merchant branding/nav/footer from the prior theme
+   * where slots match, and never leave placeholder "Your Store" over the real name.
+   */
+  private seedThemeConfigForStore(
+    defaults: StoreThemeConfig,
+    previous: StoreThemeConfig,
+    storeName: string | null,
+  ): StoreThemeConfig {
+    const placeholders = new Set(['your store', 'my store', 'store name', 'brand name']);
+    const prevBrand = previous.branding ?? {};
+    const defBrand = defaults.branding ?? {};
+    const prevName = typeof prevBrand.brandName === 'string' ? prevBrand.brandName.trim() : '';
+    const defName = typeof defBrand.brandName === 'string' ? defBrand.brandName.trim() : '';
+    const brandName =
+      (prevName && !placeholders.has(prevName.toLowerCase()) ? prevName : null) ||
+      (storeName?.trim() || null) ||
+      (defName && !placeholders.has(defName.toLowerCase()) ? defName : null) ||
+      storeName?.trim() ||
+      undefined;
+
+    return {
+      ...defaults,
+      branding: {
+        ...defBrand,
+        ...prevBrand,
+        brandName: brandName || defBrand.brandName,
+        logoUrl: prevBrand.logoUrl ?? defBrand.logoUrl,
+        faviconUrl: prevBrand.faviconUrl ?? defBrand.faviconUrl,
+        tagline: prevBrand.tagline ?? defBrand.tagline,
+      },
+      header: {
+        ...defaults.header,
+        ...previous.header,
+        menuItems:
+          previous.header?.menuItems?.length
+            ? previous.header.menuItems
+            : defaults.header?.menuItems,
+      },
+      footer: {
+        ...defaults.footer,
+        ...previous.footer,
+        menuItems:
+          previous.footer?.menuItems?.length
+            ? previous.footer.menuItems
+            : defaults.footer?.menuItems,
+        copyright: previous.footer?.copyright ?? defaults.footer?.copyright,
+        tagline: previous.footer?.tagline ?? defaults.footer?.tagline,
+      },
+    };
   }
 
   /** Creates missing built-in themes so a fresh database is still themable. */

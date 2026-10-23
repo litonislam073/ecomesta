@@ -197,21 +197,84 @@ export class AuthorizationService {
     }
   }
 
-  async assertStoreAccess(userId: string, storeId: string): Promise<void> {
-    const store = await this.prisma.store.findUnique({
-      where: { id: storeId },
-      select: {
-        id: true,
-        status: true,
-        tenant: { select: { status: true } },
-      },
-    });
+  /**
+   * Same rules as hasStoreAccess/hasStoreRole, evaluated with two parallel
+   * round trips (user+store, then memberships) instead of ~15 sequential
+   * queries, which dominated every merchant write on a remote database.
+   */
+  private async resolveStoreAccess(userId: string, storeId: string) {
+    const [superAdmin, store] = await Promise.all([
+      this.isSuperAdmin(userId),
+      this.prisma.store.findUnique({
+        where: { id: storeId },
+        select: {
+          id: true,
+          tenantId: true,
+          status: true,
+          tenant: { select: { status: true } },
+        },
+      }),
+    ]);
     if (!store) {
       throw new NotFoundException('Store not found');
     }
+    if (superAdmin) {
+      return {
+        store,
+        superAdmin,
+        access: true,
+        elevated: true,
+        storeMembership: null,
+      };
+    }
 
-    if (!(await this.hasStoreAccess(userId, storeId))) {
-      if (!(await this.isSuperAdmin(userId))) {
+    const [storeMembership, tenantMembership] = await Promise.all([
+      this.getStoreMembership(userId, storeId),
+      this.getTenantMembership(userId, store.tenantId),
+    ]);
+    const suspended =
+      store.status === StoreStatus.SUSPENDED ||
+      store.tenant.status === TenantStatus.SUSPENDED;
+    const storeActive = storeMembership?.status === MembershipStatus.ACTIVE;
+    const elevated =
+      tenantMembership?.status === MembershipStatus.ACTIVE &&
+      (tenantMembership.role === TenantRole.OWNER ||
+        tenantMembership.role === TenantRole.ADMIN);
+    return {
+      store,
+      superAdmin,
+      access: !suspended && (storeActive || elevated),
+      elevated,
+      storeMembership,
+    };
+  }
+
+  async assertStoreAccess(userId: string, storeId: string): Promise<void> {
+    const { store, superAdmin, access } = await this.resolveStoreAccess(
+      userId,
+      storeId,
+    );
+    if (access) return;
+    if (!superAdmin) {
+      if (store.tenant.status === TenantStatus.SUSPENDED) {
+        throw new ForbiddenException('This tenant is suspended');
+      }
+      if (store.status === StoreStatus.SUSPENDED) {
+        throw new ForbiddenException('This store is suspended');
+      }
+    }
+    throw new ForbiddenException('You do not have access to this store');
+  }
+
+  async assertStoreRole(
+    userId: string,
+    storeId: string,
+    roles: StoreRole[],
+  ): Promise<void> {
+    const { store, superAdmin, access, elevated, storeMembership } =
+      await this.resolveStoreAccess(userId, storeId);
+    if (!access) {
+      if (!superAdmin) {
         if (store.tenant.status === TenantStatus.SUSPENDED) {
           throw new ForbiddenException('This tenant is suspended');
         }
@@ -221,18 +284,14 @@ export class AuthorizationService {
       }
       throw new ForbiddenException('You do not have access to this store');
     }
-  }
-
-  async assertStoreRole(
-    userId: string,
-    storeId: string,
-    roles: StoreRole[],
-  ): Promise<void> {
-    await this.assertStoreAccess(userId, storeId);
-
-    if (!(await this.hasStoreRole(userId, storeId, roles))) {
-      throw new ForbiddenException('Insufficient store role');
+    if (elevated) return;
+    if (
+      storeMembership?.status === MembershipStatus.ACTIVE &&
+      roles.includes(storeMembership.role)
+    ) {
+      return;
     }
+    throw new ForbiddenException('Insufficient store role');
   }
 
   async listAccessibleStoreIds(userId: string): Promise<string[]> {

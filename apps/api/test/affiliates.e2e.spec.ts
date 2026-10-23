@@ -64,6 +64,8 @@ describe('Affiliate program (e2e)', () => {
 
     await register(referrer);
     await register(admin);
+    // Affiliate apply requires a confirmed email (payouts go to this account).
+    await prisma.user.update({ where: { id: referrer.id }, data: { emailVerifiedAt: new Date() } });
     await prisma.user.update({ where: { id: admin.id }, data: { platformRole: PlatformRole.SUPER_ADMIN } });
     admin.token = (
       await http().post('/api/v1/auth/login').send({ email: admin.email, password: 'SecurePass1' }).expect(200)
@@ -101,7 +103,18 @@ describe('Affiliate program (e2e)', () => {
     expect(maskBusinessName('  ')).toBeNull();
   });
 
-  it('lets any account apply; the link only works after approval', async () => {
+  it('blocks apply until the account email is confirmed', async () => {
+    const pending = { email: `aff.unverified.${suffix}@example.com`, token: '', id: '' };
+    await register(pending);
+    await http()
+      .post('/api/v1/affiliate/apply')
+      .set(bearer(pending))
+      .send({})
+      .expect(403);
+    await prisma.user.delete({ where: { id: pending.id } }).catch(() => undefined);
+  });
+
+  it('lets a verified account apply; the link only works after approval', async () => {
     const before = await me();
     expect(before.affiliate).toBeNull();
     expect(before.program).toMatchObject({ commissionRate: 20, cookieDays: 30, holdDays: 7, minPayout: 500 });

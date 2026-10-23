@@ -88,7 +88,7 @@ describe('Register form', () => {
     render(<RegisterPage />);
 
     expect(await screen.findByText(/Growth plan · Yearly/)).toBeInTheDocument();
-    expect(screen.getByText(/you pay for it in the last step of store setup/)).toBeInTheDocument();
+    expect(screen.getByText(/choose it \(or start a free trial\) in the last step of store setup/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute(
       'href',
       `/login?next=${encodeURIComponent('/onboard?plan=growth&interval=yearly')}`,
@@ -153,7 +153,7 @@ describe('Register form', () => {
     render(<RegisterPage />);
     expect(screen.getByRole('heading', { level: 1, name: 'Create your store' })).toBeInTheDocument();
     expect(screen.getByText('Start building your online business with Ecomesta.')).toBeInTheDocument();
-    expect(screen.getByText(/Step 1 of 2/)).toBeInTheDocument();
+    expect(screen.getByText(/Step 1 of 3/)).toBeInTheDocument();
     expect(screen.getByLabelText('First name')).toHaveAttribute('autocomplete', 'given-name');
     expect(screen.getByLabelText('Last name')).toHaveAttribute('autocomplete', 'family-name');
     expect(screen.getByLabelText('Email')).toHaveAttribute('autocomplete', 'email');

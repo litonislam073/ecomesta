@@ -1,10 +1,19 @@
 import type { ReactNode } from 'react';
+import dynamic from 'next/dynamic';
 import { MarketingShell as SharedMarketingShell, type MarketingLocale } from '@ecomesta/ui/marketing';
-import { AiSupportLauncher } from '@/components/ai-support/ai-support-launcher';
 import { GoogleAnalyticsScript } from '@/components/marketing/google-analytics';
 import { GoogleTagManagerNoScript, GoogleTagManagerScript } from '@/components/marketing/google-tag-manager';
-import { ReferralCapture } from '@/components/marketing/referral-capture';
 import { contactEmail, loginUrl, registerUrl } from '@/lib/marketing/site';
+
+const AiSupportLauncher = dynamic(
+  () =>
+    import('@/components/ai-support/ai-support-launcher').then((m) => m.AiSupportLauncher),
+  { ssr: false },
+);
+const ReferralCapture = dynamic(
+  () => import('@/components/marketing/referral-capture').then((m) => m.ReferralCapture),
+  { ssr: false },
+);
 
 export function MarketingShell({ children, locale = 'en' }: { children: ReactNode; locale?: MarketingLocale }) {
   return (
@@ -21,7 +30,7 @@ export function MarketingShell({ children, locale = 'en' }: { children: ReactNod
         locale={locale}
       >
         {children}
-        {/* Platform website only: storefronts never render MarketingShell. */}
+        {/* Platform website only: storefronts never render MarketingShell. Deferred for LCP. */}
         <AiSupportLauncher />
         <ReferralCapture />
       </SharedMarketingShell>

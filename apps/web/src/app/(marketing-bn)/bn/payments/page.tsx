@@ -13,11 +13,10 @@ export const metadata = buildMetadata({
 });
 
 const OPTIONS = [
-  { name: 'ক্যাশ অন ডেলিভারি', who: 'যে কাস্টমাররা হাতে পেয়ে টাকা দিতে চান', setup: 'বাইরের অ্যাকাউন্ট লাগে না; ডেলিভারি পদ্ধতি অনুযায়ী চালু' },
-  { name: 'SSLCommerz', who: 'বাংলাদেশে অনলাইন পেমেন্ট', setup: 'আপনার SSLCommerz store ID আর password' },
-  { name: 'Stripe', who: 'Stripe Checkout দিয়ে কার্ড পেমেন্ট', setup: 'আপনার Stripe secret key আর webhook secret' },
-  { name: 'ব্যাংক ট্রান্সফার / অন্য অফলাইন', who: 'যে পেমেন্ট আপনি নিজে নিশ্চিত করেন', setup: 'পেমেন্ট সেটিং থেকে চালু করুন' },
-  { name: 'টেস্ট পেমেন্ট', who: 'ডেভেলপমেন্ট আর স্টেজিং', setup: 'আসল টাকা লেনদেন হয় না' },
+  { name: 'ক্যাশ অন ডেলিভারি', who: 'যে কাস্টমাররা হাতে পেয়ে টাকা দিতে চান', setup: 'সব প্যাকেজে; ডেলিভারি পদ্ধতি অনুযায়ী চালু' },
+  { name: 'SSLCommerz', who: 'বাংলাদেশে অনলাইন পেমেন্ট (Growth আর Business)', setup: 'আপনার SSLCommerz store ID আর password' },
+  { name: 'Stripe', who: 'আন্তর্জাতিক কার্ড — Stripe Checkout (Business)', setup: 'আপনার Stripe secret key আর webhook secret' },
+  { name: 'অফলাইন ব্যাংক ট্রান্সফার / অন্য', who: 'ঐচ্ছিক; যে পেমেন্ট আপনি নিজে নিশ্চিত করেন', setup: 'যেকোনো প্যাকেজে পেমেন্ট সেটিং থেকে চালু' },
 ];
 
 export default function BanglaPaymentsPage() {

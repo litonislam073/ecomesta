@@ -17,15 +17,26 @@ import {
   parseMoney,
 } from '../../common/utils/catalog.util';
 import { PrismaService } from '../../prisma/prisma.service';
-import { MANUAL_PAYMENT_SELECT } from '../payments/manual-payments';
+import {
+  MANUAL_PAYMENT_SELECT,
+  offlinePaymentOptions,
+} from '../payments/manual-payments';
 import { BillingAccessService } from '../billing/billing-access.service';
 import {
   ListPublicCategoriesQueryDto,
   ListPublicProductsQueryDto,
 } from './dto/public-storefront.dto';
 
+/** Checkout boots 3 parallel public calls — keep store-by-slug warm briefly. */
+const ACTIVE_STORE_CACHE_TTL_MS = 15_000;
+
 @Injectable()
 export class PublicStorefrontService {
+  private activeStoreCache = new Map<
+    string,
+    { at: number; store: Awaited<ReturnType<PublicStorefrontService['loadActiveStore']>> }
+  >();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly billingAccess: BillingAccessService,
@@ -276,7 +287,16 @@ export class PublicStorefrontService {
     if (!slug) {
       throw new NotFoundException('Store not found');
     }
+    const cached = this.activeStoreCache.get(slug);
+    if (cached && Date.now() - cached.at < ACTIVE_STORE_CACHE_TTL_MS) {
+      return cached.store;
+    }
+    const store = await this.loadActiveStore(slug);
+    this.activeStoreCache.set(slug, { at: Date.now(), store });
+    return store;
+  }
 
+  private async loadActiveStore(slug: string) {
     const matches = await this.prisma.store.findMany({
       where: {
         slug,
@@ -303,6 +323,10 @@ export class PublicStorefrontService {
         checkoutRequirePhone: true,
         checkoutAllowOrderNotes: true,
         ...MANUAL_PAYMENT_SELECT,
+        paymentProviderConfigs: {
+          where: { enabled: true },
+          select: { provider: true },
+        },
         allowCustomerCancellation: true,
         seoTitle: true,
         seoDescription: true,
@@ -352,6 +376,11 @@ export class PublicStorefrontService {
 
   /** Public-safe store projection — contact details the merchant chose to publish, no internals. */
   private toStoreDto(store: Awaited<ReturnType<PublicStorefrontService['requireActiveStore']>>) {
+    const offline = offlinePaymentOptions(store).map((o) => {
+      if (o.provider === 'COD') return 'COD' as const;
+      if (o.method === 'BANK_TRANSFER') return 'BANK_TRANSFER' as const;
+      return 'OTHER' as const;
+    });
     return {
       id: store.id,
       name: store.name,
@@ -372,6 +401,15 @@ export class PublicStorefrontService {
         requireEmail: false,
         requirePhone: true,
         allowOrderNotes: store.checkoutAllowOrderNotes,
+      },
+      payments: {
+        offline,
+        online: (store.paymentProviderConfigs ?? [])
+          .map((p) => p.provider)
+          .filter(
+            (p): p is 'SSL_COMMERZ' | 'STRIPE' | 'TEST' =>
+              p === 'SSL_COMMERZ' || p === 'STRIPE' || p === 'TEST',
+          ),
       },
       allowCustomerCancellation: store.allowCustomerCancellation,
       seo: {

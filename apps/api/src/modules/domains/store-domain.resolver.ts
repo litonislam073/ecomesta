@@ -65,6 +65,12 @@ const STORE_SELECT = {
 export class StoreDomainResolver {
   readonly platformRootDomain: string;
 
+  /** Host merchants point a custom domain's CNAME at (`DOMAIN_CNAME_TARGET`, else the platform root). */
+  readonly cnameTarget: string;
+
+  /** Public IPv4 for apex A records (`DOMAIN_A_RECORD_TARGET`); null when not configured. */
+  readonly aRecordTarget: string | null;
+
   private readonly allowLocalHostnames: boolean;
 
   private readonly webUrl: string;
@@ -79,6 +85,10 @@ export class StoreDomainResolver {
     )
       .trim()
       .toLowerCase();
+    this.cnameTarget =
+      config.get<string>('DOMAIN_CNAME_TARGET')?.trim().toLowerCase() ||
+      this.platformRootDomain;
+    this.aRecordTarget = config.get<string>('DOMAIN_A_RECORD_TARGET')?.trim() || null;
     this.allowLocalHostnames =
       config.get<string>('NODE_ENV') !== 'production';
     this.webUrl = config.get<string>('WEB_URL') ?? 'http://localhost:3000';

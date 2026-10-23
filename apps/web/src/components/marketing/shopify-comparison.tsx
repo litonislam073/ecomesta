@@ -53,7 +53,7 @@ const COPY: Record<MarketingLocale, ComparisonCopy> = {
     eyebrow: 'Ecomesta vs Shopify',
     title: 'The Shopify alternative built for selling in Bangladesh',
     intro:
-      'Shopify is a great global platform, but selling in Bangladesh means taka prices, Cash on Delivery, bKash and Nagad, local couriers and delivery charges by district. Here is an honest comparison to help you choose.',
+      'Shopify is a great global platform, but selling in Bangladesh means taka prices, Cash on Delivery, SSLCommerz online payments, local couriers and delivery charges by district. Here is an honest comparison to help you choose.',
     primary: 'Create Your Store',
     secondary: 'See prices',
     verdictTitle: 'The short version',
@@ -155,7 +155,7 @@ const COPY: Record<MarketingLocale, ComparisonCopy> = {
     eyebrow: 'Ecomesta বনাম Shopify',
     title: 'বাংলাদেশে বিক্রির জন্য বানানো Shopify-র বিকল্প',
     intro:
-      'Shopify বিশ্বজুড়ে চমৎকার একটি প্ল্যাটফর্ম, কিন্তু বাংলাদেশে বিক্রি মানে টাকায় দাম, ক্যাশ অন ডেলিভারি, bKash আর Nagad, দেশের কুরিয়ার আর জেলা অনুযায়ী ডেলিভারি চার্জ। বাছাই করতে সাহায্যের জন্য এখানে একটি সৎ তুলনা দেওয়া হলো।',
+      'Shopify বিশ্বজুড়ে চমৎকার একটি প্ল্যাটফর্ম, কিন্তু বাংলাদেশে বিক্রি মানে টাকায় দাম, ক্যাশ অন ডেলিভারি, SSLCommerz অনলাইন পেমেন্ট, দেশের কুরিয়ার আর জেলা অনুযায়ী ডেলিভারি চার্জ। বাছাই করতে সাহায্যের জন্য এখানে একটি সৎ তুলনা দেওয়া হলো।',
     primary: 'স্টোর খুলুন',
     secondary: 'দাম দেখুন',
     verdictTitle: 'সংক্ষেপে',

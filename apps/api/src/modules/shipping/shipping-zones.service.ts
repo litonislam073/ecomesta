@@ -9,6 +9,7 @@ import {
   normalizePagination,
   pageMeta,
 } from '../../common/utils/catalog.util';
+import { fireAndForget } from '../../common/utils/fire-and-forget.util';
 import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -38,9 +39,11 @@ export class ShippingZonesService {
     await this.authorization.assertStoreRole(userId, storeId, [
       StoreRole.STORE_MANAGER,
     ]);
-    const store = await this.requireStore(storeId);
-    await this.entitlements.assertFeature(storeId, 'deliveryZones');
-    const locations = await this.normalizeLocations(dto.locations);
+    const [store, , locations] = await Promise.all([
+      this.requireStore(storeId),
+      this.entitlements.assertFeature(storeId, 'deliveryZones'),
+      this.normalizeLocations(dto.locations),
+    ]);
 
     const zone = await this.prisma.$transaction(async (tx) => {
       const created = await tx.shippingZone.create({
@@ -74,20 +77,23 @@ export class ShippingZonesService {
       });
     });
 
-    await this.audit.log({
-      action: 'ZONE_CREATED',
-      entityType: 'ShippingZone',
-      entityId: zone.id,
-      userId,
-      tenantId: store.tenantId,
-      storeId,
-      metadata: {
-        name: zone.name,
-        priority: zone.priority,
-        locationCount: zone.locations.length,
-      },
-      req,
-    });
+    fireAndForget(
+      this.audit.log({
+        action: 'ZONE_CREATED',
+        entityType: 'ShippingZone',
+        entityId: zone.id,
+        userId,
+        tenantId: store.tenantId,
+        storeId,
+        metadata: {
+          name: zone.name,
+          priority: zone.priority,
+          locationCount: zone.locations.length,
+        },
+        req,
+      }),
+      'zone audit',
+    );
 
     return { success: true as const, data: this.toDto(zone) };
   }
@@ -151,13 +157,20 @@ export class ShippingZonesService {
     await this.authorization.assertStoreRole(userId, storeId, [
       StoreRole.STORE_MANAGER,
     ]);
-    const store = await this.requireStore(storeId);
-    await this.requireZone(storeId, zoneId);
-
-    const locations =
+    const [store, , zoneExists, locations] = await Promise.all([
+      this.requireStore(storeId),
+      this.entitlements.assertFeature(storeId, 'deliveryZones'),
+      this.prisma.shippingZone.findFirst({
+        where: { id: zoneId, storeId },
+        select: { id: true },
+      }),
       dto.locations !== undefined
-        ? await this.normalizeLocations(dto.locations)
-        : null;
+        ? this.normalizeLocations(dto.locations)
+        : Promise.resolve(null),
+    ]);
+    if (!zoneExists) {
+      throw new NotFoundException('Shipping zone not found');
+    }
 
     const zone = await this.prisma.$transaction(async (tx) => {
       await tx.shippingZone.update({
@@ -199,21 +212,24 @@ export class ShippingZonesService {
       });
     });
 
-    await this.audit.log({
-      action: 'ZONE_UPDATED',
-      entityType: 'ShippingZone',
-      entityId: zone.id,
-      userId,
-      tenantId: store.tenantId,
-      storeId,
-      metadata: {
-        name: zone.name,
-        priority: zone.priority,
-        active: zone.active,
-        locationCount: zone.locations.length,
-      },
-      req,
-    });
+    fireAndForget(
+      this.audit.log({
+        action: 'ZONE_UPDATED',
+        entityType: 'ShippingZone',
+        entityId: zone.id,
+        userId,
+        tenantId: store.tenantId,
+        storeId,
+        metadata: {
+          name: zone.name,
+          priority: zone.priority,
+          active: zone.active,
+          locationCount: zone.locations.length,
+        },
+        req,
+      }),
+      'zone audit',
+    );
 
     return { success: true as const, data: this.toDto(zone) };
   }
@@ -263,25 +279,48 @@ export class ShippingZonesService {
       upazilaId: string | null;
     }[] = [];
 
+    // One query per level instead of one per location (was an N+1 of awaits).
+    const idsOf = (pick: (loc: ZoneLocationInputDto) => string | null | undefined) =>
+      [...new Set(locations.map((loc) => pick(loc) ?? null).filter((id): id is string => !!id))];
+    const upazilaIds = idsOf((loc) => loc.upazilaId);
+    const districtIds = idsOf((loc) => (loc.upazilaId ? null : loc.districtId));
+    const divisionIds = idsOf((loc) =>
+      loc.upazilaId || loc.districtId ? null : loc.divisionId,
+    );
+    const [upazilaRows, districtRows, divisionRows] = await Promise.all([
+      upazilaIds.length
+        ? this.prisma.bdUpazila.findMany({
+            where: { id: { in: upazilaIds }, active: true },
+            select: { id: true },
+          })
+        : [],
+      districtIds.length
+        ? this.prisma.bdDistrict.findMany({
+            where: { id: { in: districtIds }, active: true },
+            select: { id: true, divisionId: true },
+          })
+        : [],
+      divisionIds.length
+        ? this.prisma.bdDivision.findMany({
+            where: { id: { in: divisionIds }, active: true },
+            select: { id: true },
+          })
+        : [],
+    ]);
+    const upazilas = new Map(upazilaRows.map((row) => [row.id, row]));
+    const districts = new Map(districtRows.map((row) => [row.id, row]));
+    const divisions = new Map(divisionRows.map((row) => [row.id, row]));
+
     for (const loc of locations) {
-      let divisionId = loc.divisionId ?? null;
-      let districtId = loc.districtId ?? null;
+      const divisionId = loc.divisionId ?? null;
+      const districtId = loc.districtId ?? null;
       const upazilaId = loc.upazilaId ?? null;
 
       if (upazilaId) {
-        const upazila = await this.prisma.bdUpazila.findFirst({
-          where: { id: upazilaId, active: true },
-          select: {
-            id: true,
-            districtId: true,
-            district: { select: { id: true, divisionId: true } },
-          },
-        });
+        const upazila = upazilas.get(upazilaId);
         if (!upazila) {
           throw new BadRequestException(`Unknown upazilaId: ${upazilaId}`);
         }
-        districtId = upazila.districtId;
-        divisionId = upazila.district.divisionId;
         // Keep only upazila-level specificity for matching semantics.
         normalized.push({
           divisionId: null,
@@ -292,10 +331,7 @@ export class ShippingZonesService {
       }
 
       if (districtId) {
-        const district = await this.prisma.bdDistrict.findFirst({
-          where: { id: districtId, active: true },
-          select: { id: true, divisionId: true },
-        });
+        const district = districts.get(districtId);
         if (!district) {
           throw new BadRequestException(`Unknown districtId: ${districtId}`);
         }
@@ -313,10 +349,7 @@ export class ShippingZonesService {
       }
 
       if (divisionId) {
-        const division = await this.prisma.bdDivision.findFirst({
-          where: { id: divisionId, active: true },
-          select: { id: true },
-        });
+        const division = divisions.get(divisionId);
         if (!division) {
           throw new BadRequestException(`Unknown divisionId: ${divisionId}`);
         }

@@ -177,6 +177,7 @@ describe('Auth (e2e)', () => {
     expect(refreshed.body.data.accessToken).toBeDefined();
     expect(refreshed.body.data.refreshToken).toBeDefined();
     expect(refreshed.body.data.refreshToken).not.toBe(oldRefresh);
+    expect(refreshed.body.data.user?.email).toBe(email);
 
     await request(app.getHttpServer())
       .post('/api/v1/auth/refresh')
@@ -213,11 +214,70 @@ describe('Auth (e2e)', () => {
     const agent = request.agent(app.getHttpServer());
     await agent
       .post('/api/v1/auth/login')
+      .set('X-Ecomesta-Client', 'merchant')
       .send({ email, password })
       .expect(200);
 
-    await agent.post('/api/v1/auth/logout').expect(200);
+    await agent
+      .post('/api/v1/auth/logout')
+      .set('X-Ecomesta-Client', 'merchant')
+      .expect(200);
 
-    await agent.post('/api/v1/auth/refresh').send({}).expect(401);
+    await agent
+      .post('/api/v1/auth/refresh')
+      .set('X-Ecomesta-Client', 'merchant')
+      .send({})
+      .expect(401);
+  });
+
+  it('keeps admin and merchant refresh cookies independent', async () => {
+    const merchantLogin = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .set('X-Ecomesta-Client', 'merchant')
+      .send({ email, password })
+      .expect(200);
+
+    const adminLogin = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .set('X-Ecomesta-Client', 'admin')
+      .send({ email, password })
+      .expect(200);
+
+    const merchantRefresh = merchantLogin.body.data.refreshToken as string;
+    const adminRefresh = adminLogin.body.data.refreshToken as string;
+    expect(merchantRefresh).toBeDefined();
+    expect(adminRefresh).toBeDefined();
+    expect(merchantRefresh).not.toBe(adminRefresh);
+
+    const merchantCookie = merchantLogin.headers['set-cookie'] as string[] | string | undefined;
+    const adminCookie = adminLogin.headers['set-cookie'] as string[] | string | undefined;
+    const merchantCookies = Array.isArray(merchantCookie)
+      ? merchantCookie
+      : merchantCookie
+        ? [merchantCookie]
+        : [];
+    const adminCookies = Array.isArray(adminCookie) ? adminCookie : adminCookie ? [adminCookie] : [];
+    expect(merchantCookies.some((c) => c.startsWith('ecomesta_refresh_token_merchant='))).toBe(
+      true,
+    );
+    expect(adminCookies.some((c) => c.startsWith('ecomesta_refresh_token_admin='))).toBe(true);
+
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/refresh')
+      .set('X-Ecomesta-Client', 'admin')
+      .send({ refreshToken: merchantRefresh })
+      .expect(401);
+
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/refresh')
+      .set('X-Ecomesta-Client', 'merchant')
+      .send({ refreshToken: adminRefresh })
+      .expect(401);
+
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/refresh')
+      .set('X-Ecomesta-Client', 'merchant')
+      .send({ refreshToken: merchantRefresh })
+      .expect(200);
   });
 });

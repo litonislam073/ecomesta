@@ -98,7 +98,7 @@ describe('Analytics', () => {
     });
     render(<AnalyticsView />);
     await screen.findByRole('region', { name: 'Summary' });
-    expect(screen.getAllByRole('link', { name: 'Upgrade to see' })).toHaveLength(2);
+    expect(screen.getAllByRole('link', { name: 'Included on Growth and Business' })).toHaveLength(2);
     expect(screen.getByRole('radio', { name: /Last 90 days/ })).toBeDisabled();
     expect(screen.getByRole('radio', { name: 'Last 7 days' })).toBeEnabled();
     expect(screen.queryByRole('button', { name: 'Export CSV' })).toBeNull();

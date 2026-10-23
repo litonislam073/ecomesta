@@ -32,6 +32,19 @@ services:
       timeout: 5s
       retries: 10
 
+  # Local SMTP sink for transactional email (UI http://localhost:8025).
+  # Point API at it with EMAIL_PROVIDER_MODE=smtp and the SMTP_* values in .env.example.
+  mailpit:
+    image: axllent/mailpit:v1.21
+    container_name: ecomesta-mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
 volumes:
   ecomesta_postgres_data:
   ecomesta_redis_data:

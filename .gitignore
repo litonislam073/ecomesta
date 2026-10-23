@@ -52,6 +52,7 @@ apps/api/prisma/*.db-journal
 # Misc
 tmp/
 temp/
+.tmp/
 .turbo/
 *.pem
 

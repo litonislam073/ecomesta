@@ -15,9 +15,14 @@ export type OrderTimelineEventType =
   | 'PAYMENT_PENDING'
   | 'PAYMENT_PAID'
   | 'PAYMENT_FAILED'
+  | 'PAYMENT_REFUNDED'
+  | 'PAYMENT_PARTIALLY_REFUNDED'
   | 'PROCESSING'
+  | 'ORDER_COMPLETED'
+  | 'FULFILLED'
   | 'SHIPMENT_CREATED'
   | 'SHIPPED'
+  | 'IN_TRANSIT'
   | 'DELIVERED'
   | 'CANCELLED';
 
@@ -60,9 +65,25 @@ const LABELS: Record<OrderTimelineEventType, { label: string; description: strin
     label: 'Payment failed',
     description: 'A payment attempt did not succeed.',
   },
+  PAYMENT_REFUNDED: {
+    label: 'Payment refunded',
+    description: 'Payment was fully refunded.',
+  },
+  PAYMENT_PARTIALLY_REFUNDED: {
+    label: 'Partial refund',
+    description: 'A partial refund was recorded.',
+  },
   PROCESSING: {
     label: 'Processing',
     description: 'The store is preparing your order.',
+  },
+  ORDER_COMPLETED: {
+    label: 'Order completed',
+    description: 'The order was marked completed.',
+  },
+  FULFILLED: {
+    label: 'Fulfilled',
+    description: 'Fulfillment was marked complete.',
   },
   SHIPMENT_CREATED: {
     label: 'Shipment created',
@@ -70,7 +91,11 @@ const LABELS: Record<OrderTimelineEventType, { label: string; description: strin
   },
   SHIPPED: {
     label: 'Shipped',
-    description: 'Your order is on the way.',
+    description: 'Your order has been shipped.',
+  },
+  IN_TRANSIT: {
+    label: 'In transit',
+    description: 'Your shipment is in transit.',
   },
   DELIVERED: {
     label: 'Delivered',
@@ -105,13 +130,38 @@ function metaStatus(metadata: unknown, key: string): string | null {
   return typeof value === 'string' ? value : null;
 }
 
+function metaString(metadata: unknown, key: string): string | null {
+  return metaStatus(metadata, key);
+}
+
+function refundDescription(metadata: unknown, full: boolean): string | null {
+  const amount = metaString(metadata, 'amount');
+  const currency = metaString(metadata, 'currency');
+  const reason = metaString(metadata, 'reason');
+  const parts: string[] = [];
+  if (amount) {
+    parts.push(
+      full
+        ? `Refunded ${currency ? `${currency} ` : ''}${amount}.`
+        : `Partial refund of ${currency ? `${currency} ` : ''}${amount}.`,
+    );
+  }
+  if (reason) {
+    parts.push(reason);
+  }
+  return parts.length ? parts.join(' ') : null;
+}
+
 /**
  * Builds a customer-safe timeline from audit logs plus real order/payment/shipment state.
  * Never exposes user IDs, IPs, tenant IDs, or raw audit metadata.
  */
 export function buildOrderTimeline(params: {
   order: TimelineOrder;
-  payments: Pick<Payment, 'status' | 'createdAt' | 'updatedAt'>[];
+  payments: Array<
+    Pick<Payment, 'status' | 'createdAt' | 'updatedAt'> &
+      Partial<Pick<Payment, 'amount' | 'currency'>>
+  >;
   shipments: Pick<
     Shipment,
     'status' | 'createdAt' | 'updatedAt' | 'shippedAt' | 'deliveredAt' | 'trackingNumber'
@@ -138,12 +188,12 @@ export function buildOrderTimeline(params: {
     const at = audit.createdAt;
     switch (audit.action) {
       case 'ORDER_CREATED':
-        // already added from order.createdAt
         break;
       case 'ORDER_STATUS_CHANGED': {
         const status = metaStatus(audit.metadata, 'status');
         if (status === OrderStatus.CONFIRMED) add('ORDER_CONFIRMED', at);
         if (status === OrderStatus.PROCESSING) add('PROCESSING', at);
+        if (status === OrderStatus.COMPLETED) add('ORDER_COMPLETED', at);
         if (status === OrderStatus.CANCELLED) {
           add(
             'CANCELLED',
@@ -164,14 +214,32 @@ export function buildOrderTimeline(params: {
             : null,
         );
         break;
+      case 'ORDER_FULFILLMENT_STATUS_CHANGED': {
+        const fulfillment =
+          metaStatus(audit.metadata, 'fulfillmentStatus') ??
+          metaStatus(audit.metadata, 'status');
+        if (fulfillment === FulfillmentStatus.FULFILLED) add('FULFILLED', at);
+        break;
+      }
       case 'ORDER_PAYMENT_STATUS_CHANGED':
-      case 'PAYMENT_STATUS_CHANGED': {
+      case 'PAYMENT_STATUS_CHANGED':
+      case 'PAYMENT_REFUNDED': {
         const paymentStatus =
           metaStatus(audit.metadata, 'paymentStatus') ??
           metaStatus(audit.metadata, 'status');
         if (paymentStatus === PaymentStatus.PENDING) add('PAYMENT_PENDING', at);
         if (paymentStatus === PaymentStatus.PAID) add('PAYMENT_PAID', at);
         if (paymentStatus === PaymentStatus.FAILED) add('PAYMENT_FAILED', at);
+        if (paymentStatus === PaymentStatus.REFUNDED) {
+          add('PAYMENT_REFUNDED', at, refundDescription(audit.metadata, true));
+        }
+        if (paymentStatus === PaymentStatus.PARTIALLY_REFUNDED) {
+          add(
+            'PAYMENT_PARTIALLY_REFUNDED',
+            at,
+            refundDescription(audit.metadata, false),
+          );
+        }
         break;
       }
       case 'PAYMENT_INITIATED':
@@ -182,12 +250,8 @@ export function buildOrderTimeline(params: {
         break;
       case 'SHIPMENT_STATUS_CHANGED': {
         const to = metaStatus(audit.metadata, 'to');
-        if (
-          to === ShipmentStatus.SHIPPED ||
-          to === ShipmentStatus.IN_TRANSIT
-        ) {
-          add('SHIPPED', at);
-        }
+        if (to === ShipmentStatus.SHIPPED) add('SHIPPED', at);
+        if (to === ShipmentStatus.IN_TRANSIT) add('IN_TRANSIT', at);
         if (to === ShipmentStatus.DELIVERED) add('DELIVERED', at);
         break;
       }
@@ -196,7 +260,6 @@ export function buildOrderTimeline(params: {
     }
   }
 
-  // Fill gaps from current entity state when audits are sparse (still real events).
   if (
     params.order.status === OrderStatus.CONFIRMED ||
     params.order.status === OrderStatus.PROCESSING ||
@@ -212,6 +275,16 @@ export function buildOrderTimeline(params: {
   ) {
     if (!events.some((e) => e.type === 'PROCESSING')) {
       add('PROCESSING', params.order.createdAt);
+    }
+  }
+  if (params.order.status === OrderStatus.COMPLETED) {
+    if (!events.some((e) => e.type === 'ORDER_COMPLETED')) {
+      add('ORDER_COMPLETED', params.order.createdAt);
+    }
+  }
+  if (params.order.fulfillmentStatus === FulfillmentStatus.FULFILLED) {
+    if (!events.some((e) => e.type === 'FULFILLED')) {
+      add('FULFILLED', params.order.createdAt);
     }
   }
 
@@ -236,6 +309,29 @@ export function buildOrderTimeline(params: {
       );
     }
   }
+  if (params.order.paymentStatus === PaymentStatus.REFUNDED) {
+    if (!events.some((e) => e.type === 'PAYMENT_REFUNDED')) {
+      const refunded = params.payments.find((p) => p.status === PaymentStatus.REFUNDED);
+      add(
+        'PAYMENT_REFUNDED',
+        refunded?.updatedAt ?? refunded?.createdAt ?? params.order.createdAt,
+        refunded?.amount != null && refunded.currency
+          ? `Refunded ${refunded.currency} ${refunded.amount.toString()}.`
+          : null,
+      );
+    }
+  }
+  if (params.order.paymentStatus === PaymentStatus.PARTIALLY_REFUNDED) {
+    if (!events.some((e) => e.type === 'PAYMENT_PARTIALLY_REFUNDED')) {
+      const partial = params.payments.find(
+        (p) => p.status === PaymentStatus.PARTIALLY_REFUNDED,
+      );
+      add(
+        'PAYMENT_PARTIALLY_REFUNDED',
+        partial?.updatedAt ?? partial?.createdAt ?? params.order.createdAt,
+      );
+    }
+  }
 
   for (const shipment of params.shipments) {
     if (!events.some((e) => e.type === 'SHIPMENT_CREATED')) {
@@ -248,6 +344,17 @@ export function buildOrderTimeline(params: {
     ) {
       if (!events.some((e) => e.type === 'SHIPPED')) {
         add('SHIPPED', shipment.shippedAt ?? shipment.createdAt);
+      }
+    }
+    if (
+      shipment.status === ShipmentStatus.IN_TRANSIT ||
+      shipment.status === ShipmentStatus.DELIVERED
+    ) {
+      if (!events.some((e) => e.type === 'IN_TRANSIT')) {
+        // Only gap-fill IN_TRANSIT when currently in transit (not for delivered-only).
+        if (shipment.status === ShipmentStatus.IN_TRANSIT) {
+          add('IN_TRANSIT', shipment.updatedAt ?? shipment.createdAt);
+        }
       }
     }
     if (shipment.status === ShipmentStatus.DELIVERED) {

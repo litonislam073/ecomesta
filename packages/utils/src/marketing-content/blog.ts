@@ -132,7 +132,7 @@ export const BLOG_POSTS: BlogPost[] = [
         ],
         bullets: [
           'Keep Cash on Delivery for regular orders',
-          'Connect SSLCommerz so customers can pay online with bKash, Nagad and cards',
+          'Connect SSLCommerz so customers can pay online on its payment page (methods such as bKash, Nagad and cards depend on your SSLCommerz account)',
           'Consider taking the delivery charge in advance for distant or high-value orders',
         ],
       },
@@ -215,7 +215,7 @@ export const BLOG_POSTS: BlogPost[] = [
         heading: 'Option 3: A ready-made platform built for Bangladesh',
         paragraphs: [
           'A hosted ecommerce platform gives you a working store in minutes: storefront, cart, checkout, order management, hosting and security, for a fixed monthly fee in taka. You do not pay a developer to start, and the platform keeps the software updated.',
-          'Ecomesta, for example, has three plans. Starter is ৳99 a month for up to 25 products with Cash on Delivery checkout. Growth is ৳299 a month for up to 100 products, your own domain, SSLCommerz online payments (bKash, Nagad and cards), coupons, delivery zones, all themes, Facebook Pixel and Google Analytics, and landing pages. Business is ৳699 a month for unlimited products, Stripe for international cards and premium themes. Paying for 6 months saves 10% and paying yearly saves 25% — Growth works out to ৳2,691 for a full year.',
+          'Ecomesta, for example, has three plans. Starter is ৳99 a month for up to 25 products with Cash on Delivery checkout. Growth is ৳299 a month for up to 100 products, your own domain, SSLCommerz online payments (bKash, Nagad and cards), coupons, delivery zones, all non-premium themes (Default and Minimal), Facebook Pixel and Google Analytics, and landing pages. Business is ৳699 a month for unlimited products, Stripe for international cards and premium themes. Paying for 6 months saves 10% and paying yearly saves 25% — Growth works out to ৳2,691 for a full year.',
         ],
       },
       {

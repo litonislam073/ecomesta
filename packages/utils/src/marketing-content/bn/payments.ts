@@ -83,16 +83,21 @@ export const PAYMENT_PAGES_BN: ContentPage[] = [
       },
     ],
     faqs: [
-      { question: 'নিজের SSLCommerz অ্যাকাউন্ট কি লাগবে?', answer: 'হ্যাঁ। Ecomesta আপনার store ID আর store password দিয়ে আপনার SSLCommerz মার্চেন্ট অ্যাকাউন্টে যুক্ত হয়।' },
+      {
+        question: 'নিজের SSLCommerz অ্যাকাউন্ট কি লাগবে?',
+        answer:
+          'হ্যাঁ। SSLCommerz আছে Growth আর Business-এ। Ecomesta আপনার store ID আর store password দিয়ে আপনার SSLCommerz মার্চেন্ট অ্যাকাউন্টে যুক্ত হয়।',
+      },
       {
         question: 'Ecomesta কি সরাসরি bKash বা Nagad যুক্ত করে?',
-        answer: 'না। সরাসরি bKash বা Nagad সংযোগ নেই। কাস্টমার আপনার SSLCommerz পেমেন্ট পেজে থাকা উপায় দিয়ে পেমেন্ট করেন।',
+        answer:
+          'না। সরাসরি bKash বা Nagad সংযোগ নেই। কাস্টমার আপনার SSLCommerz পেমেন্ট পেজে থাকা উপায় দিয়ে পেমেন্ট করেন (Growth আর Business প্যাকেজে)।',
       },
       { question: 'রিফান্ড কি Ecomesta থেকে হয়?', answer: 'নিজে থেকে না। SSLCommerz মার্চেন্ট প্যানেল থেকে রিফান্ড দিন আর Ecomesta-তে পেমেন্টের অবস্থা আপডেট করুন।' },
     ],
     related: [
       { href: '/payments/cash-on-delivery', label: 'ক্যাশ অন ডেলিভারি', description: 'অনলাইন পেমেন্টের পাশাপাশি COD দিন।' },
-      { href: '/payments/online-payments', label: 'অনলাইন পেমেন্ট', description: 'Stripe আর টেস্ট পেমেন্ট।' },
+      { href: '/payments/online-payments', label: 'অনলাইন পেমেন্ট', description: 'প্যাকেজ অনুযায়ী SSLCommerz আর Stripe।' },
       { href: '/shipping', label: 'ডেলিভারি', description: 'পেমেন্টের আগে ডেলিভারি চার্জ যোগ হয়।' },
     ],
   },
@@ -102,22 +107,28 @@ export const PAYMENT_PAGES_BN: ContentPage[] = [
     name: 'অনলাইন পেমেন্ট',
     title: 'বাংলাদেশে ই-কমার্স স্টোরের অনলাইন পেমেন্ট | Ecomesta',
     description:
-      'Ecomesta-তে অনলাইন পেমেন্ট যেভাবে কাজ করে: SSLCommerz আর Stripe হোস্টেড চেকআউট, পরীক্ষার জন্য টেস্ট প্রোভাইডার, সার্ভারে হিসাব করা মোট দাম আর যাচাই করা পেমেন্ট।',
+      'Ecomesta-তে অনলাইন পেমেন্ট যেভাবে কাজ করে: Growth ও Business-এ SSLCommerz, Business-এ Stripe, সার্ভারে হিসাব করা মোট দাম আর যাচাই করা পেমেন্ট।',
     eyebrow: 'অনলাইন পেমেন্ট',
     h1: 'অনলাইন পেমেন্ট — অনুমানে নয়, যাচাই করে',
     intro:
-      'Ecomesta-তে SSLCommerz আর Stripe দিয়ে হোস্টেড অনলাইন পেমেন্ট নেওয়া যায়, সাথে ধাপগুলো পরীক্ষার জন্য একটি টেস্ট প্রোভাইডার। সব ক্ষেত্রে মোট দাম সার্ভার হিসাব করে, আর প্রোভাইডার নিশ্চিত করলে তবেই পেমেন্ট গণ্য হয়।',
-    summary: 'SSLCommerz, Stripe আর টেস্ট প্রোভাইডার।',
-    highlights: ['SSLCommerz হোস্টেড পেমেন্ট', 'সেট করা থাকলে Stripe Checkout', 'পরীক্ষার জন্য টেস্ট প্রোভাইডার', 'সার্ভারে টাকার পরিমাণ যাচাই'],
+      'Ecomesta-তে SSLCommerz (Growth আর Business প্যাকেজে) আর Stripe (Business প্যাকেজে) দিয়ে হোস্টেড অনলাইন পেমেন্ট নেওয়া যায়। মোট দাম সার্ভার হিসাব করে, আর প্রোভাইডার নিশ্চিত করলে তবেই পেমেন্ট গণ্য হয়।',
+    summary: 'Growth ও Business-এ SSLCommerz; Business-এ Stripe।',
+    highlights: [
+      'Growth আর Business-এ SSLCommerz',
+      'Business-এ Stripe Checkout',
+      'আপনার নিজের মার্চেন্ট অ্যাকাউন্ট',
+      'সার্ভারে টাকার পরিমাণ যাচাই',
+    ],
     sections: [
       {
         heading: 'যেসব অনলাইন প্রোভাইডার আছে',
         bullets: [
-          'SSLCommerz — বাংলাদেশের জন্য হোস্টেড পেমেন্ট পেজ, প্রতিটি পেমেন্টের পর SSLCommerz দিয়ে যাচাই',
-          'Stripe — কার্ড পেমেন্টের জন্য হোস্টেড Stripe Checkout, Stripe-এর স্বাক্ষরিত webhook দিয়ে নিশ্চিত; আপনার ব্যবসা সমর্থন করে এমন Stripe অ্যাকাউন্ট থাকলে',
-          'টেস্ট পেমেন্ট — ডেভেলপমেন্ট আর স্টেজিংয়ের জন্য, আসল টাকা ছাড়াই পুরো চেকআউট পরীক্ষা করা যায়',
+          'SSLCommerz — Growth আর Business-এ বাংলাদেশের জন্য হোস্টেড পেমেন্ট পেজ, প্রতিটি পেমেন্টের পর SSLCommerz দিয়ে যাচাই',
+          'Stripe — Business প্যাকেজে আন্তর্জাতিক কার্ডের জন্য হোস্টেড Stripe Checkout, Stripe-এর স্বাক্ষরিত webhook দিয়ে নিশ্চিত; আপনার ব্যবসা সমর্থন করে এমন Stripe অ্যাকাউন্ট থাকলে',
         ],
-        paragraphs: ['প্রতিটি প্রোভাইডার স্টোর অনুযায়ী চালু আর সেট করা হয়। স্টোর যুক্ত করে চালু করলে তবেই প্রোভাইডার চেকআউটে দেখায়।'],
+        paragraphs: [
+          'প্রতিটি প্রোভাইডার স্টোর অনুযায়ী চালু আর সেট করা হয়। স্টোর যুক্ত করে চালু করলে এবং প্যাকেজে সেই প্রোভাইডার থাকলে তবেই চেকআউটে দেখায়।',
+        ],
       },
       {
         heading: 'সার্ভারে যাচাই কেন জরুরি',
@@ -136,10 +147,20 @@ export const PAYMENT_PAGES_BN: ContentPage[] = [
       },
     ],
     faqs: [
-      { question: 'Stripe কি যুক্ত করা যায়?', answer: 'হ্যাঁ, আপনার ব্যবসা সমর্থন করে এমন Stripe অ্যাকাউন্ট থাকলে। Payment settings-এ Stripe secret key আর webhook secret দিন।' },
+      {
+        question: 'Stripe কি যুক্ত করা যায়?',
+        answer:
+          'হ্যাঁ, Business প্যাকেজে, যদি আপনার ব্যবসা সমর্থন করে এমন Stripe অ্যাকাউন্ট থাকে। Payment settings-এ Stripe secret key আর webhook secret দিন।',
+      },
+      {
+        question: 'কোন প্যাকেজে অনলাইন পেমেন্ট আছে?',
+        answer:
+          'SSLCommerz আছে Growth আর Business-এ। Stripe শুধু Business-এ। Starter-এ ক্যাশ অন ডেলিভারি আছে; যেকোনো প্যাকেজে Payment settings থেকে ঐচ্ছিক ব্যাংক ট্রান্সফার বা অন্য অফলাইন পদ্ধতি চালু করা যায়।',
+      },
       {
         question: 'সব প্রোভাইডার কি সব স্টোরে নিজে থেকে চালু থাকে?',
-        answer: 'না। প্রতিটি স্টোর নিজের মার্চেন্ট অ্যাকাউন্ট দিয়ে পছন্দের প্রোভাইডার যুক্ত করে। ক্যাশ অন ডেলিভারির জন্য কোনো বাইরের অ্যাকাউন্ট লাগে না।',
+        answer:
+          'না। প্রতিটি স্টোর প্যাকেজে যা আছে তার মধ্যে নিজের মার্চেন্ট অ্যাকাউন্ট দিয়ে পছন্দের প্রোভাইডার যুক্ত করে। ক্যাশ অন ডেলিভারির জন্য কোনো বাইরের অ্যাকাউন্ট লাগে না।',
       },
     ],
     related: [

@@ -23,6 +23,9 @@ vi.mock('@/lib/api-client', async () => {
   };
 });
 
+let emailVerified: boolean | undefined = true;
+vi.mock('@/lib/auth-context', () => ({ useAuth: () => ({ user: { emailVerified } }) }));
+
 const program = { enabled: true, commissionRate: 20, cookieDays: 30, holdDays: 7, minPayout: 500 };
 const profile = {
   id: 'aff-1',
@@ -59,6 +62,17 @@ function routeGets(me: AffiliateMe, lists: { payouts?: unknown[] } = {}) {
 describe('Affiliate program page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    emailVerified = true;
+  });
+
+  it('keeps Apply disabled until the account email is confirmed', async () => {
+    emailVerified = false;
+    routeGets({ program, affiliate: null, stats: null, balance: null, referralUrl: null });
+    render(<AffiliateView />);
+
+    expect(await screen.findByText(/confirm your email address first/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Apply now' })).toBeDisabled();
+    expect(api.post).not.toHaveBeenCalled();
   });
 
   it('lets an account without an affiliate profile apply, showing the program terms', async () => {

@@ -24,7 +24,7 @@ export const FEATURE_PAGES_BN: ContentPage[] = [
       {
         heading: 'সাইন-আপ থেকে প্রথম অর্ডার',
         paragraphs: [
-          'স্টোরের নাম আর ঠিকানা দিয়ে সাইন-আপ করুন, প্যাকেজ আর মেয়াদ বেছে নিন, আর শেষ ধাপে bKash, Nagad, Rocket বা Upay দিয়ে পেমেন্ট করুন। স্টোর সাথে সাথেই বাংলাদেশি টাকা আর Asia/Dhaka সময় দিয়ে তৈরি হয়, তাই Ecomesta টিম পেমেন্ট নিশ্চিত করার সময়েই (সাধারণত কয়েক ঘণ্টার মধ্যে) আপনি প্রোডাক্ট যোগ করা শুরু করতে পারেন। পেমেন্ট নিশ্চিত হলেই স্টোর কাস্টমারদের জন্য চালু হয়।',
+          'স্টোরের নাম আর ঠিকানা দিয়ে সাইন-আপ করুন, প্যাকেজ আর মেয়াদ বেছে নিন, তারপর শেষ ধাপে bKash, Nagad, Rocket বা Upay দিয়ে পেমেন্ট করুন — অথবা সেই প্যাকেজে ফ্রি ট্রায়াল থাকলে (প্যাকেজ পেজে ও সাইন-আপে দেখায়) ট্রায়াল শুরু করুন। পেমেন্ট জমা দিলে স্টোর সাথে সাথেই বাংলাদেশি টাকা আর Asia/Dhaka সময় দিয়ে তৈরি হয়, তাই আমাদের টিম পেমেন্ট নিশ্চিত করার সময়টুকুতে (সাধারণত কয়েক ঘণ্টা) আপনি প্রোডাক্ট যোগ করা শুরু করতে পারেন; নিশ্চিত হলে স্টোর কাস্টমারদের জন্য চালু হয়। ট্রায়ালে স্টোর সাথে সাথে চালু হয়, আর ট্রায়াল শেষের আগে টাকা দিতে হয়।',
         ],
         flow: ['স্টোর তৈরি করুন', 'স্টোর সাজান', 'প্রোডাক্ট যোগ করুন', 'পেমেন্ট সেট করুন', 'ডেলিভারি সেট করুন', 'বিক্রি শুরু করুন'],
       },
@@ -71,7 +71,7 @@ export const FEATURE_PAGES_BN: ContentPage[] = [
     related: [
       { href: '/features/store-customization', label: 'স্টোর ডিজাইন', description: 'ব্র্যান্ডের রং, ফন্ট, হিরো, হেডার আর ফুটার।' },
       { href: '/features/product-management', label: 'প্রোডাক্ট ম্যানেজমেন্ট', description: 'প্রোডাক্ট, ভ্যারিয়েন্ট আর ক্যাটাগরি।' },
-      { href: '/payments', label: 'পেমেন্ট', description: 'ক্যাশ অন ডেলিভারি, SSLCommerz আর Stripe।' },
+      { href: '/payments', label: 'পেমেন্ট', description: 'COD; SSLCommerz (Growth+); Stripe (Business)।' },
     ],
   },
   {
@@ -460,7 +460,7 @@ export const FEATURE_PAGES_BN: ContentPage[] = [
       'পেজেই অর্ডার ফর্ম: ক্যাশ অন ডেলিভারি বা অনলাইন পেমেন্ট',
       'আপনার ক্যাটালগ থেকে প্রোডাক্ট, দাম আর স্টক',
       'লাইভ এডিটর: লেখা, ছবি, রং, সেকশন, অফার টাইমার',
-      'Growth: ৫টি পেজ · Business: সীমাহীন',
+      'Growth: ৫টি পেজ · Business: যত খুশি',
     ],
     sections: [
       {
@@ -492,7 +492,7 @@ export const FEATURE_PAGES_BN: ContentPage[] = [
       },
       {
         heading: 'কোন প্যাকেজে আছে',
-        paragraphs: ['ল্যান্ডিং পেজ আছে Growth (৫টি পর্যন্ত) আর Business (সীমাহীন) প্যাকেজে। Starter-এ পেজটিতে Plan & billing থেকে আপগ্রেডের উপায় দেখায়।'],
+        paragraphs: ['ল্যান্ডিং পেজ আছে Growth (৫টি পর্যন্ত) আর Business (যত খুশি) প্যাকেজে। Starter-এ পেজটিতে Plan & billing থেকে আপগ্রেডের উপায় দেখায়।'],
       },
     ],
     faqs: [
@@ -505,7 +505,7 @@ export const FEATURE_PAGES_BN: ContentPage[] = [
         question: 'কাস্টমার কি সরাসরি ল্যান্ডিং পেজ থেকে অর্ডার দিতে পারেন?',
         answer: 'হ্যাঁ। পেজে আপনার ডেলিভারি চার্জ আর পেমেন্টের উপায়সহ নিজস্ব অর্ডার ফর্ম থাকে। অর্ডার Orders-এ আসে, আর Pixel ও Analytics কেনা রেকর্ড করে।',
       },
-      { question: 'কতগুলো ল্যান্ডিং পেজ বানানো যায়?', answer: 'Growth-এ ৫টি পর্যন্ত আর Business-এ সীমাহীন। Starter-এ ল্যান্ডিং পেজ নেই।' },
+      { question: 'কতগুলো ল্যান্ডিং পেজ বানানো যায়?', answer: 'Growth-এ ৫টি পর্যন্ত আর Business-এ যত খুশি। Starter-এ ল্যান্ডিং পেজ নেই।' },
     ],
     related: [
       { href: '/features/marketing-tracking', label: 'মার্কেটিং ও ট্র্যাকিং', description: 'বিজ্ঞাপনের জন্য Pixel আর Analytics।' },
@@ -599,7 +599,7 @@ export const FEATURE_PAGES_BN: ContentPage[] = [
       {
         question: 'আমার প্যাকেজে কোন থিম আছে?',
         answer:
-          'Starter-এ Default থিম। Growth-এ এর সাথে Minimal। Business-এ প্রিমিয়াম ShopEase আর Kenakata-সহ সব থিম। Starter বা Growth-এ Theme পেজ থেকে একবারে প্রিমিয়াম থিম কেনা যায়।',
+          'Starter-এ Default থিম। Growth-এ সব নন-প্রিমিয়াম থিম (Default আর Minimal)। Business-এ এগুলোর সাথে প্রিমিয়াম ShopEase আর Kenakata। Starter বা Growth-এ Theme পেজ থেকে একবারে প্রিমিয়াম থিম কেনা যায়।',
       },
       {
         question: 'ক্যাটাগরিতে ছবি কীভাবে দেব?',

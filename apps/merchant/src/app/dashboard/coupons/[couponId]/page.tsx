@@ -8,6 +8,8 @@ import { Button } from '@ecomesta/ui';
 import {
   CouponFormFields,
   emptyCouponForm,
+  validateCouponForm,
+  type CouponFormErrors,
   type CouponFormState,
 } from '@/components/coupons/coupon-form-fields';
 import { StoreScoped } from '@/components/catalog/store-scoped';
@@ -37,7 +39,24 @@ function EditCouponContent() {
   const [form, setForm] = useState<CouponFormState>(emptyCouponForm());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<CouponFormErrors>({});
   const [busy, setBusy] = useState(false);
+
+  const applyCoupon = useCallback((c: Coupon) => {
+    setForm({
+      code: c.code,
+      type: c.type === 'FIXED_AMOUNT' ? 'FIXED_AMOUNT' : 'PERCENTAGE',
+      value: c.value,
+      active: c.active,
+      startsAt: toLocalInput(c.startsAt),
+      expiresAt: toLocalInput(c.expiresAt),
+      usageLimit: c.usageLimit != null ? String(c.usageLimit) : '',
+      perCustomerLimit:
+        c.perCustomerLimit != null ? String(c.perCustomerLimit) : '',
+      minimumOrderAmount: c.minimumOrderAmount ?? '',
+      maximumDiscountAmount: c.maximumDiscountAmount ?? '',
+    });
+  }, []);
 
   const load = useCallback(async () => {
     if (!selectedStoreId || !couponId) return;
@@ -47,26 +66,13 @@ function EditCouponContent() {
       const result = await api.get<{ success: true; data: Coupon }>(
         `/stores/${selectedStoreId}/coupons/${couponId}`,
       );
-      const c = result.data;
-      setForm({
-        code: c.code,
-        type: c.type === 'FIXED_AMOUNT' ? 'FIXED_AMOUNT' : 'PERCENTAGE',
-        value: c.value,
-        active: c.active,
-        startsAt: toLocalInput(c.startsAt),
-        expiresAt: toLocalInput(c.expiresAt),
-        usageLimit: c.usageLimit != null ? String(c.usageLimit) : '',
-        perCustomerLimit:
-          c.perCustomerLimit != null ? String(c.perCustomerLimit) : '',
-        minimumOrderAmount: c.minimumOrderAmount ?? '',
-        maximumDiscountAmount: c.maximumDiscountAmount ?? '',
-      });
+      applyCoupon(result.data);
     } catch (err) {
       setError(humanApiError(err, 'Failed to load coupon'));
     } finally {
       setLoading(false);
     }
-  }, [selectedStoreId, couponId]);
+  }, [selectedStoreId, couponId, applyCoupon]);
 
   useEffect(() => {
     void load();
@@ -75,10 +81,16 @@ function EditCouponContent() {
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (!selectedStoreId || !couponId || !canWrite) return;
+    const errors = validateCouponForm(form);
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      setError('Please fix the highlighted fields before saving.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      await api.patch(`/stores/${selectedStoreId}/coupons/${couponId}`, {
+      const saved = await api.patch<{ success: true; data?: Coupon }>(`/stores/${selectedStoreId}/coupons/${couponId}`, {
         code: form.code.trim().toUpperCase(),
         type: form.type as CouponType,
         value: form.value,
@@ -95,7 +107,9 @@ function EditCouponContent() {
         maximumDiscountAmount: form.maximumDiscountAmount || null,
       });
       pushToast('Coupon updated', 'success');
-      await load();
+      // The PATCH response is the saved coupon; no second round trip.
+      if (saved?.data) applyCoupon(saved.data);
+      else await load();
     } catch (err) {
       setError(humanApiError(err, 'Could not save coupon'));
       if (err instanceof ApiError) pushToast(err.message, 'error');
@@ -108,11 +122,12 @@ function EditCouponContent() {
     if (!selectedStoreId || !couponId || !canWrite) return;
     setBusy(true);
     try {
-      await api.patch(`/stores/${selectedStoreId}/coupons/${couponId}`, {
+      const saved = await api.patch<{ success: true; data?: Coupon }>(`/stores/${selectedStoreId}/coupons/${couponId}`, {
         active: false,
       });
       pushToast('Coupon deactivated', 'success');
-      await load();
+      if (saved?.data) applyCoupon(saved.data);
+      else await load();
     } catch (err) {
       pushToast(humanApiError(err, 'Could not deactivate'), 'error');
     } finally {
@@ -151,9 +166,10 @@ function EditCouponContent() {
       {!loading && form.code ? (
         <form
           onSubmit={onSubmit}
+          noValidate
           className="space-y-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-5"
         >
-          <CouponFormFields form={form} setForm={setForm} />
+          <CouponFormFields form={form} setForm={setForm} errors={fieldErrors} />
           {error ? (
             <p className="text-sm text-red-700" role="alert">
               {error}

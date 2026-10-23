@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import type { Coupon, OffsetPageMeta } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
+import { PlanLockedBanner } from '@/components/billing/plan-locked-banner';
+import { couponTypeLabel } from '@/components/coupons/coupon-form-fields';
 import { StoreScoped } from '@/components/catalog/store-scoped';
 import { EmptyState } from '@/components/ui/empty-state';
 import { FilterBar, FilterField } from '@/components/ui/filter-bar';
@@ -15,10 +17,15 @@ import { api } from '@/lib/api-client';
 import { humanApiError } from '@/lib/catalog-utils';
 import { useCanManageStore } from '@/lib/permissions';
 import { useStoreContext } from '@/lib/store-context';
+import { useSubscription } from '@/lib/subscription-context';
 
 function CouponsContent() {
   const { selectedStoreId } = useStoreContext();
   const canWrite = useCanManageStore();
+  const { data: subscription } = useSubscription();
+  const limits = subscription?.subscription?.plan.limits ?? null;
+  const locked = Boolean(limits && !limits.coupons);
+  const canCreate = canWrite && !locked;
   const [items, setItems] = useState<Coupon[]>([]);
   const [meta, setMeta] = useState<OffsetPageMeta | null>(null);
   const [page, setPage] = useState(1);
@@ -87,12 +94,19 @@ function CouponsContent() {
             Store-scoped discount codes for checkout.
           </p>
         </div>
-        {canWrite ? (
+        {canCreate ? (
           <Link href="/dashboard/coupons/new">
             <Button>New coupon</Button>
           </Link>
         ) : null}
       </div>
+
+      {locked ? (
+        <PlanLockedBanner
+          title="Coupons are available on the Growth and Business plans"
+          description="Create percentage or fixed-amount discount codes for checkout. Existing codes stay visible but Starter cannot create or change them."
+        />
+      ) : null}
 
       <FilterBar
         onSubmit={() => {
@@ -155,8 +169,8 @@ function CouponsContent() {
             aria-label="Type filter"
           >
             <option value="">All types</option>
-            <option value="PERCENTAGE">Percentage (%)</option>
-            <option value="FIXED_AMOUNT">Fixed amount</option>
+            <option value="PERCENTAGE">{couponTypeLabel('PERCENTAGE')}</option>
+            <option value="FIXED_AMOUNT">{couponTypeLabel('FIXED_AMOUNT')}</option>
           </Select>
         </FilterField>
       </FilterBar>
@@ -206,7 +220,7 @@ function CouponsContent() {
                       {coupon.code}
                     </Link>
                   </td>
-                  <td className="px-4 py-3">{coupon.type}</td>
+                  <td className="px-4 py-3">{couponTypeLabel(coupon.type)}</td>
                   <td className="px-4 py-3">
                     {coupon.type === 'PERCENTAGE'
                       ? `${coupon.value}%`

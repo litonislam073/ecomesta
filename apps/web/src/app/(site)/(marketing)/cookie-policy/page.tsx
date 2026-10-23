@@ -10,8 +10,9 @@ export const metadata = buildMetadata({
 
 const COOKIES = [
   {
-    name: 'ecomesta_refresh_token',
-    purpose: 'Keeps you signed in to the merchant dashboard securely (HttpOnly, not readable by scripts).',
+    name: 'ecomesta_refresh_token_merchant, ecomesta_refresh_token_admin',
+    purpose:
+      'Keeps you signed in to the merchant or admin dashboard securely (separate HttpOnly cookies so the two apps do not share a session; not readable by scripts).',
     type: 'Essential',
   },
   {

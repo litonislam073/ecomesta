@@ -248,12 +248,17 @@ function ThemeContent() {
     if (dirty && !(await askDiscard('switch'))) return;
     setSwitchingThemeId(themeId);
     try {
-      await api.patch<{ success: true; data: StoreTheme }>(
+      const result = await api.patch<{ success: true; data: StoreTheme }>(
         `/stores/${selectedStoreId}/theme`,
         { themeId },
       );
+      // The response is already the selected theme's draft: apply it instead
+      // of re-fetching the theme and the theme list.
+      applyStoreTheme(result.data);
+      setThemes((items) =>
+        items.map((item) => ({ ...item, selected: item.id === themeId })),
+      );
       pushToast('Theme selected as draft. Publish to make it live.', 'success');
-      await load();
     } catch (err) {
       pushToast(humanApiError(err, 'Could not switch theme'), 'error');
     } finally {
@@ -332,7 +337,13 @@ function ThemeContent() {
           <h1 className="text-sm font-semibold leading-tight">Theme</h1>
           <p className="truncate text-xs text-[var(--color-muted)]">
             {storeTheme ? storeTheme.theme.name : 'Loading…'}
-            {storeTheme ? (storeTheme.isLive ? ' · Live' : ' · Draft') : ''}
+            {storeTheme
+              ? storeTheme.liveTheme
+                ? storeTheme.isLive
+                  ? ' · Live'
+                  : ' · Draft (not live)'
+                : ' · Draft · store shows Default until publish'
+              : ''}
           </p>
         </div>
 
@@ -425,7 +436,8 @@ function ThemeContent() {
                   <span>
                     Live on storefront:{' '}
                     <span className="font-medium text-[var(--color-ink)]">
-                      {storeTheme.liveTheme ? storeTheme.liveTheme.name : 'Nothing published yet'}
+                      {/* Until a theme is published, the storefront serves the Default theme with its packaged defaults. */}
+                      {storeTheme.liveTheme ? storeTheme.liveTheme.name : 'Default theme (nothing published yet)'}
                     </span>
                     {storeTheme.liveTheme?.publishedAt
                       ? ` · published ${new Date(storeTheme.liveTheme.publishedAt).toLocaleString()}`

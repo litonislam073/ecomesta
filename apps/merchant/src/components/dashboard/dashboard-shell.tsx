@@ -144,14 +144,6 @@ function DashboardFrame({ children }: { children: ReactNode }) {
                 <GuideLink />
               </div>
               <div className="ml-auto flex min-w-0 items-center gap-3">
-                <button
-                  type="button"
-                  className="hidden shrink-0 rounded-md border border-[var(--color-border)] px-3 py-2 text-sm text-[var(--color-muted)] sm:inline-flex"
-                  aria-label="Notifications (coming soon)"
-                  title="Notifications coming soon"
-                >
-                  Alerts
-                </button>
                 <div className="min-w-0 max-w-[14rem] text-right lg:max-w-[12rem] xl:max-w-[14rem]">
                   <p className="truncate text-sm font-medium" title={displayName}>
                     {displayName}

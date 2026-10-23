@@ -1,7 +1,11 @@
 import type { Theme } from '@prisma/client';
 import { ThemesService } from './themes.service';
 import { publishedThemeCacheKey } from './theme-cache';
-import { DEFAULT_THEME_CONFIGURATION } from './theme-config.types';
+import {
+  DEFAULT_THEME_CONFIGURATION,
+  MINIMAL_THEME_CONFIGURATION,
+  type StoreThemeConfig,
+} from './theme-config.types';
 import { LIVE_STORE_THEME_ORDER, liveStoreThemeWhere, nextPublishedAt } from './theme-live';
 
 describe('theme live rules', () => {
@@ -68,11 +72,15 @@ describe('ThemesService draft/publish separation', () => {
       theme: { findFirst: jest.fn().mockResolvedValue(themeB) },
       storeTheme: {
         findFirst: jest.fn(),
+        findUnique: jest.fn().mockResolvedValue(null),
         update: jest.fn(),
         updateMany: jest.fn(),
-        upsert: jest.fn().mockResolvedValue({ ...draftB, isActive: true }),
+        create: jest.fn().mockResolvedValue({ ...draftB, isActive: true }),
       },
-      store: { update: jest.fn(), findUnique: jest.fn() },
+      store: {
+        update: jest.fn(),
+        findUnique: jest.fn().mockResolvedValue({ name: 'Acme Shop' }),
+      },
     };
     const prisma = {
       store: {
@@ -126,16 +134,31 @@ describe('ThemesService draft/publish separation', () => {
 
   it('selecting a theme never publishes or clears the public cache', async () => {
     const { service, prisma, tx, del, entitlements } = build();
-    // Inside the lock: active row is A. After commit: live theme is A.
-    tx.storeTheme.findFirst.mockResolvedValueOnce(liveA);
+    // Inside the lock: requireActive (A), then previous draft for seeding (A).
+    tx.storeTheme.findFirst
+      .mockResolvedValueOnce(liveA)
+      .mockResolvedValueOnce({
+        configuration: {
+          branding: { brandName: 'Acme Shop', primaryColor: '#112233' },
+          header: { menuItems: [{ label: 'Shop', href: '/products' }] },
+          footer: { menuItems: [{ label: 'About', href: '/about' }] },
+        },
+      });
     prisma.storeTheme.findFirst.mockResolvedValueOnce(liveA);
 
     const res = await service.updateStoreTheme('user-1', 'store-1', { themeId: themeB.id });
 
-    expect(tx.storeTheme.upsert).toHaveBeenCalledTimes(1);
-    const upsert = tx.storeTheme.upsert.mock.calls[0][0];
-    expect(upsert.update).toEqual({ isActive: true });
-    expect(JSON.stringify(upsert)).not.toContain('published');
+    expect(tx.storeTheme.create).toHaveBeenCalledTimes(1);
+    const created = tx.storeTheme.create.mock.calls[0][0];
+    expect(created.data.isActive).toBe(true);
+    expect(created.data.configuration.branding.brandName).toBe('Acme Shop');
+    expect(created.data.configuration.header.menuItems).toEqual([
+      { label: 'Shop', href: '/products' },
+    ]);
+    expect(created.data.configuration.footer.menuItems).toEqual([
+      { label: 'About', href: '/about' },
+    ]);
+    expect(JSON.stringify(created)).not.toContain('published');
     expect(tx.storeTheme.update).not.toHaveBeenCalled();
     expect(del).not.toHaveBeenCalled();
     expect(res.data.isLive).toBe(false);
@@ -144,6 +167,46 @@ describe('ThemesService draft/publish separation', () => {
     expectLockedFirst(tx);
     // 'minimal' is not the default theme, so the plan must include every theme.
     expect(entitlements.assertFeature).toHaveBeenCalledWith('store-1', 'allThemes');
+  });
+
+  it('seeds a new Minimal draft with the store name instead of "Your Store"', () => {
+    const { service } = build();
+    const seeded = (
+      service as unknown as {
+        seedThemeConfigForStore: (
+          defaults: StoreThemeConfig,
+          previous: StoreThemeConfig,
+          storeName: string | null,
+        ) => StoreThemeConfig;
+      }
+    ).seedThemeConfigForStore(MINIMAL_THEME_CONFIGURATION, {}, 'Liton Mart');
+
+    expect(MINIMAL_THEME_CONFIGURATION.branding?.brandName).toBe('Your Store');
+    expect(seeded.branding?.brandName).toBe('Liton Mart');
+  });
+
+  it('re-activating a saved theme keeps its draft instead of reseeding', async () => {
+    const { service, prisma, tx } = build();
+    const saved = {
+      ...draftB,
+      configuration: { branding: { brandName: 'Saved Draft' } },
+    };
+    tx.storeTheme.findFirst
+      .mockResolvedValueOnce(liveA)
+      .mockResolvedValueOnce({ configuration: liveA.configuration });
+    tx.storeTheme.findUnique.mockResolvedValueOnce(saved);
+    tx.storeTheme.update.mockResolvedValueOnce({ ...saved, isActive: true });
+    prisma.storeTheme.findFirst.mockResolvedValueOnce(liveA);
+
+    await service.updateStoreTheme('user-1', 'store-1', { themeId: themeB.id });
+
+    expect(tx.storeTheme.create).not.toHaveBeenCalled();
+    expect(tx.storeTheme.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: saved.id },
+        data: { isActive: true },
+      }),
+    );
   });
 
   it('saving a draft merges into the draft read under the lock and writes only the draft', async () => {

@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -47,25 +48,79 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-let refreshInFlight: Promise<string | null> | null = null;
+type RefreshResult = { accessToken: string; user: AuthUser };
+
+let refreshInFlight: Promise<RefreshResult | null> | null = null;
+/**
+ * True when the last refresh failed for a reason that does not prove the
+ * session is gone (offline, timeout, 5xx). A 401/403 means the refresh cookie
+ * is really invalid and the session must be dropped.
+ */
+let lastRefreshTransient = false;
+
+const TRANSIENT_RETRY_DELAY_MS = 800;
+
+/** Network failures, timeouts, rate limits and server errors; not a revoked session. */
+function isTransientFailure(error: unknown): boolean {
+  if (error instanceof ApiError) {
+    return error.status >= 500 || error.status === 408 || error.status === 429;
+  }
+  return true;
+}
+
+function postRefresh() {
+  return api.post<{ success: true; data: { accessToken: string; user: AuthUser } }>(
+    '/auth/refresh',
+    {},
+    { token: null },
+  );
+}
 
 /**
  * One refresh at a time in this tab. The API rotates the refresh token on
  * every call, so a second concurrent POST /auth/refresh with the same cookie
  * (the start-up refresh racing a 401 retry, or React running the start-up
  * effect twice) is refused and would sign the merchant out.
+ *
+ * A transient failure is retried once; if it still fails, `lastRefreshTransient`
+ * is set so callers keep the signed-in state instead of clearing it.
+ *
+ * Refresh now returns the user profile so startup can skip GET /auth/me.
  */
-function refreshAccessTokenOnce(): Promise<string | null> {
-  refreshInFlight ??= api
-    .post<{ success: true; data: { accessToken: string } }>('/auth/refresh', {}, { token: null })
-    .then(
-      (refreshed) => refreshed.data.accessToken,
-      () => null,
-    )
-    .finally(() => {
-      refreshInFlight = null;
-    });
+function refreshAccessTokenOnce(): Promise<RefreshResult | null> {
+  refreshInFlight ??= (async () => {
+    lastRefreshTransient = false;
+    try {
+      const data = (await postRefresh()).data;
+      return { accessToken: data.accessToken, user: data.user };
+    } catch (first) {
+      if (!isTransientFailure(first)) return null;
+      await new Promise((resolve) => setTimeout(resolve, TRANSIENT_RETRY_DELAY_MS));
+      try {
+        const data = (await postRefresh()).data;
+        return { accessToken: data.accessToken, user: data.user };
+      } catch (second) {
+        lastRefreshTransient = isTransientFailure(second);
+        return null;
+      }
+    }
+  })().finally(() => {
+    refreshInFlight = null;
+  });
   return refreshInFlight;
+}
+
+function assertMerchantProfile(profile: AuthUser) {
+  if (
+    profile.platformRole === 'SUPER_ADMIN' &&
+    profile.memberships.stores.length === 0
+  ) {
+    throw new ApiError(
+      403,
+      'MERCHANT_ACCESS_DENIED',
+      'This account is for the admin dashboard. Sign in with a merchant account.',
+    );
+  }
 }
 
 /**
@@ -95,58 +150,94 @@ export function hasSessionHint(): boolean {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [accessToken, setAccessTokenState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Same tick as state so child mount fetches see the token (parent effects run later).
+  const accessTokenRef = useRef<string | null>(null);
+
+  const setAccessToken = useCallback((token: string | null) => {
+    accessTokenRef.current = token;
+    setAccessTokenState(token);
+  }, []);
 
   const clearSession = useCallback(() => {
     setAccessToken(null);
     setUser(null);
     setSessionHint(false);
-  }, []);
+  }, [setAccessToken]);
 
   useEffect(() => {
     if (user) setSessionHint(true);
   }, [user]);
 
-  useEffect(() => {
-    configureApiClient({
-      getAccessToken: () => accessToken,
-      onUnauthorized: clearSession,
-      refreshAccessToken: async () => {
-        const token = await refreshAccessTokenOnce();
-        if (token) setAccessToken(token);
-        else clearSession();
-        return token;
-      },
-    });
-  }, [accessToken, clearSession]);
+  configureApiClient({
+    getAccessToken: () => accessTokenRef.current,
+    // A 401 that follows a transient refresh failure (offline, 5xx) leaves the
+    // session alone: the request fails, the next one retries the refresh.
+    onUnauthorized: () => {
+      if (lastRefreshTransient) return;
+      clearSession();
+    },
+    refreshAccessToken: async () => {
+      const result = await refreshAccessTokenOnce();
+      if (result) {
+        setAccessToken(result.accessToken);
+        try {
+          assertMerchantProfile(result.user);
+          setUser(result.user);
+        } catch {
+          /* keep token; next /me-style call can correct */
+        }
+        return result.accessToken;
+      }
+      if (!lastRefreshTransient) clearSession();
+      return null;
+    },
+  });
 
   const loadProfile = useCallback(async (token: string) => {
     const me = await api.get<{ success: true; data: AuthUser }>('/auth/me', {
       token,
     });
+    assertMerchantProfile(me.data);
     setUser(me.data);
   }, []);
 
   const refreshSession = useCallback(async () => {
-    const token = await refreshAccessTokenOnce();
-    if (!token) {
-      clearSession();
+    const result = await refreshAccessTokenOnce();
+    if (!result) {
+      // Transient (offline / server error): there is nothing signed in to keep
+      // in memory yet, but leave the "signed in before" hint so a reload retries.
+      if (lastRefreshTransient) {
+        setAccessToken(null);
+        setUser(null);
+      } else {
+        clearSession();
+      }
       return false;
     }
     try {
-      setAccessToken(token);
-      await loadProfile(token);
+      setAccessToken(result.accessToken);
+      assertMerchantProfile(result.user);
+      setUser(result.user);
       return true;
-    } catch {
-      clearSession();
+    } catch (error) {
+      if (error instanceof ApiError && error.status < 500 && error.status !== 408 && error.status !== 429) {
+        clearSession();
+      } else {
+        // Profile could not be loaded right now; do not leave a half-signed-in zombie.
+        setAccessToken(null);
+        setUser(null);
+      }
       return false;
     }
-  }, [clearSession, loadProfile]);
+  }, [clearSession]);
 
   useEffect(() => {
     void (async () => {
-      await refreshSession();
+      // Never signed in on this browser: there is no refresh cookie, so skip the
+      // request instead of logging an expected 401 in the console.
+      if (hasSessionHint()) await refreshSession();
       setLoading(false);
     })();
   }, [refreshSession]);
@@ -158,9 +249,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: { accessToken: string; user: AuthUser };
       }>('/auth/login', { email, password }, { token: null });
       setAccessToken(result.data.accessToken);
-      await loadProfile(result.data.accessToken);
+      assertMerchantProfile(result.data.user);
+      setUser(result.data.user);
     },
-    [loadProfile],
+    [],
   );
 
   const register = useCallback(
@@ -187,9 +279,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         { token: null },
       );
       setAccessToken(result.data.accessToken);
-      await loadProfile(result.data.accessToken);
+      // Register already returns the user — skip a redundant /auth/me round-trip.
+      setUser(result.data.user);
     },
-    [loadProfile],
+    [],
   );
 
   const loginWithGoogle = useCallback(
@@ -199,10 +292,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: { accessToken: string; created: boolean; user: AuthUser };
       }>('/auth/google', { credential, referralCode: readReferralCode() ?? undefined }, { token: null });
       setAccessToken(result.data.accessToken);
-      await loadProfile(result.data.accessToken);
+      assertMerchantProfile(result.data.user);
+      setUser(result.data.user);
       return { created: result.data.created };
     },
-    [loadProfile],
+    [],
   );
 
   const reloadProfile = useCallback(async () => {

@@ -37,12 +37,26 @@ vi.mock('@/lib/permissions', () => ({
   useCanManageStore: () => true,
 }));
 
+let deliveryZonesAllowed = true;
+vi.mock('@/lib/subscription-context', () => ({
+  useSubscription: () => ({
+    data: {
+      subscription: {
+        plan: { limits: { deliveryZones: deliveryZonesAllowed } },
+      },
+    },
+  }),
+}));
+
+const pushToast = vi.fn();
 vi.mock('@/components/ui/toast', () => ({
-  useToast: () => ({ pushToast: vi.fn() }),
+  useToast: () => ({ pushToast }),
 }));
 
 describe('Shipping dashboard', () => {
   beforeEach(() => {
+    deliveryZonesAllowed = true;
+    pushToast.mockReset();
     getMock.mockReset();
     postMock.mockReset();
     patchMock.mockReset();
@@ -143,5 +157,59 @@ describe('Shipping dashboard', () => {
         true,
       );
     });
+  });
+
+  it('Starter: locks delivery zones with an upgrade link and no Add zone button', async () => {
+    deliveryZonesAllowed = false;
+    const ShippingPage = (await import('./page')).default;
+    render(<ShippingPage />);
+
+    expect(
+      await screen.findByRole('heading', {
+        name: /Delivery zones are available on the Growth and Business plans/i,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Upgrade in Plan & billing/i })).toHaveAttribute(
+      'href',
+      '/dashboard/billing',
+    );
+    expect(screen.queryByRole('button', { name: /add zone/i })).not.toBeInTheDocument();
+    expect(await screen.findByText('Dhaka City')).toBeInTheDocument();
+  });
+
+  it('shows PLAN_UPGRADE_REQUIRED message when saving a zone is refused', async () => {
+    const { ApiError } = await import('@/lib/api-client');
+    deliveryZonesAllowed = true;
+    postMock.mockRejectedValue(
+      new ApiError(
+        403,
+        'PLAN_UPGRADE_REQUIRED',
+        'Delivery zones are not included in your plan. Upgrade to Growth or Business in Plan & billing.',
+      ),
+    );
+    const ShippingPage = (await import('./page')).default;
+    const user = userEvent.setup();
+    render(<ShippingPage />);
+
+    await screen.findByText('Dhaka City');
+    await user.click(screen.getByRole('button', { name: /add zone/i }));
+    await screen.findByText(/new shipping zone/i);
+    await user.type(screen.getByPlaceholderText('Dhaka City'), 'Outside Dhaka');
+    await waitFor(() =>
+      expect(getMock.mock.calls.some((c) => String(c[0]).includes('/locations/divisions'))).toBe(
+        true,
+      ),
+    );
+    const selects = screen.getAllByRole('combobox');
+    await user.selectOptions(selects[0]!, 'div-1');
+    await user.click(screen.getByRole('button', { name: /add location/i }));
+    await user.click(screen.getByRole('button', { name: /save zone/i }));
+
+    await waitFor(() =>
+      expect(pushToast).toHaveBeenCalledWith(
+        'Delivery zones are not included in your plan. Upgrade to Growth or Business in Plan & billing.',
+        'error',
+      ),
+    );
   });
 });

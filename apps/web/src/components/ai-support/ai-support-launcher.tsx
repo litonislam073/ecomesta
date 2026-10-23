@@ -50,7 +50,7 @@ export function AiSupportLauncher() {
         <button
           ref={buttonRef}
           type="button"
-          aria-label="Open Ecomesta support chat"
+          aria-label="Chat with us"
           aria-haspopup="dialog"
           onMouseEnter={() => setLoaded(true)}
           onFocus={() => setLoaded(true)}

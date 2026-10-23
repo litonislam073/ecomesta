@@ -5,7 +5,7 @@
 - NestJS `AuthModule` under `apps/api/src/modules/auth`
 - Passwords hashed with **Argon2id** (`@node-rs/argon2`)
 - Access JWT (short-lived) via `Authorization: Bearer`
-- Refresh JWT stored as **HttpOnly cookie** (`ecomesta_refresh_token`) and optionally returned in JSON for API clients / tests
+- Refresh JWT stored as **HttpOnly cookie** scoped by app (`ecomesta_refresh_token_merchant` / `ecomesta_refresh_token_admin`, selected via `X-Ecomesta-Client`) and optionally returned in JSON for API clients / tests
 - Refresh sessions persisted in `auth_sessions` with **SHA-256 token hashes only**
 - Refresh-token **rotation** on every `/auth/refresh`
 - RBAC foundation via `@Roles()` + `RolesGuard` using Phase 2 enums

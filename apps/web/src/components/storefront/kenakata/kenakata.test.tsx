@@ -44,6 +44,7 @@ const store = {
   logoUrl: null,
   faviconUrl: null,
   contact: { email: 'hi@alpha.test', phone: '01711000000', address: 'Dhaka' },
+  payments: { offline: ['COD'], online: ['SSL_COMMERZ'] },
 } as unknown as PublicStore;
 
 const category = (overrides: Partial<PublicCategory> = {}) =>

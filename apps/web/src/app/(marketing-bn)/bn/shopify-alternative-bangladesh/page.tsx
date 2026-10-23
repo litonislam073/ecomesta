@@ -6,7 +6,7 @@ export const metadata = buildMetadata({
   locale: 'bn',
   title: 'বাংলাদেশে Shopify-র বিকল্প — Ecomesta বনাম Shopify (২০২৬)',
   description:
-    'বাংলাদেশে বিক্রির জন্য Ecomesta আর Shopify-র তুলনা: ৳৯৯ থেকে টাকায় দাম, bKash ও Nagad, ক্যাশ অন ডেলিভারি, দেশের কুরিয়ার, আর বিক্রিতে কোনো ফি নেই।',
+    'বাংলাদেশে বিক্রির জন্য Ecomesta আর Shopify-র তুলনা: ৳৯৯ থেকে টাকায় দাম, SSLCommerz অনলাইন পেমেন্ট, ক্যাশ অন ডেলিভারি, দেশের কুরিয়ার, আর বিক্রিতে কোনো ফি নেই।',
 });
 
 export default function BanglaShopifyAlternativePage() {

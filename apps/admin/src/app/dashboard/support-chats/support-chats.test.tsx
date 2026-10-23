@@ -30,6 +30,7 @@ const summary: AdminSupportConversationSummary = {
   visitorName: 'Rahim Uddin',
   visitorPhone: '01711000000',
   visitorEmail: null,
+  source: 'CHAT',
   messageCount: 4,
   firstMessage: 'Can I use my own domain?',
   handoffReference: 'AB12CD34',
@@ -76,6 +77,27 @@ describe('Admin support chats list', () => {
 
     await user.click(screen.getByRole('button', { name: 'Clear' }));
     await waitFor(() => expect(api.get).toHaveBeenLastCalledWith('/admin/support-chats?page=1&limit=20'));
+  });
+
+  it('filters contact form submissions and shows the Contact form label', async () => {
+    const user = userEvent.setup();
+    const contact: AdminSupportConversationSummary = {
+      ...summary,
+      id: 'contact-1',
+      source: 'CONTACT_FORM',
+      firstMessage: 'Topic: Plans and pricing\n\nI need Growth.',
+      messageCount: 1,
+    };
+    api.get.mockResolvedValue(listResponse([contact]));
+    render(<AdminSupportChatsPage />);
+
+    expect(await screen.findByText('Contact form')).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText('Filter by source'), 'CONTACT_FORM');
+    await waitFor(() =>
+      expect(api.get).toHaveBeenLastCalledWith(
+        '/admin/support-chats?page=1&limit=20&source=CONTACT_FORM',
+      ),
+    );
   });
 
   it('shows an empty state and a retryable error', async () => {

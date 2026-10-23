@@ -18,12 +18,14 @@ import {
 
 const sourceSans = Source_Sans_3({
   subsets: ['latin'],
+  weight: ['400', '600', '700'],
   variable: '--font-sans',
   display: 'swap',
 });
 
 const fraunces = Fraunces({
   subsets: ['latin'],
+  weight: ['500', '600', '700'],
   variable: '--font-display',
   display: 'swap',
 });

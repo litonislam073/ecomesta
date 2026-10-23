@@ -28,7 +28,7 @@ function ok(reply: string, handoff: { reason: string } | null = null) {
 async function openLauncher() {
   const user = userEvent.setup();
   render(<AiSupportLauncher />);
-  await user.click(await screen.findByRole('button', { name: 'Open Ecomesta support chat' }));
+  await user.click(await screen.findByRole('button', { name: 'Chat with us' }));
   const dialog = await screen.findByRole('dialog', { name: 'Ecomesta Support' });
   return { user, dialog };
 }
@@ -289,7 +289,7 @@ describe('AI support chat', () => {
         <AiSupportLauncher />
       </StrictMode>,
     );
-    await user.click(await screen.findByRole('button', { name: 'Open Ecomesta support chat' }));
+    await user.click(await screen.findByRole('button', { name: 'Chat with us' }));
     const dialog = await screen.findByRole('dialog', { name: 'Ecomesta Support' });
     expect(await within(dialog).findByText('How much is the Starter plan?')).toBeInTheDocument();
     expect(within(dialog).getByText('Starter is ৳99 a month.')).toBeInTheDocument();
@@ -422,7 +422,7 @@ describe('AI support chat', () => {
     await within(dialog).findByText('Kept answer.');
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).toBeNull();
-    const launcher = screen.getByRole('button', { name: 'Open Ecomesta support chat' });
+    const launcher = screen.getByRole('button', { name: 'Chat with us' });
     await waitFor(() => expect(launcher).toHaveFocus());
     await user.click(launcher);
     expect(await screen.findByText('Kept answer.')).toBeInTheDocument();
