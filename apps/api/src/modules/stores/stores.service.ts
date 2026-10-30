@@ -138,7 +138,7 @@ export class StoresService {
 
     if (isElevated) {
       const stores = await this.prisma.store.findMany({
-        where: { tenantId },
+        where: { tenantId, deletedAt: null },
         orderBy: { createdAt: 'desc' },
       });
       return {

@@ -19,6 +19,8 @@ export interface AuthUser {
   firstName: string | null;
   lastName: string | null;
   emailVerified?: boolean;
+  /** New address waiting for its confirmation link (My account → Change email). */
+  pendingEmail?: string | null;
   platformRole: string;
   status: string;
   memberships: {

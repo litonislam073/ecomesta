@@ -167,6 +167,18 @@ export class EmailService implements OnModuleDestroy {
     this.background(async () => this.send(this.composer.emailVerification(user, token), { userId: user.id }));
   }
 
+  /** Link to the new address, plus a heads-up to the current one. */
+  sendEmailChangeRequest(
+    user: { id: string; email: string; firstName: string | null },
+    newEmail: string,
+    token: string,
+  ): void {
+    this.background(async () =>
+      this.send(this.composer.emailChangeConfirmation(user, newEmail, token), { userId: user.id }),
+    );
+    this.background(async () => this.send(this.composer.emailChangeRequested(user, newEmail), { userId: user.id }));
+  }
+
   /**
    * Sends one composed email now, with short in-process retries, and records
    * the outcome in the delivery log (without payload). Never throws.

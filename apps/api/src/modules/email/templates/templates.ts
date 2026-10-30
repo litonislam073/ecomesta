@@ -91,6 +91,63 @@ export function emailVerificationEmail(
   );
 }
 
+/** Shows enough of an address to recognise it without spelling it out: `ra***@gmail.com`. */
+export function maskEmail(email: string): string {
+  const [local = '', domain = ''] = email.split('@');
+  const visible = local.length <= 2 ? local.slice(0, 1) : local.slice(0, 2);
+  return `${visible}***@${domain}`;
+}
+
+export function emailChangeConfirmationEmail(
+  params: { firstName: string | null; newEmail: string; confirmUrl: string; expiresInHours: number },
+  brand: EmailBrand,
+): RenderedEmail {
+  return renderEmail(
+    {
+      subject: 'Confirm your new Ecomesta email address',
+      preheader: 'Confirm this address to start using it on your Ecomesta account.',
+      heading: 'Confirm your new email address',
+      intro: [
+        greeting(params.firstName),
+        `You asked to use ${params.newEmail} for your Ecomesta merchant account. Confirm it and you will sign in with this address from now on.`,
+      ],
+      cta: { label: 'Confirm New Email', url: params.confirmUrl },
+      outro: [
+        `This link expires in ${params.expiresInHours} hours and can only be used once. Until then your account keeps its current email address.`,
+      ],
+      notice: 'If you did not ask for this change, you can safely ignore this email; nothing will change.',
+    },
+    brand,
+  );
+}
+
+export function emailChangeRequestedEmail(
+  params: { firstName: string | null; maskedNewEmail: string },
+  brand: EmailBrand,
+): RenderedEmail {
+  return renderEmail(
+    {
+      subject: 'A change of your Ecomesta email address was requested',
+      preheader: 'Someone asked to move your Ecomesta account to a new email address.',
+      heading: 'Email change requested',
+      intro: [
+        greeting(params.firstName),
+        `A request was made to change the email address of your Ecomesta account to ${params.maskedNewEmail}. The change only happens once the link sent to that address is opened.`,
+      ],
+      cta: { label: 'Review My Account', url: `${brand.merchantUrl}/dashboard/account` },
+      secondaryLink: {
+        lead: 'Did not ask for this?',
+        label: 'Reset your password now',
+        url: `${brand.merchantUrl}/forgot-password`,
+      },
+      notice: brand.supportEmail
+        ? `If you did not ask for this change, cancel it from your account page, reset your password and contact ${brand.supportEmail}.`
+        : 'If you did not ask for this change, cancel it from your account page and reset your password.',
+    },
+    brand,
+  );
+}
+
 export function storeCreatedEmail(params: StoreCreatedParams, brand: EmailBrand, storeUrl: string): RenderedEmail {
   const dashboardUrl = `${brand.merchantUrl}/dashboard`;
   const details: DetailRow[] = [

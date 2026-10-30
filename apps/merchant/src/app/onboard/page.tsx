@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { OnboardingShell } from '@/components/onboarding/onboarding-shell';
 import { LoadingState } from '@/components/ui/loading-state';
-import OnboardForm from './onboard-form';
+import OnboardEntry from './onboard-entry';
 
 export const metadata: Metadata = {
   title: 'Set up your store · Ecomesta',
@@ -21,7 +21,7 @@ export default function OnboardRoute() {
         />
         <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:py-14">
           <Suspense fallback={<LoadingState label="Loading store setup" />}>
-            <OnboardForm />
+            <OnboardEntry />
           </Suspense>
         </div>
       </section>

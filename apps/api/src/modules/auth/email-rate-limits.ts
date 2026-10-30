@@ -6,6 +6,8 @@ export const EMAIL_RATE_LIMITS = {
   verificationEmailPerUser: { limit: 5, windowSeconds: 60 * 60 },
   verificationEmailPerIp: { limit: 5, windowSeconds: 60 * 60 },
   verifyEmailPerIp: { limit: 20, windowSeconds: 15 * 60 },
+  emailChangePerUser: { limit: 5, windowSeconds: 60 * 60 },
+  emailChangePerIp: { limit: 10, windowSeconds: 60 * 60 },
   supportPerUser: { limit: 5, windowSeconds: 60 * 60 },
   supportPerIp: { limit: 20, windowSeconds: 60 * 60 },
 } as const;

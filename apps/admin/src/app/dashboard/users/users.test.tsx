@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AdminUsersPage from '@/app/dashboard/users/page';
 import AdminUserDetailPage from '@/app/dashboard/users/[userId]/page';
@@ -208,5 +208,42 @@ describe('Admin users', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Cannot demote the last active Super Admin. Promote another account first.',
     );
+  });
+
+  it('changes a mistyped sign-in email after confirmation', async () => {
+    const user = userEvent.setup();
+    api.get.mockResolvedValue({ success: true, data: sampleDetail });
+    api.patch.mockResolvedValue({ success: true, data: { ...sampleDetail, email: 'owner@gmail.com' } });
+    render(<AdminUserDetailPage />);
+
+    const field = await screen.findByLabelText('New email address');
+    await user.type(field, 'not-an-email');
+    await user.click(screen.getByRole('button', { name: 'Change email' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Enter a valid email address.');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    await user.clear(field);
+    await user.type(field, ' Owner@Gmail.com ');
+    await user.click(screen.getByRole('button', { name: 'Change email' }));
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveTextContent('Change sign-in email?');
+    expect(dialog).toHaveTextContent('owner@gmail.com');
+    expect(api.patch).not.toHaveBeenCalled();
+
+    await user.click(within(dialog).getByRole('button', { name: 'Change email' }));
+    await waitFor(() => {
+      expect(api.patch).toHaveBeenCalledWith('/admin/users/user-1/email', { email: 'owner@gmail.com' });
+    });
+    expect(pushToast).toHaveBeenCalledWith(
+      'Email changed to owner@gmail.com. A confirmation link was sent there.',
+      'success',
+    );
+  });
+
+  it('shows when a merchant is waiting to change their email', async () => {
+    api.get.mockResolvedValue({ success: true, data: { ...sampleDetail, pendingEmail: 'next@example.com' } });
+    render(<AdminUserDetailPage />);
+    expect(await screen.findByText('Waiting to change to')).toBeInTheDocument();
+    expect(screen.getByText('next@example.com')).toBeInTheDocument();
   });
 });

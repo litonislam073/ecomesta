@@ -65,6 +65,8 @@ export interface SafeUserProfile {
   lastName: string | null;
   phone: string | null;
   emailVerified: boolean;
+  /** Address waiting for its confirmation link, if the user asked to change email. */
+  pendingEmail: string | null;
   status: string;
   platformRole: string;
   memberships: {

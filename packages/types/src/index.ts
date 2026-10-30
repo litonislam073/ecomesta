@@ -1273,6 +1273,8 @@ export interface AdminUser {
   platformRole: PlatformRole;
   status: UserStatus;
   emailVerifiedAt: string | null;
+  /** New address the user asked to switch to, waiting for its confirmation link. */
+  pendingEmail?: string | null;
   lastLoginAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -1385,6 +1387,9 @@ export interface AdminStoreListItem {
   name: string;
   slug: string;
   status: StoreStatus;
+  /** Set while the store is soft-deleted; `deletedSlug` is its old address. */
+  deletedAt?: string | null;
+  deletedSlug?: string | null;
   currency: string;
   createdAt: string;
   updatedAt: string;
@@ -1397,6 +1402,8 @@ export interface AdminStoreDetail {
   slug: string;
   description: string | null;
   status: StoreStatus;
+  deletedAt?: string | null;
+  deletedSlug?: string | null;
   currency: string;
   timezone: string;
   locale: string;

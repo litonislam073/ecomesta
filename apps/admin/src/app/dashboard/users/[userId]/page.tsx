@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
+import { Input } from '@/components/ui/input';
 import { LoadingState } from '@/components/ui/loading-state';
 import { Select } from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast';
@@ -19,7 +20,10 @@ import { api } from '@/lib/api-client';
 
 type PendingAction =
   | { kind: 'status'; status: 'ACTIVE' | 'SUSPENDED' }
-  | { kind: 'platformRole'; platformRole: PlatformRole };
+  | { kind: 'platformRole'; platformRole: PlatformRole }
+  | { kind: 'email'; email: string };
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function AdminUserDetailPage() {
   const params = useParams<{ userId: string }>();
@@ -33,6 +37,8 @@ export default function AdminUserDetailPage() {
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [busy, setBusy] = useState(false);
   const [roleDraft, setRoleDraft] = useState<PlatformRole>('USER');
+  const [emailDraft, setEmailDraft] = useState('');
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -68,6 +74,10 @@ export default function AdminUserDetailPage() {
           pending.status === 'SUSPENDED' ? 'User suspended' : 'User activated',
           'success',
         );
+      } else if (pending.kind === 'email') {
+        await api.patch(`/admin/users/${userId}/email`, { email: pending.email });
+        pushToast(`Email changed to ${pending.email}. A confirmation link was sent there.`, 'success');
+        setEmailDraft('');
       } else {
         await api.patch(`/admin/users/${userId}/platform-role`, {
           platformRole: pending.platformRole,
@@ -87,6 +97,20 @@ export default function AdminUserDetailPage() {
   }
 
   const suspended = user?.status === 'SUSPENDED';
+
+  function askEmailChange() {
+    const email = emailDraft.trim().toLowerCase();
+    if (!EMAIL_PATTERN.test(email)) {
+      setEmailError('Enter a valid email address.');
+      return;
+    }
+    if (email === user?.email) {
+      setEmailError('The user already has this email address.');
+      return;
+    }
+    setEmailError(null);
+    setPending({ kind: 'email', email });
+  }
 
   return (
     <div className="space-y-6">
@@ -139,6 +163,12 @@ export default function AdminUserDetailPage() {
                 <dd>{user.phone ?? '—'}</dd>
                 <dt className="text-[var(--color-muted)]">Email verified</dt>
                 <dd>{formatDateTime(user.emailVerifiedAt)}</dd>
+                {user.pendingEmail ? (
+                  <>
+                    <dt className="text-[var(--color-muted)]">Waiting to change to</dt>
+                    <dd className="break-all">{user.pendingEmail}</dd>
+                  </>
+                ) : null}
                 <dt className="text-[var(--color-muted)]">Last login</dt>
                 <dd>{formatDateTime(user.lastLoginAt)}</dd>
                 <dt className="text-[var(--color-muted)]">Created</dt>
@@ -174,6 +204,35 @@ export default function AdminUserDetailPage() {
               </div>
             </Card>
           </div>
+
+          <Card
+            title="Sign-in email"
+            description="Fix an email the merchant typed wrong. They sign in with the new address straight away (same password), and it gets a confirmation link. Nothing is sent to the old address."
+          >
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="block min-w-[16rem] flex-1 space-y-1.5" htmlFor="user-email">
+                <span className="text-sm font-medium">New email address</span>
+                <Input
+                  id="user-email"
+                  type="email"
+                  value={emailDraft}
+                  placeholder={user.email}
+                  onChange={(e) => {
+                    setEmailDraft(e.target.value);
+                    setEmailError(null);
+                  }}
+                />
+              </label>
+              <Button variant="secondary" disabled={!emailDraft.trim()} onClick={askEmailChange}>
+                Change email
+              </Button>
+            </div>
+            {emailError ? (
+              <p role="alert" className="mt-2 text-sm text-[var(--color-danger)]">
+                {emailError}
+              </p>
+            ) : null}
+          </Card>
 
           <Card title="Tenant memberships">
             {user.tenantMemberships.length === 0 ? (
@@ -231,28 +290,36 @@ export default function AdminUserDetailPage() {
         danger={
           pending?.kind === 'status'
             ? pending.status === 'SUSPENDED'
-            : pending?.platformRole === 'USER'
+            : pending?.kind === 'platformRole' && pending.platformRole === 'USER'
         }
         title={
           pending?.kind === 'status'
             ? pending.status === 'SUSPENDED'
               ? 'Suspend this user?'
               : 'Activate this user?'
-            : pending?.platformRole === 'SUPER_ADMIN'
-              ? 'Grant Super Admin?'
-              : 'Revoke Super Admin?'
+            : pending?.kind === 'email'
+              ? 'Change sign-in email?'
+              : pending?.platformRole === 'SUPER_ADMIN'
+                ? 'Grant Super Admin?'
+                : 'Revoke Super Admin?'
         }
         description={
           pending?.kind === 'status'
             ? pending.status === 'SUSPENDED'
               ? 'The user is signed out of every session and blocked from signing in until reactivated.'
               : 'The user regains access to their tenants and stores.'
-            : pending?.platformRole === 'SUPER_ADMIN'
-              ? 'This grants unrestricted access to every tenant, store, plan and audit record on the platform.'
-              : 'This removes platform-wide access. The last active Super Admin cannot be demoted.'
+            : pending?.kind === 'email'
+              ? `${user?.email ?? 'The current address'} will stop working for sign-in. The user signs in with ${pending.email} from now on, and a confirmation link is sent there. Check the address carefully.`
+              : pending?.platformRole === 'SUPER_ADMIN'
+                ? 'This grants unrestricted access to every tenant, store, plan and audit record on the platform.'
+                : 'This removes platform-wide access. The last active Super Admin cannot be demoted.'
         }
         confirmLabel={
-          pending?.kind === 'status' ? 'Update status' : 'Confirm role change'
+          pending?.kind === 'status'
+            ? 'Update status'
+            : pending?.kind === 'email'
+              ? 'Change email'
+              : 'Confirm role change'
         }
         onConfirm={() => void runPending()}
         onCancel={() => setPending(null)}

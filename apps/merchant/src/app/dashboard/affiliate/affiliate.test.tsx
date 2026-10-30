@@ -177,6 +177,7 @@ describe('referral code and store-less pages', () => {
   it('lets accounts without a store open the affiliate page only', () => {
     expect(isStorelessPath('/dashboard/affiliate')).toBe(true);
     expect(isStorelessPath('/onboard')).toBe(true);
+    expect(isStorelessPath('/dashboard/account')).toBe(true);
     expect(isStorelessPath('/dashboard')).toBe(false);
     expect(isStorelessPath('/dashboard/orders')).toBe(false);
     expect(isStorelessPath('/dashboard/support')).toBe(true);

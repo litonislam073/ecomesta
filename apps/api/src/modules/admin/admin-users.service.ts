@@ -10,10 +10,12 @@ import {
   pageMeta,
 } from '../../common/utils/catalog.util';
 import { AuditService } from '../audit/audit.service';
+import { AccountEmailService } from '../auth/account-email.service';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   ListAdminUsersQueryDto,
+  UpdateUserEmailDto,
   UpdateUserPlatformRoleDto,
   UpdateUserStatusDto,
 } from './dto/admin-user.dto';
@@ -27,6 +29,7 @@ const USER_LIST_SELECT = {
   platformRole: true,
   status: true,
   emailVerifiedAt: true,
+  pendingEmail: true,
   lastLoginAt: true,
   createdAt: true,
   updatedAt: true,
@@ -38,6 +41,7 @@ export class AdminUsersService {
     private readonly prisma: PrismaService,
     private readonly authorization: AuthorizationService,
     private readonly audit: AuditService,
+    private readonly accountEmail: AccountEmailService,
   ) {}
 
   async list(actingUserId: string, query: ListAdminUsersQueryDto) {
@@ -167,6 +171,14 @@ export class AdminUsersService {
       req,
     });
 
+    return { success: true as const, data: user };
+  }
+
+  /** Fixes a user's sign-in email (e.g. a typo at sign-up); the new address gets a confirmation link. */
+  async updateEmail(actingUserId: string, userId: string, dto: UpdateUserEmailDto, req?: Request) {
+    await this.authorization.assertSuperAdmin(actingUserId);
+    await this.accountEmail.setByAdmin(actingUserId, userId, dto.email, req);
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: USER_LIST_SELECT });
     return { success: true as const, data: user };
   }
 

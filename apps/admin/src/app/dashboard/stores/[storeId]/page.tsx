@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import type { AdminStoreDetail } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
@@ -10,6 +10,7 @@ import { StatusBadge } from '@/components/admin/status-badge';
 import { Card } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Input } from '@/components/ui/input';
 import { ErrorState } from '@/components/ui/error-state';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useToast } from '@/components/ui/toast';
@@ -27,6 +28,11 @@ export default function AdminStoreDetailPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [pending, setPending] = useState<'ACTIVE' | 'SUSPENDED' | null>(null);
   const [busy, setBusy] = useState(false);
+  const router = useRouter();
+  const [removal, setRemoval] = useState<'soft' | 'restore' | 'permanent' | null>(null);
+  const [reason, setReason] = useState('');
+  const [restoreSlug, setRestoreSlug] = useState('');
+  const [confirmText, setConfirmText] = useState('');
 
   const load = useCallback(async () => {
     if (!storeId) return;
@@ -71,16 +77,57 @@ export default function AdminStoreDetailPage() {
   }
 
   const suspended = store?.status === 'SUSPENDED';
+  const deleted = Boolean(store?.deletedAt);
+  /** The address the merchant knows the store by (its old one when deleted). */
+  const address = store ? (store.deletedSlug ?? store.slug) : '';
+
+  function openRemoval(kind: 'soft' | 'restore' | 'permanent') {
+    setReason('');
+    setConfirmText('');
+    setRestoreSlug(store?.deletedSlug ?? '');
+    setRemoval(kind);
+  }
+
+  async function applyRemoval() {
+    if (!removal || !storeId) return;
+    setBusy(true);
+    setActionError(null);
+    try {
+      if (removal === 'soft') {
+        await api.post(`/admin/stores/${storeId}/soft-delete`, { reason: reason.trim() || undefined });
+        pushToast('Store deleted. It can be restored from this page.', 'success');
+      } else if (removal === 'restore') {
+        const slug = restoreSlug.trim().toLowerCase();
+        await api.post(`/admin/stores/${storeId}/restore`, slug && slug !== store?.deletedSlug ? { slug } : {});
+        pushToast('Store restored', 'success');
+      } else {
+        await api.post(`/admin/stores/${storeId}/permanent-delete`, { confirmSlug: confirmText.trim() });
+        pushToast(`Store "${address}" and all its data were permanently deleted.`, 'success');
+        setRemoval(null);
+        router.push('/dashboard/stores');
+        return;
+      }
+      setRemoval(null);
+      await load();
+    } catch (err) {
+      const message = humanApiError(err, 'Could not update the store');
+      setActionError(message);
+      pushToast(message, 'error');
+      setRemoval(null);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
       <PageHeader
         title={store?.name ?? 'Store'}
-        description={store?.slug}
+        description={store ? (deleted ? `Deleted · was ${address}` : store.slug) : undefined}
         backHref="/dashboard/stores"
         backLabel="Stores"
         actions={
-          store ? (
+          store && !deleted ? (
             suspended ? (
               <Button onClick={() => setPending('ACTIVE')}>Activate store</Button>
             ) : (
@@ -100,6 +147,16 @@ export default function AdminStoreDetailPage() {
       {!loading && !error && store ? (
         <>
           {actionError ? <ErrorState message={actionError} /> : null}
+          {deleted ? (
+            <div role="status" className="rounded-lg border border-[#f3c4c0] bg-[#fdf1f0] px-4 py-3 text-sm">
+              <p className="font-semibold text-[#912018]">This store is deleted.</p>
+              <p className="mt-1 text-[var(--color-ink)]">
+                Deleted on {formatDateTime(store.deletedAt ?? null)}. It is offline and hidden from its merchant, and its
+                address <span className="font-semibold">{address}</span> is free for another store. All its data is kept
+                until it is deleted permanently.
+              </p>
+            </div>
+          ) : null}
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Card title="Store">
@@ -200,6 +257,103 @@ export default function AdminStoreDetailPage() {
           </Card>
         </>
       ) : null}
+
+      {!loading && !error && store ? (
+        <Card
+          title="Danger zone"
+          description="For a store a merchant opened by mistake. The business, its plan and payments always stay, so the merchant can open a new store on the same plan without paying again."
+        >
+          <div className="space-y-4 text-sm">
+            {deleted ? (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="max-w-xl">
+                  <span className="font-semibold">Restore store.</span> Brings it back online for its merchant, on its
+                  old address if that is still free.
+                </p>
+                <Button variant="secondary" onClick={() => openRemoval('restore')}>
+                  Restore store
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="max-w-xl">
+                  <span className="font-semibold">Delete store.</span> Takes it offline, hides it from the merchant and
+                  frees its address. Nothing is erased, and it can be restored.
+                </p>
+                <Button variant="danger" onClick={() => openRemoval('soft')}>
+                  Delete store
+                </Button>
+              </div>
+            )}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border)] pt-4">
+              <p className="max-w-xl">
+                <span className="font-semibold text-[var(--color-danger)]">Delete permanently.</span> Erases the store
+                with its products, orders, customers, images, themes and domains. This cannot be undone.
+              </p>
+              <Button variant="danger" onClick={() => openRemoval('permanent')}>
+                Delete permanently
+              </Button>
+            </div>
+          </div>
+        </Card>
+      ) : null}
+
+      <ConfirmDialog
+        open={removal !== null}
+        busy={busy}
+        danger={removal !== 'restore'}
+        title={
+          removal === 'restore'
+            ? 'Restore this store?'
+            : removal === 'permanent'
+              ? 'Delete this store permanently?'
+              : 'Delete this store?'
+        }
+        description={
+          removal === 'restore'
+            ? 'The store comes back with its old status, and its merchant gets access again.'
+            : removal === 'permanent'
+              ? `Everything in "${address}" is erased for good: ${store?.counts.products ?? 0} products, ${store?.counts.orders ?? 0} orders and ${store?.counts.customers ?? 0} customers, plus images, themes and domains. The business and its plan stay.`
+              : 'The store goes offline and its merchant no longer sees it. Its address becomes free. You can restore it later.'
+        }
+        confirmLabel={
+          removal === 'restore' ? 'Restore store' : removal === 'permanent' ? 'Delete permanently' : 'Delete store'
+        }
+        confirmDisabled={removal === 'permanent' && confirmText.trim().toLowerCase() !== address}
+        onConfirm={() => void applyRemoval()}
+        onCancel={() => setRemoval(null)}
+      >
+        {removal === 'soft' ? (
+          <label className="block space-y-1.5 text-sm" htmlFor="delete-reason">
+            <span className="font-medium">Reason (optional, kept in the audit log)</span>
+            <Input id="delete-reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Opened by mistake" />
+          </label>
+        ) : null}
+        {removal === 'restore' ? (
+          <div className="space-y-1.5 text-sm">
+            <label className="block space-y-1.5" htmlFor="restore-slug">
+              <span className="font-medium">Store address</span>
+              <Input
+                id="restore-slug"
+                value={restoreSlug}
+                aria-describedby="restore-slug-hint"
+                onChange={(e) => setRestoreSlug(e.target.value)}
+              />
+            </label>
+            <p id="restore-slug-hint" className="text-xs text-[var(--color-muted)]">
+              Keep the old address, or type a new one if another store took it.
+            </p>
+          </div>
+        ) : null}
+        {removal === 'permanent' ? (
+          <label className="block space-y-1.5 text-sm" htmlFor="confirm-slug">
+            <span className="font-medium">
+              Type <span className="font-mono">{address}</span> to confirm
+            </span>
+            <Input id="confirm-slug" autoComplete="off" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} />
+          </label>
+        ) : null}
+      </ConfirmDialog>
 
       <ConfirmDialog
         open={pending !== null}

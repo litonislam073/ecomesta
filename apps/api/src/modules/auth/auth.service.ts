@@ -489,6 +489,7 @@ export class AuthService {
         status: true,
         platformRole: true,
         emailVerifiedAt: true,
+        pendingEmail: true,
       },
     });
 
@@ -501,6 +502,7 @@ export class AuthService {
       lastName: user.lastName,
       phone: user.phone,
       emailVerified: user.emailVerifiedAt !== null,
+      pendingEmail: user.pendingEmail,
       status: user.status,
       platformRole: user.platformRole,
       memberships,

@@ -11,10 +11,16 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
+import { AccountEmailService } from './account-email.service';
 import { AccountRecoveryService } from './account-recovery.service';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
-import { EmailTokenDto, ForgotPasswordDto, ResetPasswordDto } from './dto/account-recovery.dto';
+import {
+  EmailTokenDto,
+  ForgotPasswordDto,
+  RequestEmailChangeDto,
+  ResetPasswordDto,
+} from './dto/account-recovery.dto';
 import { GoogleAuthDto } from './dto/google-auth.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
@@ -33,6 +39,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly recovery: AccountRecoveryService,
+    private readonly accountEmail: AccountEmailService,
   ) {}
 
   @Post('register')
@@ -155,5 +162,34 @@ export class AuthController {
   @ApiOperation({ summary: 'Confirm an email address with a verification token' })
   confirmEmailVerification(@Body() dto: EmailTokenDto, @Req() req: Request) {
     return this.recovery.confirmEmailVerification(dto.token, req);
+  }
+
+  @Post('email-change')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Ask to change the account email; a confirmation link goes to the new address' })
+  requestEmailChange(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: RequestEmailChangeDto,
+    @Req() req: Request,
+  ) {
+    return this.accountEmail.requestChange(user.userId, dto.email, dto.currentPassword, req);
+  }
+
+  @Post('email-change/cancel')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cancel a pending email change' })
+  cancelEmailChange(@CurrentUser() user: AuthenticatedUser, @Req() req: Request) {
+    return this.accountEmail.cancelChange(user.userId, req);
+  }
+
+  @Post('email-change/confirm')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Switch to the new email address with the token sent to it' })
+  confirmEmailChange(@Body() dto: EmailTokenDto, @Req() req: Request) {
+    return this.accountEmail.confirmChange(dto.token, req);
   }
 }

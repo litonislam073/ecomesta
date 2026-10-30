@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PlatformRole, UserStatus } from '@prisma/client';
-import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsEmail, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { AdminPaginationQueryDto, SORT_ORDERS, type SortOrder } from './admin-common.dto';
 
 /** Statuses a Super Admin may set directly; lifecycle states stay system-owned. */
@@ -49,4 +50,14 @@ export class UpdateUserPlatformRoleDto {
   @ApiProperty({ enum: PlatformRole })
   @IsIn(Object.values(PlatformRole))
   platformRole!: PlatformRole;
+}
+
+export class UpdateUserEmailDto {
+  @ApiProperty({ example: 'correct-address@example.com' })
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim().toLowerCase() : value,
+  )
+  @IsEmail()
+  @MaxLength(255)
+  email!: string;
 }

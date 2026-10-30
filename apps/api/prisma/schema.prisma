@@ -246,6 +246,8 @@ model User {
   platformRole     PlatformRole @default(USER) @map("platform_role")
   status           UserStatus   @default(ACTIVE)
   emailVerifiedAt  DateTime?    @map("email_verified_at")
+  /// New address the user asked to switch to; it replaces `email` once its link is opened.
+  pendingEmail     String?      @map("pending_email") @db.Citext
   lastLoginAt      DateTime?    @map("last_login_at")
   /// Super Admins: when they last opened the Users list (drives the "new users" badge).
   adminUsersSeenAt DateTime?    @map("admin_users_seen_at")
@@ -276,6 +278,7 @@ model User {
 enum AuthTokenPurpose {
   PASSWORD_RESET
   EMAIL_VERIFICATION
+  EMAIL_CHANGE
 }
 
 /// Single-use emailed tokens. Only the SHA-256 hash of the token is stored.
@@ -393,6 +396,12 @@ model Store {
   demoCatalogImportedAt         DateTime?    @map("demo_catalog_imported_at")
   /// Set once when the merchant creates their first non-demo product; never cleared.
   firstRealProductCreatedAt     DateTime?    @map("first_real_product_created_at")
+  /// Set when a Super Admin soft-deletes the store: it is offline, hidden from
+  /// its merchant and its address is free. Cleared again on restore.
+  deletedAt                     DateTime?    @map("deleted_at")
+  /// The store's address before deletion, given back on restore when still free.
+  deletedSlug                   String?      @map("deleted_slug") @db.Citext
+  statusBeforeDeletion          StoreStatus? @map("status_before_deletion")
   createdAt                     DateTime     @default(now()) @map("created_at")
   updatedAt                     DateTime     @updatedAt @map("updated_at")
 
@@ -428,6 +437,7 @@ model Store {
   @@unique([slug])
   @@index([tenantId])
   @@index([status])
+  @@index([deletedAt])
   @@map("stores")
 }
 
@@ -1419,22 +1429,22 @@ enum AiSupportConversationSource {
 /// message; Super Admins can read the conversation in the admin dashboard.
 /// Contact form submissions (no chat) are stored here too with source CONTACT_FORM.
 model AiSupportConversation {
-  id               String                       @id @default(uuid()) @db.Uuid
-  visitorName      String                       @map("visitor_name")
+  id               String                      @id @default(uuid()) @db.Uuid
+  visitorName      String                      @map("visitor_name")
   /// Digits only, with an optional leading "+".
-  visitorPhone     String                       @map("visitor_phone")
-  visitorEmail     String?                      @map("visitor_email") @db.Citext
+  visitorPhone     String                      @map("visitor_phone")
+  visitorEmail     String?                     @map("visitor_email") @db.Citext
   /// SHA-256 of the secret the visitor's browser holds; only it may add messages.
-  tokenHash        String                       @map("token_hash")
-  userAgent        String?                      @map("user_agent")
+  tokenHash        String                      @map("token_hash")
+  userAgent        String?                     @map("user_agent")
   /// CHAT = support widget; CONTACT_FORM = marketing /contact form handoff.
-  source           AiSupportConversationSource  @default(CHAT)
-  messageCount     Int                          @default(0) @map("message_count")
-  lastMessageAt    DateTime?                    @map("last_message_at")
+  source           AiSupportConversationSource @default(CHAT)
+  messageCount     Int                         @default(0) @map("message_count")
+  lastMessageAt    DateTime?                   @map("last_message_at")
   /// Reference of the latest "talk to a person" request sent from this chat.
-  handoffReference String?                      @map("handoff_reference")
-  createdAt        DateTime                     @default(now()) @map("created_at")
-  updatedAt        DateTime                     @updatedAt @map("updated_at")
+  handoffReference String?                     @map("handoff_reference")
+  createdAt        DateTime                    @default(now()) @map("created_at")
+  updatedAt        DateTime                    @updatedAt @map("updated_at")
 
   messages AiSupportMessage[]
 

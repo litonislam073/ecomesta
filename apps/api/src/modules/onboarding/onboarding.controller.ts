@@ -1,10 +1,10 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AccessTokenGuard } from '../auth/guards/access-token.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/types/auth.types';
-import { OnboardStoreDto } from './dto/onboard-store.dto';
+import { OnboardStoreDto, ReopenStoreDto } from './dto/onboard-store.dto';
 import { OnboardingService } from './onboarding.service';
 
 @ApiTags('onboarding')
@@ -24,5 +24,17 @@ export class OnboardingController {
     @Req() req: Request,
   ) {
     return this.onboardingService.createTenantAndStore(user.userId, dto, req);
+  }
+
+  @Get('existing-business')
+  @ApiOperation({ summary: 'Your business that has no store left, with the plan a new store would keep' })
+  existingBusiness(@CurrentUser() user: AuthenticatedUser) {
+    return this.onboardingService.getReusableBusiness(user.userId);
+  }
+
+  @Post('reopen-store')
+  @ApiOperation({ summary: 'Open a new store in your existing business on the plan it already has' })
+  reopenStore(@CurrentUser() user: AuthenticatedUser, @Body() dto: ReopenStoreDto, @Req() req: Request) {
+    return this.onboardingService.reopenStore(user.userId, dto, req);
   }
 }

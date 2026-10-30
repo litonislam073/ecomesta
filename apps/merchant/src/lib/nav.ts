@@ -102,13 +102,21 @@ export const STORELESS_NAV: NavSection[] = [
       { href: '/dashboard/affiliate', label: 'Affiliate program', ready: true, tag: 'New' },
       { href: '/dashboard/guide', label: 'Store guide', ready: true, tag: 'New' },
       { href: '/dashboard/support', label: 'Help & support', ready: true },
+      { href: '/dashboard/account', label: 'My account', ready: true },
     ],
   },
 ];
 
 /** Pages an account without a store may open (everything else sends it to /onboard). */
 export function isStorelessPath(pathname: string): boolean {
-  return pathname.startsWith('/onboard') || pathname === '/dashboard/affiliate' || pathname === '/dashboard/guide' || pathname === '/dashboard/support';
+  return (
+    pathname.startsWith('/onboard') ||
+    pathname === '/dashboard/affiliate' ||
+    pathname === '/dashboard/guide' ||
+    pathname === '/dashboard/support' ||
+    // A typo in the sign-up email is often noticed before any store exists.
+    pathname === '/dashboard/account'
+  );
 }
 
 export function isNavItemActive(pathname: string, href: string, exact = false): boolean {

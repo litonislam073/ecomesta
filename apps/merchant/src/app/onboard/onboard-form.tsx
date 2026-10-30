@@ -42,6 +42,7 @@ import {
 } from '@/lib/plan-selection';
 import { useStoreContext } from '@/lib/store-context';
 import { usePublicPlans } from '@/lib/subscription-context';
+import { suggestStoreSlug } from '@/lib/store-slug';
 import { storefrontPreviewUrl } from '@/lib/storefront-url';
 
 /** Current platform defaults for new stores; sent explicitly as before. */
@@ -400,7 +401,8 @@ export default function OnboardForm({
   }, [phase, redirectDelayMs, openDashboard]);
 
   const suggested = useMemo(
-    () => slugify(businessName || storeName, STORE_SLUG_MAX).replace(/-+$/, ''),
+    // Words run together: "Amar Shop" suggests `amarshop`.
+    () => suggestStoreSlug(businessName || storeName, STORE_SLUG_MAX),
     [businessName, storeName],
   );
   const storeSlug = storeSlugInput ?? suggested;
