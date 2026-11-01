@@ -448,6 +448,82 @@ export const BLOG_POSTS: BlogPost[] = [
       { href: '/features/order-tracking', label: 'Order tracking for customers' },
     ],
   },
+  {
+    slug: 'reduce-cod-returns-bangladesh',
+    title: 'How to Reduce Cash on Delivery Returns in Bangladesh',
+    description:
+      'Practical ways Bangladeshi online sellers can cut COD cancellations and return-to-origin parcels: confirm orders, clear product pages, smart delivery rules and better packing.',
+    category: 'store-growth',
+    publishedTime: '2026-11-02',
+    modifiedTime: '2026-11-02',
+    readingMinutes: 9,
+    intro:
+      'Cash on Delivery still drives most online sales in Bangladesh, but every undelivered parcel costs courier fees, product handling and lost time. You cannot eliminate COD returns completely, but you can bring them down with clearer listings, confirmation habits and delivery rules that match how customers really buy.',
+    sections: [
+      {
+        heading: '1. Know what a “return” usually means',
+        paragraphs: [
+          'Many so-called returns never leave the warehouse as a failed delivery: the customer cancels after checkout, refuses the parcel at the door, gives a wrong number or is unreachable. Treat confirmation, address quality and delivery timing as part of the same problem — not only packing.',
+        ],
+        bullets: [
+          'Customer cancels before the courier picks up',
+          'Phone unreachable or wrong number',
+          'Customer refuses on delivery (“I did not order” / “too expensive”)',
+          'Address incomplete so the courier cannot find the place',
+        ],
+      },
+      {
+        heading: '2. Make the product page do the hard work',
+        paragraphs: [
+          'Returns spike when the parcel does not match what the customer imagined. Photos from every important angle, real measurements, material notes and who the product is for reduce surprise. Show the final payable amount clearly — product price plus delivery — so COD does not feel like a trap at the door.',
+        ],
+      },
+      {
+        heading: '3. Confirm high-risk orders before shipping',
+        paragraphs: [
+          'A short call or WhatsApp confirmation still pays for itself on larger COD orders. Ask for the full address landmark, preferred delivery window and that the receiver will be available. If the customer hesitates or the number rings out twice, pause the shipment instead of paying a failed-delivery fee.',
+        ],
+        flow: [
+          'New COD order arrives',
+          'Check phone format and city/area',
+          'Confirm by call or message when the order is large or looks odd',
+          'Only then hand over to the courier',
+        ],
+      },
+      {
+        heading: '4. Use delivery rules that lower refusal',
+        bullets: [
+          'Offer a free-delivery threshold so customers add a second item instead of a low-value single order that is easy to refuse',
+          'Turn COD off for very remote zones where courier success is weak, and keep prepaid there',
+          'Show inside-Dhaka and outside-Dhaka charges on the store so the total is known before checkout',
+          'Share the order tracking link as soon as you ship so customers expect the courier',
+        ],
+      },
+      {
+        heading: '5. Pack for first impressions',
+        paragraphs: [
+          'A crushed box or missing size sticker invites refusal. Use a plain outer pack, include a simple packing slip with the order reference, and match the size or colour written on the invoice. If you sell apparel, a small care card reduces “it looks cheap” reactions at the door.',
+        ],
+      },
+      {
+        heading: '6. Watch your own numbers every week',
+        paragraphs: [
+          'Pull last week’s orders and mark which ones failed after handover. Patterns show up fast: one product with weak photos, one upazila with repeated unreachable numbers, or evenings when your confirmation calls stop. Fix the top pattern first before changing your whole store.',
+        ],
+      },
+      {
+        heading: 'How Ecomesta helps',
+        paragraphs: [
+          'In Ecomesta you can set delivery charges by zone, allow or block Cash on Delivery per shipping method, and share order tracking with customers. Keeping checkout, delivery rules and tracking on one store makes confirmation and follow-up much easier than juggling Messenger threads alone.',
+        ],
+      },
+    ],
+    related: [
+      { href: '/blog/cash-on-delivery-vs-online-payment', label: 'COD vs online payment' },
+      { href: '/blog/delivery-charges-bangladesh-online-store', label: 'How to set delivery charges' },
+      { href: '/features/order-tracking', label: 'Order tracking for customers' },
+    ],
+  },
 ];
 
 export function formatPostDate(iso: string): string {
