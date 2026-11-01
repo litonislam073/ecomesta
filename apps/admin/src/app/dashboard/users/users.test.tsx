@@ -49,6 +49,13 @@ const sampleUser = {
   status: 'ACTIVE' as const,
   emailVerifiedAt: '2026-01-01T00:00:00.000Z',
   lastLoginAt: '2026-02-01T00:00:00.000Z',
+  signupChannel: 'facebook' as const,
+  signupUtmSource: 'facebook',
+  signupUtmMedium: 'cpc',
+  signupUtmCampaign: 'spring',
+  signupReferrerHost: 'l.facebook.com',
+  signupLandingPath: '/pricing',
+  signupAffiliateCode: null,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
@@ -86,7 +93,7 @@ describe('Admin users', () => {
     await waitFor(() => expect(api.post).toHaveBeenCalledWith('/admin/badges/users-seen'));
   });
 
-  it('lists users with status and role columns', async () => {
+  it('lists users with status, role and source columns', async () => {
     api.get.mockResolvedValue({
       success: true,
       data: {
@@ -100,6 +107,9 @@ describe('Admin users', () => {
       await screen.findByRole('link', { name: 'owner@example.com' }),
     ).toBeInTheDocument();
     expect(screen.getByText('Olive Owner')).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Source' })).toBeInTheDocument();
+    expect(screen.getAllByText('Facebook').length).toBeGreaterThan(0);
+    expect(screen.getByText('facebook · spring')).toBeInTheDocument();
     expect(screen.getAllByText('ACTIVE').length).toBeGreaterThan(0);
   });
 
@@ -117,12 +127,14 @@ describe('Admin users', () => {
 
     await user.type(screen.getByLabelText('Search users'), 'owner');
     await user.selectOptions(screen.getByLabelText('Status filter'), 'SUSPENDED');
+    await user.selectOptions(screen.getByLabelText('Signup source filter'), 'facebook');
     await user.click(screen.getByRole('button', { name: 'Search' }));
 
     await waitFor(() => {
       const paths = api.get.mock.calls.map((call) => String(call[0]));
       expect(paths.some((path) => path.includes('status=SUSPENDED'))).toBe(true);
       expect(paths.some((path) => path.includes('search=owner'))).toBe(true);
+      expect(paths.some((path) => path.includes('signupChannel=facebook'))).toBe(true);
     });
   });
 
@@ -245,5 +257,15 @@ describe('Admin users', () => {
     render(<AdminUserDetailPage />);
     expect(await screen.findByText('Waiting to change to')).toBeInTheDocument();
     expect(screen.getByText('next@example.com')).toBeInTheDocument();
+  });
+
+  it('shows signup attribution on the user detail page', async () => {
+    api.get.mockResolvedValue({ success: true, data: sampleDetail });
+    render(<AdminUserDetailPage />);
+
+    expect(await screen.findByText('Signup source')).toBeInTheDocument();
+    expect(screen.getByText('Facebook')).toBeInTheDocument();
+    expect(screen.getByText('l.facebook.com')).toBeInTheDocument();
+    expect(screen.getByText('/pricing')).toBeInTheDocument();
   });
 });

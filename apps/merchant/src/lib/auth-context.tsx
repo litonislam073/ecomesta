@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from 'react';
 import { ApiError, api, configureApiClient } from '@/lib/api-client';
-import { readReferralCode } from '@/lib/referral';
+import { readSignupAttributionForApi } from '@/lib/signup-attribution';
 
 export interface AuthUser {
   id: string;
@@ -265,6 +265,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       lastName: string;
       phone?: string;
     }) => {
+      const attribution = readSignupAttributionForApi();
       const result = await api.post<{
         success: true;
         data: { accessToken: string; user: AuthUser };
@@ -276,7 +277,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           firstName: input.firstName,
           lastName: input.lastName,
           phone: input.phone,
-          referralCode: readReferralCode() ?? undefined,
+          ...attribution,
         },
         { token: null },
       );
@@ -289,10 +290,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithGoogle = useCallback(
     async (credential: string) => {
+      const attribution = readSignupAttributionForApi();
       const result = await api.post<{
         success: true;
         data: { accessToken: string; created: boolean; user: AuthUser };
-      }>('/auth/google', { credential, referralCode: readReferralCode() ?? undefined }, { token: null });
+      }>('/auth/google', { credential, ...attribution }, { token: null });
       setAccessToken(result.data.accessToken);
       assertMerchantProfile(result.data.user);
       setUser(result.data.user);

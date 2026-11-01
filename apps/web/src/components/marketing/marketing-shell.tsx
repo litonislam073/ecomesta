@@ -14,6 +14,10 @@ const ReferralCapture = dynamic(
   () => import('@/components/marketing/referral-capture').then((m) => m.ReferralCapture),
   { ssr: false },
 );
+const AttributionCapture = dynamic(
+  () => import('@/components/marketing/attribution-capture').then((m) => m.AttributionCapture),
+  { ssr: false },
+);
 
 export function MarketingShell({ children, locale = 'en' }: { children: ReactNode; locale?: MarketingLocale }) {
   return (
@@ -33,6 +37,7 @@ export function MarketingShell({ children, locale = 'en' }: { children: ReactNod
         {/* Platform website only: storefronts never render MarketingShell. Deferred for LCP. */}
         <AiSupportLauncher />
         <ReferralCapture />
+        <AttributionCapture />
       </SharedMarketingShell>
     </>
   );

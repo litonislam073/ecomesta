@@ -31,6 +31,13 @@ const USER_LIST_SELECT = {
   emailVerifiedAt: true,
   pendingEmail: true,
   lastLoginAt: true,
+  signupChannel: true,
+  signupUtmSource: true,
+  signupUtmMedium: true,
+  signupUtmCampaign: true,
+  signupReferrerHost: true,
+  signupLandingPath: true,
+  signupAffiliateCode: true,
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.UserSelect;
@@ -51,6 +58,7 @@ export class AdminUsersService {
     const where: Prisma.UserWhereInput = {};
     if (query.status) where.status = query.status;
     if (query.platformRole) where.platformRole = query.platformRole;
+    if (query.signupChannel) where.signupChannel = query.signupChannel;
     if (query.search?.trim()) {
       where.email = { contains: query.search.trim(), mode: 'insensitive' };
     }

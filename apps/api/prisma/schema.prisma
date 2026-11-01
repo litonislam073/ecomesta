@@ -251,6 +251,14 @@ model User {
   lastLoginAt      DateTime?    @map("last_login_at")
   /// Super Admins: when they last opened the Users list (drives the "new users" badge).
   adminUsersSeenAt DateTime?    @map("admin_users_seen_at")
+  /// First-touch signup channel (facebook, google, affiliate, direct, …). Never overwritten after create.
+  signupChannel       String? @map("signup_channel") @db.VarChar(32)
+  signupUtmSource     String? @map("signup_utm_source") @db.VarChar(100)
+  signupUtmMedium     String? @map("signup_utm_medium") @db.VarChar(100)
+  signupUtmCampaign   String? @map("signup_utm_campaign") @db.VarChar(150)
+  signupReferrerHost  String? @map("signup_referrer_host") @db.VarChar(255)
+  signupLandingPath   String? @map("signup_landing_path") @db.VarChar(255)
+  signupAffiliateCode String? @map("signup_affiliate_code") @db.VarChar(32)
   createdAt        DateTime     @default(now()) @map("created_at")
   updatedAt        DateTime     @updatedAt @map("updated_at")
 
@@ -272,6 +280,7 @@ model User {
 
   @@index([status])
   @@index([platformRole])
+  @@index([signupChannel])
   @@map("users")
 }
 

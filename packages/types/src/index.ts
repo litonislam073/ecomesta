@@ -1264,6 +1264,16 @@ export interface AdminStats {
   generatedAt: string;
 }
 
+export type SignupChannel =
+  | 'facebook'
+  | 'google'
+  | 'instagram'
+  | 'youtube'
+  | 'affiliate'
+  | 'direct'
+  | 'referral'
+  | 'other';
+
 export interface AdminUser {
   id: string;
   email: string;
@@ -1276,6 +1286,14 @@ export interface AdminUser {
   /** New address the user asked to switch to, waiting for its confirmation link. */
   pendingEmail?: string | null;
   lastLoginAt: string | null;
+  /** First-touch channel when the account was created (null for older users). */
+  signupChannel: SignupChannel | null;
+  signupUtmSource: string | null;
+  signupUtmMedium: string | null;
+  signupUtmCampaign: string | null;
+  signupReferrerHost: string | null;
+  signupLandingPath: string | null;
+  signupAffiliateCode: string | null;
   createdAt: string;
   updatedAt: string;
 }

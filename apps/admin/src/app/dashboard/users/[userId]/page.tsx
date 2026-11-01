@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import type { AdminUserDetail, PlatformRole } from '@ecomesta/types';
+import { formatSignupChannelLabel } from '@ecomesta/utils';
 import { Button } from '@ecomesta/ui';
 import { PageHeader } from '@/components/admin/page-header';
 import { StatusBadge } from '@/components/admin/status-badge';
@@ -173,6 +174,25 @@ export default function AdminUserDetailPage() {
                 <dd>{formatDateTime(user.lastLoginAt)}</dd>
                 <dt className="text-[var(--color-muted)]">Created</dt>
                 <dd>{formatDateTime(user.createdAt)}</dd>
+              </dl>
+            </Card>
+
+            <Card title="Signup source">
+              <dl className="grid grid-cols-2 gap-3 text-sm">
+                <dt className="text-[var(--color-muted)]">Channel</dt>
+                <dd>{formatSignupChannelLabel(user.signupChannel)}</dd>
+                <dt className="text-[var(--color-muted)]">UTM source</dt>
+                <dd className="break-all">{user.signupUtmSource ?? '—'}</dd>
+                <dt className="text-[var(--color-muted)]">UTM medium</dt>
+                <dd className="break-all">{user.signupUtmMedium ?? '—'}</dd>
+                <dt className="text-[var(--color-muted)]">UTM campaign</dt>
+                <dd className="break-all">{user.signupUtmCampaign ?? '—'}</dd>
+                <dt className="text-[var(--color-muted)]">Referrer host</dt>
+                <dd className="break-all">{user.signupReferrerHost ?? '—'}</dd>
+                <dt className="text-[var(--color-muted)]">Landing path</dt>
+                <dd className="break-all">{user.signupLandingPath ?? '—'}</dd>
+                <dt className="text-[var(--color-muted)]">Affiliate code</dt>
+                <dd>{user.signupAffiliateCode ?? '—'}</dd>
               </dl>
             </Card>
 

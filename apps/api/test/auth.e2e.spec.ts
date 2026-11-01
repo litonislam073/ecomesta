@@ -55,6 +55,11 @@ describe('Auth (e2e)', () => {
         password,
         firstName: 'Phase',
         lastName: 'Three',
+        utmSource: 'facebook',
+        utmMedium: 'cpc',
+        utmCampaign: 'launch',
+        referrerHost: 'l.facebook.com',
+        landingPath: '/pricing',
       })
       .expect(201);
 
@@ -65,6 +70,24 @@ describe('Auth (e2e)', () => {
     expect(res.body.data.user.passwordHash).toBeUndefined();
     expect(JSON.stringify(res.body)).not.toContain('passwordHash');
     expect(JSON.stringify(res.body)).not.toContain('tokenHash');
+
+    const stored = await prisma.user.findUniqueOrThrow({ where: { email } });
+    expect(stored.signupChannel).toBe('facebook');
+    expect(stored.signupUtmSource).toBe('facebook');
+    expect(stored.signupUtmCampaign).toBe('launch');
+    expect(stored.signupReferrerHost).toBe('l.facebook.com');
+    expect(stored.signupLandingPath).toBe('/pricing');
+  });
+
+  it('does not overwrite signup attribution on login', async () => {
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({ email, password })
+      .expect(200);
+
+    const stored = await prisma.user.findUniqueOrThrow({ where: { email } });
+    expect(stored.signupChannel).toBe('facebook');
+    expect(stored.signupUtmSource).toBe('facebook');
   });
 
   it('rejects duplicate email', async () => {

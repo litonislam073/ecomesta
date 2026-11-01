@@ -12,6 +12,17 @@ export const ADMIN_USER_STATUSES = [
 
 export const ADMIN_USER_SORT_FIELDS = ['createdAt', 'email'] as const;
 
+export const ADMIN_SIGNUP_CHANNELS = [
+  'facebook',
+  'google',
+  'instagram',
+  'youtube',
+  'affiliate',
+  'direct',
+  'referral',
+  'other',
+] as const;
+
 export class ListAdminUsersQueryDto extends AdminPaginationQueryDto {
   @ApiPropertyOptional({ description: 'Partial email match' })
   @IsOptional()
@@ -28,6 +39,11 @@ export class ListAdminUsersQueryDto extends AdminPaginationQueryDto {
   @IsOptional()
   @IsIn(Object.values(PlatformRole))
   platformRole?: PlatformRole;
+
+  @ApiPropertyOptional({ enum: ADMIN_SIGNUP_CHANNELS })
+  @IsOptional()
+  @IsIn(ADMIN_SIGNUP_CHANNELS)
+  signupChannel?: (typeof ADMIN_SIGNUP_CHANNELS)[number];
 
   @ApiPropertyOptional({ enum: ADMIN_USER_SORT_FIELDS })
   @IsOptional()

@@ -8,8 +8,9 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { MembershipStatus, PlatformRole, UserStatus } from '@prisma/client';
+import { MembershipStatus, PlatformRole, Prisma, UserStatus } from '@prisma/client';
 import type { Request, Response } from 'express';
+import { normalizeSignupAttribution, type SignupAttributionInput } from '@ecomesta/utils';
 import { clientIp } from '../../common/utils/request-host.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AffiliatesService } from '../affiliates/affiliates.service';
@@ -20,6 +21,7 @@ import { GoogleAuthDto } from './dto/google-auth.dto';
 import { LoginDto } from './dto/login.dto';
 import { GoogleIdTokenVerifier } from './google-id-token.verifier';
 import { RegisterDto } from './dto/register.dto';
+import type { SignupAttributionFieldsDto } from './dto/signup-attribution.dto';
 import type {
   AccessTokenPayload,
   AuthClientAudience,
@@ -66,6 +68,7 @@ export class AuthService {
     }
 
     const passwordHash = await this.passwordService.hash(dto.password);
+    const attribution = this.signupAttributionData(dto, dto.referralCode);
     const user = await this.prisma.$transaction(async (tx) => {
       const created = await tx.user.create({
         data: {
@@ -76,6 +79,7 @@ export class AuthService {
           phone: dto.phone,
           platformRole: PlatformRole.USER,
           status: UserStatus.ACTIVE,
+          ...attribution,
         },
       });
       await this.email.sendWelcomeEmail(created, tx);
@@ -186,6 +190,7 @@ export class AuthService {
       await this.enforceRateLimit(`register:${this.clientIp(req)}`, 10, 60);
       // Google-only accounts get an unguessable password; "Forgot password" can set a real one.
       const passwordHash = await this.passwordService.hash(randomBytes(32).toString('base64url'));
+      const attribution = this.signupAttributionData(dto, dto.referralCode);
       const user = await this.prisma.$transaction(async (tx) => {
         const createdUser = await tx.user.create({
           data: {
@@ -199,6 +204,7 @@ export class AuthService {
             status: UserStatus.ACTIVE,
             emailVerifiedAt: new Date(),
             lastLoginAt: new Date(),
+            ...attribution,
           },
         });
         await this.email.sendWelcomeEmail(createdUser, tx);
@@ -576,6 +582,40 @@ export class AuthService {
 
   private normalizeEmail(email: string): string {
     return email.trim().toLowerCase();
+  }
+
+  /** First-touch fields only — call from user create, never from login. */
+  private signupAttributionData(
+    fields: SignupAttributionFieldsDto,
+    referralCode?: string | null,
+  ): Pick<
+    Prisma.UserCreateInput,
+    | 'signupChannel'
+    | 'signupUtmSource'
+    | 'signupUtmMedium'
+    | 'signupUtmCampaign'
+    | 'signupReferrerHost'
+    | 'signupLandingPath'
+    | 'signupAffiliateCode'
+  > {
+    const input: SignupAttributionInput = {
+      utmSource: fields.utmSource,
+      utmMedium: fields.utmMedium,
+      utmCampaign: fields.utmCampaign,
+      referrerHost: fields.referrerHost,
+      landingPath: fields.landingPath,
+      affiliateCode: referralCode,
+    };
+    const normalized = normalizeSignupAttribution(input);
+    return {
+      signupChannel: normalized.channel,
+      signupUtmSource: normalized.utmSource,
+      signupUtmMedium: normalized.utmMedium,
+      signupUtmCampaign: normalized.utmCampaign,
+      signupReferrerHost: normalized.referrerHost,
+      signupLandingPath: normalized.landingPath,
+      signupAffiliateCode: normalized.affiliateCode,
+    };
   }
 
   private clientIp(req: Request): string {

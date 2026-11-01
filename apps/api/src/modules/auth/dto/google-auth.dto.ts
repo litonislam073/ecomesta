@@ -1,7 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { SignupAttributionFieldsDto } from './signup-attribution.dto';
 
-export class GoogleAuthDto {
+export class GoogleAuthDto extends SignupAttributionFieldsDto {
   @ApiProperty({ description: 'ID token (credential) returned by Google Identity Services' })
   @IsString()
   @MinLength(20)
