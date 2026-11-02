@@ -10,10 +10,12 @@ import {
   pageMeta,
 } from '../../common/utils/catalog.util';
 import { AuditService } from '../audit/audit.service';
+import { AccountEmailService } from '../auth/account-email.service';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   ListAdminUsersQueryDto,
+  UpdateUserEmailDto,
   UpdateUserPlatformRoleDto,
   UpdateUserStatusDto,
 } from './dto/admin-user.dto';
@@ -27,7 +29,15 @@ const USER_LIST_SELECT = {
   platformRole: true,
   status: true,
   emailVerifiedAt: true,
+  pendingEmail: true,
   lastLoginAt: true,
+  signupChannel: true,
+  signupUtmSource: true,
+  signupUtmMedium: true,
+  signupUtmCampaign: true,
+  signupReferrerHost: true,
+  signupLandingPath: true,
+  signupAffiliateCode: true,
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.UserSelect;
@@ -38,6 +48,7 @@ export class AdminUsersService {
     private readonly prisma: PrismaService,
     private readonly authorization: AuthorizationService,
     private readonly audit: AuditService,
+    private readonly accountEmail: AccountEmailService,
   ) {}
 
   async list(actingUserId: string, query: ListAdminUsersQueryDto) {
@@ -47,6 +58,7 @@ export class AdminUsersService {
     const where: Prisma.UserWhereInput = {};
     if (query.status) where.status = query.status;
     if (query.platformRole) where.platformRole = query.platformRole;
+    if (query.signupChannel) where.signupChannel = query.signupChannel;
     if (query.search?.trim()) {
       where.email = { contains: query.search.trim(), mode: 'insensitive' };
     }
@@ -167,6 +179,14 @@ export class AdminUsersService {
       req,
     });
 
+    return { success: true as const, data: user };
+  }
+
+  /** Fixes a user's sign-in email (e.g. a typo at sign-up); the new address gets a confirmation link. */
+  async updateEmail(actingUserId: string, userId: string, dto: UpdateUserEmailDto, req?: Request) {
+    await this.authorization.assertSuperAdmin(actingUserId);
+    await this.accountEmail.setByAdmin(actingUserId, userId, dto.email, req);
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: USER_LIST_SELECT });
     return { success: true as const, data: user };
   }
 

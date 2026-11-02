@@ -7,6 +7,7 @@ export * from './theme-fonts.js';
 export * from './theme-menu.js';
 export * from './couriers.js';
 export * from './landing-pages/index.js';
+export * from './signup-attribution.js';
 
 export function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;

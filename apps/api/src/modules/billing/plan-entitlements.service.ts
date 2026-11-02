@@ -84,6 +84,10 @@ export class PlanEntitlementsService {
   async assertFeature(storeId: string, feature: PlanFeature, db: Db = this.prisma): Promise<void> {
     const tenantId = await this.tenantOfStore(storeId, db);
     const limits = await this.limitsForTenant(tenantId, db);
+    await this.assertFeatureIn(limits, feature);
+  }
+
+  private async assertFeatureIn(limits: PlanLimits | null, feature: PlanFeature): Promise<void> {
     if (!limits || limits[feature]) return;
     throw await this.upgradeRequired(
       `${FEATURE_NAMES[feature]} ${feature === 'allThemes' || feature === 'marketingTracking' ? 'is' : 'are'} not included in your plan.`,
@@ -102,7 +106,7 @@ export class PlanEntitlementsService {
     if (!limits || limits.maxProducts === null) return;
     await tx.$queryRaw`SELECT id FROM tenants WHERE id = ${tenantId}::uuid FOR UPDATE`;
     const used = await tx.product.count({
-      where: { store: { tenantId }, status: { not: ProductStatus.ARCHIVED } },
+      where: { store: { tenantId, deletedAt: null }, status: { not: ProductStatus.ARCHIVED } },
     });
     if (used + adding <= limits.maxProducts) return;
     const max = limits.maxProducts;
@@ -119,12 +123,13 @@ export class PlanEntitlementsService {
    * cannot both slip under the limit.
    */
   async assertLandingPageCapacity(tx: Prisma.TransactionClient, storeId: string): Promise<void> {
-    await this.assertFeature(storeId, 'landingPages', tx);
+    // One tenant + plan lookup serves both the feature check and the limit.
     const tenantId = await this.tenantOfStore(storeId, tx);
     const limits = await this.limitsForTenant(tenantId, tx);
+    await this.assertFeatureIn(limits, 'landingPages');
     if (!limits || limits.maxLandingPages === null) return;
     await tx.$queryRaw`SELECT id FROM tenants WHERE id = ${tenantId}::uuid FOR UPDATE`;
-    const used = await tx.landingPage.count({ where: { store: { tenantId } } });
+    const used = await tx.landingPage.count({ where: { store: { tenantId, deletedAt: null } } });
     if (used < limits.maxLandingPages) return;
     const max = limits.maxLandingPages;
     throw await this.upgradeRequired(
@@ -137,7 +142,7 @@ export class PlanEntitlementsService {
   async landingPagesUsage(storeId: string): Promise<{ allowed: boolean; max: number | null; used: number }> {
     const tenantId = await this.tenantOfStore(storeId, this.prisma);
     const limits = await this.limitsForTenant(tenantId);
-    const used = await this.prisma.landingPage.count({ where: { store: { tenantId } } });
+    const used = await this.prisma.landingPage.count({ where: { store: { tenantId, deletedAt: null } } });
     if (!limits) return { allowed: true, max: null, used };
     return { allowed: limits.landingPages, max: limits.landingPages ? limits.maxLandingPages : 0, used };
   }
@@ -156,7 +161,7 @@ export class PlanEntitlementsService {
     const rows = await tx.$queryRaw<Array<{ used: bigint }>>`
       SELECT COALESCE(SUM(m.size), 0)::bigint AS used
       FROM media m JOIN stores s ON s.id = m.store_id
-      WHERE s.tenant_id = ${tenantId}::uuid`;
+      WHERE s.tenant_id = ${tenantId}::uuid AND s.deleted_at IS NULL`;
     const used = Number(rows[0]?.used ?? 0);
     const max = limits.storageMb;
     if (used + addingBytes <= max * MB) return;

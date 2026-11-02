@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { AuthTokensModule } from '../auth-tokens/auth-tokens.module';
+import { AccountEmailService } from './account-email.service';
 import { AccountRecoveryService } from './account-recovery.service';
 import { AuthController } from './auth.controller';
 import { AuthRateLimitService } from './auth-rate-limit.service';
@@ -30,6 +31,7 @@ import { RolesGuard } from './guards/roles.guard';
   providers: [
     AuthService,
     AccountRecoveryService,
+    AccountEmailService,
     PasswordService,
     AuthRateLimitService,
     GoogleIdTokenVerifier,
@@ -37,6 +39,6 @@ import { RolesGuard } from './guards/roles.guard';
     RefreshTokenStrategy,
     RolesGuard,
   ],
-  exports: [AuthService, PasswordService, AccessTokenStrategy, RolesGuard],
+  exports: [AuthService, PasswordService, AccessTokenStrategy, RolesGuard, AccountEmailService],
 })
 export class AuthModule {}

@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { Button } from '@ecomesta/ui';
 
 export function ConfirmDialog({
@@ -12,6 +13,8 @@ export function ConfirmDialog({
   busy = false,
   onConfirm,
   onCancel,
+  children,
+  confirmDisabled = false,
 }: {
   open: boolean;
   title: string;
@@ -22,6 +25,9 @@ export function ConfirmDialog({
   busy?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  /** Extra fields shown above the buttons (a reason, a typed confirmation). */
+  children?: ReactNode;
+  confirmDisabled?: boolean;
 }) {
   if (!open) {
     return null;
@@ -41,6 +47,7 @@ export function ConfirmDialog({
         {description ? (
           <p className="mt-2 text-sm text-[var(--color-muted)]">{description}</p>
         ) : null}
+        {children ? <div className="mt-4 space-y-3">{children}</div> : null}
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="secondary" onClick={onCancel} disabled={busy}>
             {cancelLabel}
@@ -48,7 +55,7 @@ export function ConfirmDialog({
           <Button
             variant={danger ? 'danger' : 'primary'}
             onClick={onConfirm}
-            disabled={busy}
+            disabled={busy || confirmDisabled}
           >
             {busy ? 'Working…' : confirmLabel}
           </Button>

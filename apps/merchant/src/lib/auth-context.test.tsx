@@ -25,9 +25,25 @@ vi.mock('@/lib/api-client', async () => {
         // A rotated cookie: any refresh after the first is refused.
         if (refreshCalls > 1) throw new actual.ApiError(401, 'UNAUTHORIZED', 'Refresh token has been revoked');
         await new Promise<void>((resolve) => (releaseRefresh = resolve));
-        return { success: true, data: { accessToken: 'access-1' } };
+        return {
+          success: true,
+          data: {
+            accessToken: 'access-1',
+            user: {
+              id: 'u1',
+              email: 'm@example.com',
+              firstName: null,
+              lastName: null,
+              platformRole: 'USER',
+              status: 'ACTIVE',
+              memberships: { tenants: [], stores: [] },
+            },
+          },
+        };
       }),
-      get: vi.fn(async () => ({ success: true, data: { id: 'u1', email: 'm@example.com', platformRole: 'USER' } })),
+      get: vi.fn(async () => {
+        throw new Error('GET /auth/me should not run when refresh returns user');
+      }),
     },
   };
 });
@@ -40,6 +56,7 @@ function Probe() {
 describe('AuthProvider start-up refresh', () => {
   it('sends a single refresh even when React runs the start-up effect twice', async () => {
     refreshCalls = 0;
+    window.localStorage.setItem('ecomesta_signed_in', '1');
     render(
       <StrictMode>
         <AuthProvider>
@@ -51,5 +68,16 @@ describe('AuthProvider start-up refresh', () => {
     releaseRefresh();
     expect(await screen.findByText('signed in as m@example.com')).toBeInTheDocument();
     expect(refreshCalls).toBe(1);
+  });
+  it('skips the refresh request when this browser was never signed in', async () => {
+    refreshCalls = 0;
+    window.localStorage.removeItem('ecomesta_signed_in');
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+    expect(await screen.findByText('signed out')).toBeInTheDocument();
+    expect(refreshCalls).toBe(0);
   });
 });

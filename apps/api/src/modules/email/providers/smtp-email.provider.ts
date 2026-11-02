@@ -52,7 +52,7 @@ export class SmtpEmailProvider implements EmailProvider {
         host: settings.host,
         port: settings.port,
         secure: settings.secure,
-        requireTLS: !settings.secure,
+        requireTLS: settings.requireTls,
         auth:
           settings.user && settings.password
             ? { user: settings.user, pass: settings.password }

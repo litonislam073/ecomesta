@@ -54,7 +54,7 @@ describe('email providers', () => {
   it('sends through the SMTP transporter with the configured sender', async () => {
     const sendMail = jest.fn().mockResolvedValue({ messageId: '<id@example>' });
     const provider = new SmtpEmailProvider(
-      { host: 'smtp.example.com', port: 587, secure: false, user: 'u', password: 'p' },
+      { host: 'smtp.example.com', port: 587, secure: false, requireTls: true, user: 'u', password: 'p' },
       { email: 'no-reply@ecomesta.com', name: 'Ecomesta' },
       { sendMail } as unknown as Transporter,
     );
@@ -76,7 +76,7 @@ describe('email providers', () => {
       code: 'EAUTH',
     });
     const provider = new SmtpEmailProvider(
-      { host: 'smtp.example.com', port: 587, secure: false, user: 'smtp-user', password: 'S3cretPass' },
+      { host: 'smtp.example.com', port: 587, secure: false, requireTls: true, user: 'smtp-user', password: 'S3cretPass' },
       { email: 'no-reply@ecomesta.com', name: 'Ecomesta' },
       { sendMail: jest.fn().mockRejectedValue(secretError) } as unknown as Transporter,
     );
@@ -137,6 +137,17 @@ describe('email providers', () => {
       ).name,
     ).toBe('smtp');
     expect(() => createEmailProvider(configWith({ EMAIL_PROVIDER_MODE: 'smtp' }))).toThrow(/SMTP_HOST/);
+  });
+
+  it('skips STARTTLS for loopback SMTP (Mailpit) and requires it for real hosts', () => {
+    expect(configWith({ SMTP_HOST: 'localhost', SMTP_PORT: '1025' }).smtp()).toMatchObject({
+      host: 'localhost',
+      port: 1025,
+      requireTls: false,
+    });
+    expect(configWith({ SMTP_HOST: 'smtp.example.com', SMTP_PORT: '587' }).smtp()).toMatchObject({
+      requireTls: true,
+    });
   });
 
   it('exposes configuration status without SMTP credentials', () => {

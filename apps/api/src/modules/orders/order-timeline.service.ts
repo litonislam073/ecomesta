@@ -27,7 +27,10 @@ export class OrderTimelineService {
       cancelReason: string | null;
       createdAt: Date;
     };
-    payments: Pick<Payment, 'status' | 'createdAt' | 'updatedAt'>[];
+    payments: Array<
+      Pick<Payment, 'status' | 'createdAt' | 'updatedAt'> &
+        Partial<Pick<Payment, 'amount' | 'currency'>>
+    >;
     shipments: Pick<
       Shipment,
       | 'id'

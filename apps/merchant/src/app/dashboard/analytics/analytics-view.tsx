@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { StoreAnalytics } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
 import { BarChart, BarList } from '@/components/analytics/charts';
@@ -58,6 +58,11 @@ export default function AnalyticsView() {
   );
   const { data, error, loading, reload } = useStoreAnalytics(selectedStore?.id ?? null, range);
   const full = data?.full ?? true;
+  // A plan that locks long ranges can't keep a stale 90d/12m/custom choice: fall back to 30 days.
+  useEffect(() => {
+    const locked = (data && !data.full) || error?.upgrade;
+    if (locked && RANGE_PRESETS.find((p) => p.value === preset)?.full) setPreset('30d');
+  }, [data, error, preset]);
 
   if (storesLoading) return <LoadingState label="Loading analytics" />;
   if (!selectedStore) {

@@ -8,6 +8,8 @@ import { Button } from '@ecomesta/ui';
 import {
   CouponFormFields,
   emptyCouponForm,
+  validateCouponForm,
+  type CouponFormErrors,
   type CouponFormState,
 } from '@/components/coupons/coupon-form-fields';
 import { StoreScoped } from '@/components/catalog/store-scoped';
@@ -24,11 +26,18 @@ function NewCouponContent() {
   const { pushToast } = useToast();
   const [form, setForm] = useState<CouponFormState>(emptyCouponForm());
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<CouponFormErrors>({});
   const [busy, setBusy] = useState(false);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (!selectedStoreId || !canWrite) return;
+    const errors = validateCouponForm(form);
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      setError('Please fix the highlighted fields before creating the coupon.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -93,9 +102,10 @@ function NewCouponContent() {
       </div>
       <form
         onSubmit={onSubmit}
+        noValidate
         className="space-y-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-5"
       >
-        <CouponFormFields form={form} setForm={setForm} />
+        <CouponFormFields form={form} setForm={setForm} errors={fieldErrors} />
         {error ? (
           <p className="text-sm text-red-700" role="alert">
             {error}

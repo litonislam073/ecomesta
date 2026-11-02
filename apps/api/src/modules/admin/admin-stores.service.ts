@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, StoreStatus } from '@prisma/client';
 import type { Request } from 'express';
 import {
@@ -33,6 +33,8 @@ export class AdminStoresService {
     const where: Prisma.StoreWhereInput = {};
     if (query.status) where.status = query.status;
     if (query.tenantId) where.tenantId = query.tenantId;
+    if (query.deleted === 'live') where.deletedAt = null;
+    if (query.deleted === 'deleted') where.deletedAt = { not: null };
     const search = query.search?.trim();
     if (search) {
       where.OR = [
@@ -52,6 +54,8 @@ export class AdminStoresService {
           name: true,
           slug: true,
           status: true,
+          deletedAt: true,
+          deletedSlug: true,
           currency: true,
           createdAt: true,
           updatedAt: true,
@@ -78,6 +82,8 @@ export class AdminStoresService {
         slug: true,
         description: true,
         status: true,
+        deletedAt: true,
+        deletedSlug: true,
         currency: true,
         timezone: true,
         locale: true,
@@ -172,10 +178,13 @@ export class AdminStoresService {
 
     const existing = await this.prisma.store.findUnique({
       where: { id: storeId },
-      select: { id: true, slug: true, status: true, tenantId: true },
+      select: { id: true, slug: true, status: true, tenantId: true, deletedAt: true },
     });
     if (!existing) {
       throw new NotFoundException('Store not found');
+    }
+    if (existing.deletedAt) {
+      throw new ConflictException('This store is deleted. Restore it before changing its status.');
     }
 
     const store = await this.prisma.store.update({

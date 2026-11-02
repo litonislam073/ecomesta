@@ -404,6 +404,8 @@ describe('Merchant settings', () => {
     it('shipping page summarises and links to shipping management', async () => {
       render(<ShippingSettingsPage />);
       expect(await screen.findByText('2 of 3')).toBeInTheDocument();
+      const zonesLabel = screen.getByText('Shipping zones');
+      expect(zonesLabel.closest('div')?.parentElement).toHaveTextContent(/Shipping zones\s*4/);
       expect(screen.getByRole('link', { name: 'Manage shipping' })).toHaveAttribute(
         'href',
         '/dashboard/shipping',

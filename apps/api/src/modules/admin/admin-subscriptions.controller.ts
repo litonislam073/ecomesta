@@ -21,6 +21,7 @@ import { AdminSubscriptionsService } from './admin-subscriptions.service';
 import {
   CreateSubscriptionDto,
   ListAdminSubscriptionsQueryDto,
+  UpdateSubscriptionPlanDto,
   UpdateSubscriptionStatusDto,
 } from './dto/admin-subscription.dto';
 
@@ -69,6 +70,22 @@ export class AdminSubscriptionsController {
     @Req() req: Request,
   ) {
     return this.subscriptions.updateStatus(
+      user.userId,
+      subscriptionId,
+      dto,
+      req,
+    );
+  }
+
+  @Patch(':subscriptionId/plan')
+  @ApiOperation({ summary: 'Change the plan and optional paid-through / trial dates' })
+  updatePlan(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('subscriptionId', ParseUUIDPipe) subscriptionId: string,
+    @Body() dto: UpdateSubscriptionPlanDto,
+    @Req() req: Request,
+  ) {
+    return this.subscriptions.updatePlan(
       user.userId,
       subscriptionId,
       dto,

@@ -23,7 +23,7 @@ export const FEATURE_PAGES: ContentPage[] = [
       {
         heading: 'From sign-up to first order',
         paragraphs: [
-          'Sign up with your store name and store address, choose a plan and billing period, and pay for it with bKash, Nagad, Rocket or Upay in the last step. Your store is created right away in Bangladeshi Taka with the Asia/Dhaka time zone, so you can start adding products while the Ecomesta team confirms your payment — usually within a few hours. The store goes live for customers once the payment is confirmed.',
+          'Sign up with your store name and store address, choose a plan and billing period, then in the last step either pay with bKash, Nagad, Rocket or Upay, or start a free trial when that plan offers one (shown on pricing and at sign-up). With payment, your store is created right away in Bangladeshi Taka with the Asia/Dhaka time zone, so you can start adding products while the Ecomesta team confirms your payment — usually within a few hours; it goes live for customers once payment is confirmed. With a trial, the store goes live straight away and you pay before the trial ends.',
         ],
         flow: [
           'Create your store',
@@ -89,7 +89,7 @@ export const FEATURE_PAGES: ContentPage[] = [
       {
         href: '/payments',
         label: 'Payments',
-        description: 'Cash on Delivery, SSLCommerz and Stripe.',
+        description: 'COD; SSLCommerz (Growth+); Stripe (Business).',
       },
     ],
   },
@@ -764,7 +764,7 @@ export const FEATURE_PAGES: ContentPage[] = [
       {
         question: 'Which themes are included in my plan?',
         answer:
-          'Starter includes the Default theme. Growth adds Minimal. Business includes every theme, including the premium ShopEase and Kenakata themes. On Starter or Growth you can buy a premium theme once from the Theme page.',
+          'Starter includes the Default theme. Growth includes all non-premium themes (Default and Minimal). Business includes those plus the premium ShopEase and Kenakata themes. On Starter or Growth you can buy a premium theme once from the Theme page.',
       },
       {
         question: 'How do I add images to my categories?',

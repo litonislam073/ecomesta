@@ -13,8 +13,10 @@ const routerPush = vi.fn();
 let canManage = true;
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: routerPush }),
+  useRouter: () => ({ push: routerPush, replace: vi.fn() }),
   useParams: () => ({ productId: 'prod-1' }),
+  usePathname: () => '/dashboard/products',
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock('next/link', () => ({

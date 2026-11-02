@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
 import { BillingCycle, ManualPaymentMethod } from '@prisma/client';
 import { Transform } from 'class-transformer';
 import {
@@ -127,3 +127,12 @@ export class OnboardStoreDto {
   @MaxLength(40)
   transactionId!: string;
 }
+
+/** A new store for the merchant's existing business, whose old store was deleted. */
+export class ReopenStoreDto extends PickType(OnboardStoreDto, [
+  'storeName',
+  'storeSlug',
+  'currency',
+  'timezone',
+  'locale',
+] as const) {}

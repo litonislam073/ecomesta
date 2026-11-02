@@ -50,10 +50,23 @@ export default function AdminSupportChatDetailPage() {
 
       {!loading && !error && chat ? (
         <>
-          <PageHeader title={chat.visitorName} description={`Chat started ${formatDateTime(chat.createdAt)}`} />
+          <PageHeader
+            title={chat.visitorName}
+            description={
+              chat.source === 'CONTACT_FORM'
+                ? `Contact form · ${formatDateTime(chat.createdAt)}`
+                : `Chat started ${formatDateTime(chat.createdAt)}`
+            }
+          />
 
           <Card>
             <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <dt className="text-[var(--color-muted)]">Source</dt>
+                <dd className="font-semibold">
+                  {chat.source === 'CONTACT_FORM' ? 'Contact form' : 'Chat'}
+                </dd>
+              </div>
               <div>
                 <dt className="text-[var(--color-muted)]">Phone</dt>
                 <dd className="font-semibold">
@@ -79,8 +92,18 @@ export default function AdminSupportChatDetailPage() {
                 <dd className="font-semibold">{chat.messageCount}</dd>
               </div>
               <div>
-                <dt className="text-[var(--color-muted)]">Asked for a person</dt>
-                <dd className="font-semibold">{chat.handoffReference ? `Yes · #${chat.handoffReference}` : 'No'}</dd>
+                <dt className="text-[var(--color-muted)]">
+                  {chat.source === 'CONTACT_FORM' ? 'Reference' : 'Asked for a person'}
+                </dt>
+                <dd className="font-semibold">
+                  {chat.source === 'CONTACT_FORM'
+                    ? chat.handoffReference
+                      ? `#${chat.handoffReference}`
+                      : '—'
+                    : chat.handoffReference
+                      ? `Yes · #${chat.handoffReference}`
+                      : 'No'}
+                </dd>
               </div>
               {chat.userAgent ? (
                 <div className="sm:col-span-2 lg:col-span-4">

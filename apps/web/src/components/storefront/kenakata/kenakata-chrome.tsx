@@ -8,10 +8,11 @@ import { withHomeMenuItem } from '@ecomesta/utils';
 import { CartDrawer } from '@/components/cart-drawer';
 import { useStoreThemeConfig } from '@/components/storefront/theme-provider';
 import { useCart } from '@/lib/cart';
+import { storeDisplayName } from '@/lib/store-display-name';
+import { storePaymentLabels } from '@/lib/store-payment-labels';
 import { withStoreParam } from '@/lib/theme';
 import { KIcon } from './icons';
 import { KK } from './kenakata-utils';
-
 
 const DEFAULT_MENU: ThemeMenuItem[] = [
   { label: 'All products', href: '/products' },
@@ -25,7 +26,7 @@ export function useKenakataStoreSlug(store: PublicStore) {
 /** Logo (or a bag mark in the brand colour) and the store name. */
 export function KenakataBrand({ store, inverse = false }: { store: PublicStore; inverse?: boolean }) {
   const config = useStoreThemeConfig();
-  const brandName = config.branding?.brandName?.trim() || store.name;
+  const brandName = storeDisplayName(store, config.branding?.brandName);
   const logoUrl = config.branding?.logoUrl ?? store.logoUrl;
   return (
     <span className="flex min-w-0 items-center gap-2.5">
@@ -267,16 +268,14 @@ const SOCIAL: Record<string, { label: string; path: string; fill?: boolean }> = 
   },
 };
 
-// Shown when the merchant keeps "payment icons" on in the theme editor, like the other themes.
-const PAYMENT_CHIPS = ['bKash', 'Nagad', 'Cards', 'Cash on delivery'];
-
 /** The full footer on the homepage; a compact one on the other pages, as in the design. */
 export function KenakataFooter({ store }: { store: PublicStore }) {
   const pathname = usePathname();
   const storeSlug = useKenakataStoreSlug(store);
   const config = useStoreThemeConfig();
   const footer = config.footer ?? {};
-  const brandName = config.branding?.brandName?.trim() || store.name;
+  const brandName = storeDisplayName(store, config.branding?.brandName);
+  const paymentChips = storePaymentLabels(store);
   const copyright = footer.copyright?.trim() || `© ${new Date().getFullYear()} ${brandName}. All rights reserved.`;
   const contact = store.contact ?? { email: null, phone: null, address: null };
   const links = footer.menuItems?.length ? footer.menuItems : DEFAULT_MENU;
@@ -362,9 +361,9 @@ export function KenakataFooter({ store }: { store: PublicStore }) {
         </div>
         <div className="mt-12 flex flex-col gap-5 border-t border-white/15 pt-6 text-sm md:flex-row md:items-center md:justify-between">
           <p>{copyright}</p>
-          {footer.showPaymentIcons !== false ? (
+          {footer.showPaymentIcons !== false && paymentChips.length > 0 ? (
             <ul className="flex flex-wrap gap-2" aria-label="Accepted payment methods">
-              {PAYMENT_CHIPS.map((chip) => (
+              {paymentChips.map((chip) => (
                 <li key={chip} className="rounded-lg border border-white/30 px-3 py-1.5 font-semibold text-white">
                   {chip}
                 </li>

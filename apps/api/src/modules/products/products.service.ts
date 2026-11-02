@@ -564,7 +564,8 @@ export class ProductsService {
 
         if (product.trackInventory) {
           // Prefer variant-level inventory once variants exist.
-          // Migrate product-level stock onto the first variant only.
+          // Explicit quantity wins; otherwise migrate product-level stock onto
+          // the first variant only (later variants default to 0).
           const productLevel = await tx.inventoryItem.findFirst({
             where: { storeId, productId, variantId: null },
           });
@@ -577,6 +578,10 @@ export class ProductsService {
             variantCount === 1 && productLevel
               ? productLevel.reservedQuantity
               : 0;
+          const quantity =
+            dto.quantity !== undefined && dto.quantity !== null
+              ? dto.quantity
+              : migrateQty;
 
           if (productLevel) {
             await tx.inventoryItem.delete({ where: { id: productLevel.id } });
@@ -587,8 +592,11 @@ export class ProductsService {
               storeId,
               productId,
               variantId: created.id,
-              quantity: migrateQty,
-              reservedQuantity: migrateReserved,
+              quantity,
+              reservedQuantity:
+                dto.quantity !== undefined && dto.quantity !== null
+                  ? 0
+                  : migrateReserved,
             },
           });
         }

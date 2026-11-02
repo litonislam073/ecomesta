@@ -1,9 +1,10 @@
 # Plans and sign-up payment
 
 Ecomesta has three plans (Starter ৳99, Growth ৳299, Business ৳699 a month;
-6-month and yearly periods save 10% and 25%). There is **no free trial**:
-since migration `20261006090000_paid_onboarding` every plan has
-`trialMonths: 0` and `DEFAULT_TRIAL_MONTHS` is 0.
+6-month and yearly periods save 10% and 25%). Each plan may offer a free
+trial via `trialDays` (`0`, `7`, or `30`; default `0` / `DEFAULT_TRIAL_DAYS`).
+Merchants **pay at sign-up**, or **start a free trial** when the chosen plan
+has `trialDays > 0` (shown on pricing and at onboarding).
 
 ## Signing up
 

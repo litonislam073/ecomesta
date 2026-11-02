@@ -15,27 +15,22 @@ const OPTIONS = [
   {
     name: 'Cash on Delivery',
     who: 'Customers who prefer to pay on arrival',
-    setup: 'No external account; allowed per delivery method',
+    setup: 'Every plan; allowed per delivery method',
   },
   {
     name: 'SSLCommerz',
-    who: 'Online payments in Bangladesh',
+    who: 'Online payments in Bangladesh (Growth and Business)',
     setup: 'Your SSLCommerz store ID and password',
   },
   {
     name: 'Stripe',
-    who: 'Card payments via Stripe Checkout',
+    who: 'International cards via Stripe Checkout (Business)',
     setup: 'Your Stripe secret key and webhook secret',
   },
   {
-    name: 'Bank transfer / other offline',
-    who: 'Manual payments you confirm yourself',
-    setup: 'Enable in payment settings',
-  },
-  {
-    name: 'Test payments',
-    who: 'Development and staging',
-    setup: 'No real money is moved',
+    name: 'Offline bank transfer / other',
+    who: 'Optional manual payments you confirm yourself',
+    setup: 'Enable in payment settings on any plan',
   },
 ];
 

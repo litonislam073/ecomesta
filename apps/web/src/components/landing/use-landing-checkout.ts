@@ -45,7 +45,7 @@ export const BD_PHONE = /^01[3-9]\d{8}$/;
 
 function choiceLabel(provider: string, method: string): { label: string; hint: string } {
   if (provider === 'COD') return { label: 'ক্যাশ অন ডেলিভারি', hint: 'পণ্য হাতে পেয়ে টাকা দিন' };
-  if (provider === 'SSL_COMMERZ') return { label: 'অনলাইন পেমেন্ট', hint: 'bKash, Nagad বা কার্ড' };
+  if (provider === 'SSL_COMMERZ') return { label: 'অনলাইন পেমেন্ট', hint: 'SSLCommerz-এর মাধ্যমে' };
   if (provider === 'STRIPE') return { label: 'কার্ড পেমেন্ট', hint: 'Visa / Mastercard' };
   if (provider === 'TEST') return { label: 'টেস্ট পেমেন্ট', hint: 'শুধু পরীক্ষার জন্য' };
   if (method === 'BANK_TRANSFER') return { label: 'ব্যাংক ট্রান্সফার', hint: 'অর্ডারের পর তথ্য জানানো হবে' };
@@ -223,8 +223,10 @@ export function useLandingCheckout() {
       return {};
     }
     if (!quote || quoteLoading || quoteError || !shippingMethodId) {
-      if (!shippingMethodId && quote && shippingMethods.length === 0) return { shipping: 'এই এলাকায় ডেলিভারি দেওয়া হয় না' };
-      setFormError('মোট দাম হিসাব হচ্ছে, একটু অপেক্ষা করুন।');
+      if (!shippingMethodId && quote && shippingMethods.length === 0) {
+        return { shipping: 'এই এলাকায় ডেলিভারি দেওয়া হয় না' };
+      }
+      // Button should stay disabled until ready; avoid treating wait as a failed submit.
       return {};
     }
     const choice = paymentChoices.find((c) => c.key === paymentKey);

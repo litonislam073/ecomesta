@@ -199,7 +199,7 @@ export function BrandingSection({
         {identity ? (
           <>
             <TextField
-              label="Brand name"
+              label="Display name (optional; blank = store name)"
               value={value.brandName ?? ""}
               disabled={disabled}
               onChange={(brandName) => onChange({ ...value, brandName })}

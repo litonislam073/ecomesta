@@ -172,4 +172,12 @@ export class ListAiSupportConversationsQueryDto {
   @IsString()
   @MaxLength(200)
   search?: string;
+
+  @ApiPropertyOptional({
+    enum: ['CHAT', 'CONTACT_FORM'],
+    description: 'Filter by inbox source (chat widget vs contact form)',
+  })
+  @IsOptional()
+  @IsIn(['CHAT', 'CONTACT_FORM'])
+  source?: 'CHAT' | 'CONTACT_FORM';
 }

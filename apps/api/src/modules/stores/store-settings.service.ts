@@ -241,7 +241,13 @@ export class StoreSettingsService {
       success: true as const,
       data: {
         payments: {
-          offlineMethods: ['COD', 'BANK_TRANSFER', 'OTHER'],
+          offlineMethods: [
+            ...(store.paymentCodEnabled ? (['COD'] as const) : []),
+            ...(store.paymentBankTransferEnabled
+              ? (['BANK_TRANSFER'] as const)
+              : []),
+            ...(store.paymentOtherEnabled ? (['OTHER'] as const) : []),
+          ],
           onlineProviders: providers.map((p) => ({
             provider: p.provider,
             mode: p.mode === 'live' ? 'live' : 'test',

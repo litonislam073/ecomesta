@@ -8,7 +8,7 @@ export const PLATFORM_HOME_METADATA: Metadata = buildMetadata({
   path: '/',
   title: 'Ecommerce Website Bangladesh: Online Store from ৳99/month | Ecomesta',
   description:
-    'Create your ecommerce website in Bangladesh from ৳99 a month. Cash on Delivery, bKash and Nagad payments, courier booking and delivery zones in one place.',
+    'Create your ecommerce website in Bangladesh from ৳99 a month. Cash on Delivery, SSLCommerz online payments, courier booking and delivery zones in one place.',
 });
 
 /**

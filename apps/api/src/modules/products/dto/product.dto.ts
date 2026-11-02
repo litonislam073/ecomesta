@@ -297,6 +297,18 @@ export class CreateVariantDto {
   @IsOptional()
   @IsIn([ProductStatus.DRAFT, ProductStatus.ACTIVE])
   status?: ProductStatus;
+
+  @ApiPropertyOptional({
+    description:
+      'Initial on-hand stock when the product tracks inventory. If omitted, first variant migrates product-level stock; later variants start at 0.',
+    minimum: 0,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(1_000_000_000)
+  quantity?: number;
 }
 
 export class UpdateVariantDto {

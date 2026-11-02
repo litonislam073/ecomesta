@@ -114,6 +114,91 @@ describe('buildOrderTimeline', () => {
     expect(types).not.toContain('CANCELLED');
   });
 
+  it('maps refund, fulfilled, completed, and distinct in-transit', () => {
+    const events = buildOrderTimeline({
+      order: {
+        ...baseOrder,
+        status: OrderStatus.COMPLETED,
+        paymentStatus: PaymentStatus.REFUNDED,
+        fulfillmentStatus: FulfillmentStatus.FULFILLED,
+      },
+      payments: [
+        {
+          status: PaymentStatus.REFUNDED,
+          createdAt: new Date('2026-01-01T10:00:01.000Z'),
+          updatedAt: new Date('2026-01-01T14:00:00.000Z'),
+          amount: { toString: () => '100.00' } as never,
+          currency: 'BDT',
+        },
+      ],
+      shipments: [
+        {
+          status: ShipmentStatus.IN_TRANSIT,
+          createdAt: new Date('2026-01-01T11:00:00.000Z'),
+          updatedAt: new Date('2026-01-01T12:30:00.000Z'),
+          shippedAt: new Date('2026-01-01T12:00:00.000Z'),
+          deliveredAt: null,
+          trackingNumber: 'TRK-2',
+        },
+      ],
+      audits: [
+        {
+          action: 'ORDER_STATUS_CHANGED',
+          entityType: 'Order',
+          entityId: 'ord-1',
+          metadata: { status: 'COMPLETED' },
+          createdAt: new Date('2026-01-01T13:00:00.000Z'),
+        },
+        {
+          action: 'ORDER_FULFILLMENT_STATUS_CHANGED',
+          entityType: 'Order',
+          entityId: 'ord-1',
+          metadata: { fulfillmentStatus: 'FULFILLED' },
+          createdAt: new Date('2026-01-01T11:30:00.000Z'),
+        },
+        {
+          action: 'ORDER_PAYMENT_STATUS_CHANGED',
+          entityType: 'Order',
+          entityId: 'ord-1',
+          metadata: {
+            paymentStatus: 'REFUNDED',
+            amount: '100.00',
+            currency: 'BDT',
+            reason: 'Customer request',
+          },
+          createdAt: new Date('2026-01-01T14:00:00.000Z'),
+        },
+        {
+          action: 'SHIPMENT_STATUS_CHANGED',
+          entityType: 'Shipment',
+          entityId: 'ship-1',
+          metadata: { to: 'SHIPPED' },
+          createdAt: new Date('2026-01-01T12:00:00.000Z'),
+        },
+        {
+          action: 'SHIPMENT_STATUS_CHANGED',
+          entityType: 'Shipment',
+          entityId: 'ship-1',
+          metadata: { to: 'IN_TRANSIT' },
+          createdAt: new Date('2026-01-01T12:30:00.000Z'),
+        },
+      ],
+    });
+
+    const types = events.map((e) => e.type);
+    expect(types).toContain('ORDER_COMPLETED');
+    expect(types).toContain('FULFILLED');
+    expect(types).toContain('PAYMENT_REFUNDED');
+    expect(types).toContain('SHIPPED');
+    expect(types).toContain('IN_TRANSIT');
+    expect(events.filter((e) => e.type === 'SHIPPED')).toHaveLength(1);
+    expect(events.find((e) => e.type === 'PAYMENT_REFUNDED')?.description).toContain(
+      '100.00',
+    );
+    expect(events.find((e) => e.type === 'IN_TRANSIT')?.label).toBe('In transit');
+    expect(events.find((e) => e.type === 'SHIPPED')?.label).toBe('Shipped');
+  });
+
   it('exposes cancel reason in cancelled description', () => {
     const events = buildOrderTimeline({
       order: {

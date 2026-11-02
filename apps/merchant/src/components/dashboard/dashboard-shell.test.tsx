@@ -91,6 +91,8 @@ describe('Dashboard shell responsive header (TE-07)', () => {
     expect(right).toHaveClass('min-w-0');
     expect(menu).toHaveClass('shrink-0');
     expect(screen.getByRole('button', { name: 'Log out' })).toHaveClass('shrink-0');
+    // Unfinished in-app Alerts stay off the chrome; account email lives under Settings → Notifications.
+    expect(screen.queryByRole('button', { name: /Alerts|Notifications/i })).toBeNull();
   });
 
   it('caps the page content at 1400px, centred, without capping the sidebar or header', async () => {

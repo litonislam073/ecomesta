@@ -3,7 +3,11 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Request } from 'express';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { REFRESH_COOKIE_NAME, type RefreshTokenPayload } from '../types/auth.types';
+import {
+  readRefreshCookie,
+  resolveAuthClient,
+  type RefreshTokenPayload,
+} from '../types/auth.types';
 
 @Injectable()
 export class RefreshTokenStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
@@ -11,10 +15,11 @@ export class RefreshTokenStrategy extends PassportStrategy(Strategy, 'jwt-refres
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (req: Request) => {
-          if (req?.cookies?.[REFRESH_COOKIE_NAME]) {
-            return req.cookies[REFRESH_COOKIE_NAME] as string;
-          }
-          const bodyToken = (req?.body as { refreshToken?: string } | undefined)?.refreshToken;
+          if (!req) return null;
+          const client = resolveAuthClient(req);
+          const fromCookie = readRefreshCookie(req.cookies, client);
+          if (fromCookie) return fromCookie;
+          const bodyToken = (req.body as { refreshToken?: string } | undefined)?.refreshToken;
           return bodyToken ?? null;
         },
       ]),
@@ -32,8 +37,13 @@ export class RefreshTokenStrategy extends PassportStrategy(Strategy, 'jwt-refres
       throw new UnauthorizedException('Invalid refresh token');
     }
 
+    const client = resolveAuthClient(req);
+    if (payload.aud && payload.aud !== client) {
+      throw new UnauthorizedException('Refresh token is not valid for this application');
+    }
+
     const rawToken =
-      (req.cookies?.[REFRESH_COOKIE_NAME] as string | undefined) ??
+      readRefreshCookie(req.cookies, client) ??
       (req.body as { refreshToken?: string } | undefined)?.refreshToken;
 
     if (!rawToken) {

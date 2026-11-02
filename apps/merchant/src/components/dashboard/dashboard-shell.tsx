@@ -144,22 +144,18 @@ function DashboardFrame({ children }: { children: ReactNode }) {
                 <GuideLink />
               </div>
               <div className="ml-auto flex min-w-0 items-center gap-3">
-                <button
-                  type="button"
-                  className="hidden shrink-0 rounded-md border border-[var(--color-border)] px-3 py-2 text-sm text-[var(--color-muted)] sm:inline-flex"
-                  aria-label="Notifications (coming soon)"
-                  title="Notifications coming soon"
+                <Link
+                  href="/dashboard/account"
+                  aria-label={`My account: ${displayName}, ${user.email}`}
+                  className="min-w-0 max-w-[14rem] rounded-md px-1 text-right hover:bg-[#f1f4f7] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] lg:max-w-[12rem] xl:max-w-[14rem]"
                 >
-                  Alerts
-                </button>
-                <div className="min-w-0 max-w-[14rem] text-right lg:max-w-[12rem] xl:max-w-[14rem]">
                   <p className="truncate text-sm font-medium" title={displayName}>
                     {displayName}
                   </p>
                   <p className="truncate text-xs text-[var(--color-muted)]" title={user.email}>
                     {user.email}
                   </p>
-                </div>
+                </Link>
                 <Button
                   variant="ghost"
                   className="shrink-0"

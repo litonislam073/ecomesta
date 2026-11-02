@@ -32,7 +32,6 @@ const FORM_COPY = {
     name: 'Your name',
     phone: 'Phone number',
     email: 'Email',
-    optional: '(optional)',
     topic: 'Topic',
     message: 'How can we help?',
     messagePlaceholder: 'Tell us about your business and what you need.',
@@ -41,8 +40,8 @@ const FORM_COPY = {
     sending: 'Sending…',
     writeMessage: 'Please write your message.',
     minLength: (min: number) => `Please write at least ${min} characters.`,
-    fieldErrors: null as null | Partial<Record<'name' | 'phone' | 'email', string>>,
-    thanks: (name: string) => `Thank you, ${name}! Your message has reached our team.`,
+    fieldErrors: null as null | Partial<Record<'name' | 'phone' | 'email', string>>,    thanks: (name: string) => `Thank you, ${name}! Your message has reached our team.`,
+    thanksPending: (name: string) => `Thank you, ${name}! Passing your message to our team…`,
     callYou: 'We will call you on',
     orEmail: 'or email',
     reference: 'Your reference:',
@@ -53,7 +52,6 @@ const FORM_COPY = {
     name: 'আপনার নাম',
     phone: 'মোবাইল নম্বর',
     email: 'ইমেইল',
-    optional: '(ঐচ্ছিক)',
     topic: 'বিষয়',
     message: 'কীভাবে সাহায্য করতে পারি?',
     messagePlaceholder: 'আপনার ব্যবসা আর কী দরকার, লিখুন।',
@@ -68,6 +66,7 @@ const FORM_COPY = {
       email: 'সঠিক ইমেইল ঠিকানা দিন।',
     } as null | Partial<Record<'name' | 'phone' | 'email', string>>,
     thanks: (name: string) => `ধন্যবাদ, ${name}! আপনার মেসেজ আমাদের টিমের কাছে পৌঁছেছে।`,
+    thanksPending: (name: string) => `ধন্যবাদ, ${name}! আপনার মেসেজ আমাদের টিমের কাছে পাঠানো হচ্ছে…`,
     callYou: 'আমরা কল করব এই নম্বরে:',
     orEmail: 'অথবা ইমেইল করব',
     reference: 'আপনার রেফারেন্স:',
@@ -103,7 +102,8 @@ export function ContactForm({ locale = 'en' }: { locale?: MarketingLocale }) {
   const [errors, setErrors] = useState<Partial<Record<Field, string>>>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [sent, setSent] = useState<{ reference: string; name: string; phone: string; email: string } | null>(null);
+  // `reference` is null while the handoff ACK is still on its way (optimistic success).
+  const [sent, setSent] = useState<{ reference: string | null; name: string; phone: string; email: string } | null>(null);
   const refs = {
     name: useRef<HTMLInputElement>(null),
     phone: useRef<HTMLInputElement>(null),
@@ -113,7 +113,7 @@ export function ContactForm({ locale = 'en' }: { locale?: MarketingLocale }) {
   const doneRef = useRef<HTMLHeadingElement>(null);
 
   function check(): Partial<Record<Field, string>> {
-    const found: Partial<Record<Field, string>> = { ...visitorDetailsErrors({ name, phone, email }) };
+    const found: Partial<Record<Field, string>> = { ...visitorDetailsErrors({ name, phone, email }, { requireEmail: true }) };
     if (copy.fieldErrors) {
       for (const field of ['name', 'phone', 'email'] as const) {
         if (found[field]) found[field] = copy.fieldErrors[field];
@@ -137,8 +137,14 @@ export function ContactForm({ locale = 'en' }: { locale?: MarketingLocale }) {
       return;
     }
     setBusy(true);
+    // The server answers as soon as the request is queued for the team (it does not
+    // wait for the email to be delivered), so show success right away and only fall
+    // back to the form — with everything still typed — if the handoff is refused.
+    const visitor = { name: name.trim(), phone: phone.trim(), email: email.trim() };
+    setSent({ reference: null, ...visitor });
+    window.setTimeout(() => doneRef.current?.focus(), 0);
     const result = await requestHumanSupport({
-      name: name.trim(),
+      name: visitor.name,
       phone,
       email,
       message: message.trim(),
@@ -148,11 +154,12 @@ export function ContactForm({ locale = 'en' }: { locale?: MarketingLocale }) {
     });
     setBusy(false);
     if (!result.ok) {
+      setSent(null);
       setError(result.message);
+      window.setTimeout(() => refs.message.current?.focus(), 0);
       return;
     }
-    setSent({ reference: result.reference, name: name.trim(), phone: phone.trim(), email: email.trim() });
-    window.setTimeout(() => doneRef.current?.focus(), 0);
+    setSent({ reference: result.reference, ...visitor });
   }
 
   function startOver() {
@@ -173,7 +180,7 @@ export function ContactForm({ locale = 'en' }: { locale?: MarketingLocale }) {
           ✓
         </span>
         <h3 ref={doneRef} tabIndex={-1} className="mt-4 text-xl font-semibold focus:outline-none">
-          {copy.thanks(sent.name)}
+          {sent.reference ? copy.thanks(sent.name) : copy.thanksPending(sent.name)}
         </h3>
         <p className="mt-2 text-[var(--color-muted)]">
           {copy.callYou} <strong className="text-[var(--color-ink)]">{sent.phone}</strong>
@@ -185,16 +192,20 @@ export function ContactForm({ locale = 'en' }: { locale?: MarketingLocale }) {
           ) : null}
           .
         </p>
-        <p className="mt-4 text-sm">
-          {copy.reference} <span className="font-mono font-semibold">{sent.reference}</span>
-        </p>
-        <button
-          type="button"
-          onClick={startOver}
-          className={`mt-5 rounded-sm text-sm font-semibold text-[var(--color-accent)] underline-offset-4 hover:underline ${MARKETING_FOCUS}`}
-        >
-          {copy.another}
-        </button>
+        {sent.reference ? (
+          <>
+            <p className="mt-4 text-sm">
+              {copy.reference} <span className="font-mono font-semibold">{sent.reference}</span>
+            </p>
+            <button
+              type="button"
+              onClick={startOver}
+              className={`mt-5 rounded-sm text-sm font-semibold text-[var(--color-accent)] underline-offset-4 hover:underline ${MARKETING_FOCUS}`}
+            >
+              {copy.another}
+            </button>
+          </>
+        ) : null}
       </div>
     );
   }
@@ -258,13 +269,14 @@ export function ContactForm({ locale = 'en' }: { locale?: MarketingLocale }) {
       <div className="grid gap-5 sm:grid-cols-2">
         <div>
         <label className="block text-sm font-medium text-[var(--color-ink)]">
-          {copy.email} <span className="font-normal text-[var(--color-muted)]">{copy.optional}</span>
+          <span className={required}>{copy.email}</span>
           <input
             ref={refs.email}
             className={`${fieldClass(Boolean(errors.email))} h-12`}
             type="email"
             inputMode="email"
             autoComplete="email"
+            required
             maxLength={200}
             value={email}
             aria-invalid={Boolean(errors.email) || undefined}
@@ -314,16 +326,18 @@ export function ContactForm({ locale = 'en' }: { locale?: MarketingLocale }) {
       </div>
       </div>
       {/* Hidden from people; bots that fill it are rejected. */}
-      <input
-        type="text"
-        name="website"
-        tabIndex={-1}
-        autoComplete="off"
-        aria-hidden="true"
-        className="absolute left-[-9999px] h-0 w-0 opacity-0"
-        value={website}
-        onChange={(e) => setWebsite(e.target.value)}
-      />
+      <div aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 overflow-hidden opacity-0">
+        <input
+          type="text"
+          name="website"
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+          data-honeypot="true"
+          value={website}
+          onChange={(e) => setWebsite(e.target.value)}
+        />
+      </div>
       {error ? (
         <p role="alert" className="rounded-lg border border-[#f1c9b8] bg-[#fdf3ee] px-4 py-3 text-sm text-[#a3441f]">
           {error}

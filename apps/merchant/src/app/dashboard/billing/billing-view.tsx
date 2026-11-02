@@ -232,13 +232,22 @@ export default function BillingView() {
         <Card title={`${sub.plan.name} Plan`} description={data.tenantName}>
           <div className="space-y-5">
             <StatusSummary data={data} sub={sub} />
-            <dl className="grid gap-4 border-t border-[var(--color-border)] pt-4 sm:grid-cols-3">
+            <dl className="grid gap-4 border-t border-[var(--color-border)] pt-4 sm:grid-cols-2 lg:grid-cols-4">
               <Detail label="Billing cycle" value={cycleLabel(sub)} />
               <Detail
                 label={sub.phase === 'ACTIVE' ? 'Price' : sub.phase === 'TRIAL' ? 'After trial' : 'Amount due'}
                 value={sub.phase === 'TRIAL' ? priceAfterTrial(sub) : formatBdt(sub.amountDue)}
               />
               <Detail label="Started" value={formatBillingDate(sub.startsAt)} />
+              {sub.phase === 'TRIAL' && sub.trialEndsAt ? (
+                <Detail label="Trial ends" value={formatBillingDate(sub.trialEndsAt)} />
+              ) : null}
+              {sub.endsAt ? (
+                <Detail label="Paid through" value={formatBillingDate(sub.endsAt)} />
+              ) : null}
+              {sub.paymentDueBy ? (
+                <Detail label="Payment due by" value={formatBillingDate(sub.paymentDueBy)} />
+              ) : null}
             </dl>
           </div>
         </Card>
@@ -348,6 +357,7 @@ export default function BillingView() {
             token={accessToken}
             trialEndsAt={sub?.phase === 'TRIAL' ? sub.trialEndsAt : null}
             onSubmitted={onPaymentSubmitted}
+            pendingPayment={pending}
             variant="compact"
             footer={
               <button

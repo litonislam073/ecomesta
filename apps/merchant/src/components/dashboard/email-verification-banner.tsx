@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Button } from '@ecomesta/ui';
 import { authErrorMessage } from '@/components/auth/auth-errors';
 import { api } from '@/lib/api-client';
@@ -41,7 +42,10 @@ export function EmailVerificationBanner() {
         ) : (
           <>
             Please confirm your email address <span className="font-semibold">{user.email}</span> so we can reach
-            you about your account.
+            you about your account.{' '}
+            <Link href="/dashboard/account" className="font-semibold text-[var(--color-accent)] underline-offset-2 hover:underline">
+              Wrong email? Change it
+            </Link>
           </>
         )}
       </p>

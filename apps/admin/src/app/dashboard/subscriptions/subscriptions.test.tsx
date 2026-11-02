@@ -116,8 +116,41 @@ describe('Admin subscriptions', () => {
     expect(screen.getByRole('columnheader', { name: 'Payment due by' })).toBeInTheDocument();
   });
 
+  function mockDetail(subscription: typeof sampleSubscription | typeof graceSubscription = graceSubscription) {
+    api.get.mockImplementation(async (path: string) => {
+      if (path.startsWith('/admin/plans')) {
+        return {
+          success: true,
+          data: {
+            items: [
+              {
+                id: 'plan-1',
+                name: 'Growth',
+                slug: 'growth',
+                active: true,
+                monthlyPrice: '999.00',
+                yearlyPrice: '8991.00',
+                trialDays: 7,
+              },
+              {
+                id: 'plan-2',
+                name: 'Business',
+                slug: 'business',
+                active: true,
+                monthlyPrice: '1999.00',
+                yearlyPrice: '17991.00',
+                trialDays: 0,
+              },
+            ],
+          },
+        };
+      }
+      return { success: true, data: subscription };
+    });
+  }
+
   it('shows trial length, amount due and payment deadline on the detail page', async () => {
-    api.get.mockResolvedValue({ success: true, data: graceSubscription });
+    mockDetail(graceSubscription);
     render(<AdminSubscriptionDetailPage />);
 
     expect(await screen.findByText('Grace period (payment due)')).toBeInTheDocument();
@@ -128,11 +161,33 @@ describe('Admin subscriptions', () => {
 
   it('warns that activation must follow a confirmed payment', async () => {
     const user = userEvent.setup();
-    api.get.mockResolvedValue({ success: true, data: graceSubscription });
+    mockDetail(graceSubscription);
     render(<AdminSubscriptionDetailPage />);
     await user.selectOptions(await screen.findByLabelText('Move to status'), 'ACTIVE');
     await user.click(screen.getByRole('button', { name: 'Change status' }));
     expect(screen.getByRole('dialog')).toHaveTextContent("Only activate after the tenant's payment has been confirmed");
+  });
+
+  it('lets an admin change the plan and audits via the plan endpoint', async () => {
+    const user = userEvent.setup();
+    mockDetail(sampleSubscription);
+    api.patch.mockResolvedValue({
+      success: true,
+      data: { ...sampleSubscription, planId: 'plan-2', plan: { ...sampleSubscription.plan, id: 'plan-2', name: 'Business', slug: 'business' } },
+    });
+    render(<AdminSubscriptionDetailPage />);
+
+    await user.selectOptions(await screen.findByLabelText('Plan'), 'plan-2');
+    await user.click(screen.getByRole('button', { name: 'Save plan changes' }));
+    expect(screen.getByRole('dialog')).toHaveTextContent('Change plan to Business?');
+    await user.click(screen.getByRole('button', { name: 'Confirm plan change' }));
+
+    await waitFor(() => {
+      expect(api.patch).toHaveBeenCalledWith('/admin/subscriptions/sub-1/plan', {
+        planId: 'plan-2',
+      });
+    });
+    expect(pushToast).toHaveBeenCalledWith('Subscription plan updated', 'success');
   });
 
   it('surfaces API errors on the list', async () => {
@@ -143,7 +198,7 @@ describe('Admin subscriptions', () => {
   });
 
   it('only offers transitions the API accepts from the current status', async () => {
-    api.get.mockResolvedValue({ success: true, data: sampleSubscription });
+    mockDetail(sampleSubscription);
     render(<AdminSubscriptionDetailPage />);
 
     const select = await screen.findByLabelText('Move to status');
@@ -156,7 +211,7 @@ describe('Admin subscriptions', () => {
 
   it('confirms before changing subscription status', async () => {
     const user = userEvent.setup();
-    api.get.mockResolvedValue({ success: true, data: sampleSubscription });
+    mockDetail(sampleSubscription);
     api.patch.mockResolvedValue({ success: true, data: sampleSubscription });
     render(<AdminSubscriptionDetailPage />);
 
@@ -186,7 +241,7 @@ describe('Admin subscriptions', () => {
 
   it('reports a rejected transition from the API', async () => {
     const user = userEvent.setup();
-    api.get.mockResolvedValue({ success: true, data: sampleSubscription });
+    mockDetail(sampleSubscription);
     api.patch.mockRejectedValue(
       new ApiError(
         422,

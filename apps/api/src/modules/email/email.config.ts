@@ -12,6 +12,8 @@ export interface SmtpSettings {
   host: string;
   port: number;
   secure: boolean;
+  /** False for local sinks (Mailpit) that speak plain SMTP without STARTTLS. */
+  requireTls: boolean;
   user: string | undefined;
   password: string | undefined;
 }
@@ -124,10 +126,14 @@ export class EmailConfigService {
     const host = this.value('SMTP_HOST');
     if (!host) return null;
     const port = Number(this.value('SMTP_PORT') ?? '587');
+    const secure = this.value('SMTP_SECURE') === 'true';
+    const loopback = LOOPBACK_HOSTS.has(host.toLowerCase());
     return {
       host,
       port: Number.isInteger(port) && port > 0 ? port : 587,
-      secure: this.value('SMTP_SECURE') === 'true',
+      secure,
+      // Real providers need STARTTLS on 587; Mailpit/local sinks speak plain SMTP.
+      requireTls: secure ? false : !loopback,
       user: this.value('SMTP_USER'),
       password: this.value('SMTP_PASSWORD'),
     };

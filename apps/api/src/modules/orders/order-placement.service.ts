@@ -17,7 +17,7 @@ import {
   ProductStatus,
   ShippingMethodType,
 } from '@prisma/client';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { moneyToString, parseMoney } from '../../common/utils/catalog.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CouponValidationService } from '../coupons/coupon-validation.service';
@@ -140,6 +140,17 @@ export class OrderPlacementService {
     });
   }
 
+  /** Looks an order up by its customer-facing number (e.g. EM-1001), scoped to the store. */
+  async findByOrderNumber(
+    storeId: string,
+    orderNumber: string,
+  ): Promise<PlacedOrder | null> {
+    return this.prisma.order.findFirst({
+      where: { storeId, orderNumber },
+      include: detailInclude,
+    });
+  }
+
   /**
    * Shared order placement used by merchant create and public checkout.
    * Prices and inventory are always loaded from the database inside a transaction.
@@ -257,6 +268,17 @@ export class OrderPlacementService {
           true,
         );
         const billingSnapshot = billingResolved ?? shippingSnapshot;
+
+        // Guest checkout: keep a store-scoped Customer row for the buyer's
+        // contact so guest orders show up in the merchant's customer list.
+        if (!customerId && params.requireActiveCatalog) {
+          customerId = await this.upsertGuestCustomer(
+            tx,
+            params.storeId,
+            shippingSnapshot,
+            billingSnapshot,
+          );
+        }
 
         type PreparedLine = {
           productId: string;
@@ -650,6 +672,68 @@ export class OrderPlacementService {
 
   moneyString(value: Prisma.Decimal): string {
     return moneyToString(value)!;
+  }
+
+  /**
+   * Finds (by email, then phone) or creates the store's Customer for a guest
+   * buyer. Always scoped to `storeId`. Returns null when the checkout has no
+   * email or phone to identify the buyer. Never throws on a unique-index race:
+   * the insert uses ON CONFLICT DO NOTHING so the surrounding order
+   * transaction is not aborted.
+   */
+  private async upsertGuestCustomer(
+    tx: Prisma.TransactionClient,
+    storeId: string,
+    shipping: NormalizedAddress,
+    billing: NormalizedAddress,
+  ): Promise<string | null> {
+    const email = (shipping.email ?? billing.email)?.trim().toLowerCase() || null;
+    const phone = (shipping.phone ?? billing.phone)?.trim() || null;
+    if (!email && !phone) {
+      return null;
+    }
+    const firstName = shipping.firstName ?? billing.firstName ?? null;
+    const lastName = shipping.lastName ?? billing.lastName ?? null;
+
+    const find = async () => {
+      if (email) {
+        const byEmail = await tx.customer.findFirst({
+          where: { storeId, email },
+          select: { id: true, firstName: true, lastName: true },
+        });
+        if (byEmail) return byEmail;
+      }
+      if (phone) {
+        return tx.customer.findFirst({
+          where: { storeId, phone },
+          select: { id: true, firstName: true, lastName: true },
+        });
+      }
+      return null;
+    };
+
+    let existing = await find();
+    if (!existing) {
+      await tx.$executeRaw`
+        INSERT INTO customers (id, store_id, email, phone, first_name, last_name, created_at, updated_at)
+        VALUES (${randomUUID()}::uuid, ${storeId}::uuid, ${email}, ${phone}, ${firstName}, ${lastName}, now(), now())
+        ON CONFLICT DO NOTHING
+      `;
+      existing = await find();
+      return existing?.id ?? null;
+    }
+
+    // Only fill in a missing name; never rewrite merchant-edited data.
+    if ((!existing.firstName && firstName) || (!existing.lastName && lastName)) {
+      await tx.customer.update({
+        where: { id: existing.id },
+        data: {
+          ...(!existing.firstName && firstName ? { firstName } : {}),
+          ...(!existing.lastName && lastName ? { lastName } : {}),
+        },
+      });
+    }
+    return existing.id;
   }
 
   private async resolveAddressSnapshot(

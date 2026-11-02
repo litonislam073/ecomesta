@@ -18,6 +18,7 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { Select } from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast';
 import { ApiError, api } from '@/lib/api-client';
+import { useAuth } from '@/lib/auth-context';
 
 const METHODS: { value: ManualPaymentMethod; label: string }[] = [
   { value: 'BKASH', label: 'bKash' },
@@ -131,10 +132,13 @@ function ApplyCard({ me, onApplied }: { me: AffiliateMe; onApplied: (me: Affilia
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const rejected = me.affiliate?.status === 'REJECTED';
+  // Only an explicit `false` blocks: payouts go to this person, so the email must be confirmed first.
+  const { user } = useAuth();
+  const unverified = user?.emailVerified === false;
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (submitting) return;
+    if (submitting || unverified) return;
     setError(null);
     setSubmitting(true);
     try {
@@ -188,7 +192,12 @@ function ApplyCard({ me, onApplied }: { me: AffiliateMe; onApplied: (me: Affilia
               {error}
             </p>
           ) : null}
-          <Button type="submit" disabled={submitting}>
+          {unverified ? (
+            <p role="status" className="rounded-md bg-[#fff6e0] p-3 text-sm text-[#8a5a00]">
+              Confirm your email address first. Use the link we sent you, then come back to apply.
+            </p>
+          ) : null}
+          <Button type="submit" disabled={submitting || unverified}>
             {submitting ? 'Sending...' : rejected ? 'Apply again' : 'Apply now'}
           </Button>
         </form>

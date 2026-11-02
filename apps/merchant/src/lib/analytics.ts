@@ -59,6 +59,13 @@ export function dayLabel(date: string): string {
   return DAY_LABEL.format(new Date(`${date}T00:00:00Z`));
 }
 
+const MONTH_YEAR_LABEL = new Intl.DateTimeFormat('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+
+/** "Mar 2026": axis ticks for long ranges, where day + month alone is ambiguous. */
+export function monthYearLabel(date: string): string {
+  return MONTH_YEAR_LABEL.format(new Date(`${date}T00:00:00Z`));
+}
+
 export function useStoreAnalytics(storeId: string | null, range: { from: string; to: string } | null) {
   const [data, setData] = useState<StoreAnalytics | null>(null);
   const [error, setError] = useState<{ message: string; upgrade: boolean } | null>(null);

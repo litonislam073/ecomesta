@@ -17,7 +17,7 @@ const DEFAULT_MENU: ThemeMenuItem[] = [
 ];
 
 export function StorefrontHeader({ store }: { store: PublicStore }) {
-  const { itemCount, setDrawerOpen } = useCart();
+  const { itemCount } = useCart();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const storeSlug = searchParams.get('store') ?? store.slug;
@@ -106,21 +106,11 @@ export function StorefrontHeader({ store }: { store: PublicStore }) {
               </Link>
             ) : null}
             {showCart ? (
-              <>
-                <Link href={withStoreParam('/cart', storeSlug)} className="sm:hidden">
-                  <Button variant="secondary" aria-label={`Cart, ${itemCount} items`}>
-                    Cart ({itemCount})
-                  </Button>
-                </Link>
-                <Button
-                  className="hidden sm:inline-flex"
-                  variant="secondary"
-                  onClick={() => setDrawerOpen(true)}
-                  aria-label={`Open cart, ${itemCount} items`}
-                >
+              <Link href={withStoreParam('/cart', storeSlug)}>
+                <Button variant="secondary" aria-label={`Cart, ${itemCount} items`}>
                   Cart ({itemCount})
                 </Button>
-              </>
+              </Link>
             ) : null}
           </div>
         </div>

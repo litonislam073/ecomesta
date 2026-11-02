@@ -503,8 +503,8 @@ function LandingPagesContent() {
             data-testid="landing-usage"
           >
             {usage.max === null
-              ? `${usage.used} pages · unlimited on your plan`
-              : `${usage.used} of ${usage.max} pages used`}
+              ? `${usage.used} ${usage.used === 1 ? "page" : "pages"} · unlimited on your plan`
+              : `${usage.used} of ${usage.max} ${usage.max === 1 ? "page" : "pages"} used`}
           </span>
         ) : null}
         {usage?.allowed && canWrite ? (
@@ -523,7 +523,8 @@ function LandingPagesContent() {
           role="status"
           className="rounded-lg border border-[#f1d9a6] bg-[#fff8ea] px-4 py-3 text-sm"
         >
-          You have used all {usage.max} landing pages on your plan. Delete one
+          You have used all {usage.max}{" "}
+          {usage.max === 1 ? "landing page" : "landing pages"} on your plan. Delete one
           you no longer use, or{" "}
           <Link
             href="/dashboard/billing"

@@ -1,16 +1,43 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
+type CacheEntry<T> = { at: number; data: T };
+
+/** BD geo reference data changes rarely — keep process-local lists warm for checkout. */
+const LOCATION_CACHE_TTL_MS = 30 * 60 * 1000;
+
 @Injectable()
 export class BangladeshLocationsService {
+  private divisionsCache: CacheEntry<
+    { id: string; code: string; name: string }[]
+  > | null = null;
+  private allDistrictsCache: CacheEntry<
+    { id: string; code: string; name: string; divisionId: string }[]
+  > | null = null;
+  private upazilasCache = new Map<
+    string,
+    CacheEntry<{ id: string; code: string; name: string; districtId: string }[]>
+  >();
+
   constructor(private readonly prisma: PrismaService) {}
 
+  private fresh<T>(entry: CacheEntry<T> | null | undefined): T | null {
+    if (!entry) return null;
+    if (Date.now() - entry.at > LOCATION_CACHE_TTL_MS) return null;
+    return entry.data;
+  }
+
   async listDivisions() {
+    const cached = this.fresh(this.divisionsCache);
+    if (cached) {
+      return { success: true as const, data: cached };
+    }
     const items = await this.prisma.bdDivision.findMany({
       where: { active: true },
       orderBy: { name: 'asc' },
       select: { id: true, code: true, name: true },
     });
+    this.divisionsCache = { at: Date.now(), data: items };
     return { success: true as const, data: items };
   }
 
@@ -24,11 +51,25 @@ export class BangladeshLocationsService {
       if (!division) {
         throw new NotFoundException('Division not found');
       }
+      const items = await this.prisma.bdDistrict.findMany({
+        where: { divisionId, active: true },
+        orderBy: { name: 'asc' },
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          divisionId: true,
+        },
+      });
+      return { success: true as const, data: items };
+    }
+
+    const cached = this.fresh(this.allDistrictsCache);
+    if (cached) {
+      return { success: true as const, data: cached };
     }
     const items = await this.prisma.bdDistrict.findMany({
-      where: divisionId
-        ? { divisionId, active: true }
-        : { active: true, division: { active: true } },
+      where: { active: true, division: { active: true } },
       orderBy: { name: 'asc' },
       select: {
         id: true,
@@ -37,10 +78,15 @@ export class BangladeshLocationsService {
         divisionId: true,
       },
     });
+    this.allDistrictsCache = { at: Date.now(), data: items };
     return { success: true as const, data: items };
   }
 
   async listUpazilas(districtId: string) {
+    const cached = this.fresh(this.upazilasCache.get(districtId));
+    if (cached) {
+      return { success: true as const, data: cached };
+    }
     const district = await this.prisma.bdDistrict.findFirst({
       where: { id: districtId, active: true },
       select: { id: true },
@@ -58,6 +104,7 @@ export class BangladeshLocationsService {
         districtId: true,
       },
     });
+    this.upazilasCache.set(districtId, { at: Date.now(), data: items });
     return { success: true as const, data: items };
   }
 

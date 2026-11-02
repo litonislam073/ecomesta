@@ -28,6 +28,7 @@ export default function AdminStoresPage() {
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('');
+  const [deleted, setDeleted] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,6 +41,7 @@ export default function AdminStoresPage() {
         limit: 20,
         search: query || undefined,
         status: status || undefined,
+        deleted: deleted || undefined,
       });
       const result = await api.get<{
         success: true;
@@ -52,7 +54,7 @@ export default function AdminStoresPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, query, status]);
+  }, [page, query, status, deleted]);
 
   useEffect(() => {
     void load();
@@ -96,6 +98,19 @@ export default function AdminStoresPage() {
             </option>
           ))}
         </Select>
+        <Select
+          className="w-auto"
+          value={deleted}
+          onChange={(e) => {
+            setPage(1);
+            setDeleted(e.target.value);
+          }}
+          aria-label="Deleted filter"
+        >
+          <option value="">Live and deleted</option>
+          <option value="live">Live stores</option>
+          <option value="deleted">Deleted stores</option>
+        </Select>
         <Button type="submit" variant="secondary">
           Search
         </Button>
@@ -137,7 +152,16 @@ export default function AdminStoresPage() {
                     >
                       {store.name}
                     </Link>
-                    <p className="text-xs text-[var(--color-muted)]">{store.slug}</p>
+                    <p className="text-xs text-[var(--color-muted)]">
+                      {store.deletedAt ? (
+                        <>
+                          <span className="mr-1 rounded bg-[#fde8e7] px-1.5 py-0.5 font-semibold text-[#b42318]">Deleted</span>
+                          was {store.deletedSlug}
+                        </>
+                      ) : (
+                        store.slug
+                      )}
+                    </p>
                   </td>
                   <td className="px-4 py-3">
                     <Link

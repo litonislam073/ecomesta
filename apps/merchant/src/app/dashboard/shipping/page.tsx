@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import type {
@@ -9,6 +9,7 @@ import type {
   ShippingZone,
 } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
+import { PlanLockedBanner } from '@/components/billing/plan-locked-banner';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
@@ -20,6 +21,7 @@ import { useToast } from '@/components/ui/toast';
 import { ApiError, api } from '@/lib/api-client';
 import { useCanManageStore } from '@/lib/permissions';
 import { useStoreContext } from '@/lib/store-context';
+import { useSubscription } from '@/lib/subscription-context';
 
 const TYPES: ShippingMethodType[] = ['FLAT', 'FREE', 'WEIGHT_BASED', 'EXTERNAL'];
 
@@ -67,10 +69,21 @@ const emptyZoneForm = (): ZoneForm => ({
   locations: [],
 });
 
+function zoneSaveError(err: unknown): string {
+  if (err instanceof ApiError && err.code === 'PLAN_UPGRADE_REQUIRED') {
+    return err.message;
+  }
+  return err instanceof ApiError ? err.message : 'Save failed';
+}
+
 export default function ShippingPage() {
   const { selectedStoreId } = useStoreContext();
   const canWrite = useCanManageStore();
   const { pushToast } = useToast();
+  const { data: subscription } = useSubscription();
+  const limits = subscription?.subscription?.plan.limits ?? null;
+  const zonesLocked = Boolean(limits && !limits.deliveryZones);
+  const canEditZones = canWrite && !zonesLocked;
 
   const [tab, setTab] = useState<'zones' | 'methods'>('zones');
   const [zones, setZones] = useState<ShippingZone[]>([]);
@@ -280,7 +293,7 @@ export default function ShippingPage() {
 
   async function onSaveZone(event: FormEvent) {
     event.preventDefault();
-    if (!selectedStoreId || !canWrite) return;
+    if (!selectedStoreId || !canEditZones) return;
     if (zoneForm.locations.length === 0) {
       pushToast('Add at least one location mapping', 'error');
       return;
@@ -309,9 +322,10 @@ export default function ShippingPage() {
       }
       setShowZoneForm(false);
       setEditingZone(null);
-      await load();
+      // Only the zone list changed: skip re-fetching shipping methods.
+      await loadZones();
     } catch (err) {
-      pushToast(err instanceof ApiError ? err.message : 'Save failed', 'error');
+      pushToast(zoneSaveError(err), 'error');
     } finally {
       setBusy(false);
     }
@@ -372,7 +386,7 @@ export default function ShippingPage() {
   }
 
   async function onDeleteZone() {
-    if (!selectedStoreId || !deleteZoneId || !canWrite) return;
+    if (!selectedStoreId || !deleteZoneId || !canEditZones) return;
     setBusy(true);
     try {
       await api.delete(`/stores/${selectedStoreId}/shipping-zones/${deleteZoneId}`);
@@ -410,9 +424,11 @@ export default function ShippingPage() {
         {canWrite ? (
           <div className="flex gap-2">
             {tab === 'zones' ? (
-              <Button type="button" onClick={openCreateZone}>
-                Add zone
-              </Button>
+              canEditZones ? (
+                <Button type="button" onClick={openCreateZone}>
+                  Add zone
+                </Button>
+              ) : null
             ) : (
               <Button type="button" onClick={openCreateMethod}>
                 Add method
@@ -421,6 +437,13 @@ export default function ShippingPage() {
           </div>
         ) : null}
       </div>
+
+      {zonesLocked ? (
+        <PlanLockedBanner
+          title="Delivery zones are available on the Growth and Business plans"
+          description="Map Bangladesh divisions, districts and upazilas to different shipping rates. Methods without a zone still work store-wide on every plan."
+        />
+      ) : null}
 
       <div className="flex gap-2 border-b border-[var(--color-border)] pb-2">
         <button
@@ -445,7 +468,7 @@ export default function ShippingPage() {
         </p>
       ) : null}
 
-      {tab === 'zones' && showZoneForm && canWrite ? (
+      {tab === 'zones' && showZoneForm && canEditZones ? (
         <form
           onSubmit={onSaveZone}
           className="space-y-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
@@ -743,7 +766,7 @@ export default function ShippingPage() {
                   <th className="px-4 py-3 font-medium">Priority</th>
                   <th className="px-4 py-3 font-medium">Locations</th>
                   <th className="px-4 py-3 font-medium">Status</th>
-                  {canWrite ? (
+                  {canEditZones ? (
                     <th className="px-4 py-3 font-medium">Actions</th>
                   ) : null}
                 </tr>
@@ -768,7 +791,7 @@ export default function ShippingPage() {
                     <td className="px-4 py-3">
                       {zone.active ? 'Active' : 'Inactive'}
                     </td>
-                    {canWrite ? (
+                    {canEditZones ? (
                       <td className="px-4 py-3">
                         <div className="flex gap-2">
                           <button
@@ -876,7 +899,7 @@ export default function ShippingPage() {
         open={Boolean(deleteMethodId)}
         title="Delete shipping method?"
         description="Customers will no longer see this method. Historical orders keep their shipping snapshot."
-        confirmLabel="Delete"
+        confirmLabel="Delete shipping method"
         onConfirm={() => void onDeleteMethod()}
         onCancel={() => setDeleteMethodId(null)}
         busy={busy}
@@ -885,7 +908,7 @@ export default function ShippingPage() {
         open={Boolean(deleteZoneId)}
         title="Delete shipping zone?"
         description="Methods in this zone become store-wide. Historical orders keep their zone name snapshot."
-        confirmLabel="Delete"
+        confirmLabel="Delete shipping zone"
         onConfirm={() => void onDeleteZone()}
         onCancel={() => setDeleteZoneId(null)}
         busy={busy}

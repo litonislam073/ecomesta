@@ -657,9 +657,14 @@ export interface OrderTimelineEvent {
     | 'PAYMENT_PENDING'
     | 'PAYMENT_PAID'
     | 'PAYMENT_FAILED'
+    | 'PAYMENT_REFUNDED'
+    | 'PAYMENT_PARTIALLY_REFUNDED'
     | 'PROCESSING'
+    | 'ORDER_COMPLETED'
+    | 'FULFILLED'
     | 'SHIPMENT_CREATED'
     | 'SHIPPED'
+    | 'IN_TRANSIT'
     | 'DELIVERED'
     | 'CANCELLED';
   label: string;
@@ -721,6 +726,11 @@ export interface PublicStore {
     requireEmail: boolean;
     requirePhone: boolean;
     allowOrderNotes: boolean;
+  };
+  /** Enabled payment methods for footer icons / trust badges (no secrets). */
+  payments?: {
+    offline: Array<'COD' | 'BANK_TRANSFER' | 'OTHER'>;
+    online: Array<'SSL_COMMERZ' | 'STRIPE' | 'TEST'>;
   };
   allowCustomerCancellation?: boolean;
   seo?: PublicStoreSeo;
@@ -1171,12 +1181,17 @@ export interface MerchantBillingPayment {
 }
 
 /** A submitted payment as the Super Admin reviews it. */
+/** Where a support inbox row came from. */
+export type AdminSupportConversationSource = 'CHAT' | 'CONTACT_FORM';
+
 /** A website support chat, as listed for Super Admins. */
 export interface AdminSupportConversationSummary {
   id: string;
   visitorName: string;
   visitorPhone: string;
   visitorEmail: string | null;
+  /** CHAT = assistant widget; CONTACT_FORM = /contact marketing form. */
+  source: AdminSupportConversationSource;
   messageCount: number;
   /** The visitor's first message, shortened for the list. */
   firstMessage: string | null;
@@ -1249,6 +1264,16 @@ export interface AdminStats {
   generatedAt: string;
 }
 
+export type SignupChannel =
+  | 'facebook'
+  | 'google'
+  | 'instagram'
+  | 'youtube'
+  | 'affiliate'
+  | 'direct'
+  | 'referral'
+  | 'other';
+
 export interface AdminUser {
   id: string;
   email: string;
@@ -1258,7 +1283,17 @@ export interface AdminUser {
   platformRole: PlatformRole;
   status: UserStatus;
   emailVerifiedAt: string | null;
+  /** New address the user asked to switch to, waiting for its confirmation link. */
+  pendingEmail?: string | null;
   lastLoginAt: string | null;
+  /** First-touch channel when the account was created (null for older users). */
+  signupChannel: SignupChannel | null;
+  signupUtmSource: string | null;
+  signupUtmMedium: string | null;
+  signupUtmCampaign: string | null;
+  signupReferrerHost: string | null;
+  signupLandingPath: string | null;
+  signupAffiliateCode: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -1370,6 +1405,9 @@ export interface AdminStoreListItem {
   name: string;
   slug: string;
   status: StoreStatus;
+  /** Set while the store is soft-deleted; `deletedSlug` is its old address. */
+  deletedAt?: string | null;
+  deletedSlug?: string | null;
   currency: string;
   createdAt: string;
   updatedAt: string;
@@ -1382,6 +1420,8 @@ export interface AdminStoreDetail {
   slug: string;
   description: string | null;
   status: StoreStatus;
+  deletedAt?: string | null;
+  deletedSlug?: string | null;
   currency: string;
   timezone: string;
   locale: string;
@@ -1751,6 +1791,10 @@ export interface StoreDomainList {
   meta: {
     total: number;
     platformRootDomain: string;
+    /** Host a custom domain's CNAME should point at. */
+    cnameTarget?: string | null;
+    /** IPv4 for apex A records, when the platform publishes one. */
+    aRecordTarget?: string | null;
     canonicalHostname: string;
   };
 }

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import type { CustomerAddress, CustomerDetail } from '@ecomesta/types';
+import type { CustomerAddress, CustomerDetail, OrderListItem } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -17,6 +17,21 @@ import { useToast } from '@/components/ui/toast';
 import { ApiError, api } from '@/lib/api-client';
 import { useStoreContext } from '@/lib/store-context';
 
+const COUNTRY_RE = /^[A-Z]{2}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+type ProfileErrors = Partial<Record<'firstName' | 'lastName' | 'email', string>>;
+type AddressErrors = Partial<Record<'addressLine1' | 'city' | 'country', string>>;
+
+function FieldError({ id, message }: { id: string; message?: string }) {
+  if (!message) return null;
+  return (
+    <p id={id} role="alert" className="text-xs text-[var(--color-danger)]">
+      {message}
+    </p>
+  );
+}
+
 export default function CustomerDetailPage() {
   const params = useParams<{ customerId: string }>();
   const router = useRouter();
@@ -29,6 +44,10 @@ export default function CustomerDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [addressToDelete, setAddressToDelete] = useState<CustomerAddress | null>(null);
+  const [profileErrors, setProfileErrors] = useState<ProfileErrors>({});
+  const [addressErrors, setAddressErrors] = useState<AddressErrors>({});
+  const [orders, setOrders] = useState<OrderListItem[] | null>(null);
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
@@ -77,9 +96,36 @@ export default function CustomerDetailPage() {
     void load();
   }, [load]);
 
+  // Recent orders for this customer (best effort: the profile works without it).
+  useEffect(() => {
+    if (!selectedStoreId || !customerId) return;
+    let cancelled = false;
+    api
+      .get<{ success: true; data: { items: OrderListItem[] } }>(
+        `/stores/${selectedStoreId}/orders?customerId=${encodeURIComponent(customerId)}&limit=10`,
+      )
+      .then((res) => {
+        if (!cancelled) setOrders(res.data.items);
+      })
+      .catch(() => {
+        if (!cancelled) setOrders([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedStoreId, customerId]);
+
   async function onSave(event: FormEvent) {
     event.preventDefault();
     if (!selectedStoreId) return;
+    const errors: ProfileErrors = {};
+    if (!form.firstName.trim()) errors.firstName = 'First name is required.';
+    if (!form.lastName.trim()) errors.lastName = 'Last name is required.';
+    if (form.email.trim() && !EMAIL_RE.test(form.email.trim())) {
+      errors.email = 'Enter a valid email address.';
+    }
+    setProfileErrors(errors);
+    if (Object.keys(errors).length > 0) return;
     setBusy(true);
     try {
       await api.patch(`/stores/${selectedStoreId}/customers/${customerId}`, {
@@ -101,6 +147,15 @@ export default function CustomerDetailPage() {
   async function onAddAddress(event: FormEvent) {
     event.preventDefault();
     if (!selectedStoreId) return;
+    const country = addressForm.country.trim().toUpperCase();
+    const errors: AddressErrors = {};
+    if (!addressForm.addressLine1.trim()) errors.addressLine1 = 'Address line 1 is required.';
+    if (!addressForm.city.trim()) errors.city = 'City is required.';
+    if (!COUNTRY_RE.test(country)) {
+      errors.country = 'Use a two-letter country code, for example BD.';
+    }
+    setAddressErrors(errors);
+    if (Object.keys(errors).length > 0) return;
     setBusy(true);
     try {
       await api.post(`/stores/${selectedStoreId}/customers/${customerId}/addresses`, {
@@ -110,9 +165,10 @@ export default function CustomerDetailPage() {
         city: addressForm.city.trim(),
         state: addressForm.state.trim() || undefined,
         postalCode: addressForm.postalCode.trim() || undefined,
-        country: addressForm.country.trim().toUpperCase(),
+        country,
         phone: addressForm.phone.trim() || undefined,
       });
+      setAddressErrors({});
       pushToast('Address added', 'success');
       setAddressForm({
         type: 'SHIPPING',
@@ -145,6 +201,7 @@ export default function CustomerDetailPage() {
       pushToast(err instanceof ApiError ? err.message : 'Address delete failed', 'error');
     } finally {
       setBusy(false);
+      setAddressToDelete(null);
     }
   }
 
@@ -205,30 +262,39 @@ export default function CustomerDetailPage() {
 
       <div className="grid gap-4 xl:grid-cols-2">
         <Card title="Profile">
-          <form className="grid gap-3" onSubmit={onSave}>
+          <form className="grid gap-3" onSubmit={onSave} noValidate>
             <label className="space-y-1 text-sm">
               <span>First name</span>
               <Input
-                required
+                aria-required="true"
+                aria-invalid={Boolean(profileErrors.firstName)}
+                aria-describedby={profileErrors.firstName ? 'profile-firstName-error' : undefined}
                 value={form.firstName}
                 onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
               />
+              <FieldError id="profile-firstName-error" message={profileErrors.firstName} />
             </label>
             <label className="space-y-1 text-sm">
               <span>Last name</span>
               <Input
-                required
+                aria-required="true"
+                aria-invalid={Boolean(profileErrors.lastName)}
+                aria-describedby={profileErrors.lastName ? 'profile-lastName-error' : undefined}
                 value={form.lastName}
                 onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))}
               />
+              <FieldError id="profile-lastName-error" message={profileErrors.lastName} />
             </label>
             <label className="space-y-1 text-sm">
               <span>Email</span>
               <Input
                 type="email"
+                aria-invalid={Boolean(profileErrors.email)}
+                aria-describedby={profileErrors.email ? 'profile-email-error' : undefined}
                 value={form.email}
                 onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
               />
+              <FieldError id="profile-email-error" message={profileErrors.email} />
             </label>
             <label className="space-y-1 text-sm">
               <span>Phone</span>
@@ -250,11 +316,34 @@ export default function CustomerDetailPage() {
           </form>
         </Card>
 
-        <Card title="Orders" description="Order history will appear after Phase 7.">
-          <EmptyState
-            title="No orders yet"
-            description="Orders are not available in this phase."
-          />
+        <Card title="Orders" description="Most recent orders placed by this customer.">
+          {orders === null ? (
+            <LoadingState label="Loading orders" />
+          ) : orders.length === 0 ? (
+            <EmptyState
+              title="No orders yet"
+              description="Orders this customer places will show up here."
+            />
+          ) : (
+            <ul className="divide-y divide-[var(--color-border)] text-sm">
+              {orders.map((order) => (
+                <li key={order.id} className="flex items-center justify-between gap-3 py-2">
+                  <Link
+                    href={`/dashboard/orders/${order.id}`}
+                    className="font-medium text-[var(--color-accent)] hover:underline"
+                  >
+                    {order.orderNumber}
+                  </Link>
+                  <span className="text-[var(--color-muted)]">
+                    {new Date(order.createdAt).toLocaleDateString()}
+                  </span>
+                  <span>
+                    {order.grandTotal} {order.currency}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </Card>
       </div>
 
@@ -284,7 +373,7 @@ export default function CustomerDetailPage() {
                     </div>
                     <Button
                       variant="secondary"
-                      onClick={() => void onDeleteAddress(address.id)}
+                      onClick={() => setAddressToDelete(address)}
                       disabled={busy}
                     >
                       Delete
@@ -297,6 +386,7 @@ export default function CustomerDetailPage() {
 
           <form
             onSubmit={onAddAddress}
+            noValidate
             className="grid gap-3 border-t border-[var(--color-border)] pt-4 md:grid-cols-2"
           >
             <label className="space-y-1 text-sm">
@@ -314,23 +404,41 @@ export default function CustomerDetailPage() {
             <label className="space-y-1 text-sm">
               <span>Country (ISO-2)</span>
               <Input
-                required
+                aria-required="true"
+                aria-invalid={Boolean(addressErrors.country)}
+                aria-describedby={
+                  addressErrors.country ? 'address-country-error' : 'address-country-hint'
+                }
                 maxLength={2}
+                autoCapitalize="characters"
+                placeholder="BD"
                 value={addressForm.country}
                 onChange={(e) =>
-                  setAddressForm((f) => ({ ...f, country: e.target.value }))
+                  setAddressForm((f) => ({ ...f, country: e.target.value.toUpperCase() }))
                 }
               />
+              {addressErrors.country ? (
+                <FieldError id="address-country-error" message={addressErrors.country} />
+              ) : (
+                <p id="address-country-hint" className="text-xs text-[var(--color-muted)]">
+                  Two-letter code. Defaults to BD (Bangladesh).
+                </p>
+              )}
             </label>
             <label className="space-y-1 text-sm md:col-span-2">
               <span>Address line 1</span>
               <Input
-                required
+                aria-required="true"
+                aria-invalid={Boolean(addressErrors.addressLine1)}
+                aria-describedby={
+                  addressErrors.addressLine1 ? 'address-line1-error' : undefined
+                }
                 value={addressForm.addressLine1}
                 onChange={(e) =>
                   setAddressForm((f) => ({ ...f, addressLine1: e.target.value }))
                 }
               />
+              <FieldError id="address-line1-error" message={addressErrors.addressLine1} />
             </label>
             <label className="space-y-1 text-sm md:col-span-2">
               <span>Address line 2</span>
@@ -344,12 +452,15 @@ export default function CustomerDetailPage() {
             <label className="space-y-1 text-sm">
               <span>City</span>
               <Input
-                required
+                aria-required="true"
+                aria-invalid={Boolean(addressErrors.city)}
+                aria-describedby={addressErrors.city ? 'address-city-error' : undefined}
                 value={addressForm.city}
                 onChange={(e) =>
                   setAddressForm((f) => ({ ...f, city: e.target.value }))
                 }
               />
+              <FieldError id="address-city-error" message={addressErrors.city} />
             </label>
             <label className="space-y-1 text-sm">
               <span>State</span>
@@ -391,11 +502,28 @@ export default function CustomerDetailPage() {
         open={confirmDelete}
         title="Delete this customer?"
         description="Addresses will be removed. Customers with order history cannot be deleted."
-        confirmLabel="Delete"
+        confirmLabel="Delete customer"
         danger
         busy={busy}
         onCancel={() => setConfirmDelete(false)}
         onConfirm={() => void onDeleteCustomer()}
+      />
+
+      <ConfirmDialog
+        open={Boolean(addressToDelete)}
+        title="Delete this address?"
+        description={
+          addressToDelete
+            ? `${addressToDelete.addressLine1}, ${addressToDelete.city} will be removed from this customer. Past orders keep their own copy of the address.`
+            : ''
+        }
+        confirmLabel="Delete address"
+        danger
+        busy={busy}
+        onCancel={() => setAddressToDelete(null)}
+        onConfirm={() => {
+          if (addressToDelete) void onDeleteAddress(addressToDelete.id);
+        }}
       />
     </div>
   );

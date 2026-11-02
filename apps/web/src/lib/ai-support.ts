@@ -95,13 +95,25 @@ export function isValidEmail(value: string): boolean {
   return EMAIL_PATTERN.test(value.trim());
 }
 
-/** Field errors for the start-chat form; empty when the details can be used. */
-export function visitorDetailsErrors(details: VisitorDetails): Partial<Record<keyof VisitorDetails, string>> {
+/**
+ * Field errors for visitor details; empty when the details can be used.
+ * Email is optional for the chat; pass `requireEmail` (contact form) to make it mandatory.
+ */
+export function visitorDetailsErrors(
+  details: VisitorDetails,
+  options: { requireEmail?: boolean } = {},
+): Partial<Record<keyof VisitorDetails, string>> {
   const errors: Partial<Record<keyof VisitorDetails, string>> = {};
   if (details.name.trim().length < 2) errors.name = 'Please enter your name.';
   if (!details.phone.trim()) errors.phone = 'Please enter your phone number.';
   else if (!isValidPhone(details.phone)) errors.phone = 'Please enter a valid phone number.';
-  if (details.email.trim() && !isValidEmail(details.email)) errors.email = 'Please enter a valid email or leave it empty.';
+  if (!details.email.trim()) {
+    if (options.requireEmail) errors.email = 'Please enter your email address.';
+  } else if (!isValidEmail(details.email)) {
+    errors.email = options.requireEmail
+      ? 'Please enter a valid email address.'
+      : 'Please enter a valid email or leave it empty.';
+  }
   return errors;
 }
 

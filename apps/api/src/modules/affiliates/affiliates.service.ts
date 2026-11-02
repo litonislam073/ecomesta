@@ -101,8 +101,15 @@ export class AffiliatesService {
   async apply(userId: string, dto: ApplyAffiliateDto, req?: Request) {
     const program = await this.settings.get();
     if (!program.enabled) throw new ForbiddenException('The affiliate program is not open right now.');
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { firstName: true, lastName: true, email: true } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true, email: true, emailVerifiedAt: true },
+    });
     if (!user) throw new NotFoundException('User not found');
+    // Payouts go to this person — require a confirmed email before accepting an application.
+    if (!user.emailVerifiedAt) {
+      throw new ForbiddenException('Confirm your email address before applying to the affiliate program.');
+    }
     const existing = await this.prisma.affiliate.findUnique({ where: { userId } });
     let affiliate: Affiliate;
     if (existing) {

@@ -34,6 +34,9 @@ export function PricingPlans({
   locale?: MarketingLocale;
 }) {
   const copy = PRICING_CARD_COPY[locale];
+  // Bangla pages show prices in Bangla digits (৳২,৬৯১), English pages in Latin digits.
+  const money = (amount: number) =>
+    locale === 'bn' ? `৳${Math.round(amount).toLocaleString('bn-BD')}` : formatBdt(amount);
   const [cycle, setCycle] = useState<BillingCycleCode>('MONTHLY');
   const [switched, setSwitched] = useState(false);
   const cycleIndex = Math.max(
@@ -133,13 +136,13 @@ export function PricingPlans({
                   key={switched ? cycle : undefined}
                   className={`inline-block font-display text-4xl tracking-tight text-[var(--color-ink)] ${switched ? 'em-price-in' : ''}`}
                 >
-                  {formatBdt(amount)}
+                  {money(amount)}
                 </span>
                 <span className="text-[var(--color-muted)]">{copy.suffix[cycle]}</span>
               </p>
               <p key={switched ? cycle : undefined} className={`mt-1 min-h-5 text-sm text-[var(--color-muted)] ${switched ? 'em-price-in' : ''}`}>
                 {price && price.months > 1
-                  ? copy.perMonthSaving(formatBdt(Math.round(price.effectiveMonthly)), price.discountPercent)
+                  ? copy.perMonthSaving(money(Math.round(price.effectiveMonthly)), price.discountPercent)
                   : copy.billedMonthly}
               </p>
               <ButtonLink
@@ -152,8 +155,8 @@ export function PricingPlans({
               </ButtonLink>
               <p className="mt-3 text-sm text-[var(--color-muted)]">
                 {plan.trialDays > 0
-                  ? copy.trialOrPay(plan.trialDays, formatBdt(amount), cycle)
-                  : copy.howToPay(formatBdt(amount), cycle)}
+                  ? copy.trialOrPay(plan.trialDays, money(amount), cycle)
+                  : copy.howToPay(money(amount), cycle)}
               </p>
               {plan.features.length > 0 ? (
                 <CheckList className="mt-6 border-t border-[var(--color-border)] pt-6 text-sm" items={plan.features.map(copy.translate)} />

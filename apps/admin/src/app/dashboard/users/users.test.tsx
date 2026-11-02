@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AdminUsersPage from '@/app/dashboard/users/page';
 import AdminUserDetailPage from '@/app/dashboard/users/[userId]/page';
@@ -49,6 +49,13 @@ const sampleUser = {
   status: 'ACTIVE' as const,
   emailVerifiedAt: '2026-01-01T00:00:00.000Z',
   lastLoginAt: '2026-02-01T00:00:00.000Z',
+  signupChannel: 'facebook' as const,
+  signupUtmSource: 'facebook',
+  signupUtmMedium: 'cpc',
+  signupUtmCampaign: 'spring',
+  signupReferrerHost: 'l.facebook.com',
+  signupLandingPath: '/pricing',
+  signupAffiliateCode: null,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
@@ -86,7 +93,7 @@ describe('Admin users', () => {
     await waitFor(() => expect(api.post).toHaveBeenCalledWith('/admin/badges/users-seen'));
   });
 
-  it('lists users with status and role columns', async () => {
+  it('lists users with status, role and source columns', async () => {
     api.get.mockResolvedValue({
       success: true,
       data: {
@@ -100,6 +107,9 @@ describe('Admin users', () => {
       await screen.findByRole('link', { name: 'owner@example.com' }),
     ).toBeInTheDocument();
     expect(screen.getByText('Olive Owner')).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Source' })).toBeInTheDocument();
+    expect(screen.getAllByText('Facebook').length).toBeGreaterThan(0);
+    expect(screen.getByText('facebook · spring')).toBeInTheDocument();
     expect(screen.getAllByText('ACTIVE').length).toBeGreaterThan(0);
   });
 
@@ -117,12 +127,14 @@ describe('Admin users', () => {
 
     await user.type(screen.getByLabelText('Search users'), 'owner');
     await user.selectOptions(screen.getByLabelText('Status filter'), 'SUSPENDED');
+    await user.selectOptions(screen.getByLabelText('Signup source filter'), 'facebook');
     await user.click(screen.getByRole('button', { name: 'Search' }));
 
     await waitFor(() => {
       const paths = api.get.mock.calls.map((call) => String(call[0]));
       expect(paths.some((path) => path.includes('status=SUSPENDED'))).toBe(true);
       expect(paths.some((path) => path.includes('search=owner'))).toBe(true);
+      expect(paths.some((path) => path.includes('signupChannel=facebook'))).toBe(true);
     });
   });
 
@@ -208,5 +220,52 @@ describe('Admin users', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Cannot demote the last active Super Admin. Promote another account first.',
     );
+  });
+
+  it('changes a mistyped sign-in email after confirmation', async () => {
+    const user = userEvent.setup();
+    api.get.mockResolvedValue({ success: true, data: sampleDetail });
+    api.patch.mockResolvedValue({ success: true, data: { ...sampleDetail, email: 'owner@gmail.com' } });
+    render(<AdminUserDetailPage />);
+
+    const field = await screen.findByLabelText('New email address');
+    await user.type(field, 'not-an-email');
+    await user.click(screen.getByRole('button', { name: 'Change email' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Enter a valid email address.');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    await user.clear(field);
+    await user.type(field, ' Owner@Gmail.com ');
+    await user.click(screen.getByRole('button', { name: 'Change email' }));
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveTextContent('Change sign-in email?');
+    expect(dialog).toHaveTextContent('owner@gmail.com');
+    expect(api.patch).not.toHaveBeenCalled();
+
+    await user.click(within(dialog).getByRole('button', { name: 'Change email' }));
+    await waitFor(() => {
+      expect(api.patch).toHaveBeenCalledWith('/admin/users/user-1/email', { email: 'owner@gmail.com' });
+    });
+    expect(pushToast).toHaveBeenCalledWith(
+      'Email changed to owner@gmail.com. A confirmation link was sent there.',
+      'success',
+    );
+  });
+
+  it('shows when a merchant is waiting to change their email', async () => {
+    api.get.mockResolvedValue({ success: true, data: { ...sampleDetail, pendingEmail: 'next@example.com' } });
+    render(<AdminUserDetailPage />);
+    expect(await screen.findByText('Waiting to change to')).toBeInTheDocument();
+    expect(screen.getByText('next@example.com')).toBeInTheDocument();
+  });
+
+  it('shows signup attribution on the user detail page', async () => {
+    api.get.mockResolvedValue({ success: true, data: sampleDetail });
+    render(<AdminUserDetailPage />);
+
+    expect(await screen.findByText('Signup source')).toBeInTheDocument();
+    expect(screen.getByText('Facebook')).toBeInTheDocument();
+    expect(screen.getByText('l.facebook.com')).toBeInTheDocument();
+    expect(screen.getByText('/pricing')).toBeInTheDocument();
   });
 });

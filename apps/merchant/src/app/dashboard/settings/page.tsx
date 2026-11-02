@@ -116,7 +116,19 @@ export default function SettingsOverviewPage() {
               href="/dashboard/settings/payments"
               title="Payments"
               lines={[
-                'Cash on delivery and bank transfer',
+                summary
+                  ? summary.payments.offlineMethods.length
+                    ? summary.payments.offlineMethods
+                        .map((m) =>
+                          m === 'COD'
+                            ? 'Cash on delivery'
+                            : m === 'BANK_TRANSFER'
+                              ? 'Bank transfer'
+                              : 'Other',
+                        )
+                        .join(', ')
+                    : 'No offline methods'
+                  : 'Loading payment methods…',
                 summary
                   ? summary.payments.onlineProviders.length
                     ? `Online: ${summary.payments.onlineProviders

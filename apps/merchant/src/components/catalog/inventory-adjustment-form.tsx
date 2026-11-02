@@ -39,7 +39,13 @@ export function InventoryAdjustmentForm({
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
-    const delta = Number.parseInt(quantity, 10);
+    const raw = quantity.trim();
+    // Reject decimals before parseInt can silently truncate (e.g. "1.5" → 1).
+    if (!/^-?\d+$/.test(raw)) {
+      setError('Enter a non-zero whole number (positive to add, negative to remove).');
+      return;
+    }
+    const delta = Number.parseInt(raw, 10);
     if (!Number.isInteger(delta) || delta === 0) {
       setError('Enter a non-zero whole number (positive to add, negative to remove).');
       return;
@@ -111,8 +117,10 @@ export function InventoryAdjustmentForm({
         <Input
           required
           value={quantity}
-          onChange={(e) => setQuantity(e.target.value)}
+          onChange={(e) => setQuantity(e.target.value.replace(/[^\d-]/g, ''))}
           inputMode="numeric"
+          step={1}
+          aria-invalid={Boolean(error)}
         />
       </label>
       <label className="block space-y-1 text-sm">

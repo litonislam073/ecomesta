@@ -200,5 +200,37 @@ describe('Checkout coupon apply UI', () => {
     });
     const quoted = postMock.mock.calls.filter((c) => String(c[0]).endsWith('/checkout/quote'));
     expect(quoted.at(-1)![1].couponCode).toBe('SUMMER10');
+    // "Coupon applied" appears only once the quote reflects the code.
+    expect(await screen.findByText('Coupon SUMMER10 applied.')).toBeInTheDocument();
+  });
+
+  it('does not claim a coupon is applied while the quote is still updating', async () => {
+    let resolveQuote: (() => void) | undefined;
+    postMock.mockImplementation(async (path: string, body?: unknown) => {
+      if (String(path).endsWith('/checkout/quote')) {
+        const withCoupon = Boolean((body as { couponCode?: string }).couponCode);
+        if (withCoupon) await new Promise<void>((r) => (resolveQuote = r));
+        return quoteFor(body, { discount: '2.00', currency: 'USD' });
+      }
+      return {
+        success: true,
+        data: { valid: true, code: 'SUMMER10', discount: '2.00', subtotal: '20.00', finalSubtotal: '18.00', currency: 'USD' },
+      };
+    });
+    const { CheckoutForm } = await import('@/components/checkout-form');
+    const user = userEvent.setup();
+    render(
+      <CartProvider storeId="s1" storeSlug="alpha" currency="USD">
+        <CheckoutForm />
+      </CartProvider>,
+    );
+    await user.type(await screen.findByLabelText(/coupon code/i), 'summer10');
+    await user.click(screen.getByRole('button', { name: /^apply$/i }));
+
+    await waitFor(() => expect(resolveQuote).toBeTruthy());
+    expect(screen.queryByText(/Coupon SUMMER10 applied/)).toBeNull();
+    expect(screen.getAllByText(/updating totals/i).length).toBeGreaterThan(0);
+    resolveQuote!();
+    expect(await screen.findByText('Coupon SUMMER10 applied.')).toBeInTheDocument();
   });
 });

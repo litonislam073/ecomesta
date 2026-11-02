@@ -126,7 +126,7 @@ describe('New-order badge and guest names (e2e)', () => {
     const order = await guestOrder(A, 'Rahima Akter', '01811222333');
     const list = (await http().get(`/api/v1/stores/${A.storeId}/orders?limit=50`).set(auth(A)).expect(200)).body.data.items;
     const row = list.find((item: { id: string }) => item.id === order.id);
-    expect(row).toMatchObject({ customer: null, viewed: false, contact: { name: 'Rahima Akter', phone: '01811222333' } });
+    expect(row).toMatchObject({ customer: { phone: '01811222333' }, viewed: false, contact: { name: 'Rahima Akter', phone: '01811222333' } });
     await http().post(`/api/v1/stores/${A.storeId}/orders/${order.id}/viewed`).set(auth(A)).expect(200);
     const again = (await http().get(`/api/v1/stores/${A.storeId}/orders?limit=50`).set(auth(A)).expect(200)).body.data.items;
     expect(again.find((item: { id: string }) => item.id === order.id)).toMatchObject({ viewed: true });

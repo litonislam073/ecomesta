@@ -95,7 +95,7 @@ describe('Admin audit logs', () => {
     render(<AuditLogsView />);
     await screen.findByText('TENANT_SUSPENDED');
 
-    await user.type(screen.getByLabelText('Action'), 'STORE_SUSPENDED');
+    await user.selectOptions(screen.getByLabelText('Action'), 'STORE_SUSPENDED');
     await user.click(screen.getByRole('button', { name: /apply filters/i }));
 
     await waitFor(() => {

@@ -13,6 +13,7 @@ import {
   parseMoney,
   parseOptionalMoney,
 } from '../../common/utils/catalog.util';
+import { fireAndForget } from '../../common/utils/fire-and-forget.util';
 import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -45,9 +46,11 @@ export class CouponsService {
     await this.authorization.assertStoreRole(userId, storeId, [
       StoreRole.STORE_MANAGER,
     ]);
-    const store = await this.requireStore(storeId);
-    await this.entitlements.assertFeature(storeId, 'coupons');
     const data = this.toCreateData(storeId, dto);
+    const [store] = await Promise.all([
+      this.requireStore(storeId),
+      this.entitlements.assertFeature(storeId, 'coupons'),
+    ]);
 
     let coupon: Coupon;
     try {
@@ -62,20 +65,23 @@ export class CouponsService {
       throw err;
     }
 
-    await this.audit.log({
-      action: 'COUPON_CREATED',
-      entityType: 'Coupon',
-      entityId: coupon.id,
-      userId,
-      tenantId: store.tenantId,
-      storeId,
-      metadata: {
-        code: coupon.code,
-        type: coupon.type,
-        value: moneyToString(coupon.value),
-      },
-      req,
-    });
+    fireAndForget(
+      this.audit.log({
+        action: 'COUPON_CREATED',
+        entityType: 'Coupon',
+        entityId: coupon.id,
+        userId,
+        tenantId: store.tenantId,
+        storeId,
+        metadata: {
+          code: coupon.code,
+          type: coupon.type,
+          value: moneyToString(coupon.value),
+        },
+        req,
+      }),
+      'coupon audit',
+    );
 
     return { success: true as const, data: this.toDto(coupon) };
   }
@@ -133,9 +139,12 @@ export class CouponsService {
     await this.authorization.assertStoreRole(userId, storeId, [
       StoreRole.STORE_MANAGER,
     ]);
-    const store = await this.requireStore(storeId);
-    const existing = await this.requireCoupon(storeId, couponId);
     const data = this.toUpdateData(dto);
+    const [store, , existing] = await Promise.all([
+      this.requireStore(storeId),
+      this.entitlements.assertFeature(storeId, 'coupons'),
+      this.requireCoupon(storeId, couponId),
+    ]);
 
     let coupon: Coupon;
     try {
@@ -154,20 +163,23 @@ export class CouponsService {
     }
 
     const deactivated = existing.active && coupon.active === false;
-    await this.audit.log({
-      action: deactivated ? 'COUPON_DEACTIVATED' : 'COUPON_UPDATED',
-      entityType: 'Coupon',
-      entityId: coupon.id,
-      userId,
-      tenantId: store.tenantId,
-      storeId,
-      metadata: {
-        code: coupon.code,
-        type: coupon.type,
-        active: coupon.active,
-      },
-      req,
-    });
+    fireAndForget(
+      this.audit.log({
+        action: deactivated ? 'COUPON_DEACTIVATED' : 'COUPON_UPDATED',
+        entityType: 'Coupon',
+        entityId: coupon.id,
+        userId,
+        tenantId: store.tenantId,
+        storeId,
+        metadata: {
+          code: coupon.code,
+          type: coupon.type,
+          active: coupon.active,
+        },
+        req,
+      }),
+      'coupon audit',
+    );
 
     return { success: true as const, data: this.toDto(coupon) };
   }

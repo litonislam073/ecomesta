@@ -12,7 +12,7 @@ const TILE_COLOURS = ['#e6efe9', '#f3e9dc', '#e4e9f2', '#f1e4e4', '#ede9f5', '#e
 
 const TRUST: { icon: KenakataIconName; title: string; text: string; tint: string }[] = [
   { icon: 'cash', title: 'Cash on delivery', text: 'Pay when your order arrives', tint: 'color-mix(in srgb, var(--color-accent) 14%, white)' },
-  { icon: 'phone', title: 'bKash and Nagad', text: 'Mobile payments supported', tint: '#f3e9dc' },
+  { icon: 'phone', title: 'Online payment', text: 'Where the store offers it', tint: '#f3e9dc' },
   { icon: 'returns', title: 'Easy returns', text: 'On eligible items', tint: '#e4e9f2' },
   { icon: 'shield', title: 'Genuine products', text: 'Checked before dispatch', tint: '#f1e4e4' },
 ];

@@ -1,5 +1,6 @@
-import { ConflictException, Injectable, UnprocessableEntityException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import {
+  BillingPaymentStatus,
   MembershipStatus,
   StoreRole,
   StoreStatus,
@@ -26,7 +27,14 @@ import {
   assertStoreSlugAvailable,
   isUniqueConstraintError,
 } from '../stores/store-slug';
-import { OnboardStoreDto } from './dto/onboard-store.dto';
+import { OnboardStoreDto, ReopenStoreDto } from './dto/onboard-store.dto';
+
+/** A plan in these states keeps the business's stores online. */
+const LIVE_SUBSCRIPTION_STATUSES: SubscriptionStatus[] = [
+  SubscriptionStatus.TRIALING,
+  SubscriptionStatus.ACTIVE,
+  SubscriptionStatus.PAST_DUE,
+];
 
 @Injectable()
 export class OnboardingService {
@@ -240,6 +248,142 @@ export class OnboardingService {
             }
           : null,
         payment: result.payment ? this.payments.toMerchantDto(result.payment) : null,
+      },
+    };
+  }
+
+  /**
+   * The merchant's own business that has no store left (a Super Admin deleted
+   * it), with the plan it is on. A new store opened there keeps that plan, so
+   * the merchant does not pay again.
+   */
+  async reusableBusiness(userId: string) {
+    const owned = await this.prisma.tenantUser.findMany({
+      where: { userId, role: TenantRole.OWNER, status: MembershipStatus.ACTIVE, tenant: { status: TenantStatus.ACTIVE } },
+      select: { tenant: { select: { id: true, name: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    for (const { tenant } of owned) {
+      const liveStores = await this.prisma.store.count({ where: { tenantId: tenant.id, deletedAt: null } });
+      if (liveStores > 0) continue;
+      const [subscription, pendingPayment] = await Promise.all([
+        this.prisma.subscription.findFirst({
+          where: { tenantId: tenant.id },
+          orderBy: { createdAt: 'desc' },
+          select: { status: true, plan: { select: { name: true, slug: true, configuration: true } } },
+        }),
+        this.prisma.billingPayment.findFirst({
+          where: { tenantId: tenant.id, status: BillingPaymentStatus.PENDING },
+          orderBy: { createdAt: 'desc' },
+          select: { plan: { select: { name: true, slug: true, configuration: true } } },
+        }),
+      ]);
+      const plan = subscription?.plan ?? pendingPayment?.plan ?? null;
+      return {
+        tenantId: tenant.id,
+        name: tenant.name,
+        plan,
+        // The plan is running, so the new store can go live straight away.
+        planActive: subscription !== null && LIVE_SUBSCRIPTION_STATUSES.includes(subscription.status),
+        awaitingPayment: pendingPayment !== null,
+      };
+    }
+    return null;
+  }
+
+  async getReusableBusiness(userId: string) {
+    const business = await this.reusableBusiness(userId);
+    return {
+      success: true as const,
+      data: business
+        ? {
+            name: business.name,
+            planName: business.plan?.name ?? null,
+            planActive: business.planActive,
+            awaitingPayment: business.awaitingPayment,
+          }
+        : null,
+    };
+  }
+
+  /** Opens a store in the merchant's existing business on the plan it already has. */
+  async reopenStore(userId: string, dto: ReopenStoreDto, req?: Request) {
+    const business = await this.reusableBusiness(userId);
+    if (!business) {
+      throw new NotFoundException('You have no business without a store. Create your store with a plan instead.');
+    }
+    await assertStoreSlugAvailable(this.prisma, dto.storeSlug);
+
+    const store = await this.prisma
+      .$transaction(async (tx) => {
+        const created = await tx.store.create({
+          data: {
+            tenantId: business.tenantId,
+            name: dto.storeName,
+            slug: dto.storeSlug,
+            currency: dto.currency ?? 'BDT',
+            timezone: dto.timezone ?? 'Asia/Dhaka',
+            locale: dto.locale ?? 'en-BD',
+            // Live when the plan is running; otherwise it waits offline and
+            // goes live once the next plan payment is approved.
+            status: business.planActive ? StoreStatus.ACTIVE : StoreStatus.INACTIVE,
+            awaitingFirstPayment: !business.planActive,
+          },
+        });
+        await tx.storeUser.create({
+          data: { storeId: created.id, userId, role: StoreRole.STORE_MANAGER, status: MembershipStatus.ACTIVE },
+        });
+        await createDefaultShipping(tx, created.id, {
+          zones: business.plan ? (readPlanLimits(business.plan.configuration)?.deliveryZones ?? false) : false,
+        });
+        const owner = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { firstName: true } });
+        await this.email.sendStoreCreated(
+          { userId, tenantId: business.tenantId, storeId: created.id },
+          {
+            firstName: owner.firstName,
+            storeName: created.name,
+            storeSlug: created.slug,
+            planName: business.plan?.name ?? null,
+            billingCycle: null,
+            trialEndsAt: null,
+            awaitingPayment: !business.planActive,
+          },
+          tx,
+        );
+        return created;
+      })
+      .catch((error: unknown) => {
+        if (isUniqueConstraintError(error)) throw new ConflictException(STORE_SLUG_TAKEN_MESSAGE);
+        throw error;
+      });
+    this.email.dispatchPending();
+
+    await this.audit.log({
+      action: 'STORE_CREATED',
+      entityType: 'Store',
+      entityId: store.id,
+      userId,
+      tenantId: business.tenantId,
+      storeId: store.id,
+      metadata: { slug: store.slug, via: 'reopen', planActive: business.planActive },
+      req,
+    });
+
+    return {
+      success: true as const,
+      data: {
+        store: {
+          id: store.id,
+          tenantId: store.tenantId,
+          name: store.name,
+          slug: store.slug,
+          status: store.status,
+          currency: store.currency,
+          timezone: store.timezone,
+          locale: store.locale,
+          createdAt: store.createdAt,
+          updatedAt: store.updatedAt,
+        },
       },
     };
   }

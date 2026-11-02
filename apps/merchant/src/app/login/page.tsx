@@ -7,6 +7,7 @@ import { LoadingState } from '@/components/ui/loading-state';
 export const metadata: Metadata = {
   title: 'Sign in · Ecomesta',
   description: 'Sign in to manage your Ecomesta online store.',
+  alternates: { canonical: 'https://merchant.ecomesta.com/login' },
   robots: { index: false, follow: false },
 };
 

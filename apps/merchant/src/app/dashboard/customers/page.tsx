@@ -285,7 +285,7 @@ export default function CustomersPage() {
         open={Boolean(deleteId)}
         title="Delete customer?"
         description="This permanently removes the customer when they have no order history."
-        confirmLabel="Delete"
+        confirmLabel="Delete customer"
         danger
         busy={busy}
         onCancel={() => setDeleteId(null)}

@@ -306,6 +306,7 @@ export function CheckoutForm({
   const [divisions, setDivisions] = useState<BdLocationItem[]>([]);
   const [districts, setDistricts] = useState<BdLocationItem[]>([]);
   const [upazilas, setUpazilas] = useState<BdLocationItem[]>([]);
+  const [billingUpazilas, setBillingUpazilas] = useState<BdLocationItem[]>([]);
   const [onlineProviders, setOnlineProviders] = useState<
     PublicPaymentProvidersResponse['online']
   >([]);
@@ -325,6 +326,8 @@ export function CheckoutForm({
   const [couponBusy, setCouponBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  /** Set after a successful place so clearing the cart cannot flash “empty” (QA M11). */
+  const [orderPlaced, setOrderPlaced] = useState(false);
   const idempotencyKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -405,6 +408,35 @@ export function CheckoutForm({
     };
   }, [storeSlug, shipping.districtId]);
 
+  // Billing cascade (only used when billing differs from shipping).
+  useEffect(() => {
+    if (!storeSlug || billingSame || !billing.districtId) {
+      setBillingUpazilas([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await publicGet<{
+          success: true;
+          data: BdLocationItem[];
+        }>(
+          `/public/stores/${encodeURIComponent(storeSlug)}/locations/upazilas?districtId=${billing.districtId}`,
+        );
+        if (!cancelled) setBillingUpazilas(result.data);
+      } catch {
+        if (!cancelled) setBillingUpazilas([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [storeSlug, billingSame, billing.districtId]);
+
+  // Delivery methods are only offered once the shopper has chosen where to ship
+  // (district and thana / upazila) — never a default picked before that.
+  const locationReady = Boolean(shipping.districtId && shipping.upazilaId);
+
   // Only identifiers and quantities go to the server; the cart's stored prices
   // never do. Price-only cart updates (syncPrices) do not change this key.
   const itemsKey = JSON.stringify(
@@ -466,7 +498,7 @@ export function CheckoutForm({
             divisionId: shipping.divisionId || undefined,
             districtId: shipping.districtId || undefined,
             upazilaId: shipping.upazilaId || undefined,
-            shippingMethodId: shippingMethodId || undefined,
+            shippingMethodId: (locationReady && shippingMethodId) || undefined,
             couponCode: couponCode || undefined,
             email: quoteEmail || undefined,
           },
@@ -474,13 +506,21 @@ export function CheckoutForm({
         );
         if (cancelled) return;
         const data = result.data;
-        quotedInputsRef.current = quoteInputs(data.shippingMethodId ?? '');
         setQuote(data);
         setQuoteError(null);
         setShippingLoadError(null);
-        setShippingMethods(data.shippingMethods);
-        setQuoteZoneName(data.zone?.name ?? null);
-        setShippingMethodId(data.shippingMethodId ?? '');
+        if (locationReady) {
+          quotedInputsRef.current = quoteInputs(data.shippingMethodId ?? '');
+          setShippingMethods(data.shippingMethods);
+          setQuoteZoneName(data.zone?.name ?? null);
+          setShippingMethodId(data.shippingMethodId ?? '');
+        } else {
+          // No location yet: show line items, but do not offer or adopt a shipping method.
+          quotedInputsRef.current = null;
+          setShippingMethods([]);
+          setQuoteZoneName(null);
+          setShippingMethodId('');
+        }
         setPriceNotices((prev) => {
           const changed = data.lines.flatMap((quoted) => {
             const stored = lines.find((l) => lineKey(l) === lineKey(quoted));
@@ -537,8 +577,9 @@ export function CheckoutForm({
   ]);
 
   const selectedShipping = useMemo(
-    () => shippingMethods.find((m) => m.id === shippingMethodId) ?? null,
-    [shippingMethods, shippingMethodId],
+    () =>
+      locationReady ? (shippingMethods.find((m) => m.id === shippingMethodId) ?? null) : null,
+    [locationReady, shippingMethods, shippingMethodId],
   );
   const codAllowedForMethod = selectedShipping?.codAllowed !== false;
   // The order may only be placed against a finished quote for the current selection.
@@ -546,7 +587,11 @@ export function CheckoutForm({
     quote !== null &&
     !quoteLoading &&
     !quoteError &&
-    (quote.shippingMethodId ?? '') === shippingMethodId;
+    // Before a location is chosen submit still runs its validation (which asks for
+    // the district / thana); afterwards the quote must match the chosen method.
+    (!locationReady || (quote.shippingMethodId ?? '') === shippingMethodId);
+  /** Block place-order while a coupon apply is in flight (QA M1). */
+  const placeOrderBlocked = submitting || couponBusy || !quoteReady || quoteLoading;
 
   // What the shopper can pay with right now, in display order. Before the
   // store's options load, Cash on delivery is assumed (checkout re-checks).
@@ -609,9 +654,9 @@ export function CheckoutForm({
         })),
       });
       // The discount shown comes from the checkout quote this triggers.
+      // "Coupon applied" is shown only once that quote reflects the code (see couponStatus).
       setCouponCode(result.data.code);
       setCouponDraft(result.data.code);
-      setCouponMessage(`Coupon ${result.data.code} applied.`);
     } catch (err) {
       setCouponCode(null);
       setCouponMessage(
@@ -628,6 +673,19 @@ export function CheckoutForm({
     setCouponCode(null);
     setCouponDraft('');
     setCouponMessage(null);
+  }
+
+  if (orderPlaced) {
+    return (
+      <div className="rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-16 text-center">
+        <h1 className="font-[family-name:var(--font-display)] text-3xl tracking-tight">
+          Checkout
+        </h1>
+        <p className="mt-3 text-[var(--color-muted)]" role="status">
+          Order placed — taking you to the confirmation page…
+        </p>
+      </div>
+    );
   }
 
   if (lines.length === 0) {
@@ -657,7 +715,7 @@ export function CheckoutForm({
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (submitting) return;
+    if (submitting || couponBusy) return;
     setError(null);
 
     if (!contactName.trim()) {
@@ -688,6 +746,10 @@ export function CheckoutForm({
       setError('Please select a shipping method.');
       return;
     }
+    if (couponBusy) {
+      setError('Please wait until the coupon check finishes.');
+      return;
+    }
     if (!quote || !quoteReady) {
       setError('Your order total is still being calculated. Please wait a moment.');
       return;
@@ -705,6 +767,10 @@ export function CheckoutForm({
       (!billing.addressLine1.trim() || !billing.country.trim())
     ) {
       setError('Complete the required billing address fields.');
+      return;
+    }
+    if (!billingSame && (!billing.districtId || !billing.upazilaId)) {
+      setError('Select your billing district and thana / upazila.');
       return;
     }
 
@@ -750,8 +816,14 @@ export function CheckoutForm({
               email: email.trim() || undefined,
               addressLine1: billing.addressLine1.trim(),
               addressLine2: billing.addressLine2.trim() || undefined,
-              city: billing.city.trim() || 'N/A',
-              state: billing.state.trim() || undefined,
+              city:
+                billing.city.trim() ||
+                districts.find((d) => d.id === billing.districtId)?.name ||
+                'N/A',
+              state:
+                billing.state.trim() ||
+                divisions.find((d) => d.id === billing.divisionId)?.name ||
+                undefined,
               postalCode: billing.postalCode.trim() || undefined,
               country: billing.country.trim() || 'BD',
               divisionId: billing.divisionId || undefined,
@@ -790,23 +862,25 @@ export function CheckoutForm({
           provider: paymentProvider,
           ...contactProof({ email, phone }),
         });
-        clear();
+        setOrderPlaced(true);
         idempotencyKeyRef.current = null;
         if (initiated.data.redirectUrl) {
+          clear();
           window.location.href = initiated.data.redirectUrl;
           return;
         }
-        router.push(
-          `/payment/success?store=${encodeURIComponent(storeSlug)}&order=${encodeURIComponent(result.data.publicReference)}&ref=${encodeURIComponent(initiated.data.internalReference)}`,
-        );
+        const paymentPath = `/payment/success?store=${encodeURIComponent(storeSlug)}&order=${encodeURIComponent(result.data.publicReference)}&ref=${encodeURIComponent(initiated.data.internalReference)}`;
+        router.push(paymentPath);
+        clear();
         return;
       }
 
-      clear();
+      setOrderPlaced(true);
       idempotencyKeyRef.current = null;
       router.push(
         `/order-confirmation/${encodeURIComponent(result.data.publicReference)}?store=${encodeURIComponent(storeSlug)}`,
       );
+      clear();
     } catch (err) {
       const message =
         err instanceof PublicApiError
@@ -822,6 +896,16 @@ export function CheckoutForm({
       setSubmitting(false);
     }
   }
+
+  // "Coupon applied" only once the quote the shopper sees reflects that code;
+  // until then the totals are still catching up.
+  const couponStatus = couponCode
+    ? !quoteLoading && quote?.couponCode?.toUpperCase() === couponCode.toUpperCase()
+      ? `Coupon ${quote.couponCode} applied.`
+      : quoteLoading || couponBusy
+        ? 'Updating totals…'
+        : null
+    : null;
 
   const imageByLine = new Map(lines.map((line) => [lineKey(line), line.imageUrl]));
   // The steppers follow the cart, which changes at once; the quote catches up.
@@ -952,11 +1036,53 @@ export function CheckoutForm({
                     placeholder="Defaults to your name"
                   />
                 </Field>
+                <Field label="Billing district">
+                  <select
+                    className={inputClass}
+                    value={billing.districtId}
+                    onChange={(e) => {
+                      const district = districts.find((d) => d.id === e.target.value);
+                      setBilling((prev) => ({
+                        ...prev,
+                        districtId: e.target.value,
+                        divisionId: district?.divisionId ?? '',
+                        upazilaId: '',
+                      }));
+                    }}
+                    required
+                  >
+                    <option value="">Select district…</option>
+                    {districts.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Billing thana / upazila">
+                  <select
+                    className={inputClass}
+                    value={billing.upazilaId}
+                    onChange={(e) => updateBilling('upazilaId', e.target.value)}
+                    disabled={!billing.districtId}
+                    required
+                  >
+                    <option value="">
+                      {billing.districtId ? 'Select thana…' : 'Select district first'}
+                    </option>
+                    {billingUpazilas.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
                 <Field label="Billing city">
                   <input
                     className={inputClass}
                     value={billing.city}
                     onChange={(e) => updateBilling('city', e.target.value)}
+                    placeholder="Defaults to your district"
                   />
                 </Field>
                 <div className="sm:col-span-2">
@@ -990,9 +1116,9 @@ export function CheckoutForm({
             step={2}
             title="Delivery method"
             hint={
-              quoteZoneName
+              locationReady && quoteZoneName
                 ? `Delivery zone: ${quoteZoneName}`
-                : shipping.upazilaId
+                : locationReady
                   ? undefined
                   : 'Choose your district and thana to see delivery charges.'
             }
@@ -1002,7 +1128,11 @@ export function CheckoutForm({
               {shippingLoadError}
             </p>
           ) : null}
-          {shippingMethods.length === 0 && !shippingLoadError ? (
+          {!locationReady ? (
+            <p className="rounded-xl border border-dashed border-[var(--color-border)] px-4 py-5 text-center text-sm text-[var(--color-muted)]">
+              Select your district and thana / upazila to see delivery options.
+            </p>
+          ) : shippingMethods.length === 0 && !shippingLoadError ? (
             <p className="rounded-xl border border-dashed border-[var(--color-border)] px-4 py-5 text-center text-sm text-[var(--color-muted)]">
               No delivery options are available for this location yet.
             </p>
@@ -1285,6 +1415,10 @@ export function CheckoutForm({
                   >
                     {couponMessage}
                   </p>
+                ) : couponStatus ? (
+                  <p className="mt-2 text-sm text-[var(--color-muted)]" role="status">
+                    {couponStatus}
+                  </p>
                 ) : null}
               </div>
 
@@ -1301,11 +1435,24 @@ export function CheckoutForm({
                 ) : null}
                 <div className="flex justify-between">
                   <dt className="text-[var(--color-muted)]">Shipping</dt>
-                  <dd>{formatMoney(quote.shippingTotal, quote.currency)}</dd>
+                  <dd>
+                    {locationReady ? (
+                      formatMoney(quote.shippingTotal, quote.currency)
+                    ) : (
+                      <span className="text-[var(--color-muted)]">Select location</span>
+                    )}
+                  </dd>
                 </div>
                 <div className="flex items-baseline justify-between border-t border-[var(--color-border)] pt-3 text-base font-semibold">
                   <dt>Total</dt>
-                  <dd className="text-xl">{formatMoney(quote.total, quote.currency)}</dd>
+                  <dd className="text-xl">
+                    {formatMoney(
+                      locationReady
+                        ? quote.total
+                        : (Number(quote.total) - Number(quote.shippingTotal)).toFixed(2),
+                      quote.currency,
+                    )}
+                  </dd>
                 </div>
               </dl>
             </>
@@ -1332,10 +1479,14 @@ export function CheckoutForm({
           <Button
             type="submit"
             className="mt-4 w-full py-3 text-base"
-            disabled={submitting}
-            aria-busy={submitting}
+            disabled={placeOrderBlocked}
+            aria-busy={submitting || couponBusy}
           >
-            {submitting ? 'Placing order…' : 'Place order'}
+            {couponBusy
+              ? 'Checking coupon…'
+              : submitting
+                ? 'Placing order…'
+                : 'Place order'}
           </Button>
         </div>
       </aside>

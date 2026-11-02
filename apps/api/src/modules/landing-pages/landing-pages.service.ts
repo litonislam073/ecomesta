@@ -21,6 +21,7 @@ import {
 } from '@ecomesta/utils';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../redis/redis.service';
+import { fireAndForget } from '../../common/utils/fire-and-forget.util';
 import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { PlanEntitlementsService } from '../billing/plan-entitlements.service';
@@ -101,24 +102,29 @@ export class LandingPagesService {
       }
     });
 
-    await this.audit.log({
-      action: 'LANDING_PAGE_CREATED',
-      entityType: 'LandingPage',
-      entityId: page.id,
-      userId,
-      tenantId: store.tenantId,
-      storeId,
-      metadata: { title: page.title, slug: page.slug, template: page.template },
-      req,
-    });
+    fireAndForget(
+      this.audit.log({
+        action: 'LANDING_PAGE_CREATED',
+        entityType: 'LandingPage',
+        entityId: page.id,
+        userId,
+        tenantId: store.tenantId,
+        storeId,
+        metadata: { title: page.title, slug: page.slug, template: page.template },
+        req,
+      }),
+      'landing page audit',
+    );
     return { success: true as const, data: this.toDetail(page) };
   }
 
   /** Saves the draft (title, address, content); a published page keeps showing what was published. */
   async update(userId: string, storeId: string, pageId: string, dto: UpdateLandingPageDto, req?: Request) {
     await this.authorization.assertStoreRole(userId, storeId, [StoreRole.STORE_MANAGER]);
-    const store = await this.requireStore(storeId);
-    const page = await this.requirePage(storeId, pageId);
+    const [store, page] = await Promise.all([
+      this.requireStore(storeId),
+      this.requirePage(storeId, pageId),
+    ]);
     const template = this.templateOf(page);
 
     const data: Prisma.LandingPageUpdateInput = {};
@@ -145,16 +151,19 @@ export class LandingPagesService {
     }
 
     if (dto.slug !== undefined && dto.slug !== page.slug) {
-      await this.audit.log({
-        action: 'LANDING_PAGE_UPDATED',
-        entityType: 'LandingPage',
-        entityId: page.id,
-        userId,
-        tenantId: store.tenantId,
-        storeId,
-        metadata: { slug: { from: page.slug, to: dto.slug } },
-        req,
-      });
+      fireAndForget(
+        this.audit.log({
+          action: 'LANDING_PAGE_UPDATED',
+          entityType: 'LandingPage',
+          entityId: page.id,
+          userId,
+          tenantId: store.tenantId,
+          storeId,
+          metadata: { slug: { from: page.slug, to: dto.slug } },
+          req,
+        }),
+        'landing page audit',
+      );
     }
     return { success: true as const, data: this.toDetail(updated) };
   }
@@ -162,9 +171,11 @@ export class LandingPagesService {
   /** Makes the saved draft live. The page needs products that can be bought. */
   async publish(userId: string, storeId: string, pageId: string, req?: Request) {
     await this.authorization.assertStoreRole(userId, storeId, [StoreRole.STORE_MANAGER]);
-    const store = await this.requireStore(storeId);
-    await this.entitlements.assertFeature(storeId, 'landingPages');
-    const page = await this.requirePage(storeId, pageId);
+    const [store, , page] = await Promise.all([
+      this.requireStore(storeId),
+      this.entitlements.assertFeature(storeId, 'landingPages'),
+      this.requirePage(storeId, pageId),
+    ]);
     const content = await this.withStoreProducts(storeId, normalizeLandingContent(this.templateOf(page), page.content));
 
     const active = await this.prisma.product.count({
@@ -187,16 +198,19 @@ export class LandingPagesService {
       },
       include: { _count: { select: { orders: true } } },
     });
-    await this.audit.log({
-      action: 'LANDING_PAGE_PUBLISHED',
-      entityType: 'LandingPage',
-      entityId: page.id,
-      userId,
-      tenantId: store.tenantId,
-      storeId,
-      metadata: { slug: page.slug },
-      req,
-    });
+    fireAndForget(
+      this.audit.log({
+        action: 'LANDING_PAGE_PUBLISHED',
+        entityType: 'LandingPage',
+        entityId: page.id,
+        userId,
+        tenantId: store.tenantId,
+        storeId,
+        metadata: { slug: page.slug },
+        req,
+      }),
+      'landing page audit',
+    );
     return { success: true as const, data: this.toDetail(updated) };
   }
 

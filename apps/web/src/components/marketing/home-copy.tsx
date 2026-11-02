@@ -71,11 +71,11 @@ const EN: HomeCopy = {
     badge: 'Ecommerce website builder for Bangladesh',
     title: 'Build Your Online Store. Sell More. Manage Everything in One Place.',
     intro:
-      'Get your ecommerce website in Bangladesh from ৳99 a month. Products, orders, Cash on Delivery, bKash and Nagad payments, courier booking and themes — all from one platform.',
+      'Get your ecommerce website in Bangladesh from ৳99 a month. Products, orders, Cash on Delivery, online payments through SSLCommerz, courier booking and themes — all from one platform.',
     primary: 'Create Your Store',
     secondary: 'Explore Features',
     offer: ['Plans from ৳99/month', 'Pay with bKash, Nagad, Rocket or Upay', 'No fee on your sales'],
-    points: ['Cash on Delivery', 'bKash, Nagad & card payments', 'Steadfast, Pathao & RedX booking', 'Live theme editor'],
+    points: ['Cash on Delivery', 'Online payments via SSLCommerz', 'Steadfast, Pathao & RedX booking', 'Live theme editor'],
   },
   manage: {
     heading: 'Manage your whole store from one platform',
@@ -134,7 +134,7 @@ const EN: HomeCopy = {
       {
         icon: 'card',
         title: 'Payments',
-        body: 'Cash on Delivery, bank transfer, SSLCommerz and Stripe.',
+        body: 'Cash on Delivery on every plan; SSLCommerz on Growth and Business; Stripe on Business.',
         points: ['Providers connected per store', 'Payments verified on the server'],
         href: '/payments',
         linkLabel: 'Compare payment options',
@@ -219,25 +219,25 @@ const EN: HomeCopy = {
       },
       {
         icon: 'shield',
-        title: 'bKash, Nagad & cards',
-        body: 'Customers pay online with bKash, Nagad or cards through SSLCommerz (Growth and Business plans). Every payment is verified before the order is marked paid.',
+        title: 'Online payments via SSLCommerz',
+        body: 'Customers pay online on the SSLCommerz page, where the methods turned on in your SSLCommerz account (such as bKash, Nagad or cards) appear (Growth and Business plans). Every payment is verified before the order is marked paid.',
         href: '/payments/sslcommerz',
       },
       {
         icon: 'card',
         title: 'Stripe',
-        body: 'Hosted Stripe Checkout for card payments where you have a supported Stripe account.',
+        body: 'Hosted Stripe Checkout for international card payments on the Business plan, when you have a supported Stripe account.',
         href: '/payments/online-payments',
       },
       {
         icon: 'bank',
-        title: 'Bank transfer',
-        body: 'Offer bank transfer or another offline option with your own instructions, and mark the payment once you receive it.',
+        title: 'Offline options',
+        body: 'Optionally offer bank transfer or another offline method with your own instructions, and mark the payment once you receive it.',
         href: '/payments/cash-on-delivery',
       },
     ],
     note:
-      'Your own plan is paid in taka with bKash, Nagad, Rocket or Upay, from ৳99 a month, and Ecomesta takes no fee on your sales. bKash and Nagad payments from customers run through your SSLCommerz account, not a direct bKash or Nagad connection.',
+      'Your own plan is paid in taka with bKash, Nagad, Rocket or Upay, from ৳99 a month, and Ecomesta takes no fee on your sales. Customer bKash and Nagad run through your SSLCommerz account on Growth and Business — not a direct bKash or Nagad connection.',
   },
   shipping: {
     eyebrow: 'Bangladesh shipping',
@@ -308,11 +308,11 @@ const BN: HomeCopy = {
     badge: 'বাংলাদেশে ই-কমার্স ওয়েবসাইট বানানোর প্ল্যাটফর্ম',
     title: 'নিজের অনলাইন স্টোর খুলুন। বেশি বিক্রি করুন। সব কিছু এক জায়গা থেকে চালান।',
     intro:
-      'মাসে মাত্র ৳৯৯ থেকে নিজের ই-কমার্স ওয়েবসাইট চালু করুন। প্রোডাক্ট, অর্ডার, ক্যাশ অন ডেলিভারি, bKash ও Nagad পেমেন্ট, কুরিয়ার বুকিং আর থিম — সব এক প্ল্যাটফর্মে।',
+      'মাসে মাত্র ৳৯৯ থেকে নিজের ই-কমার্স ওয়েবসাইট চালু করুন। প্রোডাক্ট, অর্ডার, ক্যাশ অন ডেলিভারি, SSLCommerz দিয়ে অনলাইন পেমেন্ট, কুরিয়ার বুকিং আর থিম — সব এক প্ল্যাটফর্মে।',
     primary: 'স্টোর খুলুন',
     secondary: 'ফিচারগুলো দেখুন',
     offer: ['মাসে ৳৯৯ থেকে প্যাকেজ', 'bKash, Nagad, Rocket বা Upay দিয়ে পেমেন্ট', 'বিক্রিতে কোনো ফি নেই'],
-    points: ['ক্যাশ অন ডেলিভারি', 'bKash, Nagad ও কার্ডে পেমেন্ট', 'Steadfast, Pathao ও RedX বুকিং', 'লাইভ থিম এডিটর'],
+    points: ['ক্যাশ অন ডেলিভারি', 'SSLCommerz দিয়ে অনলাইন পেমেন্ট', 'Steadfast, Pathao ও RedX বুকিং', 'লাইভ থিম এডিটর'],
   },
   manage: {
     heading: 'পুরো স্টোর চালান এক প্ল্যাটফর্ম থেকে',
@@ -371,7 +371,7 @@ const BN: HomeCopy = {
       {
         icon: 'card',
         title: 'পেমেন্ট',
-        body: 'ক্যাশ অন ডেলিভারি, ব্যাংক ট্রান্সফার, SSLCommerz আর Stripe।',
+        body: 'সব প্যাকেজে ক্যাশ অন ডেলিভারি; Growth ও Business-এ SSLCommerz; Business-এ Stripe।',
         points: ['প্রতিটি স্টোর নিজের পেমেন্ট অ্যাকাউন্ট যুক্ত করে', 'সার্ভারে যাচাই করা পেমেন্ট'],
         href: '/payments',
         linkLabel: 'পেমেন্টের উপায়গুলো তুলনা করুন',
@@ -456,25 +456,25 @@ const BN: HomeCopy = {
       },
       {
         icon: 'shield',
-        title: 'bKash, Nagad আর কার্ড',
-        body: 'কাস্টমার SSLCommerz দিয়ে bKash, Nagad বা কার্ডে অনলাইনে টাকা দেন (Growth আর Business প্যাকেজে)। প্রতিটি পেমেন্ট যাচাই করার পরই অর্ডার "পেইড" হয়।',
+        title: 'SSLCommerz দিয়ে অনলাইন পেমেন্ট',
+        body: 'কাস্টমার SSLCommerz-এর পেজে অনলাইনে টাকা দেন; আপনার SSLCommerz অ্যাকাউন্টে চালু থাকা উপায় (যেমন bKash, Nagad বা কার্ড) সেখানে দেখায় (Growth আর Business প্যাকেজে)। প্রতিটি পেমেন্ট যাচাই করার পরই অর্ডার "পেইড" হয়।',
         href: '/payments/sslcommerz',
       },
       {
         icon: 'card',
         title: 'Stripe',
-        body: 'Stripe অ্যাকাউন্ট থাকলে Stripe Checkout দিয়ে কার্ডে পেমেন্ট নিন।',
+        body: 'Business প্যাকেজে, সমর্থিত Stripe অ্যাকাউন্ট থাকলে Stripe Checkout দিয়ে আন্তর্জাতিক কার্ড পেমেন্ট নিন।',
         href: '/payments/online-payments',
       },
       {
         icon: 'bank',
-        title: 'ব্যাংক ট্রান্সফার',
-        body: 'নিজের নির্দেশনা দিয়ে ব্যাংক ট্রান্সফার বা অন্য অফলাইন উপায় রাখুন, টাকা পেলে পেমেন্ট মার্ক করুন।',
+        title: 'অফলাইন উপায়',
+        body: 'ঐচ্ছিকভাবে নিজের নির্দেশনা দিয়ে ব্যাংক ট্রান্সফার বা অন্য অফলাইন উপায় রাখুন, টাকা পেলে পেমেন্ট মার্ক করুন।',
         href: '/payments/cash-on-delivery',
       },
     ],
     note:
-      'আপনার নিজের প্যাকেজের টাকা মাসে ৳৯৯ থেকে, bKash, Nagad, Rocket বা Upay দিয়ে টাকায় দেন, আর Ecomesta আপনার বিক্রি থেকে কোনো ফি নেয় না। কাস্টমারের bKash আর Nagad পেমেন্ট আপনার SSLCommerz অ্যাকাউন্ট দিয়ে চলে — সরাসরি bKash বা Nagad সংযোগ নয়।',
+      'আপনার নিজের প্যাকেজের টাকা মাসে ৳৯৯ থেকে, bKash, Nagad, Rocket বা Upay দিয়ে টাকায় দেন, আর Ecomesta আপনার বিক্রি থেকে কোনো ফি নেয় না। কাস্টমারের bKash আর Nagad Growth ও Business-এ আপনার SSLCommerz অ্যাকাউন্ট দিয়ে চলে — সরাসরি bKash বা Nagad সংযোগ নয়।',
   },
   shipping: {
     eyebrow: 'বাংলাদেশে ডেলিভারি',

@@ -53,6 +53,19 @@ export class AiSupportController {
         () => false,
       );
       if (linked) await this.conversations.linkHandoff(dto.conversationId, result.reference);
+    } else {
+      // Marketing contact form (and any handoff without a chat): appear in Support chats.
+      await this.conversations.recordContactHandoff(
+        {
+          name: dto.name,
+          phone: dto.phone,
+          email: dto.email,
+          message: dto.message,
+          reason: dto.reason,
+          reference: result.reference,
+        },
+        req,
+      );
     }
     return { success: true as const, data: result };
   }

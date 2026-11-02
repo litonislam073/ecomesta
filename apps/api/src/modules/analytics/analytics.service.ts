@@ -152,24 +152,35 @@ export class AnalyticsService {
   }
 
   private async totals(storeId: string, w: Window, full: boolean): Promise<StoreAnalyticsTotals> {
-    const [sales] = await this.prisma.$queryRaw<{ orders: number; revenue: number }[]>`
+    const salesQuery = this.prisma.$queryRaw<{ orders: number; revenue: number }[]>`
       SELECT count(*)::int AS orders, coalesce(sum(o.grand_total), 0)::float8 AS revenue
       FROM orders o
       WHERE o.store_id = ${storeId}::uuid AND o.created_at >= ${utc(w.start)} AND o.created_at < ${utc(w.end)} AND ${SALE}`;
-    const [items] = await this.prisma.$queryRaw<{ items: number }[]>`
+    const itemsQuery = this.prisma.$queryRaw<{ items: number }[]>`
       SELECT coalesce(sum(i.quantity), 0)::int AS items
       FROM order_items i JOIN orders o ON o.id = i.order_id
       WHERE o.store_id = ${storeId}::uuid AND o.created_at >= ${utc(w.start)} AND o.created_at < ${utc(w.end)} AND ${SALE}`;
+    const trafficQuery = full
+      ? this.prisma.$queryRaw<{ visitors: number; views: number }[]>`
+        SELECT count(DISTINCT visitor_hash)::int AS visitors,
+               (count(*) FILTER (WHERE type = 'PAGE_VIEW'))::int AS views
+        FROM store_analytics_events
+        WHERE store_id = ${storeId}::uuid AND created_at >= ${utc(w.start)} AND created_at < ${utc(w.end)}`
+      : Promise.resolve(null);
+
+    const [salesRows, itemsRows, trafficRows] = await Promise.all([
+      salesQuery,
+      itemsQuery,
+      trafficQuery,
+    ]);
+    const sales = salesRows[0];
+    const items = itemsRows[0];
     const orders = n(sales?.orders);
     const revenue = money(n(sales?.revenue));
     let visitors: number | null = null;
     let pageViews: number | null = null;
-    if (full) {
-      const [traffic] = await this.prisma.$queryRaw<{ visitors: number; views: number }[]>`
-        SELECT count(DISTINCT visitor_hash)::int AS visitors,
-               (count(*) FILTER (WHERE type = 'PAGE_VIEW'))::int AS views
-        FROM store_analytics_events
-        WHERE store_id = ${storeId}::uuid AND created_at >= ${utc(w.start)} AND created_at < ${utc(w.end)}`;
+    if (trafficRows) {
+      const traffic = trafficRows[0];
       visitors = n(traffic?.visitors);
       pageViews = n(traffic?.views);
     }

@@ -148,16 +148,21 @@ async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
   await waitForSettledQuote();
 }
 
+/** Chooses the shipping district and thana — delivery methods only appear after this. */
+async function selectShippingLocation(user: ReturnType<typeof userEvent.setup>) {
+  await screen.findByRole('option', { name: 'Dhaka' });
+  await waitFor(() => expect(screen.getByLabelText(/^district$/i)).not.toBeDisabled());
+  await user.selectOptions(screen.getByLabelText(/^district$/i), 'dist-1');
+  await waitFor(() => expect(screen.getByLabelText(/^thana \/ upazila$/i)).not.toBeDisabled());
+  await user.selectOptions(screen.getByLabelText(/^thana \/ upazila$/i), 'upa-1');
+}
+
 /** Fills every required field without waiting for the quote (which may fail). */
 async function fillFormFields(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/^full name$/i), 'Ada Lovelace');
   await user.type(screen.getByLabelText(/^phone$/i), '01711000000');
   await user.type(screen.getByLabelText(/^email/i), 'ada@example.com');
-  await screen.findByRole('option', { name: 'Dhaka' });
-  await waitFor(() => expect(screen.getByLabelText(/^district$/i)).not.toBeDisabled());
-  await user.selectOptions(screen.getByLabelText(/^district$/i), 'dist-1');
-  await waitFor(() => expect(screen.getByLabelText(/upazila/i)).not.toBeDisabled());
-  await user.selectOptions(screen.getByLabelText(/upazila/i), 'upa-1');
+  await selectShippingLocation(user);
   await user.type(screen.getByLabelText(/^full address$/i), '123 Main');
 }
 
@@ -214,7 +219,10 @@ describe('CheckoutForm', () => {
     );
 
     expect(await screen.findByRole('heading', { name: /delivery method/i })).toBeInTheDocument();
-    expect(await screen.findByText(/Free Shipping/i)).toBeInTheDocument();
+    await waitForSettledQuote();
+    // No shipping method is shown or preselected before a location is chosen.
+    expect(screen.queryByRole('radio', { name: /Free Shipping/i })).toBeNull();
+    expect(screen.getByText(/select your district and thana/i)).toBeInTheDocument();
 
     await screen.findByRole('option', { name: 'Dhaka' });
     await waitFor(() => {
@@ -224,11 +232,14 @@ describe('CheckoutForm', () => {
     await waitFor(() => {
       expect(screen.getByLabelText(/upazila/i)).not.toBeDisabled();
     });
+    // District alone is not enough: still no method until the thana is chosen.
+    expect(screen.queryByRole('radio', { name: /Free Shipping/i })).toBeNull();
     await user.selectOptions(screen.getByLabelText(/upazila/i), 'upa-1');
 
     await waitFor(() => {
       expect(screen.getByText(/Delivery zone: Dhaka City/i)).toBeInTheDocument();
     });
+    expect(await screen.findByRole('radio', { name: /Free Shipping/i })).toBeChecked();
 
     await user.click(screen.getByRole('radio', { name: /Flat Rate/i }));
     await waitFor(() => {
@@ -247,6 +258,7 @@ describe('CheckoutForm', () => {
       </CartProvider>,
     );
 
+    await selectShippingLocation(user);
     await screen.findByText(/Express No COD/i);
     await user.click(screen.getByRole('radio', { name: /Express No COD/i }));
     await waitFor(() => {
@@ -298,6 +310,7 @@ describe('CheckoutForm', () => {
         <CheckoutForm />
       </CartProvider>,
     );
+    await selectShippingLocation(user);
     await user.click(await screen.findByRole('radio', { name: /Express No COD/i }));
     expect(await screen.findByText(/No payment option is available for this delivery method/i)).toBeInTheDocument();
   });
@@ -318,6 +331,51 @@ describe('CheckoutForm', () => {
 
     await user.click(screen.getByRole('button', { name: /place order/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/enter your name/i);
+  });
+
+  it('offers a district / upazila cascade for a separate billing address and submits it', async () => {
+    seedCart();
+    mockCheckoutApis();
+    const base = postMock.getMockImplementation()!;
+    postMock.mockImplementation(async (path: string, body?: unknown) => {
+      if (String(path).endsWith('/checkout')) return confirmation;
+      return base(path, body);
+    });
+    const { CheckoutForm } = await import('@/components/checkout-form');
+    const user = userEvent.setup();
+    render(
+      <CartProvider storeId="s1" storeSlug="alpha" currency="BDT">
+        <CheckoutForm />
+      </CartProvider>,
+    );
+
+    await fillRequiredFields(user);
+    await user.click(screen.getByLabelText(/same as shipping/i));
+    const billingDistrict = screen.getByLabelText(/^billing district$/i);
+    const billingUpazila = screen.getByLabelText(/^billing thana \/ upazila$/i);
+    expect(billingUpazila).toBeDisabled();
+    await user.type(screen.getByLabelText(/^billing address$/i), '9 Billing Rd');
+
+    // Billing needs its own district + thana.
+    await user.click(screen.getByRole('button', { name: /place order/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/billing district and thana/i);
+    expect(postMock.mock.calls.find(isCheckoutCall)).toBeUndefined();
+
+    await user.selectOptions(billingDistrict, 'dist-1');
+    await waitFor(() => expect(billingUpazila).not.toBeDisabled());
+    await user.selectOptions(billingUpazila, 'upa-1');
+    await user.click(screen.getByRole('button', { name: /place order/i }));
+
+    await waitFor(() => expect(postMock.mock.calls.find(isCheckoutCall)).toBeTruthy());
+    const body = postMock.mock.calls.find(isCheckoutCall)![1] as {
+      billingAddress: { divisionId: string; districtId: string; upazilaId: string; city: string };
+    };
+    expect(body.billingAddress).toMatchObject({
+      divisionId: 'div-1',
+      districtId: 'dist-1',
+      upazilaId: 'upa-1',
+      city: 'Dhaka',
+    });
   });
 
   it('submits checkout with location IDs, shippingMethodId, and idempotency key', async () => {
@@ -372,15 +430,11 @@ describe('CheckoutForm', () => {
       </CartProvider>,
     );
 
-    await screen.findByText(/Free Shipping/i);
     await user.type(screen.getByLabelText(/^full name$/i), 'Ada Lovelace');
     await user.type(screen.getByLabelText(/^phone$/i), '01711000000');
     await user.type(screen.getByLabelText(/^email/i), 'ada@example.com');
-    await screen.findByRole('option', { name: 'Dhaka' });
-    await waitFor(() => expect(screen.getByLabelText(/^district$/i)).not.toBeDisabled());
-    await user.selectOptions(screen.getByLabelText(/^district$/i), 'dist-1');
-    await waitFor(() => expect(screen.getByLabelText(/upazila/i)).not.toBeDisabled());
-    await user.selectOptions(screen.getByLabelText(/upazila/i), 'upa-1');
+    await selectShippingLocation(user);
+    await screen.findByRole('radio', { name: /Free Shipping/i });
     await user.type(screen.getByLabelText(/^full address$/i), '123 Main');
     await waitForSettledQuote();
 
@@ -527,6 +581,7 @@ describe('CheckoutForm — quote lifecycle', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     seedCart();
     const { CheckoutForm } = await import('@/components/checkout-form');
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(
       <CartProvider storeId="s1" storeSlug="alpha" currency="BDT">
         <CheckoutForm />
@@ -535,15 +590,22 @@ describe('CheckoutForm — quote lifecycle', () => {
 
     await flushTimers(300);
     await waitForSettledQuote();
-    // The first quote had no shipping method; the server priced its default.
+    // Before a location is chosen nothing is adopted or preselected.
+    expect(screen.queryByRole('radio', { name: /Free Shipping/i })).toBeNull();
+    expect(postMock.mock.calls.filter(isQuoteCall)).toHaveLength(1);
+
+    await selectShippingLocation(user);
+    await flushTimers(300);
+    await waitForSettledQuote();
+    // This quote had no shipping method; the server priced its default.
     const quotes = postMock.mock.calls.filter(isQuoteCall);
-    expect(quotes).toHaveLength(1);
-    expect((quotes[0]![1] as { shippingMethodId?: string }).shippingMethodId).toBeUndefined();
+    expect((quotes.at(-1)![1] as { shippingMethodId?: string }).shippingMethodId).toBeUndefined();
+    expect((quotes.at(-1)![1] as { upazilaId?: string }).upazilaId).toBe('upa-1');
     expect(screen.getByRole('radio', { name: /Free Shipping/i })).toBeChecked();
 
     // Adopting 'ship-free' must not reopen a "still calculating" window.
     await flushTimers(1_000);
-    expect(postMock.mock.calls.filter(isQuoteCall)).toHaveLength(1);
+    expect(postMock.mock.calls.filter(isQuoteCall)).toHaveLength(quotes.length);
     expect(screen.queryByText(/updating totals/i)).toBeNull();
   });
 
@@ -796,9 +858,8 @@ describe('CheckoutForm — SF-03 server pricing', () => {
     // The quote for the chosen location fails the same way; wait for it to finish.
     await waitFor(() => expect(screen.getByRole('button', { name: /try again/i })).toBeEnabled());
     expect(screen.getByText(/not available for purchase/i)).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /place order/i }));
-    // No quote means no delivery options, so the order is refused before it is sent.
-    expect(await screen.findByText(/please select a shipping method/i)).toBeInTheDocument();
+    // No usable quote → place-order stays disabled (M1/M12) and nothing is sent.
+    expect(screen.getByRole('button', { name: /place order/i })).toBeDisabled();
     expect(postMock.mock.calls.find(isCheckoutCall)).toBeUndefined();
   });
 

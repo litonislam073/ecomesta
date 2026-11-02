@@ -18,6 +18,7 @@ import { AdminSubscriptionsService } from './admin-subscriptions.service';
 import { AdminTenantsController } from './admin-tenants.controller';
 import { AdminTenantsService } from './admin-tenants.service';
 import { AdminUsersController } from './admin-users.controller';
+import { AdminStoreDeletionService } from './admin-store-deletion.service';
 import { AdminUsersService } from './admin-users.service';
 import { AdminController } from './admin.controller';
 
@@ -40,6 +41,7 @@ import { AdminController } from './admin.controller';
     AdminBadgesService,
     AdminStatsService,
     AdminUsersService,
+    AdminStoreDeletionService,
     AdminTenantsService,
     AdminStoresService,
     AdminPlansService,

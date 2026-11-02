@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -14,6 +15,14 @@ import { api } from '@/lib/api-client';
 import { useAuth } from '@/lib/auth-context';
 
 const STORE_KEY = 'ecomesta.selectedStoreId';
+const STORES_CACHE_KEY = 'ecomesta.storesCache';
+/** Soft cache so hard reloads can paint page data before /stores returns. */
+const STORES_CACHE_TTL_MS = 60_000;
+
+interface StoresCachePayload {
+  at: number;
+  stores: StoreSummary[];
+}
 
 interface StoreContextValue {
   stores: StoreSummary[];
@@ -27,12 +36,65 @@ interface StoreContextValue {
 
 const StoreContext = createContext<StoreContextValue | null>(null);
 
+function readStoresCache(): StoreSummary[] | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage.getItem(STORES_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoresCachePayload;
+    if (!parsed?.stores || !Array.isArray(parsed.stores)) return null;
+    if (Date.now() - parsed.at > STORES_CACHE_TTL_MS) return null;
+    return parsed.stores;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoresCache(stores: StoreSummary[]) {
+  if (typeof window === 'undefined') return;
+  try {
+    const payload: StoresCachePayload = { at: Date.now(), stores };
+    window.sessionStorage.setItem(STORES_CACHE_KEY, JSON.stringify(payload));
+  } catch {
+    /* ignore quota */
+  }
+}
+
+function pickPreferredStoreId(stores: StoreSummary[]): string | null {
+  const saved =
+    typeof window !== 'undefined' ? window.sessionStorage.getItem(STORE_KEY) : null;
+  return (
+    (saved && stores.some((store) => store.id === saved) ? saved : null) ??
+    stores[0]?.id ??
+    null
+  );
+}
+
 export function StoreProvider({ children }: { children: ReactNode }) {
   const { accessToken, user } = useAuth();
   const [stores, setStores] = useState<StoreSummary[]>([]);
-  const [selectedStoreId, setSelectedStoreIdState] = useState<string | null>(null);
+  const [selectedStoreId, setSelectedStoreIdState] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return window.sessionStorage.getItem(STORE_KEY);
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hydratedFromCache, setHydratedFromCache] = useState(false);
+  const storesRef = useRef(stores);
+  storesRef.current = stores;
+
+  // Warm from session cache as soon as we have a token, so pages don't wait on /stores.
+  useEffect(() => {
+    if (!accessToken || hydratedFromCache) return;
+    const cached = readStoresCache();
+    if (cached && cached.length > 0) {
+      setStores(cached);
+      const preferred = pickPreferredStoreId(cached);
+      setSelectedStoreIdState(preferred);
+      if (preferred) window.sessionStorage.setItem(STORE_KEY, preferred);
+    }
+    setHydratedFromCache(true);
+  }, [accessToken, hydratedFromCache]);
 
   const refreshStores = useCallback(async () => {
     if (!accessToken) {
@@ -41,7 +103,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    setLoading(true);
+    // Keep showing cached stores while refreshing; only block when we have none.
+    const hasCached = storesRef.current.length > 0;
+    if (!hasCached) setLoading(true);
     setError(null);
     try {
       const result = await api.get<{ success: true; data: StoreSummary[] }>(
@@ -50,20 +114,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       );
       const nextStores = result.data;
       setStores(nextStores);
+      writeStoresCache(nextStores);
 
-      const saved =
-        typeof window !== 'undefined' ? window.sessionStorage.getItem(STORE_KEY) : null;
-      const preferred =
-        (saved && nextStores.some((store) => store.id === saved) ? saved : null) ??
-        nextStores[0]?.id ??
-        null;
+      const preferred = pickPreferredStoreId(nextStores);
       setSelectedStoreIdState(preferred);
       if (preferred && typeof window !== 'undefined') {
         window.sessionStorage.setItem(STORE_KEY, preferred);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load stores');
-      setStores([]);
+      if (!hasCached) setStores([]);
     } finally {
       setLoading(false);
     }

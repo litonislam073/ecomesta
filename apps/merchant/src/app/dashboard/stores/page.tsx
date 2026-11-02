@@ -38,7 +38,7 @@ export default function StoresPage() {
           Stores
         </h1>
         <p className="mt-2 text-[var(--color-muted)]">
-          Stores returned by GET /api/v1/stores for your account.
+          The stores you manage. Select one to work on its products, orders and settings.
         </p>
       </div>
       <div className="grid gap-4 md:grid-cols-2">

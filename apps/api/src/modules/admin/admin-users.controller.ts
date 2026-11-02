@@ -19,6 +19,7 @@ import type { AuthenticatedUser } from '../auth/types/auth.types';
 import { AdminUsersService } from './admin-users.service';
 import {
   ListAdminUsersQueryDto,
+  UpdateUserEmailDto,
   UpdateUserPlatformRoleDto,
   UpdateUserStatusDto,
 } from './dto/admin-user.dto';
@@ -58,6 +59,17 @@ export class AdminUsersController {
     @Req() req: Request,
   ) {
     return this.users.updateStatus(user.userId, userId, dto, req);
+  }
+
+  @Patch(':userId/email')
+  @ApiOperation({ summary: "Change a user's sign-in email; the new address must be confirmed" })
+  updateEmail(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Body() dto: UpdateUserEmailDto,
+    @Req() req: Request,
+  ) {
+    return this.users.updateEmail(user.userId, userId, dto, req);
   }
 
   @Patch(':userId/platform-role')

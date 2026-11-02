@@ -167,8 +167,8 @@ describe('Onboard form', () => {
         {
           businessName: 'Demo Shop BD',
           storeName: 'Demo Shop BD',
-          tenantSlug: 'demo-shop-bd',
-          storeSlug: 'demo-shop-bd',
+          tenantSlug: 'demoshopbd',
+          storeSlug: 'demoshopbd',
           currency: 'BDT',
           timezone: 'Asia/Dhaka',
           locale: 'en-BD',
@@ -216,8 +216,8 @@ describe('Onboard form', () => {
         {
           businessName: 'Trial Shop',
           storeName: 'Trial Shop',
-          tenantSlug: 'trial-shop',
-          storeSlug: 'trial-shop',
+          tenantSlug: 'trialshop',
+          storeSlug: 'trialshop',
           currency: 'BDT',
           timezone: 'Asia/Dhaka',
           locale: 'en-BD',
@@ -490,7 +490,7 @@ describe('Onboard form', () => {
     renderForm();
     await user.type(screen.getByLabelText('Business name'), 'Demo Shop');
     const slug = screen.getByLabelText('Store URL');
-    expect(slug).toHaveValue('demo-shop');
+    expect(slug).toHaveValue('demoshop');
     await user.clear(slug);
     await user.type(slug, 'My Cool-Store!');
     expect(slug).toHaveValue('my-cool-store-');
@@ -578,14 +578,14 @@ describe('Onboard form', () => {
     await user.type(screen.getByLabelText('Business name'), 'Demo Shop');
     await user.click(screen.getByText('Advanced settings'));
     const tenant = screen.getByLabelText('Account ID');
-    expect(tenant).toHaveValue('demo-shop');
+    expect(tenant).toHaveValue('demoshop');
     await user.clear(tenant);
     await user.type(tenant, 'demo-holdings');
     await payAndCreate(user);
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith(
         '/onboarding/store',
-        expect.objectContaining({ storeSlug: 'demo-shop', tenantSlug: 'demo-holdings' }),
+        expect.objectContaining({ storeSlug: 'demoshop', tenantSlug: 'demo-holdings' }),
         { token: 'access-token' },
       ),
     );
@@ -627,7 +627,7 @@ describe('Onboard form', () => {
     await user.click(storeContinue());
     const summary = await screen.findByRole('region', { name: 'Summary' });
     expect(within(summary).getByText('Demo Store')).toBeInTheDocument();
-    expect(within(summary).getByText('http://localhost:3000/?store=demo-shop')).toBeInTheDocument();
+    expect(within(summary).getByText('http://localhost:3000/?store=demoshop')).toBeInTheDocument();
     expect(within(summary).getByText('Bangladesh')).toBeInTheDocument();
     expect(within(summary).getByText('BDT')).toBeInTheDocument();
     expect(within(summary).getByText('Asia/Dhaka')).toBeInTheDocument();
@@ -909,7 +909,7 @@ describe('Onboard route', () => {
     const { container } = render(<OnboardRoute />);
     await user.type(screen.getByLabelText('Business name'), 'Demo Shop');
     expect(screen.getByLabelText('Store URL')).toHaveAccessibleDescription(
-      /https:\/\/demo-shop\.staging\.ecomesta\.example/,
+      /https:\/\/demoshop\.staging\.ecomesta\.example/,
     );
     expect(container.innerHTML).not.toMatch(/localhost/);
   });
@@ -921,7 +921,7 @@ describe('Onboard route', () => {
     await user.type(screen.getByLabelText('Business name'), 'Demo Shop');
     expect(screen.getByLabelText('Store URL')).not.toHaveAccessibleDescription(/https?:\/\//);
     await user.click(screen.getByRole('button', { name: 'Continue' }));
-    expect(within(await screen.findByRole('region', { name: 'Summary' })).getByText('demo-shop')).toBeInTheDocument();
+    expect(within(await screen.findByRole('region', { name: 'Summary' })).getByText('demoshop')).toBeInTheDocument();
     expect(container.innerHTML).not.toMatch(/\?store=/);
   });
 

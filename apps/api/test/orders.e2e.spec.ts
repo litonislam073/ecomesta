@@ -460,6 +460,64 @@ describe('Orders (e2e)', () => {
     expect(() => assertPaymentStatusTransition('REFUNDED', 'PAID')).toThrow(
       UnprocessableEntityException,
     );
+    expect(() => assertOrderStatusTransition('PROCESSING', 'CONFIRMED')).not.toThrow();
+    expect(() => assertOrderStatusTransition('CONFIRMED', 'PENDING')).not.toThrow();
+    expect(() => assertOrderStatusTransition('COMPLETED', 'PROCESSING')).not.toThrow();
+  });
+
+  it('blocks COMPLETED until fulfilled and blocks when shipments are not delivered', async () => {
+    const created = await request(app.getHttpServer())
+      .post(`/api/v1/stores/${storeAId}/orders`)
+      .set('Authorization', `Bearer ${managerA.token}`)
+      .send({
+        items: [{ productId: productAId, quantity: 1 }],
+        shippingAddress,
+      })
+      .expect(201);
+    const id = created.body.data.id as string;
+
+    await request(app.getHttpServer())
+      .patch(`/api/v1/stores/${storeAId}/orders/${id}/status`)
+      .set('Authorization', `Bearer ${managerA.token}`)
+      .send({ status: 'CONFIRMED' })
+      .expect(200);
+    await request(app.getHttpServer())
+      .patch(`/api/v1/stores/${storeAId}/orders/${id}/status`)
+      .set('Authorization', `Bearer ${managerA.token}`)
+      .send({ status: 'PROCESSING' })
+      .expect(200);
+
+    const blockedUnfulfilled = await request(app.getHttpServer())
+      .patch(`/api/v1/stores/${storeAId}/orders/${id}/status`)
+      .set('Authorization', `Bearer ${managerA.token}`)
+      .send({ status: 'COMPLETED' })
+      .expect(422);
+    expect(blockedUnfulfilled.body.error.message).toMatch(/fulfilled/i);
+
+    await request(app.getHttpServer())
+      .patch(`/api/v1/stores/${storeAId}/orders/${id}/fulfillment-status`)
+      .set('Authorization', `Bearer ${managerA.token}`)
+      .send({ fulfillmentStatus: 'FULFILLED' })
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .post(`/api/v1/stores/${storeAId}/orders/${id}/shipments`)
+      .set('Authorization', `Bearer ${managerA.token}`)
+      .send({ provider: 'MANUAL', status: 'PENDING' })
+      .expect(201);
+
+    const blockedPendingShip = await request(app.getHttpServer())
+      .patch(`/api/v1/stores/${storeAId}/orders/${id}/status`)
+      .set('Authorization', `Bearer ${managerA.token}`)
+      .send({ status: 'COMPLETED' })
+      .expect(422);
+    expect(blockedPendingShip.body.error.message).toMatch(/delivered/i);
+
+    await request(app.getHttpServer())
+      .patch(`/api/v1/stores/${storeAId}/orders/${id}/status`)
+      .set('Authorization', `Bearer ${managerA.token}`)
+      .send({ status: 'CONFIRMED' })
+      .expect(200);
   });
 
   it('cancels order once, restores stock once, rejects double cancel', async () => {

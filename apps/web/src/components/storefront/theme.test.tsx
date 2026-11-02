@@ -27,6 +27,7 @@ const store: PublicStore = {
   currency: 'USD',
   timezone: 'UTC',
   locale: 'en-US',
+  payments: { offline: ['COD'], online: ['SSL_COMMERZ'] },
 };
 
 const theme: PublicStoreTheme = {

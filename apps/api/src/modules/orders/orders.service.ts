@@ -322,6 +322,15 @@ export class OrdersService {
     return order;
   }
 
+  /** Public lookup by order number (EM-*). Callers must still verify contact proof. */
+  async getPublicOrderByNumber(storeId: string, orderNumber: string) {
+    const order = await this.placement.findByOrderNumber(storeId, orderNumber);
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+    return order;
+  }
+
   async list(userId: string, storeId: string, query: ListOrdersQueryDto) {
     await this.authorization.assertStoreAccess(userId, storeId);
     await this.requireStore(storeId);
@@ -403,24 +412,53 @@ export class OrdersService {
     ]);
     const store = await this.requireStore(storeId);
 
-    const updated = await this.prisma.$transaction(async (tx) => {
-      const locked = await this.lockOrderRow(tx, storeId, orderId);
-      if (!locked) {
-        throw new NotFoundException('Order not found');
-      }
+    const { updated, previousStatus } = await this.prisma.$transaction(
+      async (tx) => {
+        const locked = await this.lockOrderRow(tx, storeId, orderId);
+        if (!locked) {
+          throw new NotFoundException('Order not found');
+        }
 
-      assertOrderStatusTransition(locked.status, dto.status);
+        assertOrderStatusTransition(locked.status, dto.status);
 
-      if (dto.status === OrderStatus.CANCELLED) {
-        return this.cancelLockedOrder(tx, storeId, locked, dto.reason);
-      }
+        if (dto.status === OrderStatus.CANCELLED) {
+          const cancelled = await this.cancelLockedOrder(
+            tx,
+            storeId,
+            locked,
+            dto.reason,
+          );
+          return { updated: cancelled, previousStatus: locked.status };
+        }
 
-      return tx.order.update({
-        where: { id: locked.id },
-        data: { status: dto.status },
-        include: this.detailInclude(),
-      });
-    });
+        if (dto.status === OrderStatus.COMPLETED) {
+          if (locked.fulfillment_status !== FulfillmentStatus.FULFILLED) {
+            throw new UnprocessableEntityException(
+              'Order must be fulfilled before it can be marked completed',
+            );
+          }
+          const shipments = await tx.shipment.findMany({
+            where: { storeId, orderId: locked.id },
+            select: { status: true },
+          });
+          if (
+            shipments.length > 0 &&
+            !shipments.some((s) => s.status === ShipmentStatus.DELIVERED)
+          ) {
+            throw new UnprocessableEntityException(
+              'At least one shipment must be delivered before the order can be marked completed',
+            );
+          }
+        }
+
+        const next = await tx.order.update({
+          where: { id: locked.id },
+          data: { status: dto.status },
+          include: this.detailInclude(),
+        });
+        return { updated: next, previousStatus: locked.status };
+      },
+    );
 
     await this.audit.log({
       action:
@@ -434,6 +472,8 @@ export class OrdersService {
       storeId,
       metadata: {
         status: dto.status,
+        from: previousStatus,
+        to: dto.status,
         orderNumber: updated.orderNumber,
         ...(dto.status === OrderStatus.CANCELLED && dto.reason?.trim()
           ? { cancelReason: dto.reason.trim().slice(0, 500) }
@@ -587,6 +627,9 @@ export class OrdersService {
       metadata: {
         paymentStatus: dto.paymentStatus,
         orderNumber: updated.orderNumber,
+        ...(dto.amount?.trim() ? { amount: dto.amount.trim() } : {}),
+        ...(dto.reason?.trim() ? { reason: dto.reason.trim().slice(0, 500) } : {}),
+        ...(updated.currency ? { currency: updated.currency } : {}),
       },
       req,
     });
@@ -1063,9 +1106,10 @@ export class OrdersService {
       }[];
     },
   ) {
+    // Total units across all lines (not the number of distinct lines).
     const itemCount =
-      order._count?.items ??
       order.items?.reduce((sum, item) => sum + item.quantity, 0) ??
+      order._count?.items ??
       0;
     return {
       id: order.id,

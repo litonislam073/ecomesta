@@ -7,6 +7,7 @@ import { LoadingState } from '@/components/ui/loading-state';
 export const metadata: Metadata = {
   title: 'Create your store · Ecomesta',
   description: 'Create an Ecomesta account and set up your online store.',
+  alternates: { canonical: 'https://merchant.ecomesta.com/register' },
   robots: { index: false, follow: false },
 };
 
@@ -23,13 +24,13 @@ const AFFILIATE_PANEL = {
 
 const STORE_PANEL = {
   eyebrow: 'Get started',
-  heading: 'Open your online store in two steps.',
+  heading: 'Open your online store in three steps.',
   description:
-    'Create your account first, then name your store and choose its address. You can add products and payment options from the dashboard.',
+    'Create your account, set up your store, then choose a plan (or start a free trial). You can add products and payment options from the dashboard.',
   points: [
     'Step 1: create your merchant account',
     'Step 2: set up your store name and web address',
-    'Prices in BDT, with Bangladesh delivery areas built in',
+    'Step 3: choose a plan or start a free trial',
   ],
 };
 

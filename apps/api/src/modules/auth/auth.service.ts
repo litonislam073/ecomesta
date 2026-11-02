@@ -8,8 +8,9 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { MembershipStatus, PlatformRole, UserStatus } from '@prisma/client';
+import { MembershipStatus, PlatformRole, Prisma, UserStatus } from '@prisma/client';
 import type { Request, Response } from 'express';
+import { normalizeSignupAttribution, type SignupAttributionInput } from '@ecomesta/utils';
 import { clientIp } from '../../common/utils/request-host.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AffiliatesService } from '../affiliates/affiliates.service';
@@ -20,8 +21,10 @@ import { GoogleAuthDto } from './dto/google-auth.dto';
 import { LoginDto } from './dto/login.dto';
 import { GoogleIdTokenVerifier } from './google-id-token.verifier';
 import { RegisterDto } from './dto/register.dto';
+import type { SignupAttributionFieldsDto } from './dto/signup-attribution.dto';
 import type {
   AccessTokenPayload,
+  AuthClientAudience,
   AuthTokens,
   AuthenticatedUser,
   RefreshTokenPayload,
@@ -29,7 +32,12 @@ import type {
   StoreMembershipContext,
   TenantMembershipContext,
 } from './types/auth.types';
-import { REFRESH_COOKIE_NAME } from './types/auth.types';
+import {
+  LEGACY_REFRESH_COOKIE_NAME,
+  readRefreshCookie,
+  refreshCookieNameFor,
+  resolveAuthClient,
+} from './types/auth.types';
 
 const BLOCKED_STATUSES: UserStatus[] = [
   UserStatus.INACTIVE,
@@ -60,6 +68,7 @@ export class AuthService {
     }
 
     const passwordHash = await this.passwordService.hash(dto.password);
+    const attribution = this.signupAttributionData(dto, dto.referralCode);
     const user = await this.prisma.$transaction(async (tx) => {
       const created = await tx.user.create({
         data: {
@@ -70,6 +79,7 @@ export class AuthService {
           phone: dto.phone,
           platformRole: PlatformRole.USER,
           status: UserStatus.ACTIVE,
+          ...attribution,
         },
       });
       await this.email.sendWelcomeEmail(created, tx);
@@ -79,7 +89,7 @@ export class AuthService {
     await this.affiliates.attachSignup(user.id, dto.referralCode);
 
     const tokens = await this.issueSession(user.id, user.email, user.platformRole, req);
-    this.setRefreshCookie(res, tokens.refreshToken);
+    this.setRefreshCookie(res, tokens.refreshToken, resolveAuthClient(req));
 
     return {
       success: true as const,
@@ -114,7 +124,7 @@ export class AuthService {
     });
 
     const tokens = await this.issueSession(user.id, user.email, user.platformRole, req);
-    this.setRefreshCookie(res, tokens.refreshToken);
+    this.setRefreshCookie(res, tokens.refreshToken, resolveAuthClient(req));
 
     return {
       success: true as const,
@@ -180,6 +190,7 @@ export class AuthService {
       await this.enforceRateLimit(`register:${this.clientIp(req)}`, 10, 60);
       // Google-only accounts get an unguessable password; "Forgot password" can set a real one.
       const passwordHash = await this.passwordService.hash(randomBytes(32).toString('base64url'));
+      const attribution = this.signupAttributionData(dto, dto.referralCode);
       const user = await this.prisma.$transaction(async (tx) => {
         const createdUser = await tx.user.create({
           data: {
@@ -193,6 +204,7 @@ export class AuthService {
             status: UserStatus.ACTIVE,
             emailVerifiedAt: new Date(),
             lastLoginAt: new Date(),
+            ...attribution,
           },
         });
         await this.email.sendWelcomeEmail(createdUser, tx);
@@ -206,7 +218,7 @@ export class AuthService {
 
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     const tokens = await this.issueSession(user.id, user.email, user.platformRole, req);
-    this.setRefreshCookie(res, tokens.refreshToken);
+    this.setRefreshCookie(res, tokens.refreshToken, resolveAuthClient(req));
 
     return {
       success: true as const,
@@ -222,6 +234,7 @@ export class AuthService {
 
   async refresh(rawRefreshToken: string | undefined, req: Request, res: Response) {
     await this.enforceRateLimit(`refresh:${this.clientIp(req)}`, 30, 60);
+    const client = resolveAuthClient(req);
 
     const token = rawRefreshToken?.trim();
     if (!token) {
@@ -239,6 +252,10 @@ export class AuthService {
 
     if (payload.typ !== 'refresh' || !payload.sid || !payload.sub) {
       throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    if (payload.aud && payload.aud !== client) {
+      throw new UnauthorizedException('Refresh token is not valid for this application');
     }
 
     const session = await this.prisma.authSession.findUnique({
@@ -280,8 +297,9 @@ export class AuthService {
       session.user.email,
       session.user.platformRole,
       req,
+      client,
     );
-    this.setRefreshCookie(res, tokens.refreshToken);
+    this.setRefreshCookie(res, tokens.refreshToken, client);
 
     return {
       success: true as const,
@@ -289,11 +307,13 @@ export class AuthService {
         accessToken: tokens.accessToken,
         ...this.refreshTokenBodyField(tokens.refreshToken),
         expiresIn: tokens.expiresIn,
+        // Same shape as login — clients can skip a follow-up GET /auth/me.
+        user: await this.toSafeProfile(session.user.id),
       },
     };
   }
 
-  async logout(user: AuthenticatedUser, res: Response) {
+  async logout(user: AuthenticatedUser, res: Response, req?: Request) {
     await this.prisma.authSession.updateMany({
       where: {
         id: user.sessionId,
@@ -303,7 +323,7 @@ export class AuthService {
       data: { revokedAt: new Date() },
     });
 
-    this.clearRefreshCookie(res);
+    this.clearRefreshCookie(res, req ? resolveAuthClient(req) : 'merchant');
 
     return {
       success: true as const,
@@ -345,9 +365,8 @@ export class AuthService {
       }
     }
 
-    const cookieToken = (
-      req.cookies?.[REFRESH_COOKIE_NAME] as string | undefined
-    )?.trim();
+    const client = resolveAuthClient(req);
+    const cookieToken = readRefreshCookie(req.cookies, client);
     if (cookieToken) {
       try {
         const payload = await this.jwtService.verifyAsync<RefreshTokenPayload>(
@@ -356,7 +375,12 @@ export class AuthService {
             secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
           },
         );
-        if (payload.typ === 'refresh' && payload.sid && payload.sub) {
+        if (
+          payload.typ === 'refresh' &&
+          payload.sid &&
+          payload.sub &&
+          (!payload.aud || payload.aud === client)
+        ) {
           await this.prisma.authSession.updateMany({
             where: {
               id: payload.sid,
@@ -371,7 +395,7 @@ export class AuthService {
       }
     }
 
-    this.clearRefreshCookie(res);
+    this.clearRefreshCookie(res, client);
 
     return {
       success: true as const,
@@ -471,6 +495,7 @@ export class AuthService {
         status: true,
         platformRole: true,
         emailVerifiedAt: true,
+        pendingEmail: true,
       },
     });
 
@@ -483,6 +508,7 @@ export class AuthService {
       lastName: user.lastName,
       phone: user.phone,
       emailVerified: user.emailVerifiedAt !== null,
+      pendingEmail: user.pendingEmail,
       status: user.status,
       platformRole: user.platformRole,
       memberships,
@@ -494,6 +520,7 @@ export class AuthService {
     email: string,
     platformRole: PlatformRole,
     req: Request,
+    client: AuthClientAudience = resolveAuthClient(req),
   ): Promise<AuthTokens> {
     const accessExpiresIn = this.configService.get<string>('JWT_ACCESS_EXPIRES_IN') ?? '15m';
     const refreshExpiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') ?? '7d';
@@ -514,12 +541,14 @@ export class AuthService {
       typ: 'access',
       email,
       platformRole,
+      aud: client,
     };
 
     const refreshPayload: RefreshTokenPayload = {
       sub: userId,
       sid: session.id,
       typ: 'refresh',
+      aud: client,
     };
 
     const [accessToken, refreshToken] = await Promise.all([
@@ -555,6 +584,40 @@ export class AuthService {
     return email.trim().toLowerCase();
   }
 
+  /** First-touch fields only — call from user create, never from login. */
+  private signupAttributionData(
+    fields: SignupAttributionFieldsDto,
+    referralCode?: string | null,
+  ): Pick<
+    Prisma.UserCreateInput,
+    | 'signupChannel'
+    | 'signupUtmSource'
+    | 'signupUtmMedium'
+    | 'signupUtmCampaign'
+    | 'signupReferrerHost'
+    | 'signupLandingPath'
+    | 'signupAffiliateCode'
+  > {
+    const input: SignupAttributionInput = {
+      utmSource: fields.utmSource,
+      utmMedium: fields.utmMedium,
+      utmCampaign: fields.utmCampaign,
+      referrerHost: fields.referrerHost,
+      landingPath: fields.landingPath,
+      affiliateCode: referralCode,
+    };
+    const normalized = normalizeSignupAttribution(input);
+    return {
+      signupChannel: normalized.channel,
+      signupUtmSource: normalized.utmSource,
+      signupUtmMedium: normalized.utmMedium,
+      signupUtmCampaign: normalized.utmCampaign,
+      signupReferrerHost: normalized.referrerHost,
+      signupLandingPath: normalized.landingPath,
+      signupAffiliateCode: normalized.affiliateCode,
+    };
+  }
+
   private clientIp(req: Request): string {
     return clientIp(req) ?? 'unknown';
   }
@@ -566,27 +629,42 @@ export class AuthService {
     }
   }
 
-  private setRefreshCookie(res: Response, refreshToken: string): void {
+  private setRefreshCookie(
+    res: Response,
+    refreshToken: string,
+    client: AuthClientAudience,
+  ): void {
     const refreshExpiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') ?? '7d';
     const cookiePolicy = this.refreshCookiePolicy();
-
-    res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
+    const options = {
       httpOnly: true,
       secure: cookiePolicy.secure,
       sameSite: cookiePolicy.sameSite,
       path: '/api/v1/auth',
       maxAge: this.parseDurationMs(refreshExpiresIn),
-    });
-  }
+    } as const;
 
-  private clearRefreshCookie(res: Response): void {
-    const cookiePolicy = this.refreshCookiePolicy();
-    res.clearCookie(REFRESH_COOKIE_NAME, {
+    res.cookie(refreshCookieNameFor(client), refreshToken, options);
+    // Drop the pre-isolation cookie so it cannot override the scoped one.
+    res.clearCookie(LEGACY_REFRESH_COOKIE_NAME, {
       httpOnly: true,
       secure: cookiePolicy.secure,
       sameSite: cookiePolicy.sameSite,
       path: '/api/v1/auth',
     });
+  }
+
+  private clearRefreshCookie(res: Response, client: AuthClientAudience): void {
+    const cookiePolicy = this.refreshCookiePolicy();
+    const options = {
+      httpOnly: true,
+      secure: cookiePolicy.secure,
+      sameSite: cookiePolicy.sameSite,
+      path: '/api/v1/auth',
+    } as const;
+    res.clearCookie(refreshCookieNameFor(client), options);
+    res.clearCookie(LEGACY_REFRESH_COOKIE_NAME, options);
+    // Do not clear the other app's cookie — sessions stay independent.
   }
 
   /**

@@ -1,7 +1,8 @@
-import { StrictMode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { StrictMode, useEffect } from 'react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
+import { apiRequest } from '@/lib/api-client';
 
 /**
  * The API rotates the refresh token on every POST /auth/refresh, so two
@@ -12,6 +13,8 @@ import { AuthProvider, useAuth } from '@/lib/auth-context';
 
 let refreshCalls = 0;
 let releaseRefresh: () => void = () => {};
+
+const admin = { id: 'u1', email: 'm@example.com', platformRole: 'SUPER_ADMIN' };
 
 vi.mock('@/lib/api-client', async () => {
   const actual = await vi.importActual<typeof import('@/lib/api-client')>('@/lib/api-client');
@@ -25,9 +28,9 @@ vi.mock('@/lib/api-client', async () => {
         // A rotated cookie: any refresh after the first is refused.
         if (refreshCalls > 1) throw new actual.ApiError(401, 'UNAUTHORIZED', 'Refresh token has been revoked');
         await new Promise<void>((resolve) => (releaseRefresh = resolve));
-        return { success: true, data: { accessToken: 'access-1' } };
+        return { success: true, data: { accessToken: 'access-1', user: admin } };
       }),
-      get: vi.fn(async () => ({ success: true, data: { id: 'u1', email: 'm@example.com', platformRole: 'USER' } })),
+      get: vi.fn(async () => ({ success: true, data: admin })),
     },
   };
 });
@@ -36,6 +39,10 @@ function Probe() {
   const { user, loading } = useAuth();
   return <p>{loading ? 'loading' : user ? `signed in as ${user.email}` : 'signed out'}</p>;
 }
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('AuthProvider start-up refresh', () => {
   it('sends a single refresh even when React runs the start-up effect twice', async () => {
@@ -50,6 +57,44 @@ describe('AuthProvider start-up refresh', () => {
     await waitFor(() => expect(refreshCalls).toBe(1));
     releaseRefresh();
     expect(await screen.findByText('signed in as m@example.com')).toBeInTheDocument();
+    expect(refreshCalls).toBe(1);
+  });
+
+  it('gives a page its access token on its very first fetch (no 401 + second refresh)', async () => {
+    refreshCalls = 0;
+    const authHeaders: Array<string | undefined> = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init: RequestInit) => {
+        authHeaders.push((init.headers as Record<string, string>).Authorization);
+        return new Response(JSON.stringify({ success: true, data: { items: [] } }), { status: 200 });
+      }),
+    );
+
+    // Mirrors a dashboard page: it fetches in a mount effect, which React runs
+    // before the provider's own effects in the commit that reveals it.
+    function Page() {
+      const { user } = useAuth();
+      useEffect(() => {
+        if (user) void apiRequest('/admin/affiliates');
+      }, [user]);
+      return <p>page</p>;
+    }
+    function Gate() {
+      const { user } = useAuth();
+      return user ? <Page /> : <p>checking</p>;
+    }
+
+    render(
+      <AuthProvider>
+        <Gate />
+      </AuthProvider>,
+    );
+    await waitFor(() => expect(refreshCalls).toBe(1));
+    releaseRefresh();
+    await screen.findByText('page');
+    await waitFor(() => expect(authHeaders).toHaveLength(1));
+    expect(authHeaders[0]).toBe('Bearer access-1');
     expect(refreshCalls).toBe(1);
   });
 });

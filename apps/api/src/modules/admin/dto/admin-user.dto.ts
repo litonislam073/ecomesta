@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PlatformRole, UserStatus } from '@prisma/client';
-import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsEmail, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { AdminPaginationQueryDto, SORT_ORDERS, type SortOrder } from './admin-common.dto';
 
 /** Statuses a Super Admin may set directly; lifecycle states stay system-owned. */
@@ -10,6 +11,17 @@ export const ADMIN_USER_STATUSES = [
 ] as const;
 
 export const ADMIN_USER_SORT_FIELDS = ['createdAt', 'email'] as const;
+
+export const ADMIN_SIGNUP_CHANNELS = [
+  'facebook',
+  'google',
+  'instagram',
+  'youtube',
+  'affiliate',
+  'direct',
+  'referral',
+  'other',
+] as const;
 
 export class ListAdminUsersQueryDto extends AdminPaginationQueryDto {
   @ApiPropertyOptional({ description: 'Partial email match' })
@@ -27,6 +39,11 @@ export class ListAdminUsersQueryDto extends AdminPaginationQueryDto {
   @IsOptional()
   @IsIn(Object.values(PlatformRole))
   platformRole?: PlatformRole;
+
+  @ApiPropertyOptional({ enum: ADMIN_SIGNUP_CHANNELS })
+  @IsOptional()
+  @IsIn(ADMIN_SIGNUP_CHANNELS)
+  signupChannel?: (typeof ADMIN_SIGNUP_CHANNELS)[number];
 
   @ApiPropertyOptional({ enum: ADMIN_USER_SORT_FIELDS })
   @IsOptional()
@@ -49,4 +66,14 @@ export class UpdateUserPlatformRoleDto {
   @ApiProperty({ enum: PlatformRole })
   @IsIn(Object.values(PlatformRole))
   platformRole!: PlatformRole;
+}
+
+export class UpdateUserEmailDto {
+  @ApiProperty({ example: 'correct-address@example.com' })
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim().toLowerCase() : value,
+  )
+  @IsEmail()
+  @MaxLength(255)
+  email!: string;
 }

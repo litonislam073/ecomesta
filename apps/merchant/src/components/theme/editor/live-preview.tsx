@@ -66,15 +66,21 @@ export function useThemePreviewSession({
   const [stale, setStale] = useState(false);
   const tokenRef = useRef<string | null>(null);
   const storeRef = useRef(storeId);
+  const lastSentRef = useRef<string | null>(null);
+  // Stable identity so typing that settles to the same previewable config does not re-PUT.
+  const payloadKey = draft ? JSON.stringify(previewableConfig(draft)) : '';
 
   // A token belongs to one store.
   if (storeRef.current !== storeId) {
     storeRef.current = storeId;
     tokenRef.current = null;
+    lastSentRef.current = null;
   }
 
   useEffect(() => {
     if (!enabled || !allowed || !storeId) return;
+    const sessionKey = `${storeId}\0${themeId ?? ''}\0${payloadKey}`;
+    if (tokenRef.current && lastSentRef.current === sessionKey) return;
     let cancelled = false;
     const timer = window.setTimeout(
       async () => {
@@ -94,6 +100,7 @@ export function useThemePreviewSession({
             tokenRef.current = next;
             setToken(next);
           }
+          lastSentRef.current = sessionKey;
           setVersion((value) => value + 1);
           setStatus('ready');
           setStale(false);
@@ -111,7 +118,7 @@ export function useThemePreviewSession({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [storeId, themeId, draft, enabled, allowed]);
+  }, [storeId, themeId, payloadKey, draft, enabled, allowed]);
 
   /** Re-renders the preview after a change outside the draft (e.g. a category image). */
   const refresh = useCallback(() => {

@@ -31,8 +31,9 @@ import { useStoreContext } from '@/lib/store-context';
 
 const ORDER_NEXT: Partial<Record<OrderStatus, OrderStatus[]>> = {
   PENDING: ['CONFIRMED', 'CANCELLED'],
-  CONFIRMED: ['PROCESSING', 'CANCELLED'],
-  PROCESSING: ['COMPLETED', 'CANCELLED'],
+  CONFIRMED: ['PROCESSING', 'PENDING', 'CANCELLED'],
+  PROCESSING: ['COMPLETED', 'CONFIRMED', 'CANCELLED'],
+  COMPLETED: ['PROCESSING'],
 };
 
 const PAYMENT_NEXT: Partial<Record<PaymentStatus, PaymentStatus[]>> = {
@@ -354,9 +355,17 @@ function OrderDetailContent() {
                   disabled={busy || nextStatuses.filter((s) => s !== 'CANCELLED').length === 0}
                   onChange={(e) => {
                     const value = e.target.value as OrderStatus;
-                    if (value) {
-                      void patchStatus('status', { status: value }, 'Order status updated.');
+                    if (!value) return;
+                    if (
+                      order.status === 'COMPLETED' &&
+                      value === 'PROCESSING' &&
+                      !window.confirm(
+                        'Move this completed order back to Processing? This should only be used to correct a mistake.',
+                      )
+                    ) {
+                      return;
                     }
+                    void patchStatus('status', { status: value }, 'Order status updated.');
                   }}
                   aria-label="Update order status"
                 >
@@ -377,13 +386,28 @@ function OrderDetailContent() {
                   disabled={busy || nextPayments.length === 0 || order.status === 'CANCELLED'}
                   onChange={(e) => {
                     const value = e.target.value as PaymentStatus;
-                    if (value) {
-                      void patchStatus(
-                        'payment-status',
-                        { paymentStatus: value },
-                        'Payment status updated.',
+                    if (!value) return;
+                    const body: {
+                      paymentStatus: PaymentStatus;
+                      amount?: string;
+                      reason?: string;
+                    } = { paymentStatus: value };
+                    if (value === 'REFUNDED' || value === 'PARTIALLY_REFUNDED') {
+                      const amount = window.prompt(
+                        `Refund amount in ${order.currency} (optional):`,
+                        value === 'REFUNDED' ? order.grandTotal : '',
                       );
+                      if (amount === null) return;
+                      if (amount.trim()) body.amount = amount.trim();
+                      const reason = window.prompt('Refund reason (optional):');
+                      if (reason === null) return;
+                      if (reason.trim()) body.reason = reason.trim();
                     }
+                    void patchStatus(
+                      'payment-status',
+                      body,
+                      'Payment status updated.',
+                    );
                   }}
                   aria-label="Update payment status"
                 >

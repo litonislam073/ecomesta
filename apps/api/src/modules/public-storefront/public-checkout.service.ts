@@ -244,11 +244,32 @@ export class PublicCheckoutService {
       }
     }
 
-    for (const { line, quantity } of needs.values()) {
-      const row = await this.prisma.inventoryItem.findFirst({
-        where: { storeId, productId: line.productId, variantId: line.variantId },
-        select: { quantity: true, reservedQuantity: true },
-      });
+    if (needs.size === 0) return;
+
+    const rows = await this.prisma.inventoryItem.findMany({
+      where: {
+        storeId,
+        OR: [...needs.values()].map(({ line }) => ({
+          productId: line.productId,
+          variantId: line.variantId,
+        })),
+      },
+      select: {
+        productId: true,
+        variantId: true,
+        quantity: true,
+        reservedQuantity: true,
+      },
+    });
+    const stockByKey = new Map(
+      rows.map((row) => [
+        `${row.productId}:${row.variantId ?? 'null'}`,
+        row,
+      ]),
+    );
+
+    for (const [key, { line, quantity }] of needs) {
+      const row = stockByKey.get(key);
       const available = Math.max(
         0,
         (row?.quantity ?? 0) - (row?.reservedQuantity ?? 0),
@@ -324,9 +345,12 @@ export class PublicCheckoutService {
     publicReference: string,
     proof: { email?: string; phone?: string },
   ) {
-    // Reject obvious non-references early (sequential order numbers, UUIDs used as auth).
+    // Accept the customer-facing order number (EM-1001) or the long public reference.
+    // Either way the contact proof below is mandatory, so a guessable number alone
+    // never discloses an order. Other short strings are rejected early.
     const ref = publicReference?.trim() ?? '';
-    if (!ref || ref.length < 16 || ref.length > 128) {
+    const isOrderNumber = /^EM-\d{1,12}$/i.test(ref);
+    if (!ref || ref.length > 128 || (!isOrderNumber && ref.length < 16)) {
       throw new NotFoundException('Order not found');
     }
 
@@ -337,7 +361,9 @@ export class PublicCheckoutService {
       throw new NotFoundException('Order not found');
     }
 
-    const order = await this.orders.getPublicOrder(storeId, ref);
+    const order = isOrderNumber
+      ? await this.orders.getPublicOrderByNumber(storeId, ref.toUpperCase())
+      : await this.orders.getPublicOrder(storeId, ref);
 
     if (proof.email) {
       const email = proof.email.trim().toLowerCase();

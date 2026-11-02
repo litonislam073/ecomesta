@@ -97,7 +97,9 @@ export function LandingOrderForm({
     { subtotal: 0, saving: 0 },
   );
   const quote = checkout.quote;
-  const pending = checkout.quoteLoading || (!quote && lines.length > 0 && !demo);
+  // Only block while a quote is in flight; keep Confirm usable for field validation
+  // when no quote is loaded yet (client estimate). Failures use quoteError separately.
+  const pending = checkout.quoteLoading;
   const subtotal = quote ? Number(quote.subtotal) : estimate.subtotal;
   const discount = quote ? Number(quote.discountTotal) : 0;
   // No delivery option chosen yet (e.g. none for this place): not "free", just unknown.
@@ -345,8 +347,17 @@ export function LandingOrderForm({
           {checkout.formError}
         </p>
       ) : null}
-      <button type="submit" disabled={checkout.submitting} className={skin.button}>
-        {checkout.submitting ? 'অর্ডার পাঠানো হচ্ছে…' : texts.buttonLabel}
+      <button
+        type="submit"
+        disabled={checkout.submitting || pending || Boolean(checkout.quoteError)}
+        className={skin.button}
+        aria-busy={checkout.submitting || pending}
+      >
+        {checkout.submitting
+          ? 'অর্ডার পাঠানো হচ্ছে…'
+          : pending
+            ? 'মোট দাম হিসাব হচ্ছে…'
+            : texts.buttonLabel}
       </button>
       {texts.note ? <p className={skin.note}>{texts.note}</p> : null}
       <p className={`${skin.note} flex items-center justify-center gap-2`}>

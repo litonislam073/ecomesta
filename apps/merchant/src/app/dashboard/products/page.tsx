@@ -1,7 +1,8 @@
 ﻿'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { Category, OffsetPageMeta, Product, ProductStatus } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
 import { DemoCatalogCta } from '@/components/catalog/demo-catalog-cta';
@@ -22,22 +23,35 @@ import { humanApiError } from '@/lib/catalog-utils';
 import { useCanManageStore } from '@/lib/permissions';
 import { useStoreContext } from '@/lib/store-context';
 
+const SORT_KEYS = ['updatedAt', 'createdAt', 'name', 'basePrice'];
+
 function ProductsContent() {
   const { selectedStoreId } = useStoreContext();
   const canWrite = useCanManageStore();
   const { pushToast } = useToast();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // Filters and page live in the URL (?q=&status=&type=&category=&sort=&order=&page=)
+  // so a reload, back/forward or a shared link restores the same view.
+  const initialPage = Number.parseInt(searchParams?.get('page') ?? '', 10);
+  const initialSort = searchParams?.get('sort') ?? '';
+  const initialQuery = searchParams?.get('q') ?? '';
 
   const [items, setItems] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [meta, setMeta] = useState<OffsetPageMeta | null>(null);
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
-  const [query, setQuery] = useState('');
-  const [status, setStatus] = useState('');
-  const [productType, setProductType] = useState('');
-  const [categoryId, setCategoryId] = useState('');
-  const [sortBy, setSortBy] = useState('updatedAt');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [page, setPage] = useState(Number.isFinite(initialPage) && initialPage > 0 ? initialPage : 1);
+  const [search, setSearch] = useState(initialQuery);
+  const [query, setQuery] = useState(initialQuery);
+  const [status, setStatus] = useState(searchParams?.get('status') ?? '');
+  const [productType, setProductType] = useState(searchParams?.get('type') ?? '');
+  const [categoryId, setCategoryId] = useState(searchParams?.get('category') ?? '');
+  const [sortBy, setSortBy] = useState(SORT_KEYS.includes(initialSort) ? initialSort : 'updatedAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(
+    searchParams?.get('order') === 'asc' ? 'asc' : 'desc',
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [archiveId, setArchiveId] = useState<string | null>(null);
@@ -88,6 +102,25 @@ function ProductsContent() {
     void load();
   }, [load]);
 
+  // Mirror the applied filters into the URL (defaults are omitted).
+  useEffect(() => {
+    const next = new URLSearchParams();
+    if (query) next.set('q', query);
+    if (status) next.set('status', status);
+    if (productType) next.set('type', productType);
+    if (categoryId) next.set('category', categoryId);
+    if (sortBy !== 'updatedAt' || sortOrder !== 'desc') {
+      next.set('sort', sortBy);
+      next.set('order', sortOrder);
+    }
+    if (page > 1) next.set('page', String(page));
+    const nextString = next.toString();
+    if (nextString === (searchParams?.toString() ?? '')) return;
+    router.replace(nextString ? `${pathname}?${nextString}` : pathname, { scroll: false });
+    // searchParams is intentionally omitted: the URL follows the state, not the reverse.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, status, productType, categoryId, sortBy, sortOrder, page, pathname, router]);
+
   async function onArchive() {
     if (!selectedStoreId || !archiveId) return;
     setBusy(true);
@@ -112,9 +145,19 @@ function ProductsContent() {
     );
   }
 
-  const filtersActive = Boolean(
-    query || status || productType || categoryId || sortBy !== 'updatedAt' || sortOrder !== 'desc',
-  );
+  const hasFilters = Boolean(query || status || productType || categoryId);
+  const filtersActive = hasFilters || sortBy !== 'updatedAt' || sortOrder !== 'desc';
+
+  function resetFilters() {
+    setSearch('');
+    setQuery('');
+    setStatus('');
+    setProductType('');
+    setCategoryId('');
+    setSortBy('updatedAt');
+    setSortOrder('desc');
+    setPage(1);
+  }
 
   return (
     <div className="space-y-6">
@@ -161,20 +204,7 @@ function ProductsContent() {
             ? `${meta.total} ${meta.total === 1 ? 'product' : 'products'}${filtersActive ? (meta.total === 1 ? ' matches your filters' : ' match your filters') : ''}`
             : undefined
         }
-        onReset={
-          filtersActive
-            ? () => {
-                setSearch('');
-                setQuery('');
-                setStatus('');
-                setProductType('');
-                setCategoryId('');
-                setSortBy('updatedAt');
-                setSortOrder('desc');
-                setPage(1);
-              }
-            : undefined
-        }
+        onReset={filtersActive ? resetFilters : undefined}
       >
         <FilterField label="Status">
           <Select
@@ -251,7 +281,15 @@ function ProductsContent() {
 
       {loading ? <LoadingState label="Loading products" /> : null}
       {!loading && error ? <ErrorState message={error} onRetry={() => void load()} /> : null}
-      {!loading && !error && items.length === 0 ? (
+      {!loading && !error && items.length === 0 && hasFilters ? (
+        <EmptyState
+          title="No products match your filters"
+          description="Try a different search or clear the filters to see every product."
+          actionLabel="Show all products"
+          onAction={resetFilters}
+        />
+      ) : null}
+      {!loading && !error && items.length === 0 && !hasFilters ? (
         <EmptyState
           title="No products yet"
           description="Create your first product to start building the catalog."
@@ -379,7 +417,9 @@ function ProductsContent() {
 export default function ProductsPage() {
   return (
     <StoreScoped>
-      <ProductsContent />
+      <Suspense fallback={<LoadingState label="Loading products" />}>
+        <ProductsContent />
+      </Suspense>
     </StoreScoped>
   );
 }

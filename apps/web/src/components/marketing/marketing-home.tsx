@@ -47,44 +47,27 @@ export function MarketingHome({
         />
         <Container className="relative grid items-center gap-14 py-16 sm:py-20 lg:grid-cols-[1.05fr_1fr] lg:py-24">
           <div>
-            <FadeUp
-              on="load"
-              as="p"
-              distance={12}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-white px-3 py-1 text-sm font-medium text-[var(--color-accent)]"
-            >
+            {/* Hero paints immediately (no opacity-0 enter animation) so LCP stays under ~2.5s. */}
+            <p className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-white px-3 py-1 text-sm font-medium text-[var(--color-accent)]">
               <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[var(--color-accent)]" />
               {copy.hero.badge}
-            </FadeUp>
-            <FadeUp
-              on="load"
-              as="h1"
-              delay={0.04}
+            </p>
+            <h1
               id="hero-heading"
               className="mt-6 font-display text-4xl leading-[1.08] tracking-tight text-[var(--color-ink)] sm:text-5xl lg:text-[3.4rem]"
             >
               {copy.hero.title}
-            </FadeUp>
-            <FadeUp on="load" as="p" delay={0.12} className="mt-6 max-w-xl text-lg leading-relaxed text-[var(--color-muted)]">
-              {copy.hero.intro}
-            </FadeUp>
+            </h1>
+            <p className="mt-6 max-w-xl text-lg leading-relaxed text-[var(--color-muted)]">{copy.hero.intro}</p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <FadeUp on="load" as="span" delay={0.18} className="inline-flex">
-                <ButtonLink href={register} cta="create-store-hero">
-                  {copy.hero.primary}
-                </ButtonLink>
-              </FadeUp>
-              <FadeUp on="load" as="span" delay={0.24} className="inline-flex">
-                <ButtonLink href={link("/features")} variant="secondary">
-                  {copy.hero.secondary}
-                </ButtonLink>
-              </FadeUp>
+              <ButtonLink href={register} cta="create-store-hero">
+                {copy.hero.primary}
+              </ButtonLink>
+              <ButtonLink href={link('/features')} variant="secondary">
+                {copy.hero.secondary}
+              </ButtonLink>
             </div>
-            <FadeUp
-              on="load"
-              as="ul"
-              delay={0.27}
-              distance={12}
+            <ul
               aria-label={locale === 'bn' ? 'দাম আর পেমেন্ট' : 'Price and payment'}
               className="mt-6 inline-flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-[var(--brand-green)]/30 bg-[var(--brand-green-tint)] px-4 py-3 text-sm font-semibold text-[var(--brand-green-text)]"
             >
@@ -98,8 +81,8 @@ export function MarketingHome({
                   {item}
                 </li>
               ))}
-            </FadeUp>
-            <FadeUp on="load" as="ul" delay={0.3} distance={12} className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[var(--color-muted)]">
+            </ul>
+            <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[var(--color-muted)]">
               {copy.hero.points.map((item) => (
                 <li key={item} className="flex items-center gap-2">
                   <svg aria-hidden="true" viewBox="0 0 20 20" className="h-4 w-4 text-[var(--brand-green)]" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -108,11 +91,11 @@ export function MarketingHome({
                   {item}
                 </li>
               ))}
-            </FadeUp>
+            </ul>
           </div>
-          <ScaleIn on="load" delay={0.15} className="lg:pl-4">
+          <div className="lg:pl-4">
             <DashboardPreview />
-          </ScaleIn>
+          </div>
         </Container>
       </section>
 

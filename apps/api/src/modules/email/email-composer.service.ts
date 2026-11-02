@@ -26,7 +26,10 @@ import {
   billingPaymentApprovedEmail,
   billingPaymentRejectedEmail,
   billingPaymentSubmittedEmail,
+  emailChangeConfirmationEmail,
+  emailChangeRequestedEmail,
   emailVerificationEmail,
+  maskEmail,
   passwordChangedEmail,
   passwordResetEmail,
   storeCreatedEmail,
@@ -36,6 +39,7 @@ import {
 
 export const PASSWORD_RESET_TTL_MINUTES = 60;
 export const EMAIL_VERIFICATION_TTL_HOURS = 48;
+export const EMAIL_CHANGE_TTL_HOURS = 24;
 
 /** Safe reference to a recipient for delivery logs (never the address itself). */
 export function recipientHash(email: string): string {
@@ -73,7 +77,7 @@ export class EmailComposer {
   }
 
   /** Link to the merchant app; the token rides in the fragment so it never reaches server or proxy logs. */
-  tokenUrl(path: '/reset-password' | '/verify-email', token: string): string {
+  tokenUrl(path: '/reset-password' | '/verify-email' | '/confirm-email-change', token: string): string {
     return `${this.config.merchantUrl()}${path}#token=${token}`;
   }
 
@@ -99,6 +103,33 @@ export class EmailComposer {
       this.brand(),
     );
     return this.toMessage(EMAIL_EVENTS.EMAIL_VERIFICATION, user.email, rendered);
+  }
+
+  /** Sent to the new address; opening the link makes it the account email. */
+  emailChangeConfirmation(
+    user: { firstName: string | null },
+    newEmail: string,
+    token: string,
+  ): ComposedEmail {
+    const rendered = emailChangeConfirmationEmail(
+      {
+        firstName: user.firstName,
+        newEmail,
+        confirmUrl: this.tokenUrl('/confirm-email-change', token),
+        expiresInHours: EMAIL_CHANGE_TTL_HOURS,
+      },
+      this.brand(),
+    );
+    return this.toMessage(EMAIL_EVENTS.EMAIL_CHANGE_CONFIRMATION, newEmail, rendered);
+  }
+
+  /** Heads-up to the current address; shows the new one only partly. */
+  emailChangeRequested(user: { email: string; firstName: string | null }, newEmail: string): ComposedEmail {
+    const rendered = emailChangeRequestedEmail(
+      { firstName: user.firstName, maskedNewEmail: maskEmail(newEmail) },
+      this.brand(),
+    );
+    return this.toMessage(EMAIL_EVENTS.EMAIL_CHANGE_REQUESTED, user.email, rendered);
   }
 
   /** Renders a queued outbox row. Throws EmailSendError when it can never be sent. */

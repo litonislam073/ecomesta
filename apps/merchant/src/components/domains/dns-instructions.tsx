@@ -3,6 +3,11 @@
 import type { DomainStatus, DomainVerificationRecord } from '@ecomesta/types';
 import { CopyValue } from '@/components/domains/copy-value';
 
+export interface DnsTargets {
+  cname?: string | null;
+  a?: string | null;
+}
+
 const INTRO: Partial<Record<DomainStatus, string>> = {
   PENDING:
     'Add this TXT record at your DNS provider, then run Verify. DNS changes can take a few minutes to propagate.',
@@ -26,7 +31,10 @@ export function DnsInstructions({
   canRegenerate,
   regenerating,
   onRegenerate,
+  targets,
 }: {
+  /** Where the domain should point once verified (CNAME host and/or apex A-record IPv4). */
+  targets?: DnsTargets;
   hostname: string;
   status: DomainStatus;
   verification: DomainVerificationRecord;
@@ -78,11 +86,35 @@ export function DnsInstructions({
           </div>
         )}
       </div>
-      <p className="text-xs text-[var(--color-muted)]">
-        Once the storefront is live, point{' '}
-        <code className="font-mono">{hostname}</code> at the platform with a
-        CNAME (or A record for an apex domain) supplied by your DNS provider.
-      </p>
+      <div className="space-y-2">
+        <p className="text-xs text-[var(--color-muted)]">
+          Once ownership is verified, point{' '}
+          <code className="font-mono">{hostname}</code> at the platform:
+        </p>
+        {targets?.cname || targets?.a ? (
+          <div className="grid gap-3 md:grid-cols-2">
+            {targets.cname ? (
+              <CopyValue
+                label="CNAME target"
+                value={targets.cname}
+                hint={`For subdomains such as ${hostname}`}
+              />
+            ) : null}
+            {targets.a ? (
+              <CopyValue
+                label="A record target (apex domains)"
+                value={targets.a}
+                hint="Use this IPv4 address when a CNAME is not allowed"
+              />
+            ) : null}
+          </div>
+        ) : (
+          <p className="text-xs text-[var(--color-muted)]">
+            The CNAME / A record target for your deployment is not configured
+            yet. Ask your platform administrator for it.
+          </p>
+        )}
+      </div>
     </section>
   );
 }

@@ -272,7 +272,10 @@ export function ManualPaymentPanel({
   variant = 'full',
   item,
   note = 'Our team checks every payment and emails you once it is confirmed.',
+  pendingPayment = null,
 }: {
+  /** A payment already waiting for review; a second one cannot be submitted. */
+  pendingPayment?: MerchantBillingPayment | null;
   plan?: PublicPlan;
   cycle?: BillingCycleCode;
   accounts: ManualPaymentAccount[];
@@ -299,6 +302,8 @@ export function ManualPaymentPanel({
   const [senderNumber, setSenderNumber] = useState('');
   const [transactionId, setTransactionId] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // Set synchronously so a fast double click cannot submit twice before state updates.
+  const submittingRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   // Both fields are required: which one the last check rejected.
   const [invalid, setInvalid] = useState<'sender' | 'transaction' | null>(null);
@@ -329,6 +334,7 @@ export function ManualPaymentPanel({
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
+    if (submittingRef.current || pendingPayment) return;
     setError(null);
     setInvalid(null);
     const digits = senderNumber.replace(/[\s\-()]/g, '').replace(/^\+?88/, '');
@@ -344,6 +350,7 @@ export function ManualPaymentPanel({
       transactionRef.current?.focus();
       return;
     }
+    submittingRef.current = true;
     setSubmitting(true);
     try {
       const couponCode = coupon?.code;
@@ -362,15 +369,19 @@ export function ManualPaymentPanel({
         err instanceof ApiError || err instanceof Error ? err.message : 'Could not submit your payment. Please try again.',
       );
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   }
 
   if (!account) return null;
 
+  const submitBlocked = submitting || Boolean(pendingPayment);
   const submitText = submitting
     ? 'Submitting…'
-    : submitLabel
+    : pendingPayment
+      ? 'Payment already under review'
+      : submitLabel
       ? submitLabel(formatBdt(amount), label)
       : `Submit ${formatBdt(amount)} ${label} payment`;
   // The asterisk is drawn by CSS so it never becomes part of the field's name.
@@ -514,7 +525,7 @@ export function ManualPaymentPanel({
         <div className="space-y-3">
           <button
             type="submit"
-            disabled={submitting || !filled}
+            disabled={submitBlocked || !filled}
             className="flex h-12 w-full items-center justify-center rounded-xl text-base font-semibold text-white shadow-sm transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
             style={{ backgroundColor: brand.color }}
           >
@@ -659,7 +670,7 @@ export function ManualPaymentPanel({
 
           <button
             type="submit"
-            disabled={submitting || !filled}
+            disabled={submitBlocked || !filled}
             className="flex h-12 w-full items-center justify-center rounded-xl text-base font-semibold text-white shadow-md transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
             style={{ backgroundColor: brand.color }}
           >

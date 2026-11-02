@@ -2,8 +2,9 @@ import { IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-valid
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsAccountPassword } from './password-policy';
+import { SignupAttributionFieldsDto } from './signup-attribution.dto';
 
-export class RegisterDto {
+export class RegisterDto extends SignupAttributionFieldsDto {
   @ApiProperty({ example: 'merchant@example.com' })
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim().toLowerCase() : value,

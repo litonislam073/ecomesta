@@ -33,9 +33,10 @@ export async function fetchLandingPage(
   previewToken: string | null,
 ): Promise<PublicLandingPage> {
   const query = previewToken ? `?previewToken=${encodeURIComponent(previewToken)}` : '';
+  // Always bypass Next data cache so delete/unpublish is visible immediately (QA H1).
   const result = await publicGet<{ success: true; data: PublicLandingPage }>(
     `/public/stores/${encodeURIComponent(storeSlug)}/landing-pages/${encodeURIComponent(pageSlug)}${query}`,
-    { fresh: !!previewToken },
+    { fresh: true },
   );
   return result.data;
 }

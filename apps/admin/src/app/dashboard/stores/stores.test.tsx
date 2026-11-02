@@ -1,15 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AdminStoresPage from '@/app/dashboard/stores/page';
 import AdminStoreDetailPage from '@/app/dashboard/stores/[storeId]/page';
 import { ApiError } from '@/lib/api-client';
 
 const pushToast = vi.fn();
+const push = vi.fn();
 
 vi.mock('next/navigation', () => ({
   useParams: () => ({ storeId: 'store-1' }),
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push, replace: vi.fn() }),
 }));
 
 vi.mock('next/link', () => ({
@@ -198,5 +199,92 @@ describe('Admin stores', () => {
     render(<AdminStoreDetailPage />);
 
     expect(await screen.findByText('Default')).toBeInTheDocument();
+  });
+
+  describe('deleting a store', () => {
+    beforeEach(() => {
+      api.post.mockReset();
+      push.mockReset();
+    });
+
+    it('soft-deletes with an optional reason after confirmation', async () => {
+      const user = userEvent.setup();
+      api.get.mockResolvedValue({ success: true, data: sampleDetail });
+      api.post.mockResolvedValue({ success: true, data: {} });
+      render(<AdminStoreDetailPage />);
+
+      await user.click(await screen.findByRole('button', { name: 'Delete store' }));
+      const dialog = screen.getByRole('dialog');
+      expect(dialog).toHaveTextContent('Delete this store?');
+      await user.type(within(dialog).getByLabelText(/Reason/), 'Opened by mistake');
+      await user.click(within(dialog).getByRole('button', { name: 'Delete store' }));
+
+      await waitFor(() =>
+        expect(api.post).toHaveBeenCalledWith('/admin/stores/store-1/soft-delete', { reason: 'Opened by mistake' }),
+      );
+      expect(pushToast).toHaveBeenCalledWith('Store deleted. It can be restored from this page.', 'success');
+    });
+
+    it('shows a deleted store and restores it on a new address', async () => {
+      const user = userEvent.setup();
+      api.get.mockResolvedValue({
+        success: true,
+        data: { ...sampleDetail, slug: 'deleted--store-1', status: 'SUSPENDED', deletedAt: '2026-10-30T00:00:00.000Z', deletedSlug: 'alpha-store' },
+      });
+      api.post.mockResolvedValue({ success: true, data: {} });
+      render(<AdminStoreDetailPage />);
+
+      expect(await screen.findByText('This store is deleted.')).toBeInTheDocument();
+      // The status controls are hidden for a deleted store.
+      expect(screen.queryByRole('button', { name: /suspend store|activate store/i })).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Restore store' }));
+      const dialog = screen.getByRole('dialog');
+      const address = within(dialog).getByLabelText('Store address');
+      expect(address).toHaveValue('alpha-store');
+      await user.clear(address);
+      await user.type(address, 'alpha-two');
+      await user.click(within(dialog).getByRole('button', { name: 'Restore store' }));
+      await waitFor(() => expect(api.post).toHaveBeenCalledWith('/admin/stores/store-1/restore', { slug: 'alpha-two' }));
+    });
+
+    it('needs the store address typed before deleting permanently', async () => {
+      const user = userEvent.setup();
+      api.get.mockResolvedValue({ success: true, data: sampleDetail });
+      api.post.mockResolvedValue({ success: true, data: { deleted: true } });
+      render(<AdminStoreDetailPage />);
+
+      await user.click(await screen.findByRole('button', { name: 'Delete permanently' }));
+      const dialog = screen.getByRole('dialog');
+      expect(dialog).toHaveTextContent('20 products, 14 orders and 8 customers');
+      const confirm = within(dialog).getByRole('button', { name: 'Delete permanently' });
+      expect(confirm).toBeDisabled();
+      await user.type(within(dialog).getByLabelText(/to confirm/), 'alpha-stor');
+      expect(confirm).toBeDisabled();
+      await user.type(within(dialog).getByLabelText(/to confirm/), 'e');
+      expect(confirm).toBeEnabled();
+      await user.click(confirm);
+
+      await waitFor(() =>
+        expect(api.post).toHaveBeenCalledWith('/admin/stores/store-1/permanent-delete', { confirmSlug: 'alpha-store' }),
+      );
+      expect(push).toHaveBeenCalledWith('/dashboard/stores');
+    });
+
+    it('marks deleted stores in the list and filters them', async () => {
+      const user = userEvent.setup();
+      api.get.mockResolvedValue({
+        success: true,
+        data: {
+          items: [{ ...sampleStore, slug: 'deleted--store-1', deletedAt: '2026-10-30T00:00:00.000Z', deletedSlug: 'alpha-store' }],
+          meta: { page: 1, limit: 20, total: 1, totalPages: 1 },
+        },
+      });
+      render(<AdminStoresPage />);
+      expect(await screen.findByText('Deleted')).toBeInTheDocument();
+      expect(screen.getByText(/was alpha-store/)).toBeInTheDocument();
+      await user.selectOptions(screen.getByLabelText('Deleted filter'), 'deleted');
+      await waitFor(() => expect(api.get).toHaveBeenLastCalledWith(expect.stringContaining('deleted=deleted')));
+    });
   });
 });

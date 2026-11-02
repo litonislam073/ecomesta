@@ -7,6 +7,7 @@ import { withHomeMenuItem } from '@ecomesta/utils';
 import { CartDrawer } from '@/components/cart-drawer';
 import { useStoreThemeConfig } from '@/components/storefront/theme-provider';
 import { useCart } from '@/lib/cart';
+import { storeDisplayName } from '@/lib/store-display-name';
 import { withStoreParam } from '@/lib/theme';
 import { Icon } from './icons';
 
@@ -23,7 +24,7 @@ function useStoreSlug(store: PublicStore) {
 
 function BrandMark({ store, size = 'md' }: { store: PublicStore; size?: 'md' | 'sm' }) {
   const config = useStoreThemeConfig();
-  const brandName = config.branding?.brandName?.trim() || store.name;
+  const brandName = storeDisplayName(store, config.branding?.brandName);
   const tagline = config.branding?.tagline?.trim();
   const logoUrl = config.branding?.logoUrl ?? store.logoUrl;
   const box = size === 'md' ? 'h-11 w-11' : 'h-9 w-9';
@@ -166,7 +167,7 @@ export function ShopEaseFooter({ store }: { store: PublicStore }) {
   const storeSlug = useStoreSlug(store);
   const config = useStoreThemeConfig();
   const footer = config.footer ?? {};
-  const brandName = config.branding?.brandName?.trim() || store.name;
+  const brandName = storeDisplayName(store, config.branding?.brandName);
   const copyright = footer.copyright?.trim() || `© ${new Date().getFullYear()} ${brandName}. All rights reserved.`;
   const contact = store.contact ?? { email: null, phone: null, address: null };
   const quickLinks = footer.menuItems?.length ? footer.menuItems : DEFAULT_MENU;

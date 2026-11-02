@@ -139,9 +139,20 @@ connection and logs `SMTP connection verified` or `SMTP verification failed: <ca
 
 `EMAIL_PROVIDER_MODE=console` (the default) sends nothing. Each email is logged
 as `[console email, not sent] EVENT: "subject"` — never the recipient body or
-link. To view the rendered emails, set `EMAIL_PREVIEW_DIR=/tmp/ecomesta-emails`
-and open the `.html` files. Development never delivers real email unless you
-explicitly set `smtp` with real credentials.
+link. To view the rendered emails, set `EMAIL_PREVIEW_DIR=.tmp/ecomesta-emails`
+and open the `.html` files.
+
+To exercise real SMTP locally without an external provider, run Mailpit from
+Compose and point the API at it (loopback hosts skip STARTTLS):
+
+```bash
+docker compose up -d mailpit
+# Then in .env: EMAIL_PROVIDER_MODE=smtp, SMTP_HOST=localhost, SMTP_PORT=1025,
+# SMTP_FROM_EMAIL=no-reply@ecomesta.local, SMTP_SECURE=false
+```
+
+Open http://localhost:8025 for the inbox. Production still rejects local
+`SMTP_HOST` values.
 
 Tests replace the provider with a capturing fake; `NODE_ENV=test` disables the
 dispatcher timer.

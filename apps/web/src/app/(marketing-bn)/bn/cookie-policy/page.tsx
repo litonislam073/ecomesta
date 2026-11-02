@@ -10,8 +10,9 @@ export const metadata = buildMetadata({
 
 const COOKIES = [
   {
-    name: 'ecomesta_refresh_token',
-    purpose: 'মার্চেন্ট ড্যাশবোর্ডে নিরাপদে লগইন রাখে (HttpOnly, স্ক্রিপ্ট পড়তে পারে না)।',
+    name: 'ecomesta_refresh_token_merchant, ecomesta_refresh_token_admin',
+    purpose:
+      'মার্চেন্ট বা অ্যাডমিন ড্যাশবোর্ডে নিরাপদে লগইন রাখে (আলাদা HttpOnly কুকি, দুই অ্যাপ এক সেশন শেয়ার করে না; স্ক্রিপ্ট পড়তে পারে না)।',
     essential: true,
   },
   {

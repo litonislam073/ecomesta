@@ -199,7 +199,7 @@ describe('Theme customizer', () => {
     }
     await user.click(within(sidebar).getByRole('button', { name: 'Logo & brand' }));
     expect(screen.getByRole('heading', { name: 'Logo & brand' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Brand name')).toHaveValue('Alpha Goods');
+    expect(screen.getByLabelText('Display name (optional; blank = store name)')).toHaveValue('Alpha Goods');
 
     // No live storefront preview in tests: the simple preview renders the draft.
     const preview = screen.getByRole('region', { name: 'Storefront preview' });
@@ -207,7 +207,7 @@ describe('Theme customizer', () => {
     expect(preview).toHaveTextContent('Shop the new arrivals');
     expect(preview).toHaveTextContent('Built with Ecomesta');
     expect(screen.getByTestId('theme-status')).toHaveTextContent(
-      'Live on storefront: Nothing published yet',
+      'Live on storefront: Default theme (nothing published yet)',
     );
   });
 
@@ -217,7 +217,7 @@ describe('Theme customizer', () => {
     const user = userEvent.setup();
     render(<ThemePage />);
 
-    const brandName = await screen.findByLabelText('Brand name');
+    const brandName = await screen.findByLabelText('Display name (optional; blank = store name)');
     await user.clear(brandName);
     await user.type(brandName, 'Beta Goods');
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
@@ -351,7 +351,7 @@ describe('Theme customizer', () => {
     mockLoad();
     render(<ThemePage />);
 
-    expect(await screen.findByLabelText('Brand name')).toBeDisabled();
+    expect(await screen.findByLabelText('Display name (optional; blank = store name)')).toBeDisabled();
     expect(
       screen.queryByRole('button', { name: 'Save draft' }),
     ).not.toBeInTheDocument();
@@ -410,7 +410,7 @@ describe('Theme customizer: menu and social link editing (TE-01)', () => {
   it('loads an existing header menu into the editor', async () => {
     mockLoadWith(withNav({ menuItems: [{ label: 'Shop', href: '/products' }, { label: 'Sale', href: '/sale' }] }, {}));
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
     expect(headerMenu().value).toBe('Shop | /products\nSale | /sale');
     expect(footerMenu().value).toBe('');
   });
@@ -419,7 +419,7 @@ describe('Theme customizer: menu and social link editing (TE-01)', () => {
     mockLoadWith(withNav({ menuItems: [] }, {}));
     const user = userEvent.setup();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
     await user.type(headerMenu(), 'S');
     expect(headerMenu().value).toBe('S');
   });
@@ -428,7 +428,7 @@ describe('Theme customizer: menu and social link editing (TE-01)', () => {
     mockLoadWith(withNav({ menuItems: [] }, {}));
     const user = userEvent.setup();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
 
     await user.type(headerMenu(), 'Shop | /products{Enter}');
     expect(headerMenu().value).toBe('Shop | /products\n');
@@ -448,7 +448,7 @@ describe('Theme customizer: menu and social link editing (TE-01)', () => {
     mockLoadWith(withNav({ menuItems: [{ label: 'Shop', href: '/products' }, { label: 'Sale', href: '/sale' }] }, {}));
     const user = userEvent.setup();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
 
     // Insert " all" after "Shop" on the first line (caret in the middle of the text).
     await user.type(headerMenu(), ' all', { initialSelectionStart: 4, initialSelectionEnd: 4 });
@@ -466,7 +466,7 @@ describe('Theme customizer: menu and social link editing (TE-01)', () => {
     mockLoadWith(withNav({}, { menuItems: [] }));
     const user = userEvent.setup();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
 
     await user.type(footerMenu(), 'About | /about{Enter}Contact | /contact');
     expect(footerMenu().value).toBe('About | /about\nContact | /contact');
@@ -482,7 +482,7 @@ describe('Theme customizer: menu and social link editing (TE-01)', () => {
     mockLoadWith(withNav({ menuItems: [] }, {}));
     const user = userEvent.setup();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
 
     await user.click(headerMenu());
     await user.paste(`New arrivals  |  ${longUrl}`);
@@ -495,7 +495,7 @@ describe('Theme customizer: menu and social link editing (TE-01)', () => {
     mockLoadWith(withNav({ menuItems: [{ label: 'Shop', href: '/products' }] }, {}));
     const user = userEvent.setup();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
 
     await user.clear(headerMenu());
     expect(headerMenu().value).toBe('');
@@ -510,7 +510,7 @@ describe('Theme customizer: menu and social link editing (TE-01)', () => {
     );
     const user = userEvent.setup();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
 
     await user.type(headerMenu(), 'Bad | javascript:alert(1)');
     expect(headerMenu().value).toBe('Bad | javascript:alert(1)');
@@ -528,7 +528,7 @@ describe('Theme customizer: menu and social link editing (TE-01)', () => {
     mockLoadWith(withNav({}, { socialLinks: [] }));
     const user = userEvent.setup();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
 
     await user.type(socialLinks(), 'fa');
     expect(socialLinks().value).toBe('fa');
@@ -556,7 +556,7 @@ describe('Theme customizer: menu and social link editing (TE-01)', () => {
       }),
     );
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
     expect(socialLinks().value).toBe('facebook | https://facebook.com/example\nx | https://x.com/example');
   });
 
@@ -567,7 +567,7 @@ describe('Theme customizer: menu and social link editing (TE-01)', () => {
     );
     const user = userEvent.setup();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
 
     await user.type(socialLinks(), 'facebook | javascript:alert(1)');
     const saved = await savedConfiguration(user);
@@ -670,7 +670,7 @@ describe('Theme customizer: clearing optional URLs (TE-02)', () => {
     mockLoadWith(storeTheme);
     const user = userEvent.setup();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
     const sent = await save(user);
     // Nothing was edited, so nothing is sent: in particular no empty or
     // placeholder value for logo, favicon, hero image or announcement link.
@@ -745,7 +745,7 @@ describe('Theme customizer: saving only changed fields (TE-03)', () => {
     api.patch.mockResolvedValue({ success: true, data: storeTheme });
     const user = userEvent.setup();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
     await user.type(screen.getByLabelText(/^Footer menu/), 'About | /about');
     expect(await saved(user)).toEqual({ footer: { menuItems: [{ label: 'About', href: '/about' }] } });
   });
@@ -815,7 +815,7 @@ describe('Theme customizer: unsaved changes (TE-04)', () => {
   it('starts clean after load: no indicator and no beforeunload block', async () => {
     mockLoad();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
     expect(unsaved()).toBeNull();
     expect(beforeUnloadBlocked()).toBe(false);
   });
@@ -922,7 +922,7 @@ describe('Theme customizer: unsaved changes (TE-04)', () => {
     mockLoad();
     const user = userEvent.setup();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
     const link = internalLink();
     let prevented = true;
     link.addEventListener('click', (event) => {
@@ -962,7 +962,7 @@ describe('Theme customizer: unsaved changes (TE-04)', () => {
     api.patch.mockReturnValue(new Promise((resolve) => (finishSwitch = resolve)));
     const user = userEvent.setup();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
     await openThemeList(user);
     await user.click(screen.getByRole('button', { name: 'Edit Minimal' }));
     expect(screen.getByLabelText('Headline')).toBeDisabled();
@@ -975,7 +975,7 @@ describe('Theme customizer: unsaved changes (TE-04)', () => {
     api.patch.mockResolvedValue({ success: true, data: storeTheme });
     const user = userEvent.setup();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
     await openThemeList(user);
     await user.click(screen.getByRole('button', { name: 'Edit Minimal' }));
     await waitFor(() => expect(api.patch).toHaveBeenCalledWith('/stores/store-1/theme', { themeId: 'theme-minimal' }));
@@ -1039,7 +1039,7 @@ describe('Theme customizer: unsaved changes (TE-04)', () => {
     mockLoad();
     const user = userEvent.setup();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
     await expect(confirmLeave()).resolves.toBe(true);
 
     await editHeadline(user, 'Dirty');
@@ -1123,7 +1123,7 @@ describe('Theme customizer: color validation (TE-05)', () => {
     load();
     const user = userEvent.setup();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
     const input = colorInput('Primary color');
     await typeColor(user, input, typed);
     expect(input).not.toHaveAttribute('aria-invalid');
@@ -1151,7 +1151,7 @@ describe('Theme customizer: color validation (TE-05)', () => {
     load();
     const user = userEvent.setup();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
     const input = colorInput('Primary color');
     await typeColor(user, input, typed);
 
@@ -1173,7 +1173,7 @@ describe('Theme customizer: color validation (TE-05)', () => {
     load();
     const user = userEvent.setup();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
     const input = colorInput(label);
     await typeColor(user, input, 'red');
     await save(user);
@@ -1198,7 +1198,7 @@ describe('Theme customizer: color validation (TE-05)', () => {
     load(theme);
     const user = userEvent.setup();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
     const label = index === 0 ? 'Background color' : 'Text color';
     const input = colorInput(label, 1); // [0] is branding, [1] is announcement
     await typeColor(user, input, 'var(--x)');
@@ -1218,7 +1218,7 @@ describe('Theme customizer: color validation (TE-05)', () => {
     load();
     const user = userEvent.setup();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
     await typeColor(user, colorInput('Primary color'), 'nope');
     await typeColor(user, colorInput('Muted text color'), '#12');
     await save(user);
@@ -1233,7 +1233,7 @@ describe('Theme customizer: color validation (TE-05)', () => {
     load(unset);
     const user = userEvent.setup();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
     const input = colorInput('Accent color');
     await typeColor(user, input, '#abc');
     await typeColor(user, input, '');
@@ -1251,7 +1251,7 @@ describe('Theme customizer: color validation (TE-05)', () => {
     api.patch.mockReturnValue(new Promise((resolve) => (finish = resolve)));
     const user = userEvent.setup();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
     const input = colorInput('Primary color');
     await typeColor(user, input, '#44556');
     expect(screen.getByTestId('unsaved-indicator')).toBeInTheDocument();
@@ -1271,7 +1271,7 @@ describe('Theme customizer: color validation (TE-05)', () => {
     api.post.mockResolvedValue({ success: true, data: allColored });
     const user = userEvent.setup();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
     await typeColor(user, colorInput('Primary color'), 'rgb(0,0,0)');
     await user.click(screen.getByRole('button', { name: 'Publish' }));
     await user.click(screen.getByRole('button', { name: 'Save and publish' }));
@@ -1290,7 +1290,7 @@ describe('Theme customizer: color validation (TE-05)', () => {
     api.post.mockResolvedValue({ success: true, data: { ...savedTheme, isLive: true, hasUnpublishedChanges: false } });
     const user = userEvent.setup();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
     await typeColor(user, colorInput('Primary color'), '#ABCDEF');
     await user.click(screen.getByRole('button', { name: 'Publish' }));
     await user.click(screen.getByRole('button', { name: 'Save and publish' }));
@@ -1302,7 +1302,7 @@ describe('Theme customizer: color validation (TE-05)', () => {
     load();
     const user = userEvent.setup();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
     await typeColor(user, colorInput('Primary color'), 'red;}body{display:none');
     const preview = screen.getByRole('region', { name: 'Storefront preview' });
     expect(preview.outerHTML).not.toContain('display:none');
@@ -1417,7 +1417,7 @@ describe('Theme customizer: font whitelist (TE-06)', () => {
     api.patch.mockResolvedValue({ success: true, data: legacy });
     const user = userEvent.setup();
     render(<ThemePage />);
-    await screen.findByLabelText('Brand name');
+    await screen.findByLabelText('Display name (optional; blank = store name)');
     expect(screen.queryByTestId('unsaved-indicator')).toBeNull();
     const headline = screen.getByLabelText('Headline');
     await user.clear(headline);

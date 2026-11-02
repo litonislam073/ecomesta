@@ -174,7 +174,7 @@ export default function RegisterPage() {
   return (
     <div>
       <p className="text-sm font-semibold text-[var(--color-accent)]">
-        {affiliate ? 'Affiliate program · Create your account' : 'Step 1 of 2 · Create your account'}
+        {affiliate ? 'Affiliate program · Create your account' : 'Step 1 of 3 · Create your account'}
       </p>
       <h1 className="mt-2 font-display text-3xl tracking-tight text-[var(--color-ink)]">
         {affiliate ? 'Join the affiliate program' : 'Create your store'}
@@ -190,7 +190,7 @@ export default function RegisterPage() {
             {selectedPlan ? `${selectedPlan.name} plan` : 'Your selected plan'} ·{' '}
             {billingCycleDefinition(selection.cycle).label}
           </span>{' '}
-          — you pay for it in the last step of store setup.
+          — choose it (or start a free trial) in the last step of store setup.
         </p>
       ) : null}
 

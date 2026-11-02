@@ -137,6 +137,63 @@ describe('preview bridge', () => {
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 
+  it('focus scrolls past a sticky header so the section is not hidden', () => {
+    const scrollTo = vi.fn();
+    Object.defineProperty(window, 'scrollTo', { configurable: true, value: scrollTo });
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 });
+
+    render(
+      <>
+        <ThemePreviewBridge />
+        <header
+          data-theme-section="header"
+          style={{ position: 'sticky', top: 0, height: 64 }}
+        >
+          Header
+        </header>
+        <section data-theme-section="hero" style={{ marginTop: 400, height: 200 }}>
+          Hero
+        </section>
+      </>,
+    );
+
+    const header = document.querySelector('[data-theme-section="header"]') as HTMLElement;
+    const hero = document.querySelector('[data-theme-section="hero"]') as HTMLElement;
+    vi.spyOn(header, 'getBoundingClientRect').mockReturnValue({
+      top: 0,
+      left: 0,
+      width: 800,
+      height: 64,
+      right: 800,
+      bottom: 64,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    vi.spyOn(hero, 'getBoundingClientRect').mockReturnValue({
+      top: 400,
+      left: 0,
+      width: 800,
+      height: 200,
+      right: 800,
+      bottom: 600,
+      x: 0,
+      y: 400,
+      toJSON: () => ({}),
+    });
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: { type: 'ecomesta-theme-preview', action: 'focus', section: 'hero' },
+          source: window.parent,
+        }),
+      );
+    });
+
+    expect(scrollTo).toHaveBeenCalledWith({ top: 400 - 64 - 8, behavior: 'smooth' });
+  });
+
   it('does nothing outside a preview', () => {
     window.history.replaceState({}, '', '/?store=alpha');
     render(

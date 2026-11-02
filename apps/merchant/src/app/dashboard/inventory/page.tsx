@@ -137,6 +137,7 @@ function InventoryContent() {
   async function applyAdjustment() {
     if (!selectedStoreId || !pendingAdjust) return;
     setBusy(true);
+    setError(null);
     try {
       await api.post(`/stores/${selectedStoreId}/inventory/adjust`, pendingAdjust);
       pushToast('Inventory adjusted.', 'success');
@@ -145,11 +146,14 @@ function InventoryContent() {
       setShowAdjust(false);
       await load();
     } catch (err) {
-      if (err instanceof ApiError && (err.status === 409 || err.status === 422)) {
-        pushToast(humanApiError(err, 'Adjustment was rejected by the server'), 'error');
-      } else {
-        pushToast(humanApiError(err, 'Could not adjust inventory'), 'error');
-      }
+      const message =
+        err instanceof ApiError && (err.status === 409 || err.status === 422)
+          ? humanApiError(err, 'Adjustment was rejected by the server')
+          : humanApiError(err, 'Could not adjust inventory');
+      // Keep the adjust form open and show the server message (not toast-only).
+      setError(message);
+      pushToast(message, 'error');
+      setPendingAdjust(null);
     } finally {
       setBusy(false);
     }

@@ -6,8 +6,10 @@ import type {
   AdminUser,
   OffsetPageMeta,
   PlatformRole,
+  SignupChannel,
   UserStatus,
 } from '@ecomesta/types';
+import { formatSignupChannelLabel, signupAttributionSubtitle, SIGNUP_CHANNELS } from '@ecomesta/utils';
 import { Button } from '@ecomesta/ui';
 import { PageHeader } from '@/components/admin/page-header';
 import { StatusBadge } from '@/components/admin/status-badge';
@@ -23,6 +25,7 @@ import { api } from '@/lib/api-client';
 
 const USER_STATUSES: UserStatus[] = ['ACTIVE', 'INACTIVE', 'SUSPENDED', 'PENDING'];
 const PLATFORM_ROLES: PlatformRole[] = ['USER', 'SUPER_ADMIN'];
+const SIGNUP_CHANNEL_OPTIONS = SIGNUP_CHANNELS as readonly SignupChannel[];
 
 export default function AdminUsersPage() {
   // Opening Users clears the "new users" counter in the sidebar.
@@ -43,6 +46,7 @@ export default function AdminUsersPage() {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('');
   const [platformRole, setPlatformRole] = useState('');
+  const [signupChannel, setSignupChannel] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,6 +60,7 @@ export default function AdminUsersPage() {
         search: query || undefined,
         status: status || undefined,
         platformRole: platformRole || undefined,
+        signupChannel: signupChannel || undefined,
       });
       const result = await api.get<{
         success: true;
@@ -68,7 +73,7 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, query, status, platformRole]);
+  }, [page, query, status, platformRole, signupChannel]);
 
   useEffect(() => {
     void load();
@@ -128,6 +133,22 @@ export default function AdminUsersPage() {
             </option>
           ))}
         </Select>
+        <Select
+          className="w-auto"
+          value={signupChannel}
+          onChange={(e) => {
+            setPage(1);
+            setSignupChannel(e.target.value);
+          }}
+          aria-label="Signup source filter"
+        >
+          <option value="">All sources</option>
+          {SIGNUP_CHANNEL_OPTIONS.map((value) => (
+            <option key={value} value={value}>
+              {formatSignupChannelLabel(value)}
+            </option>
+          ))}
+        </Select>
         <Button type="submit" variant="secondary">
           Search
         </Button>
@@ -152,12 +173,15 @@ export default function AdminUsersPage() {
                 <th className="px-4 py-3 font-medium">Email</th>
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">Platform role</th>
+                <th className="px-4 py-3 font-medium">Source</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Last login</th>
               </tr>
             </thead>
             <tbody>
-              {items.map((user) => (
+              {items.map((user) => {
+                const sourceDetail = signupAttributionSubtitle(user);
+                return (
                 <tr
                   key={user.id}
                   className="border-b border-[var(--color-border)] last:border-b-0"
@@ -173,13 +197,20 @@ export default function AdminUsersPage() {
                   <td className="px-4 py-3">{displayName(user)}</td>
                   <td className="px-4 py-3">{user.platformRole}</td>
                   <td className="px-4 py-3">
+                    <div className="font-medium">{formatSignupChannelLabel(user.signupChannel)}</div>
+                    {sourceDetail ? (
+                      <div className="text-xs text-[var(--color-muted)]">{sourceDetail}</div>
+                    ) : null}
+                  </td>
+                  <td className="px-4 py-3">
                     <StatusBadge status={user.status} />
                   </td>
                   <td className="px-4 py-3 text-xs text-[var(--color-muted)]">
                     {formatDateTime(user.lastLoginAt)}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

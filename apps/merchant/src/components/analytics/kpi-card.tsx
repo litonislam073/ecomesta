@@ -20,11 +20,11 @@ export function KpiCard({
     <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
       <p className="text-xs font-medium text-[var(--color-muted)]">{label}</p>
       {locked ? (
-        <p className="mt-2 text-sm">
-          <Link href="/dashboard/billing" className="font-semibold text-[var(--color-accent)] hover:underline">
-            Upgrade to see
+        <p className="mt-2 text-sm text-[var(--color-muted)]">
+          <span className="block text-2xl font-semibold tabular-nums text-[var(--color-border)]">—</span>
+          <Link href="/dashboard/billing" className="mt-1 inline-block text-xs font-semibold text-[var(--color-accent)] hover:underline">
+            Included on Growth and Business
           </Link>
-          <span className="block text-xs text-[var(--color-muted)]">Growth and Business plans</span>
         </p>
       ) : (
         <>

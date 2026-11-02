@@ -74,6 +74,8 @@ export class DomainsService {
         meta: {
           total: items.length,
           platformRootDomain: this.resolver.platformRootDomain,
+          cnameTarget: this.resolver.cnameTarget ?? null,
+          aRecordTarget: this.resolver.aRecordTarget ?? null,
           canonicalHostname: await this.resolver.canonicalHostname(store),
         },
       },

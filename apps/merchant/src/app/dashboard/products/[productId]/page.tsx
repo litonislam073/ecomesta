@@ -54,8 +54,8 @@ function toUpdateBody(values: ProductFormValues) {
   };
 }
 
-function toVariantBody(values: VariantFormValues) {
-  return {
+function toVariantBody(values: VariantFormValues, includeStock: boolean) {
+  const body: Record<string, unknown> = {
     name: values.name.trim(),
     sku: values.sku.trim() || undefined,
     barcode: values.barcode.trim() || undefined,
@@ -65,6 +65,11 @@ function toVariantBody(values: VariantFormValues) {
     weight: values.weight.trim() || null,
     status: values.status,
   };
+  if (includeStock) {
+    const qty = Number.parseInt(values.quantity.trim() || '0', 10);
+    body.quantity = Number.isFinite(qty) && qty >= 0 ? qty : 0;
+  }
+  return body;
 }
 
 function ProductDetailContent() {
@@ -191,7 +196,7 @@ function ProductDetailContent() {
     try {
       await api.post(
         `/stores/${selectedStoreId}/products/${productId}/variants`,
-        toVariantBody(values),
+        toVariantBody(values, Boolean(product?.trackInventory)),
       );
       pushToast('Variant created.', 'success');
       setShowCreateVariant(false);
@@ -209,7 +214,7 @@ function ProductDetailContent() {
     try {
       await api.patch(
         `/stores/${selectedStoreId}/products/${productId}/variants/${editingVariant.id}`,
-        toVariantBody(values),
+        toVariantBody(values, false),
       );
       pushToast('Variant updated.', 'success');
       setEditingVariant(null);
@@ -336,6 +341,8 @@ function ProductDetailContent() {
                 <VariantForm
                   busy={variantBusy}
                   submitLabel="Create variant"
+                  trackInventory={Boolean(product.trackInventory)}
+                  showStockField
                   onCancel={() => setShowCreateVariant(false)}
                   onSubmit={onCreateVariant}
                 />
@@ -433,7 +440,7 @@ function ProductDetailContent() {
         open={Boolean(deleteVariantId)}
         title="Delete this variant?"
         description="This removes the variant. Inventory must be zero if stock is tracked."
-        confirmLabel="Delete"
+        confirmLabel="Delete variant"
         danger
         busy={variantBusy}
         onCancel={() => setDeleteVariantId(null)}

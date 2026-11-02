@@ -12,16 +12,23 @@ export function AddDomainForm({
   onSubmit: (hostname: string) => Promise<boolean>;
 }) {
   const [hostname, setHostname] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     const value = hostname.trim();
-    if (!value || busy) {
+    if (busy) {
       return;
     }
+    if (!value) {
+      setError('Hostname is required');
+      return;
+    }
+    setError(null);
     const ok = await onSubmit(value);
     if (ok) {
       setHostname('');
+      setError(null);
     }
   }
 
@@ -30,6 +37,7 @@ export function AddDomainForm({
       onSubmit={submit}
       aria-label="Add custom domain"
       className="space-y-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
+      noValidate
     >
       <div>
         <h2 className="text-base font-semibold">Add a custom domain</h2>
@@ -47,11 +55,20 @@ export function AddDomainForm({
             placeholder="shop.example.com"
             autoComplete="off"
             spellCheck={false}
-            onChange={(event) => setHostname(event.target.value)}
-            required
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? 'hostname-error' : undefined}
+            onChange={(event) => {
+              setHostname(event.target.value);
+              if (error) setError(null);
+            }}
           />
+          {error ? (
+            <p id="hostname-error" role="alert" className="text-xs text-[var(--color-danger)]">
+              {error}
+            </p>
+          ) : null}
         </label>
-        <Button type="submit" disabled={busy || hostname.trim().length === 0}>
+        <Button type="submit" disabled={busy}>
           {busy ? 'Adding…' : 'Add domain'}
         </Button>
       </div>

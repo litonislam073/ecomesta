@@ -315,6 +315,21 @@ function startBusiness(): string {
   ${sparkle(560, 360, 0.8, C.green)}`;
 }
 
+/** Parcel handed over successfully — fewer COD refusals / returns. */
+function reduceCodReturns(): string {
+  const id = 'returns';
+  return `${background(id, C.greenTint, C.tint)}
+  ${truck(120, 340, 1.1)}
+  ${parcel(520, 280, 1.35)}
+  ${parcel(660, 340, 0.95)}
+  ${checklist(id, 780, 130, 340, 4, 4)}
+  <circle cx="620" cy="200" r="52" fill="${C.green}"/>
+  <path d="M596 200 l16 16 l30 -32" stroke="${C.white}" stroke-width="9" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  ${pin(470, 470, 0.9, C.blue)}
+  ${sparkle(200, 140, 1.2, C.amber)}
+  ${sparkle(1080, 480, 1, C.green)}`;
+}
+
 function generic(): string {
   const id = 'blog';
   const body = `
@@ -334,6 +349,7 @@ const COVERS: Record<string, () => string> = {
   'cash-on-delivery-vs-online-payment': codVsOnline,
   'facebook-page-to-online-store': facebookToStore,
   'how-to-start-online-business-bangladesh': startBusiness,
+  'reduce-cod-returns-bangladesh': reduceCodReturns,
 };
 
 /** The cover illustration of a post as an SVG document. */

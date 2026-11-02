@@ -25,8 +25,8 @@ export function TrackOrderForm({ storeSlug }: { storeSlug: string }) {
 
     const ref = reference.trim();
     const value = contactInput.trim();
-    if (!ref || ref.length < 16) {
-      setError('Enter the full order reference from your confirmation.');
+    if (!ref) {
+      setError('Enter your order number (e.g. EM-1001) or the order reference from your confirmation.');
       return;
     }
     const lookup = parseContactInput(value);
@@ -47,7 +47,7 @@ export function TrackOrderForm({ storeSlug }: { storeSlug: string }) {
     } catch (err) {
       if (err instanceof PublicApiError && (err.status === 404 || err.status === 400)) {
         // Same message whether reference or contact is wrong — no enumeration.
-        setError('We could not find an order with that reference and phone number or email.');
+        setError('We could not find an order with that order number or reference and phone number or email.');
       } else {
         setError('Unable to look up this order right now. Try again shortly.');
       }
@@ -63,8 +63,9 @@ export function TrackOrderForm({ storeSlug }: { storeSlug: string }) {
           Track your order
         </h1>
         <p className="mt-3 text-[var(--color-muted)]">
-          Enter the order reference from your confirmation and the phone number or
-          email used at checkout. No account required.
+          Enter your order number (like EM-1001) or the order reference from your
+          confirmation, plus the phone number or email used at checkout. No account
+          required.
         </p>
       </div>
 
@@ -73,14 +74,15 @@ export function TrackOrderForm({ storeSlug }: { storeSlug: string }) {
         className="space-y-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5"
       >
         <label className="block space-y-1 text-sm">
-          <span>Order reference</span>
+          <span>Order number or reference</span>
           <input
             className="w-full rounded-md border border-[var(--color-border)] bg-white px-3 py-2"
             value={reference}
             onChange={(e) => setReference(e.target.value)}
+            placeholder="EM-1001"
             autoComplete="off"
             spellCheck={false}
-            aria-label="Order reference"
+            aria-label="Order number or reference"
           />
         </label>
         <label className="block space-y-1 text-sm">

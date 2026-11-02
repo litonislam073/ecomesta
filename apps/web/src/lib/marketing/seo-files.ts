@@ -1,10 +1,12 @@
 import {
   isPlatformMarketingHost,
+  resolveHostname,
   selectRequestHost,
   trustProxyEnabled,
 } from '@/lib/domain-routing';
 import { BLOG_POSTS } from '@/lib/marketing/content/blog';
 import { CONTENT_UPDATED, indexableMarketingPaths } from '@/lib/marketing/content';
+import { apiBaseUrl } from '@/lib/public-api';
 import { hasBanglaVersion, toBanglaPath, toEnglishPath } from '@ecomesta/ui/marketing';
 import { languageAlternates } from '@/lib/marketing/seo';
 import { absoluteUrl } from '@/lib/marketing/site';
@@ -51,12 +53,16 @@ export function marketingRobotsTxt(): string {
 }
 
 /** Served on merchant storefront hosts (custom domains and store subdomains). */
-export function storefrontRobotsTxt(): string {
+export function storefrontRobotsTxt(requestUrl?: string): string {
+  const sitemapLine = requestUrl
+    ? `Sitemap: ${new URL('/sitemap.xml', requestUrl).origin}/sitemap.xml`
+    : null;
   return [
     'User-agent: *',
     'Allow: /',
     ...[...STOREFRONT_PRIVATE_PATHS, '/store-not-found'].map((path) => `Disallow: ${path}`),
     '',
+    ...(sitemapLine ? [sitemapLine, ''] : []),
   ].join('\n');
 }
 
@@ -109,6 +115,86 @@ export function marketingSitemapXml(): string {
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
+    ...urls,
+    '</urlset>',
+    '',
+  ].join('\n');
+}
+
+function requestHostname(headers: Headers): string {
+  return (
+    selectRequestHost({
+      hostHeader: headers.get('host'),
+      forwardedHostHeader: headers.get('x-forwarded-host'),
+      trustProxy: trustProxyEnabled({
+        TRUST_PROXY: process.env.TRUST_PROXY,
+        TRUSTED_PROXY_HOPS: process.env.TRUSTED_PROXY_HOPS,
+      }),
+    }) ?? ''
+  );
+}
+
+function storeOrigin(request: Request, canonicalHostname: string): string {
+  const proto =
+    request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim() ||
+    new URL(request.url).protocol.replace(':', '') ||
+    'https';
+  return `${proto}://${canonicalHostname}`;
+}
+
+/** Sitemap for a merchant store host: home, catalog, categories, products. */
+export async function storefrontSitemapXml(request: Request): Promise<string | null> {
+  const host = requestHostname(request.headers);
+  if (!host) return null;
+  const resolution = await resolveHostname(host);
+  if (resolution.status !== 'resolved') return null;
+
+  const { storeSlug, canonicalHostname } = resolution.resolution;
+  const origin = storeOrigin(request, canonicalHostname);
+  const base = apiBaseUrl();
+
+  const [categoriesRes, productsRes] = await Promise.all([
+    fetch(`${base}/public/stores/${encodeURIComponent(storeSlug)}/categories`, {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+    }).then((r) => (r.ok ? r.json() : null)),
+    fetch(
+      `${base}/public/stores/${encodeURIComponent(storeSlug)}/products?limit=100&page=1`,
+      { headers: { Accept: 'application/json' }, cache: 'no-store' },
+    ).then((r) => (r.ok ? r.json() : null)),
+  ]);
+
+  const categories =
+    (categoriesRes?.data?.items as Array<{ slug: string }> | undefined) ?? [];
+  const products =
+    (productsRes?.data?.items as Array<{ slug: string }> | undefined) ?? [];
+
+  const paths = [
+    '/',
+    '/products',
+    '/categories',
+    ...categories.map((c) => `/categories/${encodeURIComponent(c.slug)}`),
+    ...products.map((p) => `/products/${encodeURIComponent(p.slug)}`),
+  ];
+
+  const today = new Date().toISOString().slice(0, 10);
+  const urls = paths.map((path) => {
+    const loc = path === '/' ? `${origin}/` : `${origin}${path}`;
+    const priority =
+      path === '/' ? '1.0' : path === '/products' || path === '/categories' ? '0.8' : '0.6';
+    return [
+      '  <url>',
+      `    <loc>${escapeXml(loc)}</loc>`,
+      `    <lastmod>${today}</lastmod>`,
+      '    <changefreq>weekly</changefreq>',
+      `    <priority>${priority}</priority>`,
+      '  </url>',
+    ].join('\n');
+  });
+
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
     ...urls,
     '</urlset>',
     '',
