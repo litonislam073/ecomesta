@@ -9,7 +9,7 @@ type Db = Prisma.TransactionClient | PrismaService;
 /**
  * Whether a business may use a theme:
  * - `free`: the default theme, in every plan;
- * - `included`: in the plan (other themes with "all themes"; premium themes with Business);
+ * - `included`: in the plan (other themes with "all themes"; premium themes with Growth and Business);
  * - `owned`: a premium theme the business bought (payment approved);
  * - `pending`: bought, payment waiting for review;
  * - `locked`: neither.
@@ -91,7 +91,7 @@ export class ThemeAccessService {
       message:
         access === 'pending'
           ? `Your payment for the ${theme.name} theme is waiting for review. You can use it as soon as we confirm it.`
-          : `${theme.name} is a premium theme. Buy it for ৳${Number(theme.priceBdt)} or upgrade to the Business plan, which includes it.`,
+          : `${theme.name} is a premium theme. Buy it for ৳${Number(theme.priceBdt)} or upgrade to the Growth or Business plan, which include it.`,
       error: THEME_PURCHASE_REQUIRED,
     });
   }

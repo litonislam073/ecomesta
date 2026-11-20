@@ -188,6 +188,15 @@ export class BillingPaymentsService {
         })
       : null;
     const amount = coupon ? coupon.amount : billingCyclePrice(planMonthlyPrice(params.plan), params.billingCycle);
+    // A wallet transaction pays for one thing only: a plan, a theme or a domain.
+    const reuse = { method: params.prepared.method, transactionId: params.prepared.transactionId };
+    const [usedForTheme, usedForDomain] = await Promise.all([
+      tx.themePurchase.findFirst({ where: reuse, select: { id: true } }),
+      tx.domainOrder.findFirst({ where: reuse, select: { id: true } }),
+    ]);
+    if (usedForTheme || usedForDomain) {
+      throw new ConflictException('This transaction ID has already been submitted. Check the ID in your payment message.');
+    }
     const row = await tx.billingPayment.create({
       data: {
         tenantId: params.tenantId,

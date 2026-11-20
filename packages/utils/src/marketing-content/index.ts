@@ -90,6 +90,7 @@ export function indexableMarketingPaths(): string[] {
     '/refund-policy',
     '/cookie-policy',
     '/shopify-alternative-bangladesh',
+    '/domains',
   ];
   const contentPaths = Object.values(PAGES_BY_HUB).flatMap((pages) =>
     pages.map(contentPath),

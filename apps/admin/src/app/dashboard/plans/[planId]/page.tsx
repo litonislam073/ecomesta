@@ -6,6 +6,7 @@ import type { SubscriptionPlan } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
 import { PageHeader } from '@/components/admin/page-header';
 import { PlanAnalyticsLimits } from '@/components/plans/plan-analytics-limits';
+import { PlanFeatureLimits } from '@/components/plans/plan-feature-limits';
 import { PlanLandingLimits } from '@/components/plans/plan-landing-limits';
 import { PlanTrialSettings } from '@/components/plans/plan-trial-settings';
 import {
@@ -179,6 +180,7 @@ export default function EditPlanPage() {
       ) : null}
 
       {!loading && !error && plan ? <PlanTrialSettings key={`trial-${plan.updatedAt}`} plan={plan} onSaved={() => void load()} /> : null}
+      {!loading && !error && plan ? <PlanFeatureLimits key={`features-${plan.updatedAt}`} plan={plan} onSaved={() => void load()} /> : null}
       {!loading && !error && plan ? <PlanLandingLimits key={plan.updatedAt} plan={plan} onSaved={() => void load()} /> : null}
       {!loading && !error && plan ? <PlanAnalyticsLimits key={`analytics-${plan.updatedAt}`} plan={plan} onSaved={() => void load()} /> : null}
 

@@ -61,6 +61,7 @@ const BN_PLAN_TEXT: Record<string, string> = {
   'Stripe for international card payments': 'বিদেশি কার্ড পেমেন্টের জন্য Stripe',
   'Priority support': 'অগ্রাধিকার সাপোর্ট',
   'Premium themes included': 'প্রিমিয়াম থিম সাথে',
+  'All themes, including premium ShopEase and Kenakata': 'প্রিমিয়াম ShopEase আর Kenakata-সহ সব থিম',
   'Unlimited landing pages': 'যত খুশি ল্যান্ডিং পেজ',
 };
 

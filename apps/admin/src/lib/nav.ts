@@ -26,6 +26,7 @@ export const ADMIN_NAV: NavSection[] = [
     items: [
       { href: '/dashboard/payments', label: 'Payments' },
       { href: '/dashboard/theme-purchases', label: 'Theme purchases' },
+      { href: '/dashboard/domain-orders', label: 'Domain orders' },
       { href: '/dashboard/plans', label: 'Plans' },
       { href: '/dashboard/coupons', label: 'Coupons' },
       { href: '/dashboard/subscriptions', label: 'Subscriptions' },

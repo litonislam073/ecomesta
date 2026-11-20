@@ -39,6 +39,7 @@ import { StoresModule } from './modules/stores/stores.module';
 import { SupportModule } from './modules/support/support.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { ThemesModule } from './modules/themes/themes.module';
+import { DomainSalesModule } from './modules/domain-sales/domain-sales.module';
 import { LandingPagesModule } from './modules/landing-pages/landing-pages.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
@@ -120,6 +121,7 @@ import { RedisModule } from './redis/redis.module';
     CouriersModule,
     PublicStorefrontModule,
     ThemesModule,
+    DomainSalesModule,
     LandingPagesModule,
     AnalyticsModule,
     DomainsModule,

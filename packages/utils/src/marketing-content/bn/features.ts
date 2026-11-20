@@ -541,8 +541,8 @@ export const FEATURE_PAGES_BN: ContentPage[] = [
         bullets: [
           'Default — সব প্যাকেজে ফ্রি',
           'Minimal — শান্ত, পরিচ্ছন্ন লেআউট, Growth আর Business-এ আছে',
-          'ShopEase — জোরালো হিরো, ক্যাটাগরি কার্ড আর আজকের অফারসহ প্রিমিয়াম থিম; Business-এ আছে, অন্য প্যাকেজে একবারের কেনাকাটা হিসেবে পাওয়া যায় (দাম ড্যাশবোর্ডে দেখায়, bKash, Nagad, Rocket বা Upay দিয়ে পেমেন্ট আর Ecomesta টিম নিশ্চিত করে)',
-          'Kenakata — চওড়া হিরো, ক্যাটাগরি কার্ড, অফার আর নতুন প্রোডাক্টসহ প্রিমিয়াম থিম, নিজস্ব প্রোডাক্ট, শপ আর কার্ট পেজসহ; Business-এ আছে, অন্য প্যাকেজে একইভাবে কেনা যায়',
+          'ShopEase — জোরালো হিরো, ক্যাটাগরি কার্ড আর আজকের অফারসহ প্রিমিয়াম থিম; Growth আর Business-এ আছে, Starter-এ একবারের কেনাকাটা হিসেবে পাওয়া যায় (দাম ড্যাশবোর্ডে দেখায়, bKash, Nagad, Rocket বা Upay দিয়ে পেমেন্ট আর Ecomesta টিম নিশ্চিত করে)',
+          'Kenakata — চওড়া হিরো, ক্যাটাগরি কার্ড, অফার আর নতুন প্রোডাক্টসহ প্রিমিয়াম থিম, নিজস্ব প্রোডাক্ট, শপ আর কার্ট পেজসহ; Growth আর Business-এ আছে, Starter-এ একইভাবে কেনা যায়',
           'লক করা থিম আপগ্রেড বা কেনার আগে এডিটরে প্রিভিউ করা যায়',
         ],
       },
@@ -599,7 +599,7 @@ export const FEATURE_PAGES_BN: ContentPage[] = [
       {
         question: 'আমার প্যাকেজে কোন থিম আছে?',
         answer:
-          'Starter-এ Default থিম। Growth-এ সব নন-প্রিমিয়াম থিম (Default আর Minimal)। Business-এ এগুলোর সাথে প্রিমিয়াম ShopEase আর Kenakata। Starter বা Growth-এ Theme পেজ থেকে একবারে প্রিমিয়াম থিম কেনা যায়।',
+          'Starter-এ Default থিম। Growth আর Business-এ সব থিম: Default, Minimal আর প্রিমিয়াম ShopEase ও Kenakata। Starter-এ Theme পেজ থেকে একবারে প্রিমিয়াম থিম কেনা যায়।',
       },
       {
         question: 'ক্যাটাগরিতে ছবি কীভাবে দেব?',

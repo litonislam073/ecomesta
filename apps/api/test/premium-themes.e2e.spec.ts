@@ -12,7 +12,7 @@ import { RedisService } from '../src/redis/redis.service';
 import { activateOnboarded, uniqueTransactionId, withPayment } from './support/onboarding';
 
 /**
- * Premium theme (ShopEase): included in Business; Starter and Growth buy it
+ * Premium theme (ShopEase): included in Growth and Business; Starter buys it
  * for ৳999 by mobile wallet and can use it once a Super Admin approves.
  */
 describe('Premium themes (e2e)', () => {
@@ -48,9 +48,9 @@ describe('Premium themes (e2e)', () => {
     await redis.getClient().del(`storefront:theme:published:${s.storeId}`);
     return (await http().get(`/api/v1/public/stores/${s.slug}/theme`).expect(200)).body.data.theme?.slug as string | undefined;
   };
-  const buy = (s: Shop, transactionId = uniqueTransactionId(), token = s.token) =>
+  const buy = (s: Shop, transactionId = uniqueTransactionId(), token = s.token, themeId = shopeaseId) =>
     http()
-      .post(`/api/v1/stores/${s.storeId}/themes/${shopeaseId}/purchase`)
+      .post(`/api/v1/stores/${s.storeId}/themes/${themeId}/purchase`)
       .set(auth(token))
       .send({ method: 'BKASH', senderNumber: '01712345678', transactionId });
 
@@ -104,9 +104,9 @@ describe('Premium themes (e2e)', () => {
     await app?.close();
   });
 
-  it('lists ShopEase as a ৳999 premium theme: included for Business, locked for Growth and Starter', async () => {
+  it('lists ShopEase as a ৳999 premium theme: included for Growth and Business, locked for Starter', async () => {
     expect(await shopease(business)).toMatchObject({ premium: true, priceBdt: '999.00', access: 'included' });
-    expect(await shopease(growth)).toMatchObject({ premium: true, access: 'locked' });
+    expect(await shopease(growth)).toMatchObject({ premium: true, access: 'included' });
     expect(await shopease(starter)).toMatchObject({ premium: true, access: 'locked' });
     // Free themes keep their rules.
     expect((await themes(starter)).find((t) => t.slug === 'default')).toMatchObject({ premium: false, access: 'free', priceBdt: null });
@@ -115,6 +115,7 @@ describe('Premium themes (e2e)', () => {
     // Kenakata is premium on the same terms (same price as ShopEase).
     const kenakata = async (shop: Shop) => (await themes(shop)).find((t) => t.slug === 'kenakata');
     expect(await kenakata(business)).toMatchObject({ name: 'Kenakata', premium: true, priceBdt: '999.00', access: 'included' });
+    expect(await kenakata(growth)).toMatchObject({ premium: true, access: 'included' });
     expect(await kenakata(starter)).toMatchObject({ premium: true, access: 'locked' });
   });
 
@@ -124,10 +125,13 @@ describe('Premium themes (e2e)', () => {
     expect(await publicTheme(business)).toBe('shopease');
   });
 
-  it('Growth (all free themes) still has to buy it', async () => {
-    const refused = await select(growth).expect(403);
+  it('Growth uses it without buying; Starter is asked to buy it or upgrade', async () => {
+    await select(growth).expect(200);
+    const refused = await select(starter).expect(403);
     expect(refused.body.error.code).toBe('THEME_PURCHASE_REQUIRED');
-    expect(refused.body.error.message).toMatch(/Buy it for ৳999 or upgrade to the Business plan/);
+    expect(refused.body.error.message).toMatch(/Buy it for ৳999 or upgrade to the Growth or Business plan/);
+    // Growth cannot pay for a theme its plan already includes.
+    expect((await buy(growth).expect(409)).body.error.message).toMatch(/already included in your plan/);
   });
 
   it('Starter buys it: pending until approved, a rejection explains why, approval unlocks it', async () => {
@@ -172,7 +176,7 @@ describe('Premium themes (e2e)', () => {
     const read = (slug: string, token?: string) =>
       http().get(`/api/v1/public/stores/${slug}/theme${token ? `?preview=${token}` : ''}`).expect(200);
 
-    // Growth has not bought ShopEase but may try it in the editor.
+    // Growth previews a ShopEase draft in the editor before publishing it.
     const first = await session({ themeId: shopeaseId, configuration: { hero: { headline: 'Try, Before You Buy' } } }).expect(200);
     const token = first.body.data.token as string;
     expect(token).toMatch(/^[A-Za-z0-9_-]{32}$/);
@@ -200,7 +204,7 @@ describe('Premium themes (e2e)', () => {
     const tryIt = await session({ themeId: shopeaseId }).expect(200);
     const tried = (await read(growth.slug, tryIt.body.data.token)).body.data;
     expect(tried).toMatchObject({ preview: true, theme: { slug: 'shopease' }, configuration: { hero: { headline: 'Shop More, Save More!' } } });
-    expect(await shopease(growth)).toMatchObject({ access: 'locked' });
+    expect(await shopease(growth)).toMatchObject({ access: 'included' });
 
     // Markup is refused like on save; unknown themes are not found; non-members are refused.
     await session({ configuration: { hero: { headline: '<script>x</script>' } } }).expect(400);
@@ -209,8 +213,9 @@ describe('Premium themes (e2e)', () => {
   });
 
   it('a wallet transaction pays for one thing only', async () => {
-    const plan = await prisma.billingPayment.findFirstOrThrow({ where: { tenantId: growth.tenantId } });
-    expect((await buy(growth, plan.transactionId).expect(409)).body.error.message).toMatch(/already been submitted/);
+    const plan = await prisma.billingPayment.findFirstOrThrow({ where: { tenantId: starter.tenantId } });
+    const kenakataId = (await themes(starter)).find((t) => t.slug === 'kenakata')!.id;
+    expect((await buy(starter, plan.transactionId, starter.token, kenakataId).expect(409)).body.error.message).toMatch(/already been submitted/);
   });
 
   it('only the business owner or an admin can pay', async () => {
@@ -225,9 +230,9 @@ describe('Premium themes (e2e)', () => {
   });
 
   it('a Business store falls back to the default theme when its plan no longer includes ShopEase', async () => {
-    const growthPlan = await prisma.subscriptionPlan.findUniqueOrThrow({ where: { slug: 'growth' } });
+    const starterPlan = await prisma.subscriptionPlan.findUniqueOrThrow({ where: { slug: 'starter' } });
     const sub = await prisma.subscription.findFirstOrThrow({ where: { tenantId: business.tenantId } });
-    await prisma.subscription.update({ where: { id: sub.id }, data: { planId: growthPlan.id } });
+    await prisma.subscription.update({ where: { id: sub.id }, data: { planId: starterPlan.id } });
     try {
       expect(await publicTheme(business)).toBe('default');
       expect((await publish(business).expect(403)).body.error.code).toBe('THEME_PURCHASE_REQUIRED');

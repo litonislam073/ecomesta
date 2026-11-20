@@ -148,7 +148,7 @@ export class ThemesService {
     if (dto.themeId) {
       // Only the default theme is included in every plan.
       if (target && isPremiumTheme(target)) {
-        // Premium themes: Business, or bought by the business.
+        // Premium themes: Growth and Business, or bought by the business.
         await this.themeAccess.assertPremiumUsable(store.tenantId, target);
       } else if (target && target.slug !== DEFAULT_THEME_SLUG) {
         await this.entitlements.assertFeature(storeId, 'allThemes');

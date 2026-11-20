@@ -37,7 +37,7 @@ export const FAQ_GROUPS: FaqGroup[] = [
       {
         question: 'Can I use my own domain?',
         answer:
-          'Yes, on the Growth and Business plans. Every store has a free platform subdomain, and you can connect a domain you own by verifying it with a DNS TXT record and pointing it to the platform.',
+          'Yes, on every plan. Every store has a free platform subdomain, and you can connect a domain you own by verifying it with a DNS TXT record and pointing it to the platform.',
       },
     ],
   },

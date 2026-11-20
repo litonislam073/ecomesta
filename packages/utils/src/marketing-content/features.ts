@@ -703,8 +703,8 @@ export const FEATURE_PAGES: ContentPage[] = [
         bullets: [
           'Default — free on every plan',
           'Minimal — a quieter, clean layout, included on Growth and Business',
-          'ShopEase — a premium theme with a bold hero, category cards and a deal of the day; included on Business, and available on other plans as a one-time purchase (price shown in the dashboard, paid with bKash, Nagad, Rocket or Upay and confirmed by the Ecomesta team)',
-          'Kenakata — a premium theme with a wide hero and category cards, deals and new arrivals, plus its own product, shop and cart pages; included on Business and sold on other plans the same way',
+          'ShopEase — a premium theme with a bold hero, category cards and a deal of the day; included on Growth and Business, and available on Starter as a one-time purchase (price shown in the dashboard, paid with bKash, Nagad, Rocket or Upay and confirmed by the Ecomesta team)',
+          'Kenakata — a premium theme with a wide hero and category cards, deals and new arrivals, plus its own product, shop and cart pages; included on Growth and Business and sold on Starter the same way',
           'Locked themes can be previewed in the editor before you upgrade or buy',
         ],
       },
@@ -764,7 +764,7 @@ export const FEATURE_PAGES: ContentPage[] = [
       {
         question: 'Which themes are included in my plan?',
         answer:
-          'Starter includes the Default theme. Growth includes all non-premium themes (Default and Minimal). Business includes those plus the premium ShopEase and Kenakata themes. On Starter or Growth you can buy a premium theme once from the Theme page.',
+          'Starter includes the Default theme. Growth and Business include every theme: Default, Minimal and the premium ShopEase and Kenakata. On Starter you can buy a premium theme once from the Theme page.',
       },
       {
         question: 'How do I add images to my categories?',

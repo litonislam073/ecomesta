@@ -8,6 +8,7 @@ export type MarketingLocale = 'en' | 'bn';
  */
 export const BN_SECTIONS = [
   '/pricing',
+  '/domains',
   '/features',
   '/payments',
   '/shipping',

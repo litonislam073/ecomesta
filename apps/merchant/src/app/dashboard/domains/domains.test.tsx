@@ -46,6 +46,9 @@ vi.mock('@/lib/subscription-context', () => ({
   }),
 }));
 
+// Buying domains has its own test (buy-domain.test.tsx).
+vi.mock('@/components/domains/buy-domain', () => ({ BuyDomain: () => null }));
+
 vi.mock('@/components/ui/toast', () => ({
   useToast: () => ({ pushToast }),
 }));
@@ -135,7 +138,7 @@ describe('Domains dashboard', () => {
     mockList([subdomain]);
     render(<DomainsPage />);
     expect(
-      await screen.findByRole('heading', { name: /Custom domains are available on the Growth and Business plans/i }),
+      await screen.findByRole('heading', { name: /Custom domains are not included in your plan/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Upgrade in Plan & billing/i })).toHaveAttribute(
       'href',

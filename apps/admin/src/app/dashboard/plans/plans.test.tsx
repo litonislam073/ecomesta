@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AdminPlansPage from '@/app/dashboard/plans/page';
 import NewPlanPage from '@/app/dashboard/plans/new/page';
@@ -191,5 +191,33 @@ describe('Admin plans', () => {
         configuration: { sortOrder: 2, trialDays: 0, limits: { maxProducts: 100 } },
       }),
     );
+  });
+
+  it('switches plan features on and keeps the rest of the configuration', async () => {
+    const plan = {
+      ...samplePlan,
+      configuration: { sortOrder: 2, limits: { maxProducts: 100, customDomain: false, allThemes: true, premiumThemes: false } },
+    };
+    api.get.mockResolvedValue({ success: true, data: plan });
+    api.patch.mockResolvedValue({ success: true, data: plan });
+    render(<EditPlanPage />);
+
+    const section = (await screen.findByRole('heading', { name: 'Plan features' })).closest('section')!;
+    const save = within(section).getByRole('button', { name: 'Save plan features' });
+    expect(within(section).getByRole('checkbox', { name: 'All free themes' })).toBeChecked();
+    expect(save).toBeDisabled();
+
+    await userEvent.click(within(section).getByRole('checkbox', { name: 'Custom domain' }));
+    await userEvent.click(within(section).getByRole('checkbox', { name: 'Premium themes' }));
+    await userEvent.click(save);
+    await waitFor(() =>
+      expect(api.patch).toHaveBeenCalledWith('/admin/plans/plan-1', {
+        configuration: {
+          sortOrder: 2,
+          limits: { maxProducts: 100, customDomain: true, allThemes: true, premiumThemes: true },
+        },
+      }),
+    );
+    expect(pushToast).toHaveBeenCalledWith('Plan features saved', 'success');
   });
 });

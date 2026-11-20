@@ -39,6 +39,7 @@ async function removeTestData(prisma: PrismaService) {
     // New stores start with ready-made shipping (see default-shipping.ts).
     await tx.shippingMethod.deleteMany({ where: { storeId: { in: storeIds } } });
     await tx.shippingZone.deleteMany({ where: { storeId: { in: storeIds } } });
+    await tx.domain.deleteMany({ where: { storeId: { in: storeIds } } });
     await tx.store.deleteMany({ where: { id: { in: storeIds } } });
     await tx.tenant.deleteMany({ where: { id: { in: tenantIds } } });
     await tx.user.deleteMany({ where: { id: { in: userIds } } });
@@ -448,7 +449,7 @@ describe('Plans, entitlements and manual billing payments (e2e)', () => {
       expect(bySlug.starter!.prices.map((p) => p.amount)).toEqual([99, 535, 891]);
       expect(bySlug.growth!.prices.map((p) => p.amount)).toEqual([299, 1615, 2691]);
       expect(bySlug.business!.prices.map((p) => p.amount)).toEqual([699, 3775, 6291]);
-      expect(bySlug.starter!.limits).toMatchObject({ maxProducts: 25, storageMb: 1024, coupons: false, customDomain: false });
+      expect(bySlug.starter!.limits).toMatchObject({ maxProducts: 25, storageMb: 1024, coupons: false, customDomain: true });
       expect(bySlug.growth!.limits).toMatchObject({ maxProducts: 100, storageMb: 3072, coupons: true, stripe: false });
       expect(bySlug.business!.limits).toMatchObject({ maxProducts: null, storageMb: 5120, stripe: true });
       const features = (slug: string) => (res.body.data as { slug: string; features: string[] }[]).find((p) => p.slug === slug)!.features;
@@ -459,7 +460,7 @@ describe('Plans, entitlements and manual billing payments (e2e)', () => {
   });
 
   describe('Starter limits', () => {
-    it('refuses coupons, delivery zones, custom domains, SSLCommerz, Stripe and premium themes', async () => {
+    it('refuses coupons, delivery zones, SSLCommerz, Stripe and premium themes, but allows a custom domain', async () => {
       const coupon = await createCoupon(starter).expect(403);
       expect(coupon.body.error.code).toBe('PLAN_UPGRADE_REQUIRED');
       expect(coupon.body.error.message).toMatch(/Upgrade to Growth or Business in Plan & billing/);
@@ -475,7 +476,8 @@ describe('Plans, entitlements and manual billing payments (e2e)', () => {
         .post(`/api/v1/stores/${starter.storeId}/domains`)
         .set(bearer(starter))
         .send({ hostname: `shop-${suffix}.example.com` })
-        .expect(403);
+        // Custom domains are on every plan.
+        .expect(201);
 
       for (const provider of ['SSL_COMMERZ', 'STRIPE']) {
         const res = await request(server())

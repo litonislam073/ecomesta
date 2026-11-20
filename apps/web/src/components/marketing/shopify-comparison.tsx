@@ -134,11 +134,11 @@ const COPY: Record<MarketingLocale, ComparisonCopy> = {
       {
         question: 'Can I move my Shopify store to Ecomesta?',
         answer:
-          'Yes, but there is no automatic import yet. You add your categories and products in the dashboard, set up delivery and payments, then point your domain to Ecomesta on the Growth or Business plan.',
+          'Yes, but there is no automatic import yet. You add your categories and products in the dashboard, set up delivery and payments, then point your domain to Ecomesta.',
       },
       {
         question: 'Can I keep my own domain?',
-        answer: 'Yes, on the Growth and Business plans you can connect a domain you own. Every store also gets a free Ecomesta web address.',
+        answer: 'Yes, on every plan you can connect a domain you own. Every store also gets a free Ecomesta web address.',
       },
       {
         question: 'Can I sell to customers abroad with Ecomesta?',
@@ -224,11 +224,11 @@ const COPY: Record<MarketingLocale, ComparisonCopy> = {
       },
       {
         question: 'আমার Shopify স্টোর কি Ecomesta-য় আনা যাবে?',
-        answer: 'হ্যাঁ, তবে এখনো নিজে থেকে আনার সুবিধা নেই। ড্যাশবোর্ডে ক্যাটাগরি আর প্রোডাক্ট যোগ করুন, ডেলিভারি আর পেমেন্ট সেট করুন, তারপর Growth বা Business প্যাকেজে আপনার ডোমেইন Ecomesta-য় আনুন।',
+        answer: 'হ্যাঁ, তবে এখনো নিজে থেকে আনার সুবিধা নেই। ড্যাশবোর্ডে ক্যাটাগরি আর প্রোডাক্ট যোগ করুন, ডেলিভারি আর পেমেন্ট সেট করুন, তারপর আপনার ডোমেইন Ecomesta-য় আনুন।',
       },
       {
         question: 'নিজের ডোমেইন কি রাখা যাবে?',
-        answer: 'হ্যাঁ, Growth আর Business প্যাকেজে নিজের ডোমেইন যুক্ত করা যায়। প্রতিটি স্টোর একটি ফ্রি Ecomesta ওয়েব ঠিকানাও পায়।',
+        answer: 'হ্যাঁ, সব প্যাকেজে নিজের ডোমেইন যুক্ত করা যায়। প্রতিটি স্টোর একটি ফ্রি Ecomesta ওয়েব ঠিকানাও পায়।',
       },
       {
         question: 'Ecomesta দিয়ে কি বিদেশের কাস্টমারের কাছে বিক্রি করা যায়?',

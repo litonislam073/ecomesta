@@ -1745,6 +1745,95 @@ export interface PublicStoreTheme {
 }
 
 // ---------------------------------------------------------------------------
+// Domain sales — domains bought through Ecomesta (Dynadot reseller)
+
+export type DomainOrderKind = 'REGISTER' | 'RENEW';
+export type DomainOrderStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'REJECTED';
+
+/** One name in a domain search, priced in taka per year. */
+export interface DomainSearchResult {
+  domain: string;
+  available: boolean;
+  premium: boolean;
+  priceBdt: number | null;
+  renewBdt: number | null;
+  /** The registrar could not answer for this name. */
+  error?: boolean;
+}
+
+export interface DomainSearchResponse {
+  query: string;
+  results: DomainSearchResult[];
+  maxYears: number;
+}
+
+/** Who the domain is registered to (WHOIS): the merchant. */
+export interface DomainRegistrant {
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  postcode: string;
+  country?: string;
+}
+
+export interface DomainOrder {
+  id: string;
+  kind: DomainOrderKind;
+  domain: string;
+  years: number;
+  amount: string;
+  method: ManualPaymentMethod;
+  senderNumber: string;
+  transactionId: string;
+  status: DomainOrderStatus;
+  failureReason: string | null;
+  rejectionReason: string | null;
+  store: { id: string; name: string; slug: string } | null;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+/** A domain the business owns through Ecomesta. */
+export interface RegisteredDomainItem {
+  id: string;
+  name: string;
+  storeId: string | null;
+  registeredAt: string;
+  expiresAt: string;
+  /** Taka per year to renew, when known. */
+  renewBdt: number | null;
+}
+
+export interface StoreDomainSales {
+  enabled: boolean;
+  maxYears: number;
+  domains: RegisteredDomainItem[];
+  orders: DomainOrder[];
+}
+
+/** A domain order in the Super Admin review queue. */
+export interface AdminDomainOrder extends DomainOrder {
+  payToNumber: string;
+  costUsd: string;
+  usdRate: string;
+  marginBdt: string;
+  registrant: DomainRegistrant | null;
+  tenant: { id: string; name: string; slug: string };
+  submittedBy: { email: string; firstName: string | null; lastName: string | null } | null;
+  reviewedBy: { email: string } | null;
+  reviewedAt: string | null;
+}
+
+export interface DomainSalesSettings {
+  enabled: boolean;
+  usdRate: number;
+  marginBdt: number;
+  tlds: string[];
+  maxYears: number;
+}
+
 // Phase 17 — custom domains
 // ---------------------------------------------------------------------------
 

@@ -56,12 +56,13 @@ export class ThemePurchasesService {
     }
 
     const prepared = prepareWalletPayment(input);
-    // A wallet transaction pays for one thing only: a plan or a theme.
-    const usedForPlan = await this.prisma.billingPayment.findFirst({
-      where: { method: prepared.method, transactionId: prepared.transactionId },
-      select: { id: true },
-    });
-    if (usedForPlan) throw this.transactionUsed();
+    // A wallet transaction pays for one thing only: a plan, a theme or a domain.
+    const reuse = { method: prepared.method, transactionId: prepared.transactionId };
+    const [usedForPlan, usedForDomain] = await Promise.all([
+      this.prisma.billingPayment.findFirst({ where: reuse, select: { id: true } }),
+      this.prisma.domainOrder.findFirst({ where: reuse, select: { id: true } }),
+    ]);
+    if (usedForPlan || usedForDomain) throw this.transactionUsed();
 
     let created: PurchaseRow;
     try {

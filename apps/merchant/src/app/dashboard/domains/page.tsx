@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { StoreDomain, StoreDomainList } from '@ecomesta/types';
 import { PlanLockedBanner } from '@/components/billing/plan-locked-banner';
 import { AddDomainForm } from '@/components/domains/add-domain-form';
+import { BuyDomain } from '@/components/domains/buy-domain';
 import { DomainList, type DomainAction } from '@/components/domains/domain-list';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -248,10 +249,12 @@ export default function DomainsPage() {
 
       {locked ? (
         <PlanLockedBanner
-          title="Custom domains are available on the Growth and Business plans"
-          description="Every store keeps its free platform subdomain. Attach your own hostname on Growth or Business."
+          title="Custom domains are not included in your plan"
+          description="Every store keeps its free platform subdomain. Contact Ecomesta support to add your own domain."
         />
       ) : null}
+
+      <BuyDomain storeId={selectedStoreId} canBuy={canWrite} onConnected={() => void load()} />
 
       {canAddDomain ? <AddDomainForm busy={adding} onSubmit={addDomain} /> : null}
 

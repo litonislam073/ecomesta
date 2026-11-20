@@ -35,6 +35,7 @@ describe('marketing SEO', () => {
       ['/refund-policy', () => import('@/app/(site)/(marketing)/refund-policy/page')],
       ['/cookie-policy', () => import('@/app/(site)/(marketing)/cookie-policy/page')],
       ['/shopify-alternative-bangladesh', () => import('@/app/(site)/(marketing)/shopify-alternative-bangladesh/page')],
+      ['/domains', () => import('@/app/(site)/(marketing)/domains/page')],
     ];
     for (const [path, load] of staticPages) {
       pages.push({ path, metadata: (await load()).metadata });

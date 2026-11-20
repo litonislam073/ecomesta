@@ -210,7 +210,7 @@ export const THEME_LIMITS = {
 
 export const DEFAULT_THEME_SLUG = 'default';
 export const MINIMAL_THEME_SLUG = 'minimal';
-/** Premium theme: included in Business, sold to Starter and Growth businesses. */
+/** Premium theme: included in Growth and Business, sold to Starter businesses. */
 export const SHOPEASE_THEME_SLUG = 'shopease';
 export const SHOPEASE_THEME_PRICE_BDT = 999;
 /** Premium theme (design "Kenakata"): wide grid layout, product/shop/cart pages of its own. */

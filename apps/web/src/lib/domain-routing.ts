@@ -160,6 +160,7 @@ const MARKETING_PATH_PREFIXES = [
   '/refund-policy',
   '/cookie-policy',
   '/shopify-alternative-bangladesh',
+  '/domains',
   '/login',
   '/register',
   // Bangla versions of marketing pages.

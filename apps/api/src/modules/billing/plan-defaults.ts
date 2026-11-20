@@ -18,7 +18,9 @@ export interface DefaultPlan {
  * `20261007120000_plan_storage_limits` (product and storage limits) and
  * `20261008090000_premium_themes` (premium themes on Business) and
  * `20261014090000_landing_pages` (landing pages on Growth and Business) and
- * `20261016090000_store_analytics` (full analytics on Growth and Business).
+ * `20261016090000_store_analytics` (full analytics on Growth and Business) and
+ * `20261121100000_plan_domain_and_theme_access` (custom domain on every plan,
+ * premium themes on Growth and Business).
  */
 export const DEFAULT_PLANS: readonly DefaultPlan[] = [
   {
@@ -34,13 +36,14 @@ export const DEFAULT_PLANS: readonly DefaultPlan[] = [
       '1 GB storage',
       'Orders, customers and inventory in one dashboard',
       'Cash on Delivery checkout',
+      'Connect your own domain',
       'Default storefront theme',
       'Sales overview for the last 30 days',
     ],
     limits: {
       maxProducts: 25,
       storageMb: 1024,
-      customDomain: false,
+      customDomain: true,
       onlinePayments: false,
       stripe: false,
       coupons: false,
@@ -64,10 +67,9 @@ export const DEFAULT_PLANS: readonly DefaultPlan[] = [
       'Everything in Starter',
       'Up to 100 products',
       '3 GB storage',
-      'Connect your own domain',
       'Online payments with SSLCommerz (bKash, Nagad, cards)',
       'Discount coupons and Bangladesh delivery zones',
-      'All included themes (Default and Minimal)',
+      'All themes, including premium ShopEase and Kenakata',
       'Facebook Pixel, Google Analytics & Tag Manager',
       'Up to 5 landing pages with their own order form',
       'Full sales and visitor analytics',
@@ -81,7 +83,7 @@ export const DEFAULT_PLANS: readonly DefaultPlan[] = [
       coupons: true,
       deliveryZones: true,
       allThemes: true,
-      premiumThemes: false,
+      premiumThemes: true,
       marketingTracking: true,
       landingPages: true,
       maxLandingPages: 5,
@@ -101,7 +103,6 @@ export const DEFAULT_PLANS: readonly DefaultPlan[] = [
       '5 GB storage',
       'Stripe for international card payments',
       'Priority support',
-      'Premium themes included',
       'Unlimited landing pages',
     ],
     limits: {
