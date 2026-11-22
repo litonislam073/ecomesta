@@ -24,6 +24,7 @@ export const FOOTER_NAV: { heading: string; items: NavItem[] }[] = [
       { href: '/features/order-management', label: 'Order management' },
       { href: '/features/store-customization', label: 'Store customization' },
       { href: '/features/custom-domain', label: 'Custom domain' },
+      { href: '/domains', label: 'Buy a domain' },
       { href: '/pricing', label: 'Pricing' },
     ],
   },

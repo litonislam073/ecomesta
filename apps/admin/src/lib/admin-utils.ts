@@ -47,13 +47,6 @@ export function statusTone(status: string): BadgeTone {
   }
 }
 
-export function formatDateTime(value: string | null | undefined): string {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
-  return `${DHAKA_DATE_TIME.format(date)} ${DHAKA_LABEL}`;
-}
-
 /** Admin timestamps are always shown in Bangladesh time, whatever the browser's zone is. */
 export const DHAKA_TIME_ZONE = 'Asia/Dhaka';
 const DHAKA_LABEL = 'Dhaka (GMT+6)';
@@ -66,12 +59,26 @@ const DHAKA_DATE_TIME = new Intl.DateTimeFormat('en-GB', {
   minute: '2-digit',
   hour12: false,
 });
+const DHAKA_DATE = new Intl.DateTimeFormat('en-GB', {
+  timeZone: DHAKA_TIME_ZONE,
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+});
 
+export function formatDateTime(value: string | null | undefined): string {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return `${DHAKA_DATE_TIME.format(date)} ${DHAKA_LABEL}`;
+}
+
+/** Date-only, Asia/Dhaka (e.g. `20 Nov 2026`). */
 export function formatDate(value: string | null | undefined): string {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleDateString();
+  return DHAKA_DATE.format(date);
 }
 
 export function displayName(user: {

@@ -72,73 +72,74 @@ export class AdminStoresService {
   }
 
   async getOne(actingUserId: string, storeId: string) {
-    await this.authorization.assertSuperAdmin(actingUserId);
-
-    const store = await this.prisma.store.findUnique({
-      where: { id: storeId },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        description: true,
-        status: true,
-        deletedAt: true,
-        deletedSlug: true,
-        currency: true,
-        timezone: true,
-        locale: true,
-        createdAt: true,
-        updatedAt: true,
-        tenant: TENANT_SUMMARY_SELECT,
-        memberships: {
-          select: {
-            id: true,
-            role: true,
-            status: true,
-            createdAt: true,
-            user: {
-              select: {
-                id: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-                status: true,
+    const [store] = await Promise.all([
+      this.prisma.store.findUnique({
+        where: { id: storeId },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+          status: true,
+          deletedAt: true,
+          deletedSlug: true,
+          currency: true,
+          timezone: true,
+          locale: true,
+          createdAt: true,
+          updatedAt: true,
+          tenant: TENANT_SUMMARY_SELECT,
+          memberships: {
+            select: {
+              id: true,
+              role: true,
+              status: true,
+              createdAt: true,
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  firstName: true,
+                  lastName: true,
+                  status: true,
+                },
               },
             },
+            orderBy: { createdAt: 'asc' },
           },
-          orderBy: { createdAt: 'asc' },
-        },
-        domains: {
-          select: {
-            id: true,
-            hostname: true,
-            type: true,
-            status: true,
-            isPrimary: true,
-            verifiedAt: true,
+          domains: {
+            select: {
+              id: true,
+              hostname: true,
+              type: true,
+              status: true,
+              isPrimary: true,
+              verifiedAt: true,
+            },
+            orderBy: { createdAt: 'asc' },
           },
-          orderBy: { createdAt: 'asc' },
-        },
-        // Live theme, not the merchant's unpublished selection.
-        storeThemes: {
-          where: { publishedAt: { not: null } },
-          orderBy: LIVE_STORE_THEME_ORDER,
-          take: 1,
-          select: {
-            publishedAt: true,
-            theme: { select: { name: true, slug: true } },
+          // Live theme, not the merchant's unpublished selection.
+          storeThemes: {
+            where: { publishedAt: { not: null } },
+            orderBy: LIVE_STORE_THEME_ORDER,
+            take: 1,
+            select: {
+              publishedAt: true,
+              theme: { select: { name: true, slug: true } },
+            },
+          },
+          _count: {
+            select: {
+              products: true,
+              customers: true,
+              orders: true,
+              inventoryItems: true,
+            },
           },
         },
-        _count: {
-          select: {
-            products: true,
-            customers: true,
-            orders: true,
-            inventoryItems: true,
-          },
-        },
-      },
-    });
+      }),
+      this.authorization.assertSuperAdmin(actingUserId),
+    ]);
     if (!store) {
       throw new NotFoundException('Store not found');
     }

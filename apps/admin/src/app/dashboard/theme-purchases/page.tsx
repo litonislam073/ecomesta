@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import type { AdminThemePurchase, BillingPaymentStatus, OffsetPageMeta } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
 import { PageHeader } from '@/components/admin/page-header';
@@ -14,6 +14,8 @@ import { useToast } from '@/components/ui/toast';
 import { buildQuery, formatDateTime, humanApiError } from '@/lib/admin-utils';
 import { refreshAdminBadges } from '@/lib/admin-badges';
 import { api } from '@/lib/api-client';
+import { useListRequest } from '@/lib/list-request';
+import { useQueryTab } from '@/lib/use-query-tab';
 
 const METHODS: Record<AdminThemePurchase['method'], { label: string; color: string }> = {
   BKASH: { label: 'bKash', color: '#E2136E' },
@@ -22,11 +24,14 @@ const METHODS: Record<AdminThemePurchase['method'], { label: string; color: stri
   UPAY: { label: 'Upay', color: '#0F54A6' },
 };
 
-const TABS: { value: BillingPaymentStatus | ''; label: string }[] = [
-  { value: 'PENDING', label: 'Waiting for review' },
-  { value: 'APPROVED', label: 'Approved' },
-  { value: 'REJECTED', label: 'Rejected' },
-  { value: '', label: 'All' },
+const THEME_TABS = ['pending', 'approved', 'rejected', 'all'] as const;
+type ThemeTab = (typeof THEME_TABS)[number];
+
+const TABS: { value: ThemeTab; status: BillingPaymentStatus | ''; label: string }[] = [
+  { value: 'pending', status: 'PENDING', label: 'Waiting for review' },
+  { value: 'approved', status: 'APPROVED', label: 'Approved' },
+  { value: 'rejected', status: 'REJECTED', label: 'Rejected' },
+  { value: 'all', status: '', label: 'All' },
 ];
 
 const STATUS_STYLE: Record<BillingPaymentStatus, string> = {
@@ -63,27 +68,26 @@ function PurchaseCard({
   return (
     <li className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <span
-            aria-hidden="true"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white"
-            style={{ backgroundColor: method.color }}
-          >
-            {method.label[0]}
-          </span>
-          <div className="min-w-0">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
             <p className="font-semibold text-[var(--color-ink)]">
               <Link href={`/dashboard/tenants/${purchase.tenant.id}`} className="hover:underline">
                 {purchase.tenant.name}
               </Link>
             </p>
-            {purchase.submittedBy ? (
-              <p className="text-sm text-[var(--color-muted)]">
-                {name ? `${name} · ` : ''}
-                {purchase.submittedBy.email}
-              </p>
-            ) : null}
+            <span
+              className="rounded-full px-2.5 py-0.5 text-xs font-semibold text-white"
+              style={{ backgroundColor: method.color }}
+            >
+              {method.label}
+            </span>
           </div>
+          {purchase.submittedBy ? (
+            <p className="text-sm text-[var(--color-muted)]">
+              {name ? `${name} · ` : ''}
+              {purchase.submittedBy.email}
+            </p>
+          ) : null}
         </div>
         <div className="text-right">
           <p className="text-2xl font-bold tracking-tight">{taka(purchase.amount)}</p>
@@ -166,8 +170,20 @@ function PurchaseCard({
 }
 
 export default function AdminThemePurchasesPage() {
+  return (
+    <Suspense fallback={<LoadingState label="Loading theme purchases" />}>
+      <ThemePurchasesView />
+    </Suspense>
+  );
+}
+
+function ThemePurchasesView() {
   const { pushToast } = useToast();
-  const [status, setStatus] = useState<BillingPaymentStatus | ''>('PENDING');
+  const [tab, setTab] = useQueryTab(THEME_TABS, 'pending');
+  const status = useMemo(
+    () => TABS.find((entry) => entry.value === tab)?.status ?? 'PENDING',
+    [tab],
+  );
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<AdminThemePurchase[]>([]);
   const [meta, setMeta] = useState<OffsetPageMeta | null>(null);
@@ -176,24 +192,34 @@ export default function AdminThemePurchasesPage() {
   const [error, setError] = useState<string | null>(null);
   const [approving, setApproving] = useState<AdminThemePurchase | null>(null);
   const [busy, setBusy] = useState(false);
+  const { begin } = useListRequest();
+
+  useEffect(() => {
+    setPage(1);
+  }, [tab]);
 
   const load = useCallback(async () => {
+    const req = begin();
     setLoading(true);
     setError(null);
+    setItems([]);
+    setMeta(null);
     try {
       const result = await api.get<{
         success: true;
         data: { items: AdminThemePurchase[]; meta: OffsetPageMeta; pendingCount: number };
       }>(`/admin/theme-purchases?${buildQuery({ page, limit: 20, status: status || undefined })}`);
+      if (!req.isCurrent()) return;
       setItems(result.data.items);
       setMeta(result.data.meta);
       setPendingCount(result.data.pendingCount);
     } catch (err) {
+      if (!req.isCurrent()) return;
       setError(humanApiError(err, 'Failed to load theme purchases'));
     } finally {
-      setLoading(false);
+      if (req.isCurrent()) setLoading(false);
     }
-  }, [page, status]);
+  }, [begin, page, status]);
 
   useEffect(() => {
     void load();
@@ -234,24 +260,21 @@ export default function AdminThemePurchasesPage() {
       />
 
       <div role="tablist" aria-label="Payment status" className="flex flex-wrap gap-2">
-        {TABS.map((tab) => (
+        {TABS.map((entry) => (
           <button
-            key={tab.label}
+            key={entry.value}
             type="button"
             role="tab"
-            aria-selected={status === tab.value}
-            onClick={() => {
-              setStatus(tab.value);
-              setPage(1);
-            }}
+            aria-selected={tab === entry.value}
+            onClick={() => setTab(entry.value)}
             className={`rounded-full border px-4 py-1.5 text-sm font-medium ${
-              status === tab.value
+              tab === entry.value
                 ? 'border-[var(--color-accent)] bg-[var(--color-accent)] text-white'
                 : 'border-[var(--color-border)] bg-white text-[var(--color-ink)]'
             }`}
           >
-            {tab.label}
-            {tab.value === 'PENDING' && pendingCount > 0 ? ` (${pendingCount})` : ''}
+            {entry.label}
+            {entry.value === 'pending' && pendingCount > 0 ? ` (${pendingCount})` : ''}
           </button>
         ))}
       </div>
@@ -271,7 +294,7 @@ export default function AdminThemePurchasesPage() {
           ))}
         </ul>
       ) : null}
-      {meta && meta.totalPages > 1 ? (
+      {!loading && meta && meta.totalPages > 1 ? (
         <Pagination page={meta.page} totalPages={meta.totalPages} onPageChange={setPage} />
       ) : null}
 

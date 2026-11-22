@@ -6,13 +6,14 @@ const { contentSecurityPolicy } = require('../../next.config.js') as { contentSe
 
 /**
  * Pins the production CSP from next.config.js so L18 polish does not silently
- * drop frame/script lockdowns.
+ * drop script lockdowns. Framing is owned by nginx (`frame-ancestors` for
+ * theme/landing previews), so Next must not emit a competing directive.
  */
 describe('public site Content-Security-Policy', () => {
-  it('locks objects, base URI and framing while allowing GTM/GA/Meta and https images', () => {
+  it('locks objects and base URI while allowing GTM/GA/Meta and https images', () => {
     expect(contentSecurityPolicy).toContain("object-src 'none'");
     expect(contentSecurityPolicy).toContain("base-uri 'self'");
-    expect(contentSecurityPolicy).toContain("frame-ancestors 'self'");
+    expect(contentSecurityPolicy).not.toContain('frame-ancestors');
     expect(contentSecurityPolicy).toContain('https://www.googletagmanager.com');
     expect(contentSecurityPolicy).toContain('https://connect.facebook.net');
     expect(contentSecurityPolicy).toContain("img-src 'self' data: blob: https:");

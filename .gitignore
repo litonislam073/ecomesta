@@ -55,6 +55,7 @@ temp/
 .tmp/
 .turbo/
 *.pem
+var/
 
 # Local temp secrets
 .pg-dev-password.tmp

@@ -74,8 +74,10 @@ export class AdminPlansService {
   }
 
   async getOne(actingUserId: string, planId: string) {
-    await this.authorization.assertSuperAdmin(actingUserId);
-    const plan = await this.requirePlan(planId);
+    const [plan] = await Promise.all([
+      this.requirePlan(planId),
+      this.authorization.assertSuperAdmin(actingUserId),
+    ]);
     return { success: true as const, data: this.toDto(plan) };
   }
 

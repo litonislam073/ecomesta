@@ -21,6 +21,7 @@ import { RedisService } from '../../redis/redis.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { prepareWalletPayment } from '../billing/billing-payments.service';
+import { DomainEdgeQueueService } from '../domains/domain-edge-queue.service';
 import { StoreDomainResolver } from '../domains/store-domain.resolver';
 import {
   DOMAIN_REGISTRAR,
@@ -82,6 +83,7 @@ export class DomainSalesService {
     private readonly audit: AuditService,
     private readonly authorization: AuthorizationService,
     private readonly resolver: StoreDomainResolver,
+    private readonly edgeQueue: DomainEdgeQueueService,
     @Inject(DOMAIN_REGISTRAR) private readonly registrar: DomainRegistrar,
   ) {}
 
@@ -378,6 +380,7 @@ export class DomainSalesService {
       data: { storeId, hostname, type: DomainType.CUSTOM_DOMAIN, status: DomainStatus.ACTIVE, isPrimary: false, verifiedAt: new Date() },
     });
     await this.resolver.invalidateStore(storeId);
+    await this.edgeQueue.enqueue('provision', hostname);
   }
 
   /** Registrar answer for one name, cached for searches (fresh for orders). */

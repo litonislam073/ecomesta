@@ -84,44 +84,45 @@ export class AdminUsersService {
   }
 
   async getOne(actingUserId: string, userId: string) {
-    await this.authorization.assertSuperAdmin(actingUserId);
-
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        ...USER_LIST_SELECT,
-        tenantMemberships: {
-          select: {
-            id: true,
-            role: true,
-            status: true,
-            createdAt: true,
-            tenant: {
-              select: { id: true, name: true, slug: true, status: true },
-            },
-          },
-          orderBy: { createdAt: 'asc' },
-        },
-        storeMemberships: {
-          select: {
-            id: true,
-            role: true,
-            status: true,
-            createdAt: true,
-            store: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-                status: true,
-                tenantId: true,
+    const [user] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          ...USER_LIST_SELECT,
+          tenantMemberships: {
+            select: {
+              id: true,
+              role: true,
+              status: true,
+              createdAt: true,
+              tenant: {
+                select: { id: true, name: true, slug: true, status: true },
               },
             },
+            orderBy: { createdAt: 'asc' },
           },
-          orderBy: { createdAt: 'asc' },
+          storeMemberships: {
+            select: {
+              id: true,
+              role: true,
+              status: true,
+              createdAt: true,
+              store: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                  status: true,
+                  tenantId: true,
+                },
+              },
+            },
+            orderBy: { createdAt: 'asc' },
+          },
         },
-      },
-    });
+      }),
+      this.authorization.assertSuperAdmin(actingUserId),
+    ]);
     if (!user) {
       throw new NotFoundException('User not found');
     }

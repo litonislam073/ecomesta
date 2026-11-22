@@ -19,6 +19,7 @@ import {
   isPlatformControlHostname,
   platformSubdomainHostname,
   platformSubdomainSlug,
+  registeredHostnameAliases,
   validateHostname,
 } from './domain-normalize';
 
@@ -243,8 +244,12 @@ export class StoreDomainResolver {
   }
 
   async invalidateHostname(hostname: string): Promise<void> {
+    const keys = registeredHostnameAliases(hostname).map(domainResolutionCacheKey);
+    if (keys.length === 0) {
+      return;
+    }
     try {
-      await this.redis.getClient().del(domainResolutionCacheKey(hostname));
+      await this.redis.getClient().del(...keys);
     } catch {
       // Best-effort; the 60s TTL bounds staleness.
     }
@@ -259,9 +264,13 @@ export class StoreDomainResolver {
       where: { storeId },
       select: { hostname: true },
     });
-    const keys = rows.map((row) =>
-      domainResolutionCacheKey(row.hostname.toLowerCase()),
-    );
+    const hosts = new Set<string>();
+    for (const row of rows) {
+      for (const alias of registeredHostnameAliases(row.hostname.toLowerCase())) {
+        hosts.add(alias);
+      }
+    }
+    const keys = [...hosts].map(domainResolutionCacheKey);
     if (keys.length === 0) {
       return;
     }
@@ -277,9 +286,14 @@ export class StoreDomainResolver {
   private async resolveRegisteredDomain(
     host: string,
   ): Promise<ResolvedStorefront | null> {
-    const domain = await this.prisma.domain.findFirst({
+    const candidates = registeredHostnameAliases(host);
+    if (candidates.length === 0) {
+      return null;
+    }
+
+    const rows = await this.prisma.domain.findMany({
       where: {
-        hostname: host,
+        hostname: { in: candidates },
         status: DomainStatus.ACTIVE,
         store: {
           status: StoreStatus.ACTIVE,
@@ -293,6 +307,13 @@ export class StoreDomainResolver {
         store: { select: STORE_SELECT },
       },
     });
+    // Prefer the exact Host header when both apex and www are registered.
+    const domain =
+      candidates
+        .map((candidate) =>
+          rows.find((row) => row.hostname.toLowerCase() === candidate),
+        )
+        .find(Boolean) ?? null;
     if (!domain) {
       return null;
     }

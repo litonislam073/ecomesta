@@ -507,6 +507,15 @@ describe('Phase 15 super admin (e2e)', () => {
       .expect(200);
     expect(deactivated.body.data.active).toBe(false);
 
+    // Query string "false" must not be coerced to true by enableImplicitConversion.
+    const inactiveListed = await request(app.getHttpServer())
+      .get('/api/v1/admin/plans')
+      .query({ search: `p15-growth-${suffix}`, active: 'false' })
+      .set(authSa())
+      .expect(200);
+    expect(inactiveListed.body.data.items).toHaveLength(1);
+    expect(inactiveListed.body.data.items[0].active).toBe(false);
+
     const deactivationAudit = await prisma.auditLog.findFirst({
       where: { action: 'PLAN_DEACTIVATED', entityId: planId },
     });

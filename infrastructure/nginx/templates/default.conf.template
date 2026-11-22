@@ -43,7 +43,7 @@ map "$arg_theme_preview$arg_lp_preview" $storefront_frame_options {
     default "";
 }
 map "$arg_theme_preview$arg_lp_preview" $storefront_frame_ancestors {
-    ""      "";
+    ""      "frame-ancestors 'self'";
     default "frame-ancestors 'self' https://merchant.${PLATFORM_ROOT_DOMAIN}";
 }
 

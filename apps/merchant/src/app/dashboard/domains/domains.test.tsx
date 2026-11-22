@@ -242,10 +242,18 @@ describe('Domains dashboard', () => {
     const instructions = await screen.findByRole('region', {
       name: 'DNS verification for shop.example.com',
     });
-    expect(within(instructions).getByText('TXT')).toBeInTheDocument();
     expect(
-      within(instructions).getByText('_ecomesta-verification'),
+      within(instructions).getByRole('region', {
+        name: 'Where to add these DNS records',
+      }),
     ).toBeInTheDocument();
+    expect(
+      within(instructions).getByText(/এই মানগুলো কোথায় বসাবেন/),
+    ).toBeInTheDocument();
+    expect(within(instructions).getAllByText('TXT').length).toBeGreaterThan(0);
+    expect(
+      within(instructions).getAllByText('_ecomesta-verification').length,
+    ).toBeGreaterThan(0);
     expect(
       within(instructions).getByText('_ecomesta-verification.shop.example.com'),
     ).toBeInTheDocument();

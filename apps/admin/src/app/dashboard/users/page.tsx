@@ -13,6 +13,7 @@ import { formatSignupChannelLabel, signupAttributionSubtitle, SIGNUP_CHANNELS } 
 import { Button } from '@ecomesta/ui';
 import { PageHeader } from '@/components/admin/page-header';
 import { StatusBadge } from '@/components/admin/status-badge';
+import { AdminTable, ADMIN_TABLE_HEAD } from '@/components/ui/admin-table';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { Input } from '@/components/ui/input';
@@ -22,6 +23,7 @@ import { Select } from '@/components/ui/select';
 import { buildQuery, displayName, formatDateTime, humanApiError } from '@/lib/admin-utils';
 import { refreshAdminBadges } from '@/lib/admin-badges';
 import { api } from '@/lib/api-client';
+import { useListRequest } from '@/lib/list-request';
 
 const USER_STATUSES: UserStatus[] = ['ACTIVE', 'INACTIVE', 'SUSPENDED', 'PENDING'];
 const PLATFORM_ROLES: PlatformRole[] = ['USER', 'SUPER_ADMIN'];
@@ -49,10 +51,14 @@ export default function AdminUsersPage() {
   const [signupChannel, setSignupChannel] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { begin } = useListRequest();
 
   const load = useCallback(async () => {
+    const req = begin();
     setLoading(true);
     setError(null);
+    setItems([]);
+    setMeta(null);
     try {
       const params = buildQuery({
         page,
@@ -66,14 +72,16 @@ export default function AdminUsersPage() {
         success: true;
         data: { items: AdminUser[]; meta: OffsetPageMeta };
       }>(`/admin/users?${params}`);
+      if (!req.isCurrent()) return;
       setItems(result.data.items);
       setMeta(result.data.meta);
     } catch (err) {
+      if (!req.isCurrent()) return;
       setError(humanApiError(err, 'Failed to load users'));
     } finally {
-      setLoading(false);
+      if (req.isCurrent()) setLoading(false);
     }
-  }, [page, query, status, platformRole, signupChannel]);
+  }, [begin, page, query, status, platformRole, signupChannel]);
 
   useEffect(() => {
     void load();
@@ -166,57 +174,56 @@ export default function AdminUsersPage() {
       ) : null}
 
       {!loading && !error && items.length > 0 ? (
-        <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-[var(--color-border)] bg-[#f3f7f5] text-[var(--color-muted)]">
-              <tr>
-                <th className="px-4 py-3 font-medium">Email</th>
-                <th className="px-4 py-3 font-medium">Name</th>
-                <th className="px-4 py-3 font-medium">Platform role</th>
-                <th className="px-4 py-3 font-medium">Source</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Last login</th>
+        <AdminTable aria-label="Users" minWidth="48rem">
+          <thead className={ADMIN_TABLE_HEAD}>
+            <tr>
+              <th className="px-4 py-3 font-medium">Email</th>
+              <th className="px-4 py-3 font-medium">Name</th>
+              <th className="px-4 py-3 font-medium">Platform role</th>
+              <th className="px-4 py-3 font-medium">Source</th>
+              <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3 font-medium">Last login</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((user) => {
+              const sourceDetail = signupAttributionSubtitle(user);
+              return (
+              <tr
+                key={user.id}
+                className="border-b border-[var(--color-border)] last:border-b-0"
+              >
+                <td className="max-w-[14rem] px-4 py-3">
+                  <Link
+                    className="block truncate font-medium text-[var(--color-accent)] hover:underline"
+                    href={`/dashboard/users/${user.id}`}
+                    title={user.email}
+                  >
+                    {user.email}
+                  </Link>
+                </td>
+                <td className="px-4 py-3">{displayName(user)}</td>
+                <td className="px-4 py-3">{user.platformRole}</td>
+                <td className="px-4 py-3">
+                  <div className="font-medium">{formatSignupChannelLabel(user.signupChannel)}</div>
+                  {sourceDetail ? (
+                    <div className="text-xs text-[var(--color-muted)]">{sourceDetail}</div>
+                  ) : null}
+                </td>
+                <td className="px-4 py-3">
+                  <StatusBadge status={user.status} />
+                </td>
+                <td className="whitespace-nowrap px-4 py-3 text-xs text-[var(--color-muted)]">
+                  {formatDateTime(user.lastLoginAt)}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {items.map((user) => {
-                const sourceDetail = signupAttributionSubtitle(user);
-                return (
-                <tr
-                  key={user.id}
-                  className="border-b border-[var(--color-border)] last:border-b-0"
-                >
-                  <td className="px-4 py-3">
-                    <Link
-                      className="font-medium text-[var(--color-accent)] hover:underline"
-                      href={`/dashboard/users/${user.id}`}
-                    >
-                      {user.email}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">{displayName(user)}</td>
-                  <td className="px-4 py-3">{user.platformRole}</td>
-                  <td className="px-4 py-3">
-                    <div className="font-medium">{formatSignupChannelLabel(user.signupChannel)}</div>
-                    {sourceDetail ? (
-                      <div className="text-xs text-[var(--color-muted)]">{sourceDetail}</div>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status={user.status} />
-                  </td>
-                  <td className="px-4 py-3 text-xs text-[var(--color-muted)]">
-                    {formatDateTime(user.lastLoginAt)}
-                  </td>
-                </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+              );
+            })}
+          </tbody>
+        </AdminTable>
       ) : null}
 
-      {meta ? (
+      {!loading && meta ? (
         <Pagination
           page={meta.page}
           totalPages={meta.totalPages}

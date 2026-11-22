@@ -656,6 +656,11 @@ export const FEATURE_PAGES_BN: ContentPage[] = [
       { question: 'ফ্রি সাবডোমেইন কি চালু থাকবে?', answer: 'হ্যাঁ। প্ল্যাটফর্ম সাবডোমেইন চলতে থাকে। মূল ডোমেইনটিই আসল ঠিকানা হিসেবে ব্যবহার হয়।' },
     ],
     related: [
+      {
+        href: '/domains',
+        label: 'ডোমেইন কিনুন',
+        description: 'bKash বা Nagad দিয়ে ডোমেইন খুঁজে কিনুন; আমরা আপনার স্টোরে যুক্ত করে দিই।',
+      },
       { href: '/features/store-customization', label: 'স্টোর ডিজাইন', description: 'ডোমেইনের পেছনের স্টোর সাজান।' },
       { href: '/features/online-store', label: 'অনলাইন স্টোর', description: 'আপনার ডোমেইনে কাস্টমার যা দেখেন।' },
       { href: '/faq', label: 'সাধারণ প্রশ্ন', description: 'শুরু করা নিয়ে আরও উত্তর।' },

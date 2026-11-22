@@ -42,6 +42,9 @@ x-api-env: &api-env
   ADMIN_URL: ${ADMIN_URL:?Set ADMIN_URL}
   CORS_ORIGINS: ${CORS_ORIGINS:-}
   PLATFORM_ROOT_DOMAIN: ${PLATFORM_ROOT_DOMAIN:?Set PLATFORM_ROOT_DOMAIN}
+  DOMAIN_CNAME_TARGET: ${DOMAIN_CNAME_TARGET:-}
+  DOMAIN_A_RECORD_TARGET: ${DOMAIN_A_RECORD_TARGET:-}
+  DOMAIN_EDGE_QUEUE_DIR: ${DOMAIN_EDGE_QUEUE_DIR:-/var/ecomesta/domain-edge-queue}
   TRUST_PROXY: "true"
   TRUSTED_PROXY_HOPS: "1"
   LOG_LEVEL: ${LOG_LEVEL:-info}
@@ -128,6 +131,9 @@ services:
     read_only: true
     tmpfs:
       - /tmp
+    volumes:
+      # Shared-host domain-edge agent reads JSON jobs written on activate/disable/delete.
+      - ${DOMAIN_EDGE_QUEUE_HOST_DIR:-./var/domain-edge-queue}:${DOMAIN_EDGE_QUEUE_DIR:-/var/ecomesta/domain-edge-queue}
     depends_on:
       postgres:
         condition: service_healthy

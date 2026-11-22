@@ -18,6 +18,7 @@ import { Pagination } from '@/components/ui/pagination';
 import { Select } from '@/components/ui/select';
 import { buildQuery, formatDate, humanApiError } from '@/lib/admin-utils';
 import { api } from '@/lib/api-client';
+import { useListRequest } from '@/lib/list-request';
 
 const STORE_STATUSES: StoreStatus[] = ['ACTIVE', 'INACTIVE', 'SUSPENDED', 'DRAFT'];
 
@@ -31,10 +32,14 @@ export default function AdminStoresPage() {
   const [deleted, setDeleted] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { begin } = useListRequest();
 
   const load = useCallback(async () => {
+    const req = begin();
     setLoading(true);
     setError(null);
+    setItems([]);
+    setMeta(null);
     try {
       const params = buildQuery({
         page,
@@ -47,14 +52,16 @@ export default function AdminStoresPage() {
         success: true;
         data: { items: AdminStoreListItem[]; meta: OffsetPageMeta };
       }>(`/admin/stores?${params}`);
+      if (!req.isCurrent()) return;
       setItems(result.data.items);
       setMeta(result.data.meta);
     } catch (err) {
+      if (!req.isCurrent()) return;
       setError(humanApiError(err, 'Failed to load stores'));
     } finally {
-      setLoading(false);
+      if (req.isCurrent()) setLoading(false);
     }
-  }, [page, query, status, deleted]);
+  }, [begin, page, query, status, deleted]);
 
   useEffect(() => {
     void load();
@@ -129,8 +136,8 @@ export default function AdminStoresPage() {
 
       {!loading && !error && items.length > 0 ? (
         <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-[var(--color-border)] bg-[#f3f7f5] text-[var(--color-muted)]">
+          <table className="min-w-[44rem] w-full text-left text-sm">
+            <thead className="sticky top-14 z-10 border-b border-[var(--color-border)] bg-[#f3f7f5] text-[var(--color-muted)] shadow-[0_1px_0_0_var(--color-border)]">
               <tr>
                 <th className="px-4 py-3 font-medium">Store</th>
                 <th className="px-4 py-3 font-medium">Tenant</th>
@@ -185,7 +192,7 @@ export default function AdminStoresPage() {
         </div>
       ) : null}
 
-      {meta ? (
+      {!loading && meta ? (
         <Pagination
           page={meta.page}
           totalPages={meta.totalPages}

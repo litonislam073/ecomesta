@@ -27,6 +27,7 @@ import {
   validateHostname,
   verificationRecordName,
 } from './domain-normalize';
+import { DomainEdgeQueueService } from './domain-edge-queue.service';
 import { CreateDomainDto } from './dto/domain.dto';
 import { StoreDomainResolver } from './store-domain.resolver';
 
@@ -55,6 +56,7 @@ export class DomainsService {
     private readonly resolver: StoreDomainResolver,
     @Inject(DOMAIN_DNS_PROVIDER) private readonly dns: DomainDnsProvider,
     private readonly entitlements: PlanEntitlementsService,
+    private readonly edgeQueue: DomainEdgeQueueService,
   ) {}
 
   async list(userId: string, storeId: string) {
@@ -310,6 +312,7 @@ export class DomainsService {
     });
 
     await this.resolver.invalidateStore(storeId);
+    await this.edgeQueue.enqueue('provision', activated.hostname);
     await this.audit.log({
       action: 'DOMAIN_ACTIVATED',
       entityType: 'Domain',
@@ -402,6 +405,7 @@ export class DomainsService {
     });
 
     await this.resolver.invalidateStore(storeId);
+    await this.edgeQueue.enqueue('remove', disabled.hostname);
     await this.audit.log({
       action: 'DOMAIN_DISABLED',
       entityType: 'Domain',
@@ -451,6 +455,7 @@ export class DomainsService {
 
     await this.resolver.invalidateHostname(domain.hostname.toLowerCase());
     await this.resolver.invalidateStore(storeId);
+    await this.edgeQueue.enqueue('remove', domain.hostname);
     await this.audit.log({
       action: 'DOMAIN_DELETED',
       entityType: 'Domain',

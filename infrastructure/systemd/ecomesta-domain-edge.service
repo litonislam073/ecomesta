@@ -1,0 +1,18 @@
+[Unit]
+Description=Ecomesta custom-domain edge agent (shared host)
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/ecomesta
+Environment=DOMAIN_EDGE_QUEUE_DIR=/opt/ecomesta/var/domain-edge-queue
+Environment=ECOMESTA_HTTP_PORT=8480
+ExecStart=/opt/ecomesta/scripts/domain-edge-agent.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -5,9 +5,13 @@ const path = require('node:path');
  * Next.js and the GTM/GA bootstrap snippets are inline scripts (no nonce
  * pipeline here), so 'unsafe-inline' stays for scripts, but third-party script
  * origins are limited to Google Tag Manager/Analytics and the Meta pixel, and
- * objects, base-uri and framing are locked down. Images and API calls allow
- * https: because storefront product images and the API live on other hosts.
- * Only sent in production so `next dev` (HMR, eval, http API) is unaffected.
+ * objects and base-uri are locked down. Framing (`frame-ancestors`) is owned by
+ * the edge nginx layer so theme/landing editor previews can allow
+ * merchant.ecomesta.com when `?theme_preview=` / `?lp_preview=` is present —
+ * browsers AND multiple CSP headers, so Next must not emit a competing
+ * `frame-ancestors 'self'`. Images and API calls allow https: because
+ * storefront product images and the API live on other hosts. Only sent in
+ * production so `next dev` (HMR, eval, http API) is unaffected.
  */
 const contentSecurityPolicy = [
   "default-src 'self'",
@@ -20,7 +24,6 @@ const contentSecurityPolicy = [
   "media-src 'self' https:",
   "object-src 'none'",
   "base-uri 'self'",
-  "frame-ancestors 'self'",
 ].join('; ');
 
 /** @type {import('next').NextConfig} */

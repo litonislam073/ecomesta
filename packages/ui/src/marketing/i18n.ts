@@ -79,6 +79,7 @@ const BN_LABELS: Record<string, string> = {
   'Order management': 'অর্ডার ম্যানেজমেন্ট',
   'Store customization': 'স্টোর ডিজাইন',
   'Custom domain': 'নিজের ডোমেইন',
+  'Buy a domain': 'ডোমেইন কিনুন',
   'Payment options': 'পেমেন্টের উপায়',
   'Cash on Delivery': 'ক্যাশ অন ডেলিভারি',
   SSLCommerz: 'SSLCommerz',

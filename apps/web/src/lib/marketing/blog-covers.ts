@@ -330,6 +330,29 @@ function reduceCodReturns(): string {
   ${sparkle(1080, 480, 1, C.green)}`;
 }
 
+/** Browser address bar + lock — connecting your own domain. */
+function customDomain(): string {
+  const id = 'domain';
+  const body = `
+    <rect x="300" y="220" width="380" height="44" rx="14" fill="${C.tint}"/>
+    <circle cx="328" cy="242" r="10" fill="${C.green}"/>
+    <path d="M323 242 l4 4 l8 -10" stroke="${C.white}" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="352" y="232" width="220" height="16" rx="8" fill="${C.navy}" fill-opacity="0.8"/>
+    <rect x="300" y="290" width="380" height="220" rx="16" fill="${C.greenTint}"/>
+    <rect x="330" y="320" width="200" height="18" rx="9" fill="${C.navy}" fill-opacity="0.7"/>
+    <rect x="330" y="354" width="280" height="12" rx="6" fill="${C.line}"/>
+    <rect x="330" y="380" width="240" height="12" rx="6" fill="${C.line}"/>
+    <rect x="330" y="430" width="140" height="40" rx="14" fill="${C.blueDeep}"/>`;
+  return `${background(id, C.tintStrong, C.tint)}
+  ${browser(id, 270, 140, 440, 400, body)}
+  ${checklist(id, 780, 160, 340, 4, 3)}
+  <circle cx="980" cy="480" r="70" fill="${C.blue}" fill-opacity="0.15"/>
+  <circle cx="980" cy="480" r="48" fill="none" stroke="${C.blueDeep}" stroke-width="10"/>
+  <path d="M980 432 v96 M932 480 h96" stroke="${C.blueDeep}" stroke-width="8" stroke-linecap="round"/>
+  ${sparkle(220, 130, 1.3, C.amber)}
+  ${sparkle(1100, 200, 1, C.green)}`;
+}
+
 function generic(): string {
   const id = 'blog';
   const body = `
@@ -350,6 +373,7 @@ const COVERS: Record<string, () => string> = {
   'facebook-page-to-online-store': facebookToStore,
   'how-to-start-online-business-bangladesh': startBusiness,
   'reduce-cod-returns-bangladesh': reduceCodReturns,
+  'connect-custom-domain-online-store-bangladesh': customDomain,
 };
 
 /** The cover illustration of a post as an SVG document. */

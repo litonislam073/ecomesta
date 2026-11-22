@@ -14,6 +14,7 @@ import { Pagination } from '@/components/ui/pagination';
 import { Select } from '@/components/ui/select';
 import { buildQuery, formatDate, formatPlanMoney, humanApiError } from '@/lib/admin-utils';
 import { api } from '@/lib/api-client';
+import { useListRequest } from '@/lib/list-request';
 
 function cyclePrice(plan: SubscriptionPlan, cycle: 'SEMI_ANNUAL' | 'YEARLY'): number | null {
   return plan.prices?.find((price) => price.billingCycle === cycle)?.amount ?? null;
@@ -28,10 +29,15 @@ export default function AdminPlansPage() {
   const [active, setActive] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { begin } = useListRequest();
+  const filtersActive = Boolean(query || active);
 
   const load = useCallback(async () => {
+    const req = begin();
     setLoading(true);
     setError(null);
+    setItems([]);
+    setMeta(null);
     try {
       const params = buildQuery({
         page,
@@ -43,14 +49,16 @@ export default function AdminPlansPage() {
         success: true;
         data: { items: SubscriptionPlan[]; meta: OffsetPageMeta };
       }>(`/admin/plans?${params}`);
+      if (!req.isCurrent()) return;
       setItems(result.data.items);
       setMeta(result.data.meta);
     } catch (err) {
+      if (!req.isCurrent()) return;
       setError(humanApiError(err, 'Failed to load plans'));
     } finally {
-      setLoading(false);
+      if (req.isCurrent()) setLoading(false);
     }
-  }, [page, query, active]);
+  }, [begin, page, query, active]);
 
   useEffect(() => {
     void load();
@@ -107,15 +115,19 @@ export default function AdminPlansPage() {
       ) : null}
       {!loading && !error && items.length === 0 ? (
         <EmptyState
-          title="No plans yet"
-          description="Create a plan before assigning subscriptions to tenants."
+          title={filtersActive ? 'No plans match your search' : 'No plans yet'}
+          description={
+            filtersActive
+              ? 'Try a different name, slug, or availability filter.'
+              : 'Create a plan before assigning subscriptions to tenants.'
+          }
         />
       ) : null}
 
       {!loading && !error && items.length > 0 ? (
         <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-[var(--color-border)] bg-[#f3f7f5] text-[var(--color-muted)]">
+          <table className="min-w-[44rem] w-full text-left text-sm">
+            <thead className="sticky top-14 z-10 border-b border-[var(--color-border)] bg-[#f3f7f5] text-[var(--color-muted)] shadow-[0_1px_0_0_var(--color-border)]">
               <tr>
                 <th className="px-4 py-3 font-medium">Plan</th>
                 <th className="px-4 py-3 font-medium">Slug</th>
@@ -161,7 +173,7 @@ export default function AdminPlansPage() {
         </div>
       ) : null}
 
-      {meta ? (
+      {!loading && meta ? (
         <Pagination
           page={meta.page}
           totalPages={meta.totalPages}

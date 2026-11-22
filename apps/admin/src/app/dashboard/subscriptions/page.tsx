@@ -23,6 +23,7 @@ import {
   subscriptionPhaseLabel,
 } from '@/lib/admin-utils';
 import { api } from '@/lib/api-client';
+import { useListRequest } from '@/lib/list-request';
 
 export default function AdminSubscriptionsPage() {
   const [items, setItems] = useState<AdminSubscription[]>([]);
@@ -33,10 +34,14 @@ export default function AdminSubscriptionsPage() {
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { begin } = useListRequest();
 
   const load = useCallback(async () => {
+    const req = begin();
     setLoading(true);
     setError(null);
+    setItems([]);
+    setMeta(null);
     try {
       const params = buildQuery({
         page,
@@ -48,14 +53,16 @@ export default function AdminSubscriptionsPage() {
         success: true;
         data: { items: AdminSubscription[]; meta: OffsetPageMeta };
       }>(`/admin/subscriptions?${params}`);
+      if (!req.isCurrent()) return;
       setItems(result.data.items);
       setMeta(result.data.meta);
     } catch (err) {
+      if (!req.isCurrent()) return;
       setError(humanApiError(err, 'Failed to load subscriptions'));
     } finally {
-      setLoading(false);
+      if (req.isCurrent()) setLoading(false);
     }
-  }, [page, query, status]);
+  }, [begin, page, query, status]);
 
   useEffect(() => {
     void load();
@@ -117,8 +124,8 @@ export default function AdminSubscriptionsPage() {
 
       {!loading && !error && items.length > 0 ? (
         <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-[var(--color-border)] bg-[#f3f7f5] text-[var(--color-muted)]">
+          <table className="min-w-[44rem] w-full text-left text-sm">
+            <thead className="sticky top-14 z-10 border-b border-[var(--color-border)] bg-[#f3f7f5] text-[var(--color-muted)] shadow-[0_1px_0_0_var(--color-border)]">
               <tr>
                 <th className="px-4 py-3 font-medium">Tenant</th>
                 <th className="px-4 py-3 font-medium">Plan</th>
@@ -175,7 +182,7 @@ export default function AdminSubscriptionsPage() {
         </div>
       ) : null}
 
-      {meta ? (
+      {!loading && meta ? (
         <Pagination
           page={meta.page}
           totalPages={meta.totalPages}

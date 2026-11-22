@@ -1,0 +1,66 @@
+# OpenLiteSpeed virtual host for one merchant custom domain on a shared host.
+# Rendered by scripts/provision-custom-domain-shared-host.sh — do not hand-edit
+# the installed copy; re-run the provision script instead.
+#
+# TLS is terminated here (Cloudflare Origin CA or Let's Encrypt). Requests are
+# proxied to Ecomesta nginx on 127.0.0.1:@ECOMESTA_HTTP_PORT@. Origin lock-down
+# for visitor IPs lives in that nginx (QA-002), not in this accessControl.
+
+docRoot                   $VH_ROOT/html
+vhDomain                  @HOSTNAME@
+vhAliases                 www.@HOSTNAME@
+adminEmails               root@localhost
+enableGzip                0
+enableIpGeo               0
+
+errorlog $VH_ROOT/logs/error.log {
+  useServer               0
+  logLevel                WARN
+  rollingSize             10M
+}
+
+accesslog $VH_ROOT/logs/access.log {
+  useServer               0
+  logFormat               "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\""
+  rollingSize             10M
+  keepDays                10
+  compressArchive         1
+}
+
+accessControl  {
+  allow                   ALL
+}
+
+rewrite  {
+  enable                  1
+  rules                   <<<END_rules
+RewriteCond %{HTTPS} !=on
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+  END_rules
+}
+
+extprocessor ecomesta_edge {
+  type                    proxy
+  address                 127.0.0.1:@ECOMESTA_HTTP_PORT@
+  maxConns                200
+  initTimeout             60
+  retryTimeout            0
+  respBuffer              0
+}
+
+context / {
+  type                    proxy
+  handler                 ecomesta_edge
+  addDefaultCharset       off
+}
+
+vhssl  {
+  keyFile                 @SSL_KEY@
+  certFile                @SSL_CERT@
+  certChain               @SSL_CERT_CHAIN@
+  sslProtocol             24
+  enableECDHE             1
+  renegProtection         1
+  sslSessionCache         1
+  enableSpdy              15
+}

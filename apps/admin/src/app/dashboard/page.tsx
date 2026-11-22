@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/admin/page-header';
 import { Card } from '@/components/ui/card';
 import { ErrorState } from '@/components/ui/error-state';
 import { LoadingState } from '@/components/ui/loading-state';
-import { formatDateTime, humanApiError } from '@/lib/admin-utils';
+import { formatDateTime, formatPlanMoney, humanApiError } from '@/lib/admin-utils';
 import { api } from '@/lib/api-client';
 
 function Metric({
@@ -107,7 +107,7 @@ export default function AdminDashboardPage() {
             <Metric label="Orders" value={String(stats.orders.total)} />
             <Metric
               label="Order revenue"
-              value={stats.orderRevenueSum}
+              value={formatPlanMoney(stats.orderRevenueSum)}
               hint="Excludes cancelled orders"
             />
           </div>

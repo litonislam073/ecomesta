@@ -36,6 +36,8 @@ export default function AdminSupportChatsPage() {
     const id = ++latest.current;
     setLoading(true);
     setError(null);
+    setItems([]);
+    setMeta(null);
     try {
       const result = await api.get<{
         success: true;
@@ -145,8 +147,8 @@ export default function AdminSupportChatsPage() {
       ) : null}
       {!loading && !error && items.length > 0 ? (
         <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-[var(--color-border)] bg-[#f3f7f5] text-[var(--color-muted)]">
+          <table className="min-w-[44rem] w-full text-left text-sm">
+            <thead className="sticky top-14 z-10 border-b border-[var(--color-border)] bg-[#f3f7f5] text-[var(--color-muted)] shadow-[0_1px_0_0_var(--color-border)]">
               <tr>
                 <th className="px-4 py-3 font-medium">Visitor</th>
                 <th className="px-4 py-3 font-medium">Phone</th>
@@ -160,27 +162,29 @@ export default function AdminSupportChatsPage() {
               {items.map((chat) => (
                 <tr key={chat.id} className="border-b border-[var(--color-border)] last:border-b-0">
                   <td className="px-4 py-3">
-                    <Link
-                      className="font-medium text-[var(--color-accent)] hover:underline"
-                      href={`/dashboard/support-chats/${chat.id}`}
-                    >
-                      {chat.visitorName}
-                    </Link>
-                    {chat.source === 'CONTACT_FORM' ? (
-                      <span className="ml-2 rounded-full bg-[#e8f1ff] px-2 py-0.5 text-xs font-semibold text-[#1a4a8a]">
-                        Contact form
-                      </span>
-                    ) : null}
-                    {chat.handoffReference && chat.source !== 'CONTACT_FORM' ? (
-                      <span className="ml-2 rounded-full bg-[#fff6e0] px-2 py-0.5 text-xs font-semibold text-[#8a5a00]">
-                        Asked for a person
-                      </span>
-                    ) : null}
-                    {chat.handoffReference && chat.source === 'CONTACT_FORM' ? (
-                      <span className="ml-2 font-mono text-xs text-[var(--color-muted)]">
-                        #{chat.handoffReference}
-                      </span>
-                    ) : null}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link
+                        className="font-medium text-[var(--color-accent)] hover:underline"
+                        href={`/dashboard/support-chats/${chat.id}`}
+                      >
+                        {chat.visitorName}
+                      </Link>
+                      {chat.source === 'CONTACT_FORM' ? (
+                        <span className="rounded-full bg-[#e8f1ff] px-2 py-0.5 text-xs font-semibold text-[#1a4a8a]">
+                          Contact form
+                        </span>
+                      ) : null}
+                      {chat.handoffReference && chat.source !== 'CONTACT_FORM' ? (
+                        <span className="rounded-full bg-[#fff6e0] px-2 py-0.5 text-xs font-semibold text-[#8a5a00]">
+                          Asked for a person
+                        </span>
+                      ) : null}
+                      {chat.handoffReference && chat.source === 'CONTACT_FORM' ? (
+                        <span className="font-mono text-xs text-[var(--color-muted)]">
+                          #{chat.handoffReference}
+                        </span>
+                      ) : null}
+                    </div>
                   </td>
                   <td className="whitespace-nowrap px-4 py-3">
                     <a className="hover:underline" href={`tel:${chat.visitorPhone}`}>
@@ -199,7 +203,7 @@ export default function AdminSupportChatsPage() {
           </table>
         </div>
       ) : null}
-      {meta && meta.totalPages > 1 ? (
+      {!loading && meta && meta.totalPages > 1 ? (
         <Pagination page={meta.page} totalPages={meta.totalPages} onPageChange={setPage} />
       ) : null}
     </div>

@@ -130,11 +130,38 @@ platform subdomains like production.
   `DOMAIN_VERIFICATION_REGENERATED`
 - Merchant UI gates are UX only; `AuthorizationService` remains authoritative
 
+## Shared-host edge automation
+
+On the Contabo/OpenLiteSpeed layout, activating a custom domain also provisions
+the public edge automatically:
+
+1. API writes a job under `DOMAIN_EDGE_QUEUE_DIR` (and domain-sales connect does
+   the same when a bought domain is attached).
+2. `scripts/domain-edge-agent.sh` (systemd `ecomesta-domain-edge.service`)
+   drains the queue and periodically syncs every `ACTIVE` custom domain from
+   Postgres.
+3. `scripts/provision-custom-domain-shared-host.sh` installs
+   `infrastructure/nginx/custom-domains/<host>.conf`, an OpenLiteSpeed vhost +
+   listener maps, and TLS (existing Cloudflare Origin material if present,
+   otherwise Let's Encrypt via HTTP-01, otherwise a short-lived self-signed
+   cert).
+
+Merchant steps stay the same (TXT → Verify → point DNS → Activate). Disable /
+delete enqueue a remove. Operators can also run:
+
+```bash
+sudo /opt/ecomesta/scripts/sync-custom-domains-shared-host.sh
+sudo /opt/ecomesta/scripts/provision-custom-domain-shared-host.sh shop.example.com
+```
+
 ## Config
 
 | Variable | Purpose |
 | --- | --- |
 | `PLATFORM_ROOT_DOMAIN` | Root for `{slug}.…` subdomains (default `ecomesta.local`) |
+| `DOMAIN_CNAME_TARGET` / `DOMAIN_A_RECORD_TARGET` | Shown to merchants for DNS pointing |
+| `DOMAIN_EDGE_QUEUE_DIR` | API→host job directory for edge provision (shared host) |
+| `CERTBOT_EMAIL` | Let's Encrypt account email for custom-domain certs |
 | `NEXT_PUBLIC_API_URL` | Storefront middleware resolve target (browser and fallback) |
 | `API_INTERNAL_URL` | Server-side resolve/render target on the private network (set by `docker-compose.prod.yml`) |
 | `NEXT_PUBLIC_DEFAULT_STORE_SLUG` | Local fallback when no host / `?store=` |

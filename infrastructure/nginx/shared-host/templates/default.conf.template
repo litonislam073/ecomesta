@@ -86,7 +86,7 @@ map "$arg_theme_preview$arg_lp_preview" $storefront_frame_options {
     default "";
 }
 map "$arg_theme_preview$arg_lp_preview" $storefront_frame_ancestors {
-    ""      "";
+    ""      "frame-ancestors 'self'";
     default "frame-ancestors 'self' https://merchant.${PLATFORM_ROOT_DOMAIN}";
 }
 
@@ -191,3 +191,7 @@ server {
         include /etc/nginx/shared-snippets/proxy.conf;
     }
 }
+
+# Verified custom store domains (one file per domain; plain HTTP — the host
+# web server terminates TLS). See custom-domains/README.md.
+include /etc/nginx/custom-domains/*.conf;

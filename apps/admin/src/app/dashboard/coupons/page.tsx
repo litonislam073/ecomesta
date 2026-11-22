@@ -70,12 +70,20 @@ function CreateCoupon({ plans, onCreated }: { plans: PublicPlan[]; onCreated: (c
     event.preventDefault();
     setError(null);
     const code = form.code.trim().toUpperCase();
+    if (!code) return setError('Code is required.');
     if (!/^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(code)) return setError('Code: 3–32 letters, numbers, dashes or underscores.');
+    if (!form.type) return setError('Discount type is required.');
+    if (!form.value.trim()) {
+      return setError(form.type === 'PERCENTAGE' ? 'Percent off is required.' : 'Taka off is required.');
+    }
     const value = Number(form.value);
     if (form.type === 'PERCENTAGE' && !(Number.isInteger(value) && value >= 1 && value <= 99)) {
       return setError('Percentage must be a whole number from 1 to 99.');
     }
     if (form.type === 'FIXED_AMOUNT' && !(Number.isInteger(value) && value >= 1)) return setError('Amount must be at least ৳1, in whole taka.');
+    if (form.startsAt && form.endsAt && new Date(form.endsAt) < new Date(form.startsAt)) {
+      return setError('End date must be after the start date.');
+    }
     setBusy(true);
     try {
       const res = await api.post<{ success: true; data: AdminBillingCoupon }>('/admin/billing-coupons', {
@@ -117,19 +125,46 @@ function CreateCoupon({ plans, onCreated }: { plans: PublicPlan[]; onCreated: (c
       </div>
       <div className="grid gap-4 md:grid-cols-4">
         <label className="space-y-1 text-sm md:col-span-1">
-          <span className="font-medium">Code</span>
-          <Input value={form.code} onChange={(e) => set('code', e.target.value.toUpperCase())} placeholder="EID25" maxLength={32} className="font-mono uppercase" />
+          <span className="font-medium">
+            Code <span className="text-[var(--color-danger)]" aria-hidden="true">*</span>
+          </span>
+          <Input
+            required
+            aria-required="true"
+            value={form.code}
+            onChange={(e) => set('code', e.target.value.toUpperCase())}
+            placeholder="EID25"
+            maxLength={32}
+            className="font-mono uppercase"
+          />
         </label>
         <label className="space-y-1 text-sm">
-          <span className="font-medium">Discount type</span>
-          <Select value={form.type} onChange={(e) => set('type', e.target.value as BillingCouponType)}>
+          <span className="font-medium">
+            Discount type <span className="text-[var(--color-danger)]" aria-hidden="true">*</span>
+          </span>
+          <Select
+            required
+            aria-required="true"
+            value={form.type}
+            onChange={(e) => set('type', e.target.value as BillingCouponType)}
+          >
             <option value="PERCENTAGE">Percentage (%)</option>
             <option value="FIXED_AMOUNT">Fixed amount (৳)</option>
           </Select>
         </label>
         <label className="space-y-1 text-sm">
-          <span className="font-medium">{form.type === 'PERCENTAGE' ? 'Percent off' : 'Taka off'}</span>
-          <Input inputMode="numeric" value={form.value} onChange={(e) => set('value', e.target.value)} placeholder={form.type === 'PERCENTAGE' ? '25' : '100'} />
+          <span className="font-medium">
+            {form.type === 'PERCENTAGE' ? 'Percent off' : 'Taka off'}{' '}
+            <span className="text-[var(--color-danger)]" aria-hidden="true">*</span>
+          </span>
+          <Input
+            required
+            aria-required="true"
+            inputMode="numeric"
+            value={form.value}
+            onChange={(e) => set('value', e.target.value)}
+            placeholder={form.type === 'PERCENTAGE' ? '25' : '100'}
+          />
         </label>
         <label className="space-y-1 text-sm">
           <span className="font-medium">Note (optional)</span>
@@ -260,18 +295,22 @@ export default function CouponsPage() {
       {!loading && !error ? (
         <>
           <CreateCoupon plans={plans} onCreated={(coupon) => setCoupons((list) => [coupon, ...list])} />
+          <section aria-labelledby="coupon-list-heading" className="space-y-3">
+            <h2 id="coupon-list-heading" className="text-lg font-semibold">
+              Coupons
+            </h2>
           {coupons.length === 0 ? (
             <EmptyState title="No coupons yet" description="Create one above to give merchants a discount on their plan." />
           ) : (
             <div className="overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
               <table className="w-full min-w-[860px] text-left text-sm">
-                <thead className="border-b border-[var(--color-border)] bg-[var(--color-bg)] text-xs uppercase tracking-wide text-[var(--color-muted)]">
+                <thead className="sticky top-14 z-10 border-b border-[var(--color-border)] bg-[var(--color-bg)] text-xs uppercase tracking-wide text-[var(--color-muted)] shadow-[0_1px_0_0_var(--color-border)]">
                   <tr>
                     <th className="px-4 py-3">Code</th>
                     <th className="px-4 py-3">Discount</th>
                     <th className="px-4 py-3">Applies to</th>
-                    <th className="px-4 py-3">Used</th>
-                    <th className="px-4 py-3">Valid</th>
+                    <th className="px-4 py-3">Uses</th>
+                    <th className="px-4 py-3">Validity</th>
                     <th className="px-4 py-3">Status</th>
                     <th className="px-4 py-3">
                       <span className="sr-only">Actions</span>
@@ -323,6 +362,7 @@ export default function CouponsPage() {
               </table>
             </div>
           )}
+          </section>
         </>
       ) : null}
     </div>

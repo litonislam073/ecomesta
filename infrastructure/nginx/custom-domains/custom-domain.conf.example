@@ -12,7 +12,8 @@ server {
     ssl_certificate     /etc/letsencrypt/live/STORE_DOMAIN/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/STORE_DOMAIN/privkey.pem;
     include /etc/nginx/snippets/tls.conf;
-    include /etc/nginx/snippets/security-headers.conf;
+    # Same framing rules as platform storefront hosts (theme/landing preview).
+    include /etc/nginx/snippets/storefront-security-headers.conf;
 
     include /etc/nginx/snippets/deny-hidden.conf;
     include /etc/nginx/snippets/storefront.conf;

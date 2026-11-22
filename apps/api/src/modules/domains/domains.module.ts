@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DOMAIN_DNS_PROVIDER, SystemDnsProvider } from './domain-dns.provider';
+import { DomainEdgeQueueService } from './domain-edge-queue.service';
 import { DomainsController } from './domains.controller';
 import { DomainsService } from './domains.service';
 import { PublicDomainController } from './public-domain.controller';
@@ -10,10 +11,11 @@ import { StorefrontCorsService } from './storefront-cors.service';
   controllers: [DomainsController, PublicDomainController],
   providers: [
     DomainsService,
+    DomainEdgeQueueService,
     StoreDomainResolver,
     StorefrontCorsService,
     { provide: DOMAIN_DNS_PROVIDER, useClass: SystemDnsProvider },
   ],
-  exports: [StoreDomainResolver, StorefrontCorsService],
+  exports: [StoreDomainResolver, StorefrontCorsService, DomainEdgeQueueService],
 })
 export class DomainsModule {}

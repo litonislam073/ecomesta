@@ -46,6 +46,12 @@ describe('Bangla page paths', () => {
     expect(nav.find((item) => item.href === '/bn')?.label).toBe('হোম');
     expect(primaryNav('en').find((item) => item.href === '/pricing')?.label).toBe('Pricing');
     expect(footerNav('bn')[0]?.heading).toBe('প্রোডাক্ট');
+    expect(footerNav('bn')[0]?.items.some((item) => item.href === '/bn/domains' && item.label === 'ডোমেইন কিনুন')).toBe(
+      true,
+    );
+    expect(footerNav('en')[0]?.items.some((item) => item.href === '/domains' && item.label === 'Buy a domain')).toBe(
+      true,
+    );
   });
 });
 

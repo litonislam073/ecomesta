@@ -212,3 +212,29 @@ export function platformSubdomainSlug(
 export function verificationRecordName(hostname: string): string {
   return `${DOMAIN_VERIFICATION_PREFIX}.${hostname}`;
 }
+
+/**
+ * Hostnames that should resolve to the same storefront as `hostname`.
+ * Merchants register the apex (`shop.example.com`); Cloudflare / DNS almost
+ * always also answers `www.shop.example.com`, and the edge vhost already
+ * accepts both — the public resolver must treat them as one domain.
+ *
+ * Returns the bare host first, then its www/apex twin when applicable.
+ */
+export function registeredHostnameAliases(hostname: string): string[] {
+  const host = hostname.trim().toLowerCase().replace(/\.+$/, '');
+  if (!host) {
+    return [];
+  }
+  const aliases = [host];
+  if (host.startsWith('www.')) {
+    const apex = host.slice(4);
+    // Keep a real multi-label apex (`example.com`), not `www.com`-style junk.
+    if (apex.includes('.')) {
+      aliases.push(apex);
+    }
+  } else {
+    aliases.push(`www.${host}`);
+  }
+  return aliases;
+}

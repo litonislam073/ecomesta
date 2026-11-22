@@ -6,6 +6,7 @@ import type { AdminAuditLog, OffsetPageMeta } from '@ecomesta/types';
 import { Button } from '@ecomesta/ui';
 import { PageHeader } from '@/components/admin/page-header';
 import { EmptyState } from '@/components/ui/empty-state';
+import { EntitySearchSelect, isUuid } from '@/components/ui/entity-search-select';
 import { ErrorState } from '@/components/ui/error-state';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -19,6 +20,7 @@ import {
   redactMetadata,
 } from '@/lib/admin-utils';
 import { api } from '@/lib/api-client';
+import { useListRequest } from '@/lib/list-request';
 
 interface AuditFilters {
   action: string;
@@ -46,10 +48,14 @@ export default function AuditLogsView() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { begin } = useListRequest();
 
   const load = useCallback(async () => {
+    const req = begin();
     setLoading(true);
     setError(null);
+    setItems([]);
+    setMeta(null);
     try {
       const params = buildQuery({
         page,
@@ -65,14 +71,16 @@ export default function AuditLogsView() {
         success: true;
         data: { items: AdminAuditLog[]; meta: OffsetPageMeta };
       }>(`/admin/audit-logs?${params}`);
+      if (!req.isCurrent()) return;
       setItems(result.data.items);
       setMeta(result.data.meta);
     } catch (err) {
+      if (!req.isCurrent()) return;
       setError(humanApiError(err, 'Failed to load audit logs'));
     } finally {
-      setLoading(false);
+      if (req.isCurrent()) setLoading(false);
     }
-  }, [page, applied]);
+  }, [begin, page, applied]);
 
   useEffect(() => {
     void load();
@@ -80,9 +88,20 @@ export default function AuditLogsView() {
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
+    setError(null);
     if (filters.from && filters.to && new Date(filters.to) < new Date(filters.from)) {
-      setError('The "to" date must be after the "from" date.');
+      setError('The From date must be on or before the To date.');
       return;
+    }
+    for (const [label, value] of [
+      ['Tenant', filters.tenantId],
+      ['Store', filters.storeId],
+      ['Actor', filters.userId],
+    ] as const) {
+      if (value && !isUuid(value)) {
+        setError(`${label} must be chosen from the search results (a full UUID).`);
+        return;
+      }
     }
     setPage(1);
     setApplied({
@@ -125,51 +144,27 @@ export default function AuditLogsView() {
             ))}
           </Select>
         </label>
-        <div className="space-y-1.5">
-          <label className="block space-y-1.5" htmlFor="audit-tenant">
-            <span className="text-sm font-medium">Tenant ID</span>
-            <Input
-              id="audit-tenant"
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-              aria-describedby="audit-tenant-help"
-              value={filters.tenantId}
-              onChange={(e) => update('tenantId', e.target.value)}
-            />
-          </label>
-          <p id="audit-tenant-help" className="text-xs text-[var(--color-muted)]">
-            Full UUID (copy it from the tenant page). Leave empty for all tenants.
-          </p>
-        </div>
-        <div className="space-y-1.5">
-          <label className="block space-y-1.5" htmlFor="audit-store">
-            <span className="text-sm font-medium">Store ID</span>
-            <Input
-              id="audit-store"
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-              aria-describedby="audit-store-help"
-              value={filters.storeId}
-              onChange={(e) => update('storeId', e.target.value)}
-            />
-          </label>
-          <p id="audit-store-help" className="text-xs text-[var(--color-muted)]">
-            Full UUID (copy it from the store page). Leave empty for all stores.
-          </p>
-        </div>
-        <div className="space-y-1.5">
-          <label className="block space-y-1.5" htmlFor="audit-user">
-            <span className="text-sm font-medium">Actor user ID</span>
-            <Input
-              id="audit-user"
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-              aria-describedby="audit-user-help"
-              value={filters.userId}
-              onChange={(e) => update('userId', e.target.value)}
-            />
-          </label>
-          <p id="audit-user-help" className="text-xs text-[var(--color-muted)]">
-            Full UUID of the admin or user who acted (copy it from the user page).
-          </p>
-        </div>
+        <EntitySearchSelect
+          kind="tenant"
+          label="Tenant"
+          value={filters.tenantId}
+          onChange={(id) => update('tenantId', id)}
+          help="Search by name or slug. Leave empty for all tenants."
+        />
+        <EntitySearchSelect
+          kind="store"
+          label="Store"
+          value={filters.storeId}
+          onChange={(id) => update('storeId', id)}
+          help="Search by name or slug. Leave empty for all stores."
+        />
+        <EntitySearchSelect
+          kind="user"
+          label="Actor"
+          value={filters.userId}
+          onChange={(id) => update('userId', id)}
+          help="Search by email. Leave empty for any actor."
+        />
         <label className="block space-y-1.5" htmlFor="audit-from">
           <span className="text-sm font-medium">From</span>
           <Input
@@ -208,8 +203,8 @@ export default function AuditLogsView() {
 
       {!loading && !error && items.length > 0 ? (
         <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-[var(--color-border)] bg-[#f3f7f5] text-[var(--color-muted)]">
+          <table className="min-w-[44rem] w-full text-left text-sm">
+            <thead className="sticky top-14 z-10 border-b border-[var(--color-border)] bg-[#f3f7f5] text-[var(--color-muted)] shadow-[0_1px_0_0_var(--color-border)]">
               <tr>
                 <th className="px-4 py-3 font-medium">When</th>
                 <th className="px-4 py-3 font-medium">Action</th>
@@ -245,7 +240,7 @@ export default function AuditLogsView() {
         </div>
       ) : null}
 
-      {meta ? (
+      {!loading && meta ? (
         <Pagination
           page={meta.page}
           totalPages={meta.totalPages}

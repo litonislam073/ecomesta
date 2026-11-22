@@ -832,7 +832,7 @@ export const FEATURE_PAGES: ContentPage[] = [
       {
         heading: 'HTTPS',
         paragraphs: [
-          'Production storefronts are served over HTTPS. SSL certificates for custom domains are provisioned on the platform infrastructure; they are not issued automatically from the dashboard yet, so domain activation can take a little coordination.',
+          'Production storefronts are served over HTTPS. After you verify and activate a custom domain, the platform provisions TLS on the edge automatically (usually within a minute).',
         ],
       },
       {
@@ -855,6 +855,11 @@ export const FEATURE_PAGES: ContentPage[] = [
       },
     ],
     related: [
+      {
+        href: '/domains',
+        label: 'Buy a domain',
+        description: 'Search and buy a domain with bKash or Nagad, then we connect it for you.',
+      },
       {
         href: '/features/store-customization',
         label: 'Store customization',

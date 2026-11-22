@@ -21,6 +21,7 @@ describe('Admin UI states', () => {
   it('renders loading state', () => {
     render(<LoadingState label="Loading tenants" />);
     expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(screen.getByText('Loading tenants')).toBeInTheDocument();
   });
 
   it('hides pagination for a single page', () => {

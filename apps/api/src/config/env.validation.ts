@@ -91,6 +91,14 @@ export class EnvironmentVariables {
   @IsString()
   DOMAIN_A_RECORD_TARGET?: string;
 
+  /**
+   * Shared-host only: directory where activate/disable/delete drop JSON jobs for
+   * `scripts/domain-edge-agent.sh` (nginx + OpenLiteSpeed provision). Unset = no-op.
+   */
+  @IsOptional()
+  @IsString()
+  DOMAIN_EDGE_QUEUE_DIR?: string;
+
   @IsOptional()
   @IsString()
   LOG_LEVEL?: string;

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import type { AdminBillingPayment, BillingPaymentStatus, OffsetPageMeta } from '@ecomesta/types';
 import { BillingInvoice, Button, InvoiceDialog, billingInvoiceNumber } from '@ecomesta/ui';
 import { PageHeader } from '@/components/admin/page-header';
@@ -14,6 +14,8 @@ import { useToast } from '@/components/ui/toast';
 import { billingCycleLabel, buildQuery, formatDateTime, humanApiError } from '@/lib/admin-utils';
 import { refreshAdminBadges } from '@/lib/admin-badges';
 import { api } from '@/lib/api-client';
+import { useListRequest } from '@/lib/list-request';
+import { useQueryTab } from '@/lib/use-query-tab';
 
 const METHODS: Record<AdminBillingPayment['method'], { label: string; color: string }> = {
   BKASH: { label: 'bKash', color: '#E2136E' },
@@ -22,11 +24,14 @@ const METHODS: Record<AdminBillingPayment['method'], { label: string; color: str
   UPAY: { label: 'Upay', color: '#0F54A6' },
 };
 
-const TABS: { value: BillingPaymentStatus | ''; label: string }[] = [
-  { value: 'PENDING', label: 'Waiting for review' },
-  { value: 'APPROVED', label: 'Approved' },
-  { value: 'REJECTED', label: 'Rejected' },
-  { value: '', label: 'All' },
+const PAYMENT_TABS = ['pending', 'approved', 'rejected', 'all'] as const;
+type PaymentTab = (typeof PAYMENT_TABS)[number];
+
+const TABS: { value: PaymentTab; status: BillingPaymentStatus | ''; label: string }[] = [
+  { value: 'pending', status: 'PENDING', label: 'Waiting for review' },
+  { value: 'approved', status: 'APPROVED', label: 'Approved' },
+  { value: 'rejected', status: 'REJECTED', label: 'Rejected' },
+  { value: 'all', status: '', label: 'All' },
 ];
 
 const STATUS_STYLE: Record<BillingPaymentStatus, string> = {
@@ -80,19 +85,20 @@ function PaymentCard({
     <li className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
-          <span
-            aria-hidden="true"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white"
-            style={{ backgroundColor: method.color }}
-          >
-            {method.label[0]}
-          </span>
           <div className="min-w-0">
-            <p className="font-semibold text-[var(--color-ink)]">
-              <Link href={`/dashboard/tenants/${payment.tenant.id}`} className="hover:underline">
-                {payment.tenant.name}
-              </Link>
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-semibold text-[var(--color-ink)]">
+                <Link href={`/dashboard/tenants/${payment.tenant.id}`} className="hover:underline">
+                  {payment.tenant.name}
+                </Link>
+              </p>
+              <span
+                className="rounded-full px-2.5 py-0.5 text-xs font-semibold text-white"
+                style={{ backgroundColor: method.color }}
+              >
+                {method.label}
+              </span>
+            </div>
             <p className="text-sm text-[var(--color-muted)]">
               {payment.submittedBy.name ? `${payment.submittedBy.name} · ` : ''}
               {payment.submittedBy.email}
@@ -222,8 +228,20 @@ function PaymentCard({
 }
 
 export default function AdminPaymentsPage() {
+  return (
+    <Suspense fallback={<LoadingState label="Loading payments" />}>
+      <PaymentsView />
+    </Suspense>
+  );
+}
+
+function PaymentsView() {
   const { pushToast } = useToast();
-  const [status, setStatus] = useState<BillingPaymentStatus | ''>('PENDING');
+  const [tab, setTab] = useQueryTab(PAYMENT_TABS, 'pending');
+  const status = useMemo(
+    () => TABS.find((entry) => entry.value === tab)?.status ?? 'PENDING',
+    [tab],
+  );
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<AdminBillingPayment[]>([]);
   const [meta, setMeta] = useState<OffsetPageMeta | null>(null);
@@ -232,24 +250,34 @@ export default function AdminPaymentsPage() {
   const [error, setError] = useState<string | null>(null);
   const [approving, setApproving] = useState<AdminBillingPayment | null>(null);
   const [busy, setBusy] = useState(false);
+  const { begin } = useListRequest();
+
+  useEffect(() => {
+    setPage(1);
+  }, [tab]);
 
   const load = useCallback(async () => {
+    const req = begin();
     setLoading(true);
     setError(null);
+    setItems([]);
+    setMeta(null);
     try {
       const result = await api.get<{
         success: true;
         data: { items: AdminBillingPayment[]; meta: OffsetPageMeta; pendingCount: number };
       }>(`/admin/billing-payments?${buildQuery({ page, limit: 20, status: status || undefined })}`);
+      if (!req.isCurrent()) return;
       setItems(result.data.items);
       setMeta(result.data.meta);
       setPendingCount(result.data.pendingCount);
     } catch (err) {
+      if (!req.isCurrent()) return;
       setError(humanApiError(err, 'Failed to load payments'));
     } finally {
-      setLoading(false);
+      if (req.isCurrent()) setLoading(false);
     }
-  }, [page, status]);
+  }, [begin, page, status]);
 
   useEffect(() => {
     void load();
@@ -290,24 +318,21 @@ export default function AdminPaymentsPage() {
       />
 
       <div role="tablist" aria-label="Payment status" className="flex flex-wrap gap-2">
-        {TABS.map((tab) => (
+        {TABS.map((entry) => (
           <button
-            key={tab.label}
+            key={entry.value}
             type="button"
             role="tab"
-            aria-selected={status === tab.value}
-            onClick={() => {
-              setStatus(tab.value);
-              setPage(1);
-            }}
+            aria-selected={tab === entry.value}
+            onClick={() => setTab(entry.value)}
             className={`rounded-full border px-4 py-1.5 text-sm font-medium ${
-              status === tab.value
+              tab === entry.value
                 ? 'border-[var(--color-accent)] bg-[var(--color-accent)] text-white'
                 : 'border-[var(--color-border)] bg-white text-[var(--color-ink)]'
             }`}
           >
-            {tab.label}
-            {tab.value === 'PENDING' && pendingCount > 0 ? ` (${pendingCount})` : ''}
+            {entry.label}
+            {entry.value === 'pending' && pendingCount > 0 ? ` (${pendingCount})` : ''}
           </button>
         ))}
       </div>
@@ -327,7 +352,7 @@ export default function AdminPaymentsPage() {
           ))}
         </ul>
       ) : null}
-      {meta && meta.totalPages > 1 ? (
+      {!loading && meta && meta.totalPages > 1 ? (
         <Pagination page={meta.page} totalPages={meta.totalPages} onPageChange={setPage} />
       ) : null}
 

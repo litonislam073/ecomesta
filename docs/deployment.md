@@ -671,8 +671,26 @@ curl -sk -o /dev/null -w '%{http_code}\n' --resolve api.<root>:443:<vps-ip> \
   -H 'CF-Connecting-IP: 203.0.113.50' https://api.<root>/api/v1/health   # 403
 ```
 
-Custom merchant domains are not covered by this layout yet: each one needs its
-own host web server entry and certificate.
+### Custom merchant domains (shared host)
+
+After a merchant **Activates** a verified domain (or a bought domain is
+connected), the host agent provisions nginx + OpenLiteSpeed + TLS
+automatically. One-time setup on the VPS:
+
+```bash
+mkdir -p /opt/ecomesta/var/domain-edge-queue /var/www/ecomesta-acme
+# In .env.production:
+#   DOMAIN_EDGE_QUEUE_DIR=/var/ecomesta/domain-edge-queue
+#   CERTBOT_EMAIL=ops@ecomesta.com   # optional; falls back to SUPPORT_EMAIL
+cp /opt/ecomesta/infrastructure/systemd/ecomesta-domain-edge.service \
+  /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now ecomesta-domain-edge.service
+# Recreate api (queue volume) + nginx (ACME webroot) from compose, then:
+sudo /opt/ecomesta/scripts/sync-custom-domains-shared-host.sh
+```
+
+See `docs/custom-domains.md` (Shared-host edge automation).
 
 ---
 
@@ -686,8 +704,10 @@ own host web server entry and certificate.
   same-site and refresh would fail (sessions drop; nothing is loosened).
   Cross-site layouts on ordinary TLDs switch to `SameSite=None; Secure`, which
   browsers that block third-party cookies may reject.
-- **Custom-domain certificates are manual** per domain (§10); there is no
-  on-demand TLS.
+- **Custom-domain TLS on shared host** is issued by Let's Encrypt (or an
+  existing Cloudflare Origin cert under `/etc/ssl/ecomesta/`). Standalone
+  nginx layouts still use the manual §10 certificate steps unless you adopt the
+  same agent.
 - **API outage on store hosts.** If the API is unreachable, uncached store
   hosts fall back to the marketing homepage instead of an "unavailable" page.
   No other store is ever served (`?store=` is ignored on production hosts).

@@ -11,11 +11,26 @@ import {
 } from 'class-validator';
 import { AdminPaginationQueryDto } from './admin-common.dto';
 
-const toBoolean = ({ value }: { value: unknown }) => {
-  if (value === 'true' || value === true) return true;
-  if (value === 'false' || value === false) return false;
-  return value;
-};
+/**
+ * Query booleans arrive as strings. With ValidationPipe
+ * `enableImplicitConversion`, `Boolean("false") === true` runs before a naive
+ * `@Transform(({ value }) => …)`, so Inactive filters would match Active rows.
+ * Read the raw query value from `obj` instead.
+ */
+function parseQueryBoolean({
+  obj,
+  key,
+}: {
+  value: unknown;
+  obj: Record<string, unknown>;
+  key: string;
+}): boolean | undefined {
+  const raw = obj[key];
+  if (raw === undefined || raw === null || raw === '') return undefined;
+  if (raw === true || raw === 'true' || raw === '1' || raw === 1) return true;
+  if (raw === false || raw === 'false' || raw === '0' || raw === 0) return false;
+  return undefined;
+}
 
 export class ListAdminPlansQueryDto extends AdminPaginationQueryDto {
   @ApiPropertyOptional({ description: 'Partial name or slug match' })
@@ -26,7 +41,7 @@ export class ListAdminPlansQueryDto extends AdminPaginationQueryDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @Transform(toBoolean)
+  @Transform(parseQueryBoolean)
   @IsBoolean()
   active?: boolean;
 }

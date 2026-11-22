@@ -97,8 +97,10 @@ export class AdminSubscriptionsService {
   }
 
   async getOne(actingUserId: string, subscriptionId: string) {
-    await this.authorization.assertSuperAdmin(actingUserId);
-    const subscription = await this.requireSubscription(subscriptionId);
+    const [subscription] = await Promise.all([
+      this.requireSubscription(subscriptionId),
+      this.authorization.assertSuperAdmin(actingUserId),
+    ]);
     return { success: true as const, data: this.toDto(subscription) };
   }
 

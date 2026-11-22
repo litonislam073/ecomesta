@@ -524,6 +524,101 @@ export const BLOG_POSTS: BlogPost[] = [
       { href: '/features/order-tracking', label: 'Order tracking for customers' },
     ],
   },
+  {
+    slug: 'connect-custom-domain-online-store-bangladesh',
+    title: 'How to Connect Your Own Domain to Your Online Store in Bangladesh',
+    description:
+      'Step-by-step: buy or use a domain you already own, verify it with DNS TXT, point A/CNAME records, activate HTTPS and make it your primary store URL on Ecomesta.',
+    category: 'store-growth',
+    publishedTime: '2026-11-22',
+    modifiedTime: '2026-11-22',
+    readingMinutes: 8,
+    intro:
+      'A free subdomain gets you selling quickly, but your own domain — like yourbrand.com — looks more professional on Facebook ads, packaging and invoices. Connecting it is mostly DNS work: prove you own the name, point traffic at the store, then activate. Here is the plain-language path for Bangladeshi sellers.',
+    sections: [
+      {
+        heading: '1. Why use your own domain',
+        paragraphs: [
+          'Customers remember a short brand name more easily than a long platform link. Your own domain also keeps trust when you run ads, print stickers or share the store in Messenger — the URL stays yours even if you change themes or plans later.',
+        ],
+        bullets: [
+          'Looks professional on ads, receipts and packaging',
+          'Easier to say and type than a long subdomain',
+          'You keep the brand address if you grow or switch plans',
+        ],
+      },
+      {
+        heading: '2. Get a domain (or use one you already have)',
+        paragraphs: [
+          'If you do not own a domain yet, buy one from a registrar (for example Namecheap, GoDaddy, Dynadot or a local reseller). Prefer a short .com when you can; .shop and .store also work. If you already bought a domain for Facebook or email, you can point the same name at your store — just keep any email MX records you still need.',
+        ],
+      },
+      {
+        heading: '3. Add the domain in your store dashboard',
+        paragraphs: [
+          'In Ecomesta open Domains, type the hostname without https:// (for example shop.yourbrand.com or yourbrand.com) and save. The store creates a DNS TXT challenge so you can prove ownership before any public traffic is switched over.',
+        ],
+        flow: [
+          'Open Domains in the merchant dashboard',
+          'Add your hostname',
+          'Copy the TXT name and value shown',
+          'Add that TXT record at your DNS provider',
+          'Press Verify, then point A/CNAME and Activate',
+        ],
+      },
+      {
+        heading: '4. Add the verification TXT record',
+        paragraphs: [
+          'At Cloudflare, your registrar or cPanel DNS, create a TXT record. The host is usually _ecomesta-verification (or the full name shown in the dashboard). Paste the eco_… value exactly. DNS can take a few minutes — sometimes up to an hour — before Verify succeeds.',
+        ],
+        bullets: [
+          'Type: TXT',
+          'Name/host: as shown in Domains (often _ecomesta-verification)',
+          'Value: the eco_… token from the dashboard — no extra spaces',
+          'Proxy status: DNS only is fine for TXT',
+        ],
+      },
+      {
+        heading: '5. Point the domain at the store',
+        paragraphs: [
+          'After verification, point the hostname at Ecomesta using the targets shown on the Domains page. Apex domains (yourbrand.com) usually need an A record to the platform IP. Subdomains (shop.yourbrand.com) usually use a CNAME. If you use Cloudflare, turn the orange cloud (Proxied) on for the A/CNAME so visitors get HTTPS at the edge.',
+        ],
+        bullets: [
+          'Apex (@): A record → the IPv4 shown in Domains',
+          'www: A or CNAME to the same target (recommended)',
+          'Subdomain: CNAME → the hostname shown as CNAME target',
+          'Wait for DNS, then press Activate (and Set primary when you are ready)',
+        ],
+      },
+      {
+        heading: '6. Activate, set primary and check',
+        paragraphs: [
+          'Activate tells the storefront to answer on that hostname. Set it as primary so product links, sitemaps and share previews use your brand URL. Open the domain in a private browser window, place a test add-to-cart, and confirm the address bar shows your name — not the old subdomain.',
+        ],
+      },
+      {
+        heading: 'Common mistakes',
+        bullets: [
+          'Adding https:// in the hostname field — use only the bare domain',
+          'Wrong TXT host (missing the _ecomesta-verification label)',
+          'Pointing A/CNAME before Verify passes',
+          'Forgetting www — add it if customers type www.yourbrand.com',
+          'Removing email MX records by accident when editing DNS',
+        ],
+      },
+      {
+        heading: 'How Ecomesta handles this',
+        paragraphs: [
+          'Ecomesta verifies ownership with a TXT challenge, then activates the host for your storefront. On the live platform, HTTPS for a newly activated custom domain is provisioned on the edge automatically after you point DNS — usually within about a minute. You still control the domain at your registrar; Ecomesta only serves the store when the records match.',
+        ],
+      },
+    ],
+    related: [
+      { href: '/features/custom-domain', label: 'Custom domain feature' },
+      { href: '/blog/how-to-start-online-business-bangladesh', label: 'Start an online business in Bangladesh' },
+      { href: '/shopify-alternative-bangladesh', label: 'Ecomesta vs Shopify' },
+    ],
+  },
 ];
 
 export function formatPostDate(iso: string): string {

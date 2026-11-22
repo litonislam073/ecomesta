@@ -70,47 +70,41 @@ export class AdminTenantsService {
   }
 
   async getOne(actingUserId: string, tenantId: string) {
-    await this.authorization.assertSuperAdmin(actingUserId);
-
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        status: true,
-        createdAt: true,
-        updatedAt: true,
-        memberships: {
-          select: {
-            id: true,
-            role: true,
-            status: true,
-            createdAt: true,
-            user: {
-              select: {
-                id: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-                status: true,
+    const [tenant, latestSubscription, ordersCount, recentAudit] = await Promise.all([
+      this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+          memberships: {
+            select: {
+              id: true,
+              role: true,
+              status: true,
+              createdAt: true,
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  firstName: true,
+                  lastName: true,
+                  status: true,
+                },
               },
             },
+            orderBy: { createdAt: 'asc' },
           },
-          orderBy: { createdAt: 'asc' },
+          stores: {
+            select: { id: true, name: true, slug: true, status: true },
+            orderBy: { createdAt: 'asc' },
+          },
+          _count: { select: { stores: true, memberships: true } },
         },
-        stores: {
-          select: { id: true, name: true, slug: true, status: true },
-          orderBy: { createdAt: 'asc' },
-        },
-        _count: { select: { stores: true, memberships: true } },
-      },
-    });
-    if (!tenant) {
-      throw new NotFoundException('Tenant not found');
-    }
-
-    const [latestSubscription, ordersCount, recentAudit] = await Promise.all([
+      }),
       this.prisma.subscription.findFirst({
         where: { tenantId },
         orderBy: { createdAt: 'desc' },
@@ -141,7 +135,11 @@ export class AdminTenantsService {
           user: { select: { id: true, email: true } },
         },
       }),
+      this.authorization.assertSuperAdmin(actingUserId),
     ]);
+    if (!tenant) {
+      throw new NotFoundException('Tenant not found');
+    }
 
     const { _count, ...rest } = tenant;
 

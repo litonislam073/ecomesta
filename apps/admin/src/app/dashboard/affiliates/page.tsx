@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { FormEvent, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import type {
   AdminAffiliateCommissionItem,
   AdminAffiliateItem,
@@ -17,8 +17,10 @@ import { useToast } from '@/components/ui/toast';
 import { formatDate, formatDateTime, humanApiError } from '@/lib/admin-utils';
 import { refreshAdminBadges } from '@/lib/admin-badges';
 import { api } from '@/lib/api-client';
+import { useQueryTab } from '@/lib/use-query-tab';
 
-type Tab = 'affiliates' | 'payouts' | 'commissions' | 'settings';
+const AFFILIATE_TABS = ['affiliates', 'payouts', 'commissions', 'settings'] as const;
+type Tab = (typeof AFFILIATE_TABS)[number];
 
 const TABS: { value: Tab; label: string }[] = [
   { value: 'affiliates', label: 'Affiliates' },
@@ -112,7 +114,15 @@ function ReasonForm({
 }
 
 export default function AdminAffiliatesPage() {
-  const [tab, setTab] = useState<Tab>('affiliates');
+  return (
+    <Suspense fallback={<LoadingState label="Loading affiliates" />}>
+      <AffiliatesView />
+    </Suspense>
+  );
+}
+
+function AffiliatesView() {
+  const [tab, setTab] = useQueryTab(AFFILIATE_TABS, 'affiliates');
   return (
     <div className="space-y-6">
       <PageHeader

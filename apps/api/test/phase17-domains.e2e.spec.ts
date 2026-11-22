@@ -22,6 +22,7 @@ import {
   InvalidHostnameError,
   isReservedHostname,
   normalizeHostname,
+  registeredHostnameAliases,
   platformSubdomainHostname,
   platformSubdomainSlug,
 } from '../src/modules/domains/domain-normalize';
@@ -219,6 +220,17 @@ describe('Phase 17 custom domains (e2e)', () => {
       for (const host of invalid) {
         expect(() => normalizeHostname(host)).toThrow(InvalidHostnameError);
       }
+    });
+
+    it('pairs apex and www for storefront resolution', () => {
+      expect(registeredHostnameAliases('shop.example.com')).toEqual([
+        'shop.example.com',
+        'www.shop.example.com',
+      ]);
+      expect(registeredHostnameAliases('www.shop.example.com')).toEqual([
+        'www.shop.example.com',
+        'shop.example.com',
+      ]);
     });
 
     it('allows loopback hosts only when explicitly permitted', () => {

@@ -57,6 +57,47 @@ export function DnsInstructions({
           {INTRO[status] ?? INTRO.PENDING}
         </p>
       </div>
+
+      <div
+        role="region"
+        aria-label="Where to add these DNS records"
+        className="space-y-2 rounded-md border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-sm"
+      >
+        <p className="font-medium">এই মানগুলো কোথায় বসাবেন / Where to put these</p>
+        <div className="space-y-1.5 text-[var(--color-muted)]">
+          <p>
+            1. Merchant Dashboard-এ নয় — আপনার{' '}
+            <strong className="font-medium text-[var(--color-ink)]">
+              ডোমেইন DNS প্যানেলে
+            </strong>{' '}
+            (Cloudflare, SNBD Host, Namecheap, Spaceship ইত্যাদি) যান।
+          </p>
+          <p>
+            2. নতুন{' '}
+            <strong className="font-medium text-[var(--color-ink)]">TXT</strong> রেকর্ড:
+            Host ={' '}
+            <code className="font-mono text-[var(--color-ink)]">{hostLabel}</code>
+            , Value = নিচের Value কপি করুন।
+          </p>
+          <p>
+            3. এখানে ফিরে এসে{' '}
+            <strong className="font-medium text-[var(--color-ink)]">Verify</strong> চাপুন।
+          </p>
+          <p>
+            4. Verify হলে নিচের{' '}
+            <strong className="font-medium text-[var(--color-ink)]">CNAME</strong> (সাবডোমেইন)
+            বা <strong className="font-medium text-[var(--color-ink)]">A record</strong>{' '}
+            (রুট ডোমেইন যেমন {hostname}) দিয়ে ডোমেইন পয়েন্ট করুন, তারপর{' '}
+            <strong className="font-medium text-[var(--color-ink)]">Activate</strong>।
+          </p>
+        </div>
+        <p className="text-xs text-[var(--color-muted)]">
+          Open your domain DNS panel (not this dashboard). Add the TXT record
+          below, press Verify here, then point {hostname} with the CNAME or A
+          target and Activate.
+        </p>
+      </div>
+
       <div className="grid gap-3 md:grid-cols-3">
         <CopyValue label="Type" value={verification.recordType} />
         <CopyValue
@@ -97,14 +138,14 @@ export function DnsInstructions({
               <CopyValue
                 label="CNAME target"
                 value={targets.cname}
-                hint={`For subdomains such as ${hostname}`}
+                hint={`For subdomains such as shop.${hostname.replace(/^www\./, '')}`}
               />
             ) : null}
             {targets.a ? (
               <CopyValue
                 label="A record target (apex domains)"
                 value={targets.a}
-                hint="Use this IPv4 address when a CNAME is not allowed"
+                hint={`For root domains such as ${hostname}`}
               />
             ) : null}
           </div>

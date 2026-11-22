@@ -1,0 +1,24 @@
+# Shared-host template for one verified custom store domain.
+# Copy to <domain>.conf on the VPS and replace every STORE_DOMAIN (the
+# provision script does this). TLS is terminated by the host web server
+# (OpenLiteSpeed); this block is plain HTTP on the loopback edge.
+# Files ending in .example are not loaded by nginx.
+
+server {
+    listen 80;
+    server_name STORE_DOMAIN www.STORE_DOMAIN;
+    access_log /var/log/nginx/access.log ecomesta_edge;
+
+    # Let's Encrypt HTTP-01 (certbot --webroot). Must stay reachable through
+    # Cloudflare while the rest of the vhost still requires a trusted edge.
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/acme;
+        default_type text/plain;
+    }
+
+    if ($edge_trusted = 0) { return 403; }
+
+    include /etc/nginx/snippets/storefront-security-headers.conf;
+    include /etc/nginx/snippets/deny-hidden.conf;
+    include /etc/nginx/shared-snippets/storefront.conf;
+}

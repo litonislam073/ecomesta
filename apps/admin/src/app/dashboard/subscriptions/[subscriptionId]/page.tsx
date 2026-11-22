@@ -71,8 +71,9 @@ export default function AdminSubscriptionDetailPage() {
         api.get<{ success: true; data: AdminSubscription }>(
           `/admin/subscriptions/${subscriptionId}`,
         ),
+        // Only active plans are assignable; avoids loading the full catalog.
         api.get<{ success: true; data: { items: SubscriptionPlan[] } }>(
-          '/admin/plans?limit=100',
+          '/admin/plans?active=true&limit=100',
         ),
       ]);
       setSubscription(subResult.data);
